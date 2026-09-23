@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { buildCalendarTasks, occurrenceDates, occurrenceId } = require("../google-calendar-occurrences.js");
+const { buildCalendarTasks, occurrenceDates, occurrenceId } = require("../src/integrations/google-calendar-occurrences.js");
 
 module.exports = [
   {

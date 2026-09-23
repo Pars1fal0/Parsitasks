@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
-const { normalizeProfile } = require("../profile-settings.js");
-const { mergeStates } = require("../state-merge.js");
+const { normalizeProfile } = require("../src/settings/profile-settings.js");
+const { mergeStates } = require("../src/core/state-merge.js");
 
 module.exports = [
   {

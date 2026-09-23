@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { habitNumberStep } = require("../habits-view.js");
+const { habitNumberStep } = require("../src/habits/habits-view.js");
 
 module.exports = [
   {

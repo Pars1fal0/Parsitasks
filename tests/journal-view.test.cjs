@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { installDom } = require("./dom-test-utils.cjs");
-const { createJournalView } = require("../journal-view.js");
-const journalModel = require("../journal-model.js");
+const { createJournalView } = require("../src/journal/journal-view.js");
+const journalModel = require("../src/journal/journal-model.js");
 
 module.exports = [
   {

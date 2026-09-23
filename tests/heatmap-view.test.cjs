@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { buildHeatmapModel } = require("../heatmap-view.js");
+const { buildHeatmapModel } = require("../src/calendar/heatmap-view.js");
 const { parseDateKey, toDateKey } = require("./test-utils.cjs");
 
 module.exports = [

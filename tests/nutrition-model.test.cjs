@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const nutrition = require("../nutrition-model.js");
+const nutrition = require("../src/nutrition/nutrition-model.js");
 
 module.exports = [
   {

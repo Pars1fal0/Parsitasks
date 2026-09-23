@@ -1,4 +1,4 @@
-import recurrence from "../recurrence.js";
+import recurrence from "../src/tasks/recurrence.js";
 
 export const normalizeCustomRepeat = recurrence.normalizeCustomRepeat;
 

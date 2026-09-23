@@ -3,7 +3,7 @@ const {
   calculateMenuMaxHeight,
   calculateMenuShift,
   chooseMenuDirection,
-} = require("../disclosure-menus.js");
+} = require("../src/ui/disclosure-menus.js");
 
 module.exports = [
   {

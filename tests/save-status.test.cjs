@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createSaveStatus } = require("../save-status.js");
+const { createSaveStatus } = require("../src/sync/save-status.js");
 
 module.exports = [
   {

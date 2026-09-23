@@ -4,7 +4,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const authHtml = fs.readFileSync(path.join(root, "auth.html"), "utf8");
-const authScript = fs.readFileSync(path.join(root, "auth-page.js"), "utf8");
+const authScript = fs.readFileSync(path.join(root, "src/auth/auth-page.js"), "utf8");
 const desktopMain = fs.readFileSync(path.join(root, "desktop", "main.cjs"), "utf8");
 const appHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const packageJson = require("../package.json");

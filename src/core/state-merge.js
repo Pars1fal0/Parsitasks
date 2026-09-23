@@ -1,8 +1,8 @@
 (function (global) {
-  const syncMetadata = global.RhythmSyncMetadata || require("./sync-metadata.js");
-  const mcpActivity = global.RhythmMcpActivity || require("./mcp-activity.js");
-  const habitTitleHistory = global.RhythmHabitTitleHistory || require("./habit-title-history.js");
-  const habitConfigHistory = global.RhythmHabitConfigHistory || require("./habit-config-history.js");
+  const syncMetadata = global.RhythmSyncMetadata || require("../sync/sync-metadata.js");
+  const mcpActivity = global.RhythmMcpActivity || require("../integrations/mcp-activity.js");
+  const habitTitleHistory = global.RhythmHabitTitleHistory || require("../habits/habit-title-history.js");
+  const habitConfigHistory = global.RhythmHabitConfigHistory || require("../habits/habit-config-history.js");
   const TASK_DATE_FIELDS = syncMetadata.TASK_DATE_FIELDS;
   const ENTITY_FIELDS = syncMetadata.ENTITY_FIELDS;
 

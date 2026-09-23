@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const goalsView = require("../goals-view.js");
+const goalsView = require("../src/goals/goals-view.js");
 
 module.exports = [
   {

@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createImportExport } = require("../import-export.js");
+const { createImportExport } = require("../src/settings/import-export.js");
 
 module.exports = [
   {

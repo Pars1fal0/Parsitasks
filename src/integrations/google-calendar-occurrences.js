@@ -1,5 +1,5 @@
 (function (global) {
-  const recurrence = global.RhythmRecurrence || (typeof require === "function" ? require("./recurrence.js") : null);
+  const recurrence = global.RhythmRecurrence || (typeof require === "function" ? require("../tasks/recurrence.js") : null);
   const DEFAULT_LIMIT = 1000;
 
   function buildCalendarTasks(state = {}, range = {}, options = {}) {

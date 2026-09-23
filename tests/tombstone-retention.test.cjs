@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { pruneTombstones } = require("../tombstone-retention.js");
+const { pruneTombstones } = require("../src/sync/tombstone-retention.js");
 
 module.exports = [
   {

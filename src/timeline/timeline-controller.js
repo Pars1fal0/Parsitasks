@@ -1,5 +1,5 @@
 (function (global) {
-  const taskMovesApi = global.RhythmTaskMoves || (typeof require !== "undefined" ? require("./task-moves.js") : null);
+  const taskMovesApi = global.RhythmTaskMoves || (typeof require !== "undefined" ? require("../tasks/task-moves.js") : null);
   const TIMELINE_LAST_MINUTE = 23 * 60 + 45;
 
   function createTimelineController(ctx) {

@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { loadHostedConfig } = require("../hosted-config.js");
+const { loadHostedConfig } = require("../src/auth/hosted-config.js");
 
 module.exports = [
   {

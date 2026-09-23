@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const profileSettings = require("../profile-settings.js");
+const profileSettings = require("../src/settings/profile-settings.js");
 
 module.exports = [
   {

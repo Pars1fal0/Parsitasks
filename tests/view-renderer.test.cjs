@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createViewRenderer } = require("../view-renderer.js");
+const { createViewRenderer } = require("../src/core/view-renderer.js");
 
 module.exports = [
   {

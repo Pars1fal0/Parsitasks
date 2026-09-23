@@ -42,10 +42,10 @@ module.exports = [
     name: "does not contain backend Supabase or common private key material",
     fn() {
       const trackedSources = [
-        "app.js",
-        "hosted-config.js",
-        "remote-auth.js",
-        "remote-sync.js",
+        "src/core/app.js",
+        "src/auth/hosted-config.js",
+        "src/auth/remote-auth.js",
+        "src/sync/remote-sync.js",
         "wrangler.jsonc",
         path.join("mcp", "worker.mjs"),
       ].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");

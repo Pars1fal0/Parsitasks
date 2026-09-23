@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createTimelineController } = require("../timeline-controller.js");
+const { createTimelineController } = require("../src/timeline/timeline-controller.js");
 
 function createHarness(ctxOverrides = {}) {
   const state = {

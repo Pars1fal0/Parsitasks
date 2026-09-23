@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
-const { createRemoteAuth } = require("../remote-auth.js");
-const { createRemoteSync } = require("../remote-sync.js");
+const { createRemoteAuth } = require("../src/auth/remote-auth.js");
+const { createRemoteSync } = require("../src/sync/remote-sync.js");
 
 const requiredVariables = [
   "RHYTHM_SUPABASE_URL",

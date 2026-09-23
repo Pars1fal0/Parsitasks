@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { MAX_ZOOM, MIN_ZOOM, resizeGeometry, snapMove } = require("../board-view.js");
+const { MAX_ZOOM, MIN_ZOOM, resizeGeometry, snapMove } = require("../src/board/board-view.js");
 
 module.exports = [
   {

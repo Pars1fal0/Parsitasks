@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createBoardAssetStore } = require("../board-assets.js");
+const { createBoardAssetStore } = require("../src/board/board-assets.js");
 
 module.exports = [
   {

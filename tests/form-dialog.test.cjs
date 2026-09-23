@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { getFocusable } = require("../form-dialog.js");
+const { getFocusable } = require("../src/ui/form-dialog.js");
 
 module.exports = [
   {

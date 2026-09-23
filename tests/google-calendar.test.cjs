@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
-const { applyCalendarResult, buildPayload } = require("../google-calendar-controller.js");
-const { createGoogleCalendarApi, resolveBaseUrl } = require("../google-calendar-api.js");
+const { applyCalendarResult, buildPayload } = require("../src/integrations/google-calendar-controller.js");
+const { createGoogleCalendarApi, resolveBaseUrl } = require("../src/integrations/google-calendar-api.js");
 
 module.exports = [
   {

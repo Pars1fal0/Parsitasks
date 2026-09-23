@@ -1,4 +1,4 @@
-import nutritionModel from "../nutrition-model.js";
+import nutritionModel from "../src/nutrition/nutrition-model.js";
 import { recordMcpActivity } from "./activity-service.mjs";
 
 const ENTITY_FIELDS = {

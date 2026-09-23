@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createRemoteSyncWorkflow } = require("../remote-sync-controller.js");
+const { createRemoteSyncWorkflow } = require("../src/sync/remote-sync-controller.js");
 
 module.exports = [
   {

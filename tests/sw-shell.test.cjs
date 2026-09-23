@@ -29,7 +29,7 @@ module.exports = [
     fn() {
       const root = path.resolve(__dirname, "..");
       const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
-      const shellVersionScript = fs.readFileSync(path.join(root, "shell-version.js"), "utf8");
+      const shellVersionScript = fs.readFileSync(path.join(root, "src/platform/shell-version.js"), "utf8");
       const packageVersion = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version;
       const serviceWorker = fs.readFileSync(path.join(root, "sw.js"), "utf8");
       const staticFetch = serviceWorker.match(

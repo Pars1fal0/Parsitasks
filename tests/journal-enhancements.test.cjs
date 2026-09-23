@@ -4,7 +4,7 @@ const {
   restoreJournalRevision,
   searchJournalEntries,
   upsertJournalEntry,
-} = require("../journal-model.js");
+} = require("../src/journal/journal-model.js");
 
 module.exports = [
   {

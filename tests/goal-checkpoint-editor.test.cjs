@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { moveCheckpoint } = require("../goal-checkpoint-editor.js");
+const { moveCheckpoint } = require("../src/goals/goal-checkpoint-editor.js");
 
 module.exports = [
   {

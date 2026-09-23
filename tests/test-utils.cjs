@@ -1,15 +1,15 @@
-const quickInput = require("../quick-input.js");
-const recurrence = require("../recurrence.js");
-const storageApi = require("../storage.js");
-const taskMoves = require("../task-moves.js");
-const stateNormalizerApi = require("../state-normalizer.js");
-const syncMetadata = require("../sync-metadata.js");
-const habitTitleHistory = require("../habit-title-history.js");
-const habitConfigHistory = require("../habit-config-history.js");
-const mcpActivity = require("../mcp-activity.js");
-const journalModel = require("../journal-model.js");
-const nutritionModel = require("../nutrition-model.js");
-const boardModel = require("../board-model.js");
+const quickInput = require("../src/tasks/quick-input.js");
+const recurrence = require("../src/tasks/recurrence.js");
+const storageApi = require("../src/core/storage.js");
+const taskMoves = require("../src/tasks/task-moves.js");
+const stateNormalizerApi = require("../src/core/state-normalizer.js");
+const syncMetadata = require("../src/sync/sync-metadata.js");
+const habitTitleHistory = require("../src/habits/habit-title-history.js");
+const habitConfigHistory = require("../src/habits/habit-config-history.js");
+const mcpActivity = require("../src/integrations/mcp-activity.js");
+const journalModel = require("../src/journal/journal-model.js");
+const nutritionModel = require("../src/nutrition/nutrition-model.js");
+const boardModel = require("../src/board/board-model.js");
 
 function normalizeDateKey(value, fallback = "") {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));

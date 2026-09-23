@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { mergeStates } = require("../state-merge.js");
+const { mergeStates } = require("../src/core/state-merge.js");
 
 module.exports = [
   {

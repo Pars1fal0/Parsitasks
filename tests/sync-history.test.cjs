@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createSyncHistory } = require("../sync-history.js");
+const { createSyncHistory } = require("../src/sync/sync-history.js");
 
 module.exports = [
   {

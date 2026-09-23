@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createRemoteSync, stripTrailingSlash } = require("../remote-sync.js");
+const { createRemoteSync, stripTrailingSlash } = require("../src/sync/remote-sync.js");
 
 const authConfig = {
   accessToken: "user-jwt",

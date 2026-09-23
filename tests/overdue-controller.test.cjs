@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createOverdueController } = require("../overdue-controller.js");
+const { createOverdueController } = require("../src/tasks/overdue-controller.js");
 
 module.exports = [
   {

@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { SESSION_KEY, createRemoteAuth } = require("../remote-auth.js");
+const { SESSION_KEY, createRemoteAuth } = require("../src/auth/remote-auth.js");
 
 function createStorage() {
   const values = new Map();

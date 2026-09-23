@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createPwaController } = require("../pwa-controller.js");
+const { createPwaController } = require("../src/platform/pwa-controller.js");
 
 module.exports = [
   {

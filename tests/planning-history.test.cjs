@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { archiveEntryInPeriod, buildBacklogEntries } = require("../planning-history.js");
+const { archiveEntryInPeriod, buildBacklogEntries } = require("../src/core/planning-history.js");
 const { toDateKey, parseDateKey } = require("./test-utils.cjs");
 
 function addDays(dateKey, days) {

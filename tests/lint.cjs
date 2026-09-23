@@ -3,10 +3,12 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const sourceFiles = fs
-  .readdirSync(root)
-  .filter((file) => file.endsWith(".js"))
-  .map((file) => path.join(root, file));
+const sourceRoot = path.join(root, "src");
+const sourceFiles = [path.join(root, "sw.js"), ...fs.readdirSync(sourceRoot, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .flatMap((entry) => fs.readdirSync(path.join(sourceRoot, entry.name))
+    .filter((file) => file.endsWith(".js"))
+    .map((file) => path.join(sourceRoot, entry.name, file)))];
 const testFiles = fs
   .readdirSync(__dirname)
   .filter((file) => file.endsWith(".cjs"))
@@ -54,8 +56,7 @@ scriptSources.forEach((scriptSource) => {
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const packagedFiles = new Set(packageJson.build?.files || []);
-["app-shell-controller.js", "device-sync-controller.js", "form-dialog.js", "global-search.js", "goal-checkpoint-editor.js", "journal-editor.js", "journal-model.js", "journal-view.js", "remote-auth.js", "remote-auth-controller.js", "settings-state.js", "settings-sync.js", "state-controller.js", "sync-diagnostics.js", "timeline-drag.js", "timeline-layout.js", "timeline-menu.js"].forEach((file) => {
-  assert.equal(packagedFiles.has(file), true, `package.json build.files is missing ${file}`);
-});
+assert.equal(packagedFiles.has("src/**/*"), true, "package.json build.files must include client modules");
+assert.equal(sourceFiles.length > 80, true, "lint must cover the client source tree");
 
 console.log(`lint ok - ${sourceFiles.length + mcpFiles.length} source files, ${testFiles.length} test files`);

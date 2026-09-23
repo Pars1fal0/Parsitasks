@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { installDom } = require("./dom-test-utils.cjs");
-const { createSyncDiagnostics, latestIsoDate } = require("../sync-diagnostics.js");
+const { createSyncDiagnostics, latestIsoDate } = require("../src/sync/sync-diagnostics.js");
 
 module.exports = [
   {

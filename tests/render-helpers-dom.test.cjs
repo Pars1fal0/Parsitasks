@@ -4,16 +4,16 @@ const { installDom } = require("./dom-test-utils.cjs");
 function loadDomModules() {
   installDom();
   global.RhythmHeatmapView = { createHeatmapView: () => ({ renderHeatmap() {} }) };
-  delete require.cache[require.resolve("../archive-view.js")];
-  delete require.cache[require.resolve("../calendar-view.js")];
-  delete require.cache[require.resolve("../categories.js")];
-  delete require.cache[require.resolve("../habits-view.js")];
-  delete require.cache[require.resolve("../tasks-view.js")];
-  const archive = require("../archive-view.js");
-  const calendar = require("../calendar-view.js");
-  const tasks = require("../tasks-view.js");
-  require("../categories.js");
-  const habits = require("../habits-view.js");
+  delete require.cache[require.resolve("../src/tasks/archive-view.js")];
+  delete require.cache[require.resolve("../src/calendar/calendar-view.js")];
+  delete require.cache[require.resolve("../src/tasks/categories.js")];
+  delete require.cache[require.resolve("../src/habits/habits-view.js")];
+  delete require.cache[require.resolve("../src/tasks/tasks-view.js")];
+  const archive = require("../src/tasks/archive-view.js");
+  const calendar = require("../src/calendar/calendar-view.js");
+  const tasks = require("../src/tasks/tasks-view.js");
+  require("../src/tasks/categories.js");
+  const habits = require("../src/habits/habits-view.js");
   return { archive, calendar, categories: global.RhythmCategories, habits, tasks };
 }
 
