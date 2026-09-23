@@ -214,7 +214,7 @@ button:focus-visible {
   position: absolute;
   z-index: -3;
   inset: 76px -40px 0 32%;
-  background-image: url("landing-product.png");
+  background-image: url("../images/landing-product.png");
   background-position: left top;
   background-repeat: no-repeat;
   background-size: auto 100%;
@@ -447,7 +447,7 @@ button:focus-visible {
 
 .product-canvas {
   min-width: 0;
-  background-image: url("landing-product.png");
+  background-image: url("../images/landing-product.png");
   background-position: left center;
   background-repeat: no-repeat;
   background-size: auto 92%;

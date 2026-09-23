@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { buildHash, parseHash } = require("../src/core/navigation-state.js");
+const { buildHash, parseHash } = require("../app/src/core/navigation-state.js");
 
 module.exports = [
   {

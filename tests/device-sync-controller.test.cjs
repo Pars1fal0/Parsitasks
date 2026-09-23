@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createDeviceSyncController } = require("../src/sync/device-sync-controller.js");
+const { createDeviceSyncController } = require("../app/src/sync/device-sync-controller.js");
 
 module.exports = [
   {

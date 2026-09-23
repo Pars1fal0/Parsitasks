@@ -3,8 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const sourceRoot = path.join(root, "src");
-const sourceFiles = [path.join(root, "sw.js"), ...fs.readdirSync(sourceRoot, { withFileTypes: true })
+const appRoot = path.join(root, "app");
+const sourceRoot = path.join(appRoot, "src");
+const sourceFiles = [path.join(appRoot, "sw.js"), ...fs.readdirSync(sourceRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .flatMap((entry) => fs.readdirSync(path.join(sourceRoot, entry.name))
     .filter((file) => file.endsWith(".js"))
@@ -48,15 +49,38 @@ mcpFiles.forEach((filePath) => {
   assert.equal(result.status, 0, `${path.relative(root, filePath)} has invalid JavaScript syntax\n${result.stderr}`);
 });
 
-const indexHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
-const scriptSources = [...indexHtml.matchAll(/<script src="([^"]+)"/g)].map((match) => match[1].split("?")[0]);
-scriptSources.forEach((scriptSource) => {
-  assert.equal(fs.existsSync(path.join(root, scriptSource)), true, `Missing script referenced by index.html: ${scriptSource}`);
+const pageFiles = ["index.html", "auth.html", "landing.html", "oauth-consent.html"];
+pageFiles.forEach((pageFile) => {
+  const page = fs.readFileSync(path.join(appRoot, pageFile), "utf8");
+  const references = [...page.matchAll(/<(?:script|link|img)\b[^>]*\b(?:src|href)="([^"]+)"/g)]
+    .map((match) => match[1].split("?")[0])
+    .filter((reference) => reference && !/^(?:data:|https?:|#)/.test(reference) && reference !== "/oauth-consent.js");
+  references.forEach((reference) => {
+    assert.equal(fs.existsSync(path.join(appRoot, reference.replace(/^\//, ""))), true,
+      `Missing asset referenced by ${pageFile}: ${reference}`);
+  });
+});
+
+fs.readdirSync(path.join(appRoot, "assets", "styles"))
+  .filter((file) => file.endsWith(".css"))
+  .forEach((file) => {
+    const directory = path.join(appRoot, "assets", "styles");
+    const css = fs.readFileSync(path.join(directory, file), "utf8");
+    [...css.matchAll(/url\(["']?([^"')]+)["']?\)/g)]
+      .map((match) => match[1])
+      .filter((reference) => !/^(?:data:|https?:)/.test(reference))
+      .forEach((reference) => assert.equal(fs.existsSync(path.resolve(directory, reference)), true,
+        `Missing asset referenced by ${file}: ${reference}`));
+  });
+
+const manifest = JSON.parse(fs.readFileSync(path.join(appRoot, "manifest.webmanifest"), "utf8"));
+manifest.icons.forEach(({ src }) => {
+  assert.equal(fs.existsSync(path.join(appRoot, src)), true, `Missing PWA icon: ${src}`);
 });
 
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 const packagedFiles = new Set(packageJson.build?.files || []);
-assert.equal(packagedFiles.has("src/**/*"), true, "package.json build.files must include client modules");
+assert.equal(packagedFiles.has("app/**/*"), true, "package.json build.files must include the client application");
 assert.equal(sourceFiles.length > 80, true, "lint must cover the client source tree");
 
 console.log(`lint ok - ${sourceFiles.length + mcpFiles.length} source files, ${testFiles.length} test files`);

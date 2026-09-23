@@ -5,7 +5,7 @@ const path = require("node:path");
 const { fileURLToPath } = require("node:url");
 const { createUpdateManager } = require("./update-manager.cjs");
 
-const appRoot = path.join(__dirname, "..");
+const appRoot = path.join(__dirname, "..", "app");
 const isSmokeTest = process.argv.includes("--smoke-test");
 const isE2eTest = process.argv.includes("--e2e-test");
 const isAutomationTest = isSmokeTest || isE2eTest;
@@ -46,7 +46,7 @@ function createWindow() {
     show: !isSmokeTest,
     title: "Parsitasks",
     backgroundColor: "#090d10",
-    icon: path.join(appRoot, "icon.svg"),
+    icon: path.join(appRoot, "assets", "icons", "icon.svg"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -979,7 +979,7 @@ function isInternalAppNavigation(url) {
 function createTray() {
   if (isAutomationTest || tray) return;
 
-  const image = nativeImage.createFromPath(path.join(appRoot, "icon.svg"));
+  const image = nativeImage.createFromPath(path.join(appRoot, "assets", "icons", "icon.svg"));
   tray = new Tray(image.resize({ width: 16, height: 16 }));
   tray.setToolTip("Parsitasks");
   tray.setContextMenu(

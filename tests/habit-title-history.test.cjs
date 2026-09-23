@@ -4,7 +4,7 @@ const {
   habitTitleOnDate,
   mergeHabitTitleHistory,
   normalizeHabitTitleHistory,
-} = require("../src/habits/habit-title-history.js");
+} = require("../app/src/habits/habit-title-history.js");
 
 module.exports = [
   {

@@ -233,12 +233,12 @@ const { _electron: electron } = require("playwright-core");
     );
     assert.equal(await page.locator(".board-item-handle").count(), 0);
     assert.equal(await page.locator(".board-item-delete").count(), 0);
-    await page.locator("#boardImageInput").setInputFiles(path.resolve(__dirname, "..", "icon-192.png"));
+    await page.locator("#boardImageInput").setInputFiles(path.resolve(__dirname, "..", "app", "assets", "icons", "icon-192.png"));
     await page.waitForFunction(() => /Supabase|синхронизац/i.test(document.querySelector("#boardStatus")?.textContent || ""));
     assert.equal(await page.locator(".board-image").count(), 0);
     await page.evaluate(async () => {
       const assetId = "e2e-cached-board-image";
-      const blob = await fetch("icon-192.png").then((response) => response.blob());
+      const blob = await fetch("assets/icons/icon-192.png").then((response) => response.blob());
       const db = await new Promise((resolve, reject) => {
         const request = indexedDB.open("rhythm-board-assets-v1", 1);
         request.onupgradeneeded = () => {

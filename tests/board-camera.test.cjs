@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const camera = require("../src/board/board-camera.js");
+const camera = require("../app/src/board/board-camera.js");
 
 module.exports = [
   {

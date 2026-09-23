@@ -155,7 +155,7 @@ input {
   position: absolute;
   z-index: -3;
   inset: 76px -370px 34% -120px;
-  background-image: url("landing-product.png");
+  background-image: url("../images/landing-product.png");
   background-position: center top;
   background-repeat: no-repeat;
   background-size: auto 100%;

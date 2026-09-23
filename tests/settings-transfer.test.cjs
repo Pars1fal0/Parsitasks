@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createSettingsTransfer, exportableSettings } = require("../src/settings/settings-transfer.js");
+const { createSettingsTransfer, exportableSettings } = require("../app/src/settings/settings-transfer.js");
 
 module.exports = [
   {

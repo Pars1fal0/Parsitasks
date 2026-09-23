@@ -2,34 +2,36 @@ const fs = require("node:fs");
 const crypto = require("node:crypto");
 const esbuild = require("esbuild");
 const path = require("node:path");
-const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
+const appSource = path.join(root, "app");
 const output = path.join(root, "web-dist");
-const serviceWorker = fs.readFileSync(path.join(root, "sw.js"), "utf8");
-const shellSource = serviceWorker.match(/const APP_SHELL = \[([\s\S]*?)\];/)?.[1];
+function listFiles(directory, prefix = "") {
+  return fs.readdirSync(directory, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .flatMap((entry) => {
+      const relative = path.posix.join(prefix, entry.name);
+      return entry.isDirectory() ? listFiles(path.join(directory, entry.name), relative) : [relative];
+    });
+}
 
-if (!shellSource) throw new Error("Unable to find APP_SHELL in sw.js");
-
-const files = [...vm.runInNewContext(`[${shellSource}]`), "sw.js", "_headers"]
-  .map((file) => String(file).replace(/^\.\//, ""))
-  .filter((file) => file && file !== ".");
+const files = listFiles(appSource);
+if (!files.includes("sw.js")) throw new Error("Missing app/sw.js");
 
 fs.rmSync(output, { force: true, recursive: true });
 fs.mkdirSync(output, { recursive: true });
 
-const uniqueFiles = new Set(files);
-const extraAssets = ["oauth-consent.html", "oauth-consent.css"];
 const buildHasher = crypto.createHash("sha256");
-[...uniqueFiles].filter((file) => file !== "sw.js").forEach((file) => buildHasher.update(fs.readFileSync(path.join(root, file))));
-extraAssets.forEach((file) => buildHasher.update(fs.readFileSync(path.join(root, file))));
+files.forEach((file) => {
+  buildHasher.update(file);
+  buildHasher.update(fs.readFileSync(path.join(appSource, file)));
+});
 buildHasher.update(fs.readFileSync(path.join(root, "mcp", "oauth-consent-entry.mjs")));
 const buildHash = buildHasher.digest("hex").slice(0, 12);
 
-for (const file of uniqueFiles) {
-  const source = path.join(root, file);
+for (const file of files) {
+  const source = path.join(appSource, file);
   const destination = path.join(output, file);
-  if (!fs.existsSync(source) || !fs.statSync(source).isFile()) throw new Error(`Missing web asset: ${file}`);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   if (file === "sw.js") {
     fs.writeFileSync(destination, fs.readFileSync(source, "utf8").replaceAll("__BUILD_HASH__", buildHash), "utf8");
@@ -38,9 +40,6 @@ for (const file of uniqueFiles) {
   }
 }
 
-extraAssets.forEach((file) => {
-  fs.copyFileSync(path.join(root, file), path.join(output, file));
-});
 esbuild.buildSync({
   bundle: true,
   entryPoints: [path.join(root, "mcp", "oauth-consent-entry.mjs")],
@@ -52,4 +51,4 @@ esbuild.buildSync({
 });
 
 fs.writeFileSync(path.join(output, ".nojekyll"), "", "utf8");
-console.log(`web build ok - ${uniqueFiles.size + extraAssets.length + 1} files - cache ${buildHash}`);
+console.log(`web build ok - ${files.length + 1} files - cache ${buildHash}`);

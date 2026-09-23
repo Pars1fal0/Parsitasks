@@ -58,7 +58,7 @@ function toDateKey(date) {
     await page.waitForSelector(".timeline-task.is-scheduled");
     await page.waitForFunction(() => document.querySelectorAll(".timeline-task.is-scheduled").length === 4);
     await page.evaluate(() => document.activeElement?.blur());
-    await page.screenshot({ path: path.join(root, "landing-product.png") });
+    await page.screenshot({ path: path.join(root, "app", "assets", "images", "landing-product.png") });
     console.log("landing product screenshot updated");
   } finally {
     await electronApp.close();

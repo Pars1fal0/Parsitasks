@@ -237,12 +237,12 @@
       const body = await response.json();
       const message = body.message || body.error || "";
       if (status === 404 || /bucket.*not found|not found.*bucket/i.test(message)) {
-        return "Хранилище изображений не настроено. Выполни актуальный supabase-schema.sql";
+        return "Хранилище изображений не настроено. Выполни актуальный database/supabase-schema.sql";
       }
       return message || "Не удалось загрузить изображение в Supabase";
     } catch {
       return status === 404
-        ? "Хранилище изображений не настроено. Выполни актуальный supabase-schema.sql"
+        ? "Хранилище изображений не настроено. Выполни актуальный database/supabase-schema.sql"
         : "Не удалось загрузить изображение в Supabase";
     }
   }

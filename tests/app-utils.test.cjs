@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createAppUtils } = require("../src/core/app-utils.js");
+const { createAppUtils } = require("../app/src/core/app-utils.js");
 
 module.exports = [
   {

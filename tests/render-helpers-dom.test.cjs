@@ -4,16 +4,16 @@ const { installDom } = require("./dom-test-utils.cjs");
 function loadDomModules() {
   installDom();
   global.RhythmHeatmapView = { createHeatmapView: () => ({ renderHeatmap() {} }) };
-  delete require.cache[require.resolve("../src/tasks/archive-view.js")];
-  delete require.cache[require.resolve("../src/calendar/calendar-view.js")];
-  delete require.cache[require.resolve("../src/tasks/categories.js")];
-  delete require.cache[require.resolve("../src/habits/habits-view.js")];
-  delete require.cache[require.resolve("../src/tasks/tasks-view.js")];
-  const archive = require("../src/tasks/archive-view.js");
-  const calendar = require("../src/calendar/calendar-view.js");
-  const tasks = require("../src/tasks/tasks-view.js");
-  require("../src/tasks/categories.js");
-  const habits = require("../src/habits/habits-view.js");
+  delete require.cache[require.resolve("../app/src/tasks/archive-view.js")];
+  delete require.cache[require.resolve("../app/src/calendar/calendar-view.js")];
+  delete require.cache[require.resolve("../app/src/tasks/categories.js")];
+  delete require.cache[require.resolve("../app/src/habits/habits-view.js")];
+  delete require.cache[require.resolve("../app/src/tasks/tasks-view.js")];
+  const archive = require("../app/src/tasks/archive-view.js");
+  const calendar = require("../app/src/calendar/calendar-view.js");
+  const tasks = require("../app/src/tasks/tasks-view.js");
+  require("../app/src/tasks/categories.js");
+  const habits = require("../app/src/habits/habits-view.js");
   return { archive, calendar, categories: global.RhythmCategories, habits, tasks };
 }
 

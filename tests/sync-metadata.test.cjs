@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createSyncMetadataTracker, normalizeSyncMeta } = require("../src/sync/sync-metadata.js");
+const { createSyncMetadataTracker, normalizeSyncMeta } = require("../app/src/sync/sync-metadata.js");
 
 module.exports = [
   {

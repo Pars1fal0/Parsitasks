@@ -33,25 +33,11 @@
       "output": "dist"
     },
     "files": [
-      "auth.css",
-      "auth.html",
+      "app/**/*",
       "CHANGELOG.md",
-      "disclosure-menus.css",
       "desktop/**/*",
-      "google-g.svg",
-      "icon.svg",
-      "icon-192.png",
-      "icon-512.png",
-      "index.html",
-      "landing.css",
-      "landing.html",
-      "landing-product.png",
-      "manifest.webmanifest",
       "README.md",
-      "styles.css",
-      "supabase-schema.sql",
-      "sw.js",
-      "src/**/*"
+      "database/supabase-schema.sql"
     ],
     "win": {
       "target": [

@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const authGate = require("../src/auth/auth-gate.js");
+const authGate = require("../app/src/auth/auth-gate.js");
 
 function storage(value) {
   return { getItem: () => value };

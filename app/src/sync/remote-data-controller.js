@@ -189,7 +189,7 @@
     function schemaHint(error) {
       const text = String(error?.message || "");
       return /rhythm_state_snapshots|delete_parsitasks_account|404|PGRST/i.test(text)
-        ? "Обнови supabase-schema.sql в SQL Editor, затем повтори действие"
+        ? "Обнови database/supabase-schema.sql в SQL Editor, затем повтори действие"
         : `Ошибка облачных данных: ${text || "неизвестная ошибка"}`;
     }
 

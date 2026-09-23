@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { installDom } = require("./dom-test-utils.cjs");
-const { readText, writeText } = require("../src/journal/journal-editor.js");
+const { readText, writeText } = require("../app/src/journal/journal-editor.js");
 
 module.exports = [
   {

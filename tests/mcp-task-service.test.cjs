@@ -109,7 +109,7 @@ module.exports = [
     name: "MCP and the browser share custom repeat normalization",
     async fn() {
       const service = await loadService();
-      const browserRecurrence = require("../src/tasks/recurrence.js");
+      const browserRecurrence = require("../app/src/tasks/recurrence.js");
       const samples = [
         { type: "interval", every: 0 },
         { type: "monthDay", day: 40 },

@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createNotifications } = require("../src/platform/notifications.js");
+const { createNotifications } = require("../app/src/platform/notifications.js");
 
 function createController() {
   return createNotifications({

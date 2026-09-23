@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createSettingsState } = require("../src/settings/settings-state.js");
+const { createSettingsState } = require("../app/src/settings/settings-state.js");
 
 module.exports = [
   {

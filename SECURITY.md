@@ -8,7 +8,7 @@ The application is local-first. Tasks and the Supabase session are stored on the
 
 ## Production checklist
 
-1. Run the current `supabase-schema.sql` once in the production Supabase SQL Editor after every security migration.
+1. Run the current `database/supabase-schema.sql` once in the production Supabase SQL Editor after every security migration.
 2. Set `SUPABASE_PUBLISHABLE_KEY` in Cloudflare Workers. The legacy `SUPABASE_ANON_KEY` remains supported temporarily. Never use `SUPABASE_SECRET_KEY`, `sb_secret_...`, or `service_role`.
 3. In Supabase Auth, enable email confirmation, require at least eight password characters, enable leaked-password protection, and configure CAPTCHA before opening public registration broadly.
 4. Keep the Site URL and allowed redirects restricted to `https://parsitasks.ru`.

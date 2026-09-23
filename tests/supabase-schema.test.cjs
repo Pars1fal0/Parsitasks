@@ -6,7 +6,7 @@ module.exports = [
   {
     name: "protects encrypted Google Calendar connections with per-user RLS",
     fn() {
-      const source = fs.readFileSync(path.resolve(__dirname, "../supabase-schema.sql"), "utf8");
+      const source = fs.readFileSync(path.resolve(__dirname, "../database/supabase-schema.sql"), "utf8");
       assert.match(source, /create table if not exists public\.google_calendar_connections/);
       assert.match(source, /encrypted_refresh_token text not null/);
       assert.match(source, /alter table public\.google_calendar_connections enable row level security/);
@@ -17,7 +17,7 @@ module.exports = [
   {
     name: "allows state access only through authenticated RLS policies",
     fn() {
-      const sql = fs.readFileSync(path.join(__dirname, "..", "supabase-schema.sql"), "utf8");
+      const sql = fs.readFileSync(path.join(__dirname, "..", "database", "supabase-schema.sql"), "utf8");
       assert.match(sql, /to authenticated/);
       assert.match(sql, /auth\.uid\(\).*user_id/s);
       assert.match(sql, /user_key = 'auth:' \|\| \(select auth\.uid\(\)\)::text/);

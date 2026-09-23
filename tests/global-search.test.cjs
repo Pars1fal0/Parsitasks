@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { excerptAround, searchWorkspace } = require("../src/ui/global-search.js");
+const { excerptAround, searchWorkspace } = require("../app/src/ui/global-search.js");
 
 module.exports = [
   {

@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createStateController } = require("../src/core/state-controller.js");
+const { createStateController } = require("../app/src/core/state-controller.js");
 
 module.exports = [
   {

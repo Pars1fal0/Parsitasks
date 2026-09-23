@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { resolveDateRollover } = require("../src/core/date-rollover.js");
+const { resolveDateRollover } = require("../app/src/core/date-rollover.js");
 
 module.exports = [
   {

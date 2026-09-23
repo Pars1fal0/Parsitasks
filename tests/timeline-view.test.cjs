@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
-const { buildTimelineModel } = require("../src/timeline/timeline-view.js");
-const { TIMELINE_LAST_MINUTE, nextBlockTimes } = require("../src/timeline/timeline-layout.js");
+const { buildTimelineModel } = require("../app/src/timeline/timeline-view.js");
+const { TIMELINE_LAST_MINUTE, nextBlockTimes } = require("../app/src/timeline/timeline-layout.js");
 
 module.exports = [
   {

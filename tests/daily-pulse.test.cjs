@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createDailyPulse, percent } = require("../src/core/daily-pulse.js");
+const { createDailyPulse, percent } = require("../app/src/core/daily-pulse.js");
 
 module.exports = [
   {

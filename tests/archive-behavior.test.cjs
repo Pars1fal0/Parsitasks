@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { removeArchiveEntries } = require("../src/tasks/archive-view.js");
+const { removeArchiveEntries } = require("../app/src/tasks/archive-view.js");
 
 module.exports = [
   {

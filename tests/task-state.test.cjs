@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { createTaskState } = require("../src/tasks/task-state.js");
+const { createTaskState } = require("../app/src/tasks/task-state.js");
 
 module.exports = [
   {

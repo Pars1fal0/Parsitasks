@@ -6,7 +6,7 @@ const {
   habitIsArchivedOnDate,
   mergeHabitConfigHistory,
   mergeHabitAvailabilityHistory,
-} = require("../src/habits/habit-config-history.js");
+} = require("../app/src/habits/habit-config-history.js");
 
 module.exports = [
   {

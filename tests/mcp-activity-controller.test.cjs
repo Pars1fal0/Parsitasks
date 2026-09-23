@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { installDom } = require("./dom-test-utils.cjs");
-const activityApi = require("../src/integrations/mcp-activity.js");
-const { createMcpActivityController } = require("../src/integrations/mcp-activity-controller.js");
+const activityApi = require("../app/src/integrations/mcp-activity.js");
+const { createMcpActivityController } = require("../app/src/integrations/mcp-activity-controller.js");
 
 module.exports = [
   {

@@ -4,7 +4,7 @@ const {
   journalEntryForDate,
   normalizeJournalEntries,
   upsertJournalEntry,
-} = require("../src/journal/journal-model.js");
+} = require("../app/src/journal/journal-model.js");
 
 module.exports = [
   {

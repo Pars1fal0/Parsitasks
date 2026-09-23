@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const model = require("../src/board/board-model.js");
+const model = require("../app/src/board/board-model.js");
 
 module.exports = [
   {

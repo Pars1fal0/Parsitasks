@@ -3,10 +3,10 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
-const authHtml = fs.readFileSync(path.join(root, "auth.html"), "utf8");
-const authScript = fs.readFileSync(path.join(root, "src/auth/auth-page.js"), "utf8");
+const authHtml = fs.readFileSync(path.join(root, "app", "auth.html"), "utf8");
+const authScript = fs.readFileSync(path.join(root, "app", "src", "auth", "auth-page.js"), "utf8");
 const desktopMain = fs.readFileSync(path.join(root, "desktop", "main.cjs"), "utf8");
-const appHtml = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const appHtml = fs.readFileSync(path.join(root, "app", "index.html"), "utf8");
 const packageJson = require("../package.json");
 
 module.exports = [
@@ -26,7 +26,7 @@ module.exports = [
     name: "auth page offers one Google action for sign in and registration",
     fn() {
       assert.match(authHtml, /id="authGoogle"[^>]*>[\s\S]*Продолжить с Google/);
-      assert.match(authHtml, /src="google-g\.svg"/);
+      assert.match(authHtml, /src="assets\/images\/google-g\.svg"/);
       assert.match(authScript, /auth\.createOAuthUrl\("google", oauthRedirectUrl\(\)\)/);
       assert.match(authScript, /sessionStorage\?\.setItem\("parsitasks-auth-next", appTarget\(\)\)/);
     },

@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { installDom } = require("./dom-test-utils.cjs");
-const { createRemoteDataController, snapshotSummaryParts, summarizeSnapshotState } = require("../src/sync/remote-data-controller.js");
+const { createRemoteDataController, snapshotSummaryParts, summarizeSnapshotState } = require("../app/src/sync/remote-data-controller.js");
 
 module.exports = [
   {

@@ -1,4 +1,4 @@
-import journalModel from "../src/journal/journal-model.js";
+import journalModel from "../app/src/journal/journal-model.js";
 import { recordMcpActivity } from "./activity-service.mjs";
 
 export function getJournalEntry(state, date) {
