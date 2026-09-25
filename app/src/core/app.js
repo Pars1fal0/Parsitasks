@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 15;
+﻿const SCHEMA_VERSION = 16;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
@@ -56,6 +56,7 @@ const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
   createId,
   normalizeDateKey,
   normalizeHabitLogs,
+  normalizeHabitFreezeDays: window.RhythmHabitFreeze.normalizeFreezeDays,
   normalizeHabitRepeat,
   normalizeHabitConfigHistory: window.RhythmHabitConfigHistory.normalizeHabitConfigHistory,
   normalizeHabitAvailabilityHistory: window.RhythmHabitConfigHistory.normalizeHabitAvailabilityHistory,
@@ -227,6 +228,24 @@ const els = {
   globalSearchInput: document.querySelector("#globalSearchInput"),
   globalSearchResults: document.querySelector("#globalSearchResults"),
   habitDoneMetric: document.querySelector("#habitDoneMetric"),
+  habitFrozenMetric: document.querySelector("#habitFrozenMetric"),
+  habitFreezeDialog: document.querySelector("#habitFreezeDialog"),
+  habitFreezeForm: document.querySelector("#habitFreezeForm"),
+  habitFreezeHeading: document.querySelector("#habitFreezeHeading"),
+  habitFreezeList: document.querySelector("#habitFreezeList"),
+  habitFreezeStart: document.querySelector("#habitFreezeStart"),
+  habitFreezeStartLabel: document.querySelector("#habitFreezeStartLabel"),
+  habitFreezeEnd: document.querySelector("#habitFreezeEnd"),
+  habitFreezeEndField: document.querySelector("#habitFreezeEndField"),
+  habitFreezeReason: document.querySelector("#habitFreezeReason"),
+  habitFreezeReasonField: document.querySelector("#habitFreezeReasonField"),
+  habitFreezeCurrentReason: document.querySelector("#habitFreezeCurrentReason"),
+  habitFreezeCustomReason: document.querySelector("#habitFreezeCustomReason"),
+  habitFreezeCustomReasonField: document.querySelector("#habitFreezeCustomReasonField"),
+  habitFreezeMessage: document.querySelector("#habitFreezeMessage"),
+  habitFreezeSubmit: document.querySelector("#habitFreezeSubmit"),
+  habitFreezeCancel: document.querySelector("#habitFreezeCancel"),
+  openHabitFreeze: document.querySelector("#openHabitFreeze"),
   habitEmpty: document.querySelector("#habitEmpty"),
   habitArchiveCount: document.querySelector("#habitArchiveCount"),
   habitArchiveList: document.querySelector("#habitArchiveList"),
@@ -588,6 +607,8 @@ const habitsView = window.RhythmHabitsView.createHabitsView({
   getState: () => state,
   isTaskDone,
   habitStreak,
+  habitStatusOnDate,
+  openFreezeDialog: (habitId, operation) => habitFreezeDialog.open(habitId, operation),
   habitConfigOnDate,
   habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
   habitsForDate,
@@ -600,6 +621,19 @@ const habitsView = window.RhythmHabitsView.createHabitsView({
   saveState,
   showToast,
 });
+
+const habitFreezeDialog = window.RhythmHabitFreezeDialog.createHabitFreezeDialog({
+  els,
+  createUndoSnapshot,
+  getActiveDate: () => activeDate,
+  getState: () => state,
+  habitStatusOnDate,
+  habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
+  render,
+  saveState,
+  showToast,
+});
+els.openHabitFreeze.addEventListener("click", () => habitFreezeDialog.open());
 
 const goalCheckpointEditor = window.RhythmGoalCheckpointEditor.createGoalCheckpointEditor({
   createId,
@@ -1245,6 +1279,7 @@ const dailyPulseController = window.RhythmDailyPulse.createDailyPulse({
   getHabits: habitsForDate,
   getTasks: getOrderedTasksForDate,
   isHabitComplete,
+  habitStatusOnDate,
   isTaskDone,
   taskDetails,
 });
@@ -2303,9 +2338,14 @@ function isTaskDone(task, dateKey) {
 
 function isHabitComplete(habit, dateKey) {
   const effective = habitConfigOnDate(habit, dateKey);
-  const value = habit.logs?.[dateKey];
-  if (effective.type === "number") return Number(value || 0) >= Number(effective.goal || 1);
-  return value === true;
+  return window.RhythmHabitFreeze.isComplete(habit, dateKey, effective);
+}
+
+function habitStatusOnDate(habit, dateKey) {
+  return window.RhythmHabitFreeze.statusOnDate(habit, dateKey, {
+    scheduled: habitOccursOn(habit, dateKey),
+    config: habitConfigOnDate(habit, dateKey),
+  });
 }
 
 function habitConfigOnDate(habit, dateKey) {
@@ -2316,21 +2356,7 @@ function habitConfigOnDate(habit, dateKey) {
 }
 
 function habitStreak(habit, dateKey = toDateKey(new Date())) {
-  let count = 0;
-  let guard = 0;
-  let cursor = parseDate(dateKey);
-
-  while (guard < 3660) {
-    const cursorKey = toDateKey(cursor);
-    if (!window.RhythmHabitConfigHistory.habitIsArchivedOnDate(habit, cursorKey) && habitOccursOn(habit, cursorKey)) {
-      if (!isHabitComplete(habit, cursorKey)) break;
-      count += 1;
-    }
-    cursor.setDate(cursor.getDate() - 1);
-    guard += 1;
-  }
-
-  return count;
+  return window.RhythmHabitFreeze.streak(habit, dateKey, habitStatusOnDate);
 }
 
 function sortTasks(a, b, orderMap = new Map()) {
@@ -2459,11 +2485,13 @@ function statsForDate(dateKey) {
   const tasks = tasksForDate(dateKey);
   const habits = habitsForDate(dateKey);
   const taskDone = tasks.filter((task) => isTaskDone(task, dateKey)).length;
-  const habitDone = habits.filter((habit) => isHabitComplete(habit, dateKey)).length;
+  const habitDone = habits.filter((habit) => habitStatusOnDate(habit, dateKey) === "complete").length;
+  const habitFrozen = habits.filter((habit) => habitStatusOnDate(habit, dateKey) === "frozen").length;
   const taskTotal = tasks.length;
-  const habitTotal = habits.length;
+  const habitTotal = habits.length - habitFrozen;
   return {
     habitDone,
+    habitFrozen,
     habitPercent: habitTotal ? Math.round((habitDone / habitTotal) * 100) : 0,
     habitTotal,
     taskDone,

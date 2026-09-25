@@ -7,7 +7,7 @@ module.exports = [
     fn() {
       const els = Object.fromEntries([
         "focusTitle", "focusMeta", "focusPercent", "focusBar", "todayOpenMetric", "todayDoneMetric",
-        "habitDoneMetric", "sideProgressValue", "sideProgressBar", "sideProgressSummary",
+        "habitDoneMetric", "habitFrozenMetric", "sideProgressValue", "sideProgressBar", "sideProgressSummary",
       ].map((key) => [key, { style: {}, textContent: "" }]));
       const controller = createDailyPulse({
         els,
@@ -30,6 +30,27 @@ module.exports = [
     fn() {
       assert.equal(percent(0, 0), 0);
       assert.equal(percent(1, 3), 33);
+    },
+  },
+  {
+    name: "treats an all-frozen habit day as neutral",
+    fn() {
+      const els = Object.fromEntries([
+        "focusTitle", "focusMeta", "focusPercent", "focusBar", "todayOpenMetric", "todayDoneMetric",
+        "habitDoneMetric", "habitFrozenMetric", "sideProgressValue", "sideProgressBar", "sideProgressSummary",
+      ].map((key) => [key, { style: {}, textContent: "" }]));
+      const pulse = createDailyPulse({
+        els,
+        getTasks: () => [{ id: "done", title: "Задача" }],
+        getHabits: () => [{ id: "frozen" }],
+        isTaskDone: () => true,
+        habitStatusOnDate: () => "frozen",
+        taskDetails: () => [],
+      }).render("2026-09-25");
+      assert.equal(pulse.pulse, 100);
+      assert.equal(pulse.frozenHabits, 1);
+      assert.equal(els.habitDoneMetric.textContent, "0/0");
+      assert.equal(els.habitFrozenMetric.textContent, "Заморожено 1");
     },
   },
 ];

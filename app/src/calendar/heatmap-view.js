@@ -89,6 +89,8 @@
     cell.dataset.tooltip = day.tooltip;
     cell.style.setProperty("--task-alpha", ctx.heatAlpha(day.taskPercent));
     cell.style.setProperty("--habit-alpha", ctx.heatAlpha(day.habitPercent));
+    if (day.habitFrozen) cell.classList.add("has-frozen-habit");
+    if (day.habitFrozen && day.habitTotal === 0) cell.classList.add("all-habits-frozen");
     cell.setAttribute("aria-label", day.tooltip);
     if (day.dateKey === model.activeDate) cell.classList.add("is-current");
     bindTooltip(cell, tooltipNode, day.tooltip);
@@ -124,8 +126,10 @@
       days.push({
         dateKey,
         habitPercent: stats.habitPercent,
+        habitFrozen: stats.habitFrozen || 0,
+        habitTotal: stats.habitTotal || 0,
         taskPercent: stats.taskPercent,
-        tooltip: `${formatLongDate(dateKey)} (${dateKey}): задачи ${stats.taskPercent}%, привычки ${stats.habitPercent}%`,
+        tooltip: `${formatLongDate(dateKey)} (${dateKey}): задачи ${stats.taskPercent}%, привычки ${Number.isFinite(stats.habitTotal) ? `${stats.habitDone || 0} из ${stats.habitTotal}` : `${stats.habitPercent}%`}${stats.habitFrozen ? `, заморожено ${stats.habitFrozen}` : ""}`,
       });
     }
 

@@ -83,6 +83,7 @@ export function registerManagementTools(server, context, helpers) {
         tasksCompleted: z.number(),
         habitsTotal: z.number(),
         habitsCompleted: z.number(),
+        habitsFrozen: z.number(),
         taskCompletionRate: z.number(),
         habitCompletionRate: z.number(),
         bestDay: z.record(z.string(), z.unknown()).nullable(),

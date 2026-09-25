@@ -48,7 +48,7 @@ function createMemoryStorage() {
 
 function createStateNormalizer() {
   return stateNormalizerApi.createStateNormalizer({
-    schemaVersion: 15,
+    schemaVersion: 16,
     validPriorities: ["high", "medium", "low"],
     cleanText,
     cleanTimeValue: (value) => {
@@ -74,6 +74,7 @@ function createStateNormalizer() {
       });
       return logs;
     },
+    normalizeHabitFreezeDays: require("../app/src/habits/habit-freeze.js").normalizeFreezeDays,
     normalizeHabitConfigHistory: habitConfigHistory.normalizeHabitConfigHistory,
     normalizeHabitAvailabilityHistory: habitConfigHistory.normalizeHabitAvailabilityHistory,
     normalizeHabitRepeat: (value) =>

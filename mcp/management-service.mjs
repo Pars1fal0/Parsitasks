@@ -73,6 +73,7 @@ export function getProductivityStats(state, input) {
       tasksCompleted: overview.summary.tasksCompleted,
       habitsTotal: overview.summary.habitsTotal,
       habitsCompleted: overview.summary.habitsCompleted,
+      habitsFrozen: overview.summary.habitsFrozen,
     };
   });
   const totals = daily.reduce((result, day) => ({
@@ -80,7 +81,8 @@ export function getProductivityStats(state, input) {
     tasksCompleted: result.tasksCompleted + day.tasksCompleted,
     habitsTotal: result.habitsTotal + day.habitsTotal,
     habitsCompleted: result.habitsCompleted + day.habitsCompleted,
-  }), { tasksTotal: 0, tasksCompleted: 0, habitsTotal: 0, habitsCompleted: 0 });
+    habitsFrozen: result.habitsFrozen + day.habitsFrozen,
+  }), { tasksTotal: 0, tasksCompleted: 0, habitsTotal: 0, habitsCompleted: 0, habitsFrozen: 0 });
   const bestDay = daily
     .filter((day) => day.tasksCompleted || day.habitsCompleted)
     .sort((left, right) =>

@@ -35,6 +35,8 @@ const APP_SHELL = [
   "src/sync/tombstone-retention.js",
   "src/habits/habit-title-history.js",
   "src/habits/habit-config-history.js",
+  "src/habits/habit-freeze.js",
+  "src/habits/habit-freeze-dialog.js",
   "src/integrations/mcp-activity.js",
   "src/integrations/mcp-activity-controller.js",
   "src/platform/pwa-controller.js",

@@ -18,6 +18,7 @@
         unit: ctx.cleanText(ctx.els.habitUnit.value),
         goal: type === "number" ? Math.max(1, Number(ctx.els.habitGoal.value || 1)) : 1,
         logs: existing?.logs || {},
+        freezeDays: existing?.freezeDays || {},
         availabilityHistory: existing?.availabilityHistory || [],
         archived: existing?.archived === true,
         archivedAt: existing?.archivedAt || "",

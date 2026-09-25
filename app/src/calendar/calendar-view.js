@@ -11,6 +11,7 @@
       let taskTotal = 0;
       let habitDone = 0;
       let habitTotal = 0;
+      let habitFrozen = 0;
 
       period.dates.forEach((dateKey) => {
         const stats = ctx.statsForDate(dateKey);
@@ -18,16 +19,17 @@
         taskTotal += stats.taskTotal;
         habitDone += stats.habitDone;
         habitTotal += stats.habitTotal;
+        habitFrozen += stats.habitFrozen || 0;
       });
 
       const taskMetric = taskTotal ? Math.round((taskDone / taskTotal) * 100) : 0;
       const habitMetric = habitTotal ? Math.round((habitDone / habitTotal) * 100) : 0;
 
       ctx.els.weeklyTaskMetric.textContent = `${taskMetric}%`;
-      ctx.els.weeklyHabitMetric.textContent = `${habitMetric}%`;
+      ctx.els.weeklyHabitMetric.textContent = habitTotal ? `${habitMetric}%` : habitFrozen ? "—" : "0%";
       if (ctx.els.overviewHeading) ctx.els.overviewHeading.textContent = period.heading;
       ctx.els.weeklyTaskText.textContent = `${taskDone} из ${taskTotal} задач ${period.suffix}`;
-      ctx.els.weeklyHabitText.textContent = `${habitDone} из ${habitTotal} отметок привычек ${period.suffix}`;
+      ctx.els.weeklyHabitText.textContent = `${habitDone} из ${habitTotal} отметок привычек ${period.suffix}${habitFrozen ? ` · заморожено ${habitFrozen}` : ""}`;
       if (mode === "week") renderWeekBoard(week);
       if (mode === "month") renderMonthCalendar();
       if (mode === "year") renderHeatmap();

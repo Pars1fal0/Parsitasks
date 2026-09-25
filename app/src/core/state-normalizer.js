@@ -163,6 +163,7 @@
               archivedAt: archived ? latestAvailability.updatedAt : "",
               archivedFromDate: archived ? latestAvailability.fromDate : "",
               logs: config.normalizeHabitLogs(habit.logs, type),
+              freezeDays: config.normalizeHabitFreezeDays?.(habit.freezeDays) || {},
               createdAt,
               updatedAt,
             };

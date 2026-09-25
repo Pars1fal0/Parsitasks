@@ -25,4 +25,18 @@ module.exports = [
       assert.equal(model.days[0].tooltip, "date 2025-07-01 (2025-07-01): задачи 25%, привычки 50%");
     },
   },
+  {
+    name: "shows frozen habits separately from required completions",
+    fn() {
+      const model = buildHeatmapModel({
+        activeDate: "2026-09-25",
+        formatLongDate: (date) => date,
+        parseDate: parseDateKey,
+        statsForDate: () => ({ taskPercent: 0, habitPercent: 0, habitDone: 0, habitTotal: 0, habitFrozen: 2 }),
+        toDateKey,
+      });
+      assert.match(model.days.at(-1).tooltip, /привычки 0 из 0, заморожено 2/);
+      assert.equal(model.days.at(-1).habitFrozen, 2);
+    },
+  },
 ];

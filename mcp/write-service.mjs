@@ -1,5 +1,5 @@
 import { recordMcpActivity, undoMcpActivity } from "./activity-service.mjs";
-import { normalizeCustomRepeat, taskScheduledOn } from "./task-service.mjs";
+import { getTodayOverview, normalizeCustomRepeat, taskScheduledOn } from "./task-service.mjs";
 
 const PRIORITIES = new Set(["low", "medium", "high"]);
 const SCOPES = new Set(["occurrence", "following", "series"]);
@@ -136,6 +136,9 @@ export function setHabitValueCommand(state, input, options = {}) {
   const date = normalizeDate(input.date || options.today);
   const now = options.now || new Date().toISOString();
   const config = effectiveEntry(habit.configHistory, date) || habit;
+  if (getTodayOverview(nextState, date).habits.find((item) => item.id === habit.id)?.frozen) {
+    throw new Error("Привычка заморожена на этот день. Сначала снимите заморозку в приложении.");
+  }
   habit.logs ||= {};
   if ((config.type || habit.type) === "number") {
     const value = Number(input.value);
@@ -286,13 +289,8 @@ export function getDayBrief(state, date, mode = "plan") {
       endTime: task.endTime || "",
       time: task.time || "",
     }));
-  const habits = (state.habits || []).map((habit) => ({
-    id: habit.id,
-    title: habit.title,
-    value: habit.logs?.[date] || 0,
-    goal: habit.goal || 1,
-    type: habit.type || "check",
-  }));
+  const overview = getTodayOverview(state, date);
+  const habits = overview.habits;
   const conflicts = findTimelineConflicts(tasks);
   return {
     date,
@@ -305,6 +303,9 @@ export function getDayBrief(state, date, mode = "plan") {
       completedTasks: tasks.filter((task) => task.completed).length,
       openHighPriority: tasks.filter((task) => !task.completed && task.priority === "high").length,
       timelineConflicts: conflicts.length,
+      totalHabits: overview.summary.habitsTotal,
+      completedHabits: overview.summary.habitsCompleted,
+      frozenHabits: overview.summary.habitsFrozen,
     },
   };
 }
@@ -419,6 +420,7 @@ function assertOccurrence(task, date) {
 
 function prepareState(state) {
   const next = clone(state);
+  next.schemaVersion = Math.max(16, Number(next.schemaVersion) || 0);
   next.tasks = Array.isArray(next.tasks) ? next.tasks : [];
   next.habits = Array.isArray(next.habits) ? next.habits : [];
   next.goals = Array.isArray(next.goals) ? next.goals : [];

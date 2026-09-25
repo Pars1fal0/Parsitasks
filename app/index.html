@@ -32,6 +32,7 @@
       <symbol id="icon-flame" viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-4-3-7-4-12-4 3-7 6-7 10 0 2 1 4 3 5-1-4 1-6 3-8 0 4 2 5 2 8 0 2-2 4-4 4Z"/></symbol>
       <symbol id="icon-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></symbol>
       <symbol id="icon-habit" viewBox="0 0 24 24"><path d="M7 12a5 5 0 0 1 10 0v6H7v-6Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></symbol>
+      <symbol id="icon-snowflake" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9 5l3 3 3-3M9 19l3-3 3 3M4 10l4 1-1-4M20 14l-4-1 1 4M7 17l1-4-4 1M17 7l-1 4 4-1"/></symbol>
       <symbol id="icon-heat" viewBox="0 0 24 24"><path d="M4 4h4v4H4V4ZM10 4h4v4h-4V4ZM16 4h4v4h-4V4ZM4 10h4v4H4v-4ZM10 10h4v4h-4v-4ZM16 10h4v4h-4v-4ZM4 16h4v4H4v-4ZM10 16h4v4h-4v-4ZM16 16h4v4h-4v-4Z"/></symbol>
       <symbol id="icon-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></symbol>
       <symbol id="icon-hand" viewBox="0 0 24 24"><path d="M8 11V6a2 2 0 0 1 4 0v5"/><path d="M12 10V5a2 2 0 0 1 4 0v6"/><path d="M16 10V7a2 2 0 0 1 4 0v7c0 5-3 8-8 8h-1c-3 0-5-2-6-4l-2-4a2 2 0 0 1 3-2l2 2V8a2 2 0 0 1 4 0"/></symbol>
@@ -257,6 +258,7 @@
           <article class="stat-card stat-card-bright">
             <span class="metric-label">Привычки</span>
             <strong id="habitDoneMetric">0/0</strong>
+            <span class="stat-frozen-detail" id="habitFrozenMetric" hidden></span>
           </article>
         </section>
 
@@ -581,10 +583,15 @@
               <h2 id="habitsHeading">Привычки на выбранный день</h2>
               <p class="muted">Серии считаются по выполненным дням.</p>
             </div>
-            <button class="primary-button icon-text-button" id="openHabitForm" type="button">
-              <svg class="ui-icon"><use href="#icon-plus"></use></svg>
-              Новая привычка
-            </button>
+            <div class="habit-toolbar-actions">
+              <button class="icon-button subtle" id="openHabitFreeze" type="button" title="Заморозить привычки" aria-label="Заморозить привычки">
+                <svg class="ui-icon"><use href="#icon-snowflake"></use></svg>
+              </button>
+              <button class="primary-button icon-text-button" id="openHabitForm" type="button">
+                <svg class="ui-icon"><use href="#icon-plus"></use></svg>
+                Новая привычка
+              </button>
+            </div>
           </div>
 
           <div class="split-layout">
@@ -1587,6 +1594,43 @@
       </article>
     </template>
 
+    <dialog class="habit-freeze-dialog" id="habitFreezeDialog" aria-labelledby="habitFreezeHeading">
+      <form id="habitFreezeForm">
+        <h2 id="habitFreezeHeading">Заморозить привычки</h2>
+        <fieldset class="habit-freeze-choices">
+          <legend>Привычки</legend>
+          <div id="habitFreezeList" class="habit-freeze-list"></div>
+        </fieldset>
+        <fieldset class="habit-freeze-modes">
+          <legend>Период</legend>
+          <label><input type="radio" name="habitFreezeMode" value="day" checked> Один день</label>
+          <label><input type="radio" name="habitFreezeMode" value="period"> Период</label>
+        </fieldset>
+        <div class="habit-freeze-dates">
+          <label><span id="habitFreezeStartLabel">Дата</span><input id="habitFreezeStart" type="date" required></label>
+          <label id="habitFreezeEndField" hidden>По <input id="habitFreezeEnd" type="date"></label>
+        </div>
+        <p id="habitFreezeCurrentReason" class="habit-freeze-current-reason" hidden></p>
+        <label id="habitFreezeReasonField">Причина (необязательно)
+          <select id="habitFreezeReason">
+            <option value="">Без причины</option>
+            <option value="Болезнь">Болезнь</option>
+            <option value="Поездка">Поездка</option>
+            <option value="Личные обстоятельства">Личные обстоятельства</option>
+            <option value="custom">Своя причина</option>
+          </select>
+        </label>
+        <label id="habitFreezeCustomReasonField" hidden>Своя причина
+          <input id="habitFreezeCustomReason" type="text" maxlength="160" placeholder="Причина">
+        </label>
+        <p id="habitFreezeMessage" class="habit-freeze-message" role="alert"></p>
+        <div class="habit-freeze-actions">
+          <button class="subtle-button" id="habitFreezeCancel" type="button">Отмена</button>
+          <button class="primary-button" id="habitFreezeSubmit" type="submit">Заморозить</button>
+        </div>
+      </form>
+    </dialog>
+
     <template id="habitTemplate">
       <article class="habit-item">
         <button class="habit-drag-handle" type="button" aria-label="Перетащить привычку">
@@ -1601,6 +1645,7 @@
             <summary class="icon-button subtle" aria-label="Действия с привычкой">...</summary>
             <div class="habit-more-menu">
               <button class="habit-menu-action edit-habit" type="button"><svg class="ui-icon"><use href="#icon-edit"></use></svg>Изменить</button>
+              <button class="habit-menu-action freeze-habit" type="button"><svg class="ui-icon"><use href="#icon-snowflake"></use></svg>Заморозить…</button>
               <button class="habit-menu-action archive-habit" type="button"><svg class="ui-icon"><use href="#icon-archive"></use></svg>Приостановить</button>
               <button class="habit-menu-action is-danger delete-habit" type="button"><svg class="ui-icon"><use href="#icon-trash"></use></svg>Удалить</button>
             </div>
@@ -1637,6 +1682,7 @@
     <script src="src/sync/tombstone-retention.js?v=2" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
     <script src="src/habits/habit-config-history.js?v=1" defer></script>
+    <script src="src/habits/habit-freeze.js?v=1" defer></script>
     <script src="src/integrations/mcp-activity.js?v=2" defer></script>
     <script src="src/integrations/mcp-activity-controller.js?v=1" defer></script>
     <script src="src/platform/pwa-controller.js?v=1" defer></script>
@@ -1667,6 +1713,7 @@
     <script src="src/goals/goals-view.js?v=10" defer></script>
     <script src="src/habits/habit-form.js?v=5" defer></script>
     <script src="src/habits/habits-view.js?v=6" defer></script>
+    <script src="src/habits/habit-freeze-dialog.js?v=1" defer></script>
     <script src="src/settings/import-export.js?v=5" defer></script>
     <script src="src/platform/notifications.js?v=2" defer></script>
     <script src="src/tasks/overdue-controller.js?v=4" defer></script>

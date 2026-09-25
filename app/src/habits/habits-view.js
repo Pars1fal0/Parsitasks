@@ -22,6 +22,7 @@
       const control = node.querySelector(".habit-control");
       const habitTitle = ctx.habitTitleOnDate?.(habit, activeDate) || habit.title;
       const habitConfig = ctx.habitConfigOnDate?.(habit, activeDate) || habit;
+      const status = ctx.habitStatusOnDate?.(habit, activeDate) || (ctx.isHabitComplete?.(habit, activeDate) ? "complete" : "missed");
 
       node.draggable = true;
       node.dataset.habitId = habit.id;
@@ -29,13 +30,40 @@
       node.querySelector(".habit-drag-handle")?.setAttribute("title", "Перетащить привычку");
       title.textContent = habitTitle;
       streak.textContent = habitSubtitle(habit);
+      if (status === "frozen") node.classList.add("is-frozen");
       attachHabitDrag(node, habit);
       const dragHandle = node.querySelector(".habit-drag-handle");
       dragHandle?.setAttribute("title", "Перетащить привычку или переместить стрелками");
       dragHandle?.setAttribute("aria-label", `Переместить привычку ${habitTitle}. Стрелки вверх и вниз меняют порядок`);
       attachHabitAccessibleMove(node, habit, dragHandle, habitTitle);
 
-      if (habitConfig.type === "number") {
+      if (status === "frozen") {
+        const row = document.createElement("div");
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        const label = document.createElement("span");
+        const restore = document.createElement("button");
+        row.className = "habit-frozen-row";
+        icon.classList.add("ui-icon");
+        icon.setAttribute("aria-hidden", "true");
+        use.setAttribute("href", "#icon-snowflake");
+        icon.appendChild(use);
+        label.className = "habit-frozen-label";
+        const progress = habitConfig.type === "number" ? ` · ${Number(habit.logs?.[activeDate] || 0)} / ${Number(habitConfig.goal || 1)} ${habitConfig.unit || ""}` : "";
+        label.textContent = `Заморожена${progress}`;
+        restore.type = "button";
+        restore.className = "subtle-button";
+        restore.textContent = "Снять заморозку";
+        restore.addEventListener("click", () => {
+          const undo = ctx.createUndoSnapshot();
+          global.RhythmHabitFreeze.setFrozen(habit, activeDate, false);
+          ctx.saveState();
+          ctx.render();
+          ctx.showToast("Заморозка снята", { undo });
+        });
+        row.append(icon, label, restore);
+        control.replaceChildren(row);
+      } else if (habitConfig.type === "number") {
         const current = Number(habit.logs[activeDate] || 0);
         const goal = Number(habitConfig.goal || 1);
         const percent = Math.min(100, Math.round((current / goal) * 100));
@@ -150,6 +178,11 @@
       }
 
       node.querySelector(".edit-habit").addEventListener("click", () => ctx.fillHabitForm(habit));
+      const freezeAction = node.querySelector(".freeze-habit");
+      if (freezeAction) {
+        if (status === "frozen") freezeAction.lastChild.textContent = "Снять заморозку…";
+        freezeAction.addEventListener("click", () => ctx.openFreezeDialog?.(habit.id, status === "frozen" ? "unfreeze" : "freeze"));
+      }
       node.querySelector(".archive-habit")?.addEventListener("click", () => {
         const undo = ctx.createUndoSnapshot();
         Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, false, activeDate));
@@ -350,7 +383,8 @@
     function habitSubtitle(habit) {
       const effective = ctx.habitConfigOnDate?.(habit, ctx.getActiveDate()) || habit;
       const repeat = ctx.formatHabitRepeat({ ...habit, ...effective });
-      return `Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} дн. · ${repeat}`;
+      const saved = ctx.habitStatusOnDate?.(habit, ctx.getActiveDate()) === "frozen" ? " · сохранена" : "";
+      return `Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} дн.${saved} · ${repeat}`;
     }
 
     return {

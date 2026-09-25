@@ -6,11 +6,14 @@
       const openTasks = tasks.filter((task) => !ctx.isTaskDone(task, dateKey));
       const taskPercent = percent(doneTasks.length, tasks.length);
       const habits = ctx.getHabits(dateKey);
-      const doneHabits = habits.filter((habit) => ctx.isHabitComplete(habit, dateKey)).length;
-      const habitPercent = percent(doneHabits, habits.length);
+      const statusOnDate = ctx.habitStatusOnDate || ((habit, date) => ctx.isHabitComplete(habit, date) ? "complete" : "missed");
+      const frozenHabits = habits.filter((habit) => statusOnDate(habit, dateKey) === "frozen").length;
+      const habitTotal = habits.length - frozenHabits;
+      const doneHabits = habits.filter((habit) => statusOnDate(habit, dateKey) === "complete").length;
+      const habitPercent = percent(doneHabits, habitTotal);
       const values = [];
       if (tasks.length) values.push(taskPercent);
-      if (habits.length) values.push(habitPercent);
+      if (habitTotal) values.push(habitPercent);
       const pulse = values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0;
       const nextTask = openTasks[0];
 
@@ -24,12 +27,16 @@
       ctx.els.focusBar.style.width = `${taskPercent}%`;
       ctx.els.todayOpenMetric.textContent = openTasks.length;
       ctx.els.todayDoneMetric.textContent = doneTasks.length;
-      ctx.els.habitDoneMetric.textContent = `${doneHabits}/${habits.length}`;
-      ctx.els.sideProgressValue.textContent = `${pulse}%`;
+      ctx.els.habitDoneMetric.textContent = `${doneHabits}/${habitTotal}`;
+      if (ctx.els.habitFrozenMetric) {
+        ctx.els.habitFrozenMetric.textContent = `Заморожено ${frozenHabits}`;
+        ctx.els.habitFrozenMetric.hidden = frozenHabits === 0;
+      }
+      ctx.els.sideProgressValue.textContent = !values.length && frozenHabits ? "—" : `${pulse}%`;
       ctx.els.sideProgressBar.style.width = `${pulse}%`;
-      ctx.els.sideProgressSummary.textContent = `Задачи ${taskPercent}% · привычки ${habitPercent}%`;
+      ctx.els.sideProgressSummary.textContent = `Задачи ${taskPercent}% · привычки ${habitTotal ? `${habitPercent}%` : "—"}${frozenHabits ? ` · заморожено ${frozenHabits}` : ""}`;
 
-      return { doneHabits, doneTasks: doneTasks.length, habitPercent, openTasks: openTasks.length, pulse, taskPercent };
+      return { doneHabits, doneTasks: doneTasks.length, frozenHabits, habitPercent, openTasks: openTasks.length, pulse, taskPercent };
     }
 
     return { render };

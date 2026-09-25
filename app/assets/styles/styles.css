@@ -6070,6 +6070,166 @@ body.has-floating-task-form::before {
   box-shadow: 0 0 0 3px rgb(var(--accent-strong-rgb) / 12%);
 }
 
+.habit-toolbar-actions,
+.habit-frozen-row,
+.habit-freeze-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-frozen-detail {
+  color: #73b1ce;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+:root[data-theme="light"] .stat-frozen-detail {
+  color: #39708b;
+}
+
+.habit-item.is-frozen {
+  border-color: rgba(115, 177, 206, 0.5);
+  background: color-mix(in srgb, var(--surface) 93%, #73b1ce);
+}
+
+.habit-item.is-frozen::before {
+  background: #73b1ce;
+}
+
+.habit-frozen-label {
+  color: #73b1ce;
+  font-weight: 600;
+}
+
+.habit-frozen-row .ui-icon {
+  color: #73b1ce;
+}
+
+.habit-freeze-current-reason {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+:root[data-theme="light"] .habit-frozen-label {
+  color: #39708b;
+}
+
+.habit-freeze-dialog {
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0;
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-lift);
+}
+
+.habit-freeze-dialog::backdrop {
+  background: rgb(0 0 0 / 60%);
+}
+
+.habit-freeze-dialog form {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+}
+
+.habit-freeze-dialog [hidden] {
+  display: none;
+}
+
+.habit-freeze-dialog h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.habit-freeze-dialog fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  min-width: 0;
+}
+
+.habit-freeze-dialog legend {
+  padding: 0 6px;
+  color: var(--text-soft);
+}
+
+.habit-freeze-list {
+  display: grid;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.habit-freeze-choice,
+.habit-freeze-modes label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.habit-freeze-choice {
+  padding: 5px 2px;
+}
+
+.habit-freeze-dates {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 10px;
+}
+
+.habit-freeze-dates label,
+#habitFreezeReasonField {
+  display: grid;
+  gap: 6px;
+}
+
+.habit-freeze-dialog input[type="date"],
+.habit-freeze-dialog input[type="text"],
+.habit-freeze-dialog select {
+  width: 100%;
+  min-width: 0;
+}
+
+#habitFreezeCustomReasonField {
+  display: grid;
+  gap: 6px;
+}
+
+.habit-freeze-message {
+  min-height: 1em;
+  margin: 0;
+  color: var(--coral);
+}
+
+.habit-freeze-actions {
+  justify-content: flex-end;
+}
+
+.heatmap-cell.has-frozen-habit::after {
+  content: "";
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #73b1ce;
+}
+
+.heatmap-cell.all-habits-frozen {
+  background: linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(115, 177, 206, 0.4) 50% 100%), #111816;
+}
+
+:root[data-theme="light"] .heatmap-cell.all-habits-frozen {
+  background: linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(115, 177, 206, 0.4) 50% 100%), #eef3f1;
+}
+
 .heatmap-tooltip {
   position: fixed;
   z-index: 100;

@@ -3,6 +3,7 @@
   const mcpActivity = global.RhythmMcpActivity || require("../integrations/mcp-activity.js");
   const habitTitleHistory = global.RhythmHabitTitleHistory || require("../habits/habit-title-history.js");
   const habitConfigHistory = global.RhythmHabitConfigHistory || require("../habits/habit-config-history.js");
+  const habitFreeze = global.RhythmHabitFreeze || require("../habits/habit-freeze.js");
   const TASK_DATE_FIELDS = syncMetadata.TASK_DATE_FIELDS;
   const ENTITY_FIELDS = syncMetadata.ENTITY_FIELDS;
 
@@ -217,6 +218,7 @@
         timestampOf(local),
         timestampOf(remote),
       ),
+      freezeDays: habitFreeze.mergeFreezeDays(local.freezeDays, remote.freezeDays),
     };
   }
 

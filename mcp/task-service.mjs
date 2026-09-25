@@ -1,4 +1,5 @@
 import recurrence from "../app/src/tasks/recurrence.js";
+import habitFreeze from "../app/src/habits/habit-freeze.js";
 
 export const normalizeCustomRepeat = recurrence.normalizeCustomRepeat;
 
@@ -8,7 +9,7 @@ const CATEGORY_COLORS = ["#19b394", "#4f8cff", "#f59e0b", "#e96b75", "#8b7cf6", 
 
 export function createEmptyState() {
   return {
-    schemaVersion: 15,
+    schemaVersion: 16,
     defaultsSeeded: false,
     profile: { timeZone: "Europe/Moscow" },
     tasks: [],
@@ -47,8 +48,9 @@ export function getTodayOverview(state, dateKey) {
     summary: {
       tasksTotal: tasks.length,
       tasksCompleted: tasks.filter((task) => task.completed).length,
-      habitsTotal: habits.length,
+      habitsTotal: habits.filter((habit) => !habit.frozen).length,
       habitsCompleted: habits.filter((habit) => habit.completed).length,
+      habitsFrozen: habits.filter((habit) => habit.frozen).length,
       goalsTotal: goals.length,
     },
   };
@@ -370,6 +372,7 @@ function serializeHabit(habit, dateKey) {
   const completed = config.type === "number"
     ? Number(value || 0) >= Number(config.goal || 1)
     : value === true;
+  const status = habitFreeze.statusOnDate(habit, dateKey, { scheduled: true, active: true, config });
   return {
     id: habit.id,
     title: effectiveHistoryEntry(habit.titleHistory, dateKey)?.title || habit.title,
@@ -378,6 +381,8 @@ function serializeHabit(habit, dateKey) {
     unit: config.unit || habit.unit || "",
     value: value || 0,
     completed,
+    frozen: status === "frozen",
+    status,
   };
 }
 
@@ -437,7 +442,7 @@ function normalizeReminder(value) {
 
 function ensureStateShape(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) throw new Error("Состояние приложения повреждено");
-  state.schemaVersion = Number(state.schemaVersion) || 14;
+  state.schemaVersion = Math.max(16, Number(state.schemaVersion) || 0);
   state.profile = state.profile && typeof state.profile === "object" ? state.profile : {};
   state.profile.timeZone = normalizeTimeZone(state.profile.timeZone);
   state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
