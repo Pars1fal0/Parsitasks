@@ -23,18 +23,23 @@
         : tasks.length
           ? "Все задачи на выбранный день выполнены"
           : "Можно добавить задачу или оставить день без перегруза";
-      ctx.els.focusPercent.textContent = `${taskPercent}%`;
+      ctx.els.focusPercent.textContent = tasks.length ? `${taskPercent}%` : "—";
       ctx.els.focusBar.style.width = `${taskPercent}%`;
       ctx.els.todayOpenMetric.textContent = openTasks.length;
       ctx.els.todayDoneMetric.textContent = doneTasks.length;
-      ctx.els.habitDoneMetric.textContent = `${doneHabits}/${habitTotal}`;
+      ctx.els.habitDoneMetric.textContent = habitTotal ? `${doneHabits}/${habitTotal}` : "—";
       if (ctx.els.habitFrozenMetric) {
         ctx.els.habitFrozenMetric.textContent = `Заморожено ${frozenHabits}`;
         ctx.els.habitFrozenMetric.hidden = frozenHabits === 0;
       }
-      ctx.els.sideProgressValue.textContent = !values.length && frozenHabits ? "—" : `${pulse}%`;
+      ctx.els.sideProgressValue.textContent = values.length ? `${pulse}%` : "—";
       ctx.els.sideProgressBar.style.width = `${pulse}%`;
-      ctx.els.sideProgressSummary.textContent = `Задачи ${taskPercent}% · привычки ${habitTotal ? `${habitPercent}%` : "—"}${frozenHabits ? ` · заморожено ${frozenHabits}` : ""}`;
+      const summary = [];
+      if (tasks.length) summary.push(`Задачи ${taskPercent}%`);
+      if (habitTotal) summary.push(`${tasks.length ? "привычки" : "Привычки"} ${habitPercent}%`);
+      if (!summary.length) summary.push("Нет обязательных дел");
+      if (frozenHabits) summary.push(`Заморожено ${frozenHabits}`);
+      ctx.els.sideProgressSummary.textContent = summary.join(" · ");
 
       return { doneHabits, doneTasks: doneTasks.length, frozenHabits, habitPercent, openTasks: openTasks.length, pulse, taskPercent };
     }

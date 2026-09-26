@@ -3398,6 +3398,13 @@ body.has-floating-task-form::before {
   padding: var(--space-4);
 }
 
+.nutrition-meal-dialog .dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .nutrition-meal-dialog label {
   display: grid;
   gap: 6px;
@@ -3421,7 +3428,7 @@ body.has-floating-task-form::before {
   opacity: 0.6;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1440px) {
   .nutrition-content {
     display: grid;
   }
@@ -6934,6 +6941,7 @@ body.has-floating-task-form::before {
 
   .task-filter-disclosure {
     width: 100%;
+    flex: 0 0 auto;
   }
 
   .quick-task-disclosure {

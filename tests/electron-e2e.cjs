@@ -13,11 +13,17 @@ const { _electron: electron } = require("playwright-core");
 
   try {
     await page.waitForSelector("#pageTitle");
+    assert.equal(await page.locator("#taskProgress").textContent(), "—");
+    assert.equal(await page.locator("#sideProgressValue").textContent(), "—");
+    assert.equal(await page.locator("symbol#icon-close").count(), 1);
     assert.equal(await page.locator("#archivePeriodFilter").evaluate((node) => node.closest(".view")?.id), "archiveView");
     assert.equal(await page.locator("#categoryForm").evaluate((node) => node.closest(".view")?.id), "settingsView");
 
     await page.locator('.nav-tab[data-view="overview"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#calendar/week");
+    assert.equal(await page.locator("#weeklyTaskMetric").textContent(), "—");
+    assert.equal(await page.locator("#weeklyHabitMetric").textContent(), "—");
+    assert.equal(await page.locator(".week-board-count").first().textContent(), "Пока без задач");
     await page.reload();
     await page.waitForSelector('body[data-view="overview"]');
     assert.equal(await page.locator("#pageTitle").textContent(), "Календарь");
@@ -63,7 +69,21 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('.nav-tab[data-view="nutrition"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#nutrition");
     assert.equal(await page.locator(".nutrition-day-column").count(), 7);
+    const nutritionDaysFit = await page.evaluate(() => {
+      const board = document.querySelector(".nutrition-week-panel").getBoundingClientRect();
+      const lastDay = document.querySelector(".nutrition-day-column:last-child").getBoundingClientRect();
+      const side = document.querySelector(".nutrition-side").getBoundingClientRect();
+      const overlapsSide = lastDay.left < side.right && lastDay.right > side.left
+        && lastDay.top < side.bottom && lastDay.bottom > side.top;
+      return lastDay.right <= board.right + 1 && !overlapsSide;
+    });
+    assert.equal(nutritionDaysFit, true, "the last nutrition day must not sit under the side panel");
     await page.locator("#nutritionAddMeal").click();
+    const mealClosePosition = await page.evaluate(() => ({
+      titleRight: document.querySelector("#nutritionMealHeading").getBoundingClientRect().right,
+      closeLeft: document.querySelector("#nutritionMealClose").getBoundingClientRect().left,
+    }));
+    assert.ok(mealClosePosition.closeLeft > mealClosePosition.titleRight, "meal dialog close must be in the header corner");
     await page.locator("#nutritionMealTitle").fill("Тестовый обед");
     await page.locator("#nutritionMealDate").fill("2026-07-20");
     await page.locator("#nutritionMealType").selectOption("lunch");
@@ -79,6 +99,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('.nav-tab[data-view="board"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#board");
     await page.locator("#boardAddText").click();
+    await waitForBoardEditor(page);
     await page.locator(".board-text-content").fill("Удаляемый объект");
     await page.keyboard.press("Escape");
     await page.locator(".board-text-content").click();
@@ -90,6 +111,7 @@ const { _electron: electron } = require("playwright-core");
     );
 
     await page.locator("#boardAddText").click();
+    await waitForBoardEditor(page);
     await page.locator(".board-text-content").fill("Идея для проверки");
     await page.keyboard.press("Escape");
     await page.locator("#boardFontSize").fill("88");
@@ -110,6 +132,7 @@ const { _electron: electron } = require("playwright-core");
       true,
     );
     await page.locator("#boardAddText").click();
+    await waitForBoardEditor(page);
     await page.locator(".board-text-content").last().fill("Второй объект");
     await page.keyboard.press("Escape");
     const boardBox = await page.locator("#boardViewport").boundingBox();
@@ -222,6 +245,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#boardModeSelect").click();
     assert.equal(await page.locator("#boardViewport").getAttribute("data-mode"), "select");
     await page.locator("#boardAddFrame").click();
+    await waitForBoardEditor(page, ".board-frame-title");
     await page.locator(".board-frame-title").fill("План запуска");
     await page.keyboard.press("Escape");
     assert.equal(
@@ -398,6 +422,11 @@ const { _electron: electron } = require("playwright-core");
     }
 
     await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const taskActionBox = await page.locator("#openTaskForm").boundingBox();
+    const mobileNavBox = await page.locator(".nav-tabs").boundingBox();
+    assert.ok(taskActionBox && mobileNavBox && taskActionBox.y >= 0 && taskActionBox.y + taskActionBox.height < mobileNavBox.y,
+      "new task action must be visible above mobile navigation");
     await page.locator("#openTaskForm").click();
     const scheduleModesFit = await page.locator(".schedule-mode-control").evaluate((node) =>
       node.scrollWidth <= node.clientWidth + 1,
@@ -450,3 +479,7 @@ const { _electron: electron } = require("playwright-core");
   console.error(error);
   process.exitCode = 1;
 });
+
+async function waitForBoardEditor(page, selector = ".board-text-content") {
+  await page.waitForFunction((target) => [...document.querySelectorAll(target)].at(-1)?.isContentEditable === true, selector);
+}

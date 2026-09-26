@@ -60,4 +60,8 @@
     left: auto;
     width: min(280px, calc(100vw - 28px));
   }
+
+  .habit-more-menu {
+    right: calc(100% + 8px);
+  }
 }

@@ -33,6 +33,44 @@ module.exports = [
     },
   },
   {
+    name: "shows a neutral state when nothing is planned",
+    fn() {
+      const els = Object.fromEntries([
+        "focusTitle", "focusMeta", "focusPercent", "focusBar", "todayOpenMetric", "todayDoneMetric",
+        "habitDoneMetric", "habitFrozenMetric", "sideProgressValue", "sideProgressBar", "sideProgressSummary",
+      ].map((key) => [key, { style: {}, textContent: "" }]));
+      createDailyPulse({
+        els,
+        getTasks: () => [],
+        getHabits: () => [],
+        isTaskDone: () => false,
+        isHabitComplete: () => false,
+      }).render("2026-09-26");
+      assert.equal(els.focusPercent.textContent, "—");
+      assert.equal(els.habitDoneMetric.textContent, "—");
+      assert.equal(els.sideProgressValue.textContent, "—");
+      assert.equal(els.sideProgressSummary.textContent, "Нет обязательных дел");
+    },
+  },
+  {
+    name: "omits empty categories from the day summary",
+    fn() {
+      const els = Object.fromEntries([
+        "focusTitle", "focusMeta", "focusPercent", "focusBar", "todayOpenMetric", "todayDoneMetric",
+        "habitDoneMetric", "habitFrozenMetric", "sideProgressValue", "sideProgressBar", "sideProgressSummary",
+      ].map((key) => [key, { style: {}, textContent: "" }]));
+      createDailyPulse({
+        els,
+        getTasks: () => [],
+        getHabits: () => [{ id: "habit" }],
+        isTaskDone: () => false,
+        isHabitComplete: () => true,
+      }).render("2026-09-26");
+      assert.equal(els.sideProgressSummary.textContent, "Привычки 100%");
+      assert.equal(els.focusPercent.textContent, "—");
+    },
+  },
+  {
     name: "treats an all-frozen habit day as neutral",
     fn() {
       const els = Object.fromEntries([
@@ -49,7 +87,7 @@ module.exports = [
       }).render("2026-09-25");
       assert.equal(pulse.pulse, 100);
       assert.equal(pulse.frozenHabits, 1);
-      assert.equal(els.habitDoneMetric.textContent, "0/0");
+      assert.equal(els.habitDoneMetric.textContent, "—");
       assert.equal(els.habitFrozenMetric.textContent, "Заморожено 1");
     },
   },

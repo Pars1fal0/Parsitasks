@@ -51,8 +51,9 @@
       ctx.els.taskEmpty.classList.toggle("is-visible", visibleTasks.length === 0);
       ctx.els.taskCounter.textContent = hasActiveFilters
         ? `${visibleTasks.length} из ${tasks.length} найдено · ${doneCount} выполнено`
-        : `${doneCount} из ${tasks.length} выполнено`;
-      ctx.els.taskProgress.textContent = `${percent}%`;
+        : tasks.length ? `${doneCount} из ${tasks.length} выполнено` : "Пока нет задач";
+      ctx.els.taskProgress.textContent = tasks.length ? `${percent}%` : "—";
+      ctx.els.taskProgressRing.setAttribute("aria-label", tasks.length ? `Выполнение задач: ${percent}%` : "Задач на выбранный день нет");
       ctx.els.taskProgressRing.style.setProperty("--progress", `${percent * 3.6}deg`);
       renderExcludedTasks();
       renderHistoricalTasks();

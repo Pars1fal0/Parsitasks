@@ -25,11 +25,13 @@
       const taskMetric = taskTotal ? Math.round((taskDone / taskTotal) * 100) : 0;
       const habitMetric = habitTotal ? Math.round((habitDone / habitTotal) * 100) : 0;
 
-      ctx.els.weeklyTaskMetric.textContent = `${taskMetric}%`;
-      ctx.els.weeklyHabitMetric.textContent = habitTotal ? `${habitMetric}%` : habitFrozen ? "—" : "0%";
+      ctx.els.weeklyTaskMetric.textContent = taskTotal ? `${taskMetric}%` : "—";
+      ctx.els.weeklyHabitMetric.textContent = habitTotal ? `${habitMetric}%` : "—";
       if (ctx.els.overviewHeading) ctx.els.overviewHeading.textContent = period.heading;
-      ctx.els.weeklyTaskText.textContent = `${taskDone} из ${taskTotal} задач ${period.suffix}`;
-      ctx.els.weeklyHabitText.textContent = `${habitDone} из ${habitTotal} отметок привычек ${period.suffix}${habitFrozen ? ` · заморожено ${habitFrozen}` : ""}`;
+      ctx.els.weeklyTaskText.textContent = taskTotal ? `${taskDone} из ${taskTotal} задач ${period.suffix}` : `Нет задач ${period.suffix}`;
+      ctx.els.weeklyHabitText.textContent = `${habitTotal
+        ? `${habitDone} из ${habitTotal} отметок привычек ${period.suffix}`
+        : `Нет обязательных привычек ${period.suffix}`}${habitFrozen ? ` · заморожено ${habitFrozen}` : ""}`;
       if (mode === "week") renderWeekBoard(week);
       if (mode === "month") renderMonthCalendar();
       if (mode === "year") renderHeatmap();
@@ -81,7 +83,7 @@
         weekday.textContent = ctx.formatWeekday(dateKey);
         day.textContent = String(ctx.parseDate(dateKey).getDate());
         count.className = "week-board-count";
-        count.textContent = `${doneCount}/${tasks.length} выполнено`;
+        count.textContent = tasks.length ? `${doneCount}/${tasks.length} выполнено` : "Пока без задач";
         list.className = "week-board-list";
         header.append(weekday, day);
 

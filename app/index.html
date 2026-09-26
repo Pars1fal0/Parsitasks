@@ -23,6 +23,7 @@
       <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z"/><path d="M8 2v4M16 2v4M3 10h18"/></symbol>
       <symbol id="icon-category" viewBox="0 0 24 24"><path d="M4 5h7v7H4V5ZM13 5h7v7h-7V5ZM4 14h7v5H4v-5ZM13 14h7v5h-7v-5Z"/></symbol>
       <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></symbol>
       <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
       <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
       <symbol id="icon-clock" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/><path d="M12 7v5l3 2"/></symbol>
@@ -149,7 +150,7 @@
 
         <div class="sidebar-pulse">
           <span class="metric-label" title="Среднее выполнения задач и привычек за выбранный день">Прогресс за день</span>
-          <strong id="sideProgressValue">0%</strong>
+          <strong id="sideProgressValue">—</strong>
           <div class="mini-meter" aria-hidden="true">
             <span id="sideProgressBar"></span>
           </div>
@@ -240,7 +241,7 @@
               <p id="focusMeta"></p>
             </div>
             <div class="focus-progress" aria-label="Прогресс дня">
-              <span id="focusPercent">0%</span>
+              <span id="focusPercent">—</span>
               <div class="focus-bar" aria-hidden="true">
                 <span id="focusBar"></span>
               </div>
@@ -257,7 +258,7 @@
           </article>
           <article class="stat-card stat-card-bright">
             <span class="metric-label">Привычки</span>
-            <strong id="habitDoneMetric">0/0</strong>
+            <strong id="habitDoneMetric">—</strong>
             <span class="stat-frozen-detail" id="habitFrozenMetric" hidden></span>
           </article>
         </section>
@@ -329,7 +330,7 @@
                   <p id="taskCounter"></p>
                 </div>
                 <div class="completion-ring" id="taskProgressRing" aria-label="Выполнение задач">
-                  <span id="taskProgress">0%</span>
+                  <span id="taskProgress">—</span>
                 </div>
               </div>
               <div class="overdue-panel" id="overduePanel">
@@ -787,12 +788,12 @@
           <div class="overview-grid">
             <section class="panel metric-panel metric-panel-dark">
               <span class="metric-label">Задачи</span>
-              <strong id="weeklyTaskMetric">0%</strong>
+              <strong id="weeklyTaskMetric">—</strong>
               <p id="weeklyTaskText"></p>
             </section>
             <section class="panel metric-panel metric-panel-light">
               <span class="metric-label">Привычки</span>
-              <strong id="weeklyHabitMetric">0%</strong>
+              <strong id="weeklyHabitMetric">—</strong>
               <p id="weeklyHabitText"></p>
             </section>
             <section class="panel week-board-panel" data-overview-panel="week">
