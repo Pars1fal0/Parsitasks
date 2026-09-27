@@ -47,7 +47,8 @@ module.exports = [
       assert.equal(packageJson.devDependencies.sharp, "^0.35.2");
       assert.match(desktopMain, /path\.dirname\(info\.latest\.path\)/);
       assert.match(desktopMain, /getLegacyFileBackupDir\(\)/);
-      assert.match(appHtml, /<div class="brand-mark" aria-hidden="true">P<\/div>/);
+      assert.match(appHtml, /<img class="brand-mark" src="assets\/icons\/icon\.svg" alt="" aria-hidden="true"/);
+      assert.match(appHtml, /<link rel="icon" href="assets\/icons\/icon\.svg" type="image\/svg\+xml">/);
       assert.doesNotMatch(appHtml, /Локальный трекер/);
     },
   },

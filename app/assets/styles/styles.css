@@ -388,22 +388,11 @@ select:focus-visible {
 }
 
 .brand-mark {
-  display: grid;
+  display: block;
   width: 42px;
   height: 42px;
   flex: 0 0 auto;
-  place-items: center;
-  border: 1px solid rgb(var(--accent-rgb) / 38%);
-  border-radius: 12px;
-  background: rgb(var(--accent-rgb) / 14%);
-  color: var(--teal-deep);
-  font-size: 17px;
-  font-weight: 760;
-}
-
-:root[data-theme="light"] .brand-mark {
-  border-color: rgb(var(--accent-strong-rgb) / 24%);
-  background: #e8f5f1;
+  object-fit: contain;
 }
 
 .brand-title {

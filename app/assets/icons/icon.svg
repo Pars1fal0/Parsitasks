@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#0b0e0d"/>
-  <path fill="#f5f7f5" d="M151 117h126c76 0 124 44 124 112 0 69-49 113-126 113h-54v77h-70V117Zm70 62v101h50c38 0 59-18 59-51 0-33-21-50-59-50h-50Z"/>
-  <path fill="#31c7a5" d="m107 175-25-25 25-25 25 25 54-54 25 25-79 79-25-25Z"/>
-  <circle cx="388" cy="391" r="31" fill="#e7bd68"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Parsitasks</title>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="15.5" fill="#102420" stroke="#31534a"/>
+  <path d="M19 46V18h15c8 0 13 4.5 13 11.5S42 41 34 41H19" fill="none" stroke="#f5faf7" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m29 29 4 4 8-8" fill="none" stroke="#4be0b5" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="47" cy="47" r="3.5" fill="#ffb86f"/>
 </svg>

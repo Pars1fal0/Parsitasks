@@ -92,28 +92,11 @@ input {
 }
 
 .brand-mark {
-  position: relative;
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border: 1px solid #3d5048;
-  border-radius: var(--radius);
-  background: #16231f;
-  color: #62dcc1;
-  font-size: 0.82rem;
-}
-
-.brand-mark::after {
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  width: 7px;
-  height: 7px;
-  border: 2px solid var(--dark);
-  border-radius: 50%;
-  background: var(--warm);
-  content: "";
+  display: block;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  object-fit: contain;
 }
 
 .back-link {

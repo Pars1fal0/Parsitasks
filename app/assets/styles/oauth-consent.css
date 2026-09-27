@@ -44,7 +44,6 @@ input {
   gap: 14px;
 }
 
-.brand-mark,
 .client-logo {
   display: grid;
   width: 46px;
@@ -56,6 +55,14 @@ input {
   background: #0b3029;
   color: #6ee7cf;
   font-weight: 700;
+}
+
+.brand-mark {
+  display: block;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  object-fit: contain;
 }
 
 h1,
