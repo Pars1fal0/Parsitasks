@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 17;
+﻿const SCHEMA_VERSION = 18;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
@@ -78,6 +78,7 @@ const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
   normalizeStudySubjects: window.RhythmStudyModel.normalizeSubjects,
   normalizeStudyLessons: window.RhythmStudyModel.normalizeLessons,
   normalizeStudyFiles: window.RhythmStudyModel.normalizeFiles,
+  normalizeStudyWeekCycle: window.RhythmStudyModel.normalizeWeekCycle,
   normalizeTaskStudy: window.RhythmStudyModel.normalizeTaskStudy,
   randomCategoryColor,
   recurrence: window.RhythmRecurrence,

@@ -15,6 +15,7 @@
         studySubjects: [],
         studyLessons: [],
         studyFiles: [],
+        studyWeekCycle: config.normalizeStudyWeekCycle?.(),
         nutritionFoods: [],
         nutritionMeals: [],
         nutritionTemplates: [],
@@ -80,6 +81,7 @@
       normalized.studySubjects = config.normalizeStudySubjects?.(raw.studySubjects, config) || [];
       normalized.studyLessons = config.normalizeStudyLessons?.(raw.studyLessons, config, normalized.studySubjects) || [];
       normalized.studyFiles = config.normalizeStudyFiles?.(raw.studyFiles, config, normalized.studySubjects) || [];
+      normalized.studyWeekCycle = config.normalizeStudyWeekCycle?.(raw.studyWeekCycle);
 
       normalized.tasks = Array.isArray(raw.tasks)
         ? raw.tasks.map((task) => {

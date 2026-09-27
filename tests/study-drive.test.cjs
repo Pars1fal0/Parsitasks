@@ -22,6 +22,37 @@ const normalizeConfig = {
 
 module.exports = [
   {
+    name: "study week cycle alternates from an explicit Monday across year boundaries",
+    fn() {
+      const cycle = model.normalizeWeekCycle({ anchorMonday: "2026-12-28", anchorParity: "even", updatedAt: "2026-09-27T10:00:00.000Z" });
+      assert.equal(model.weekParity("2026-12-21", cycle), "odd");
+      assert.equal(model.weekParity("2026-12-28", cycle), "even");
+      assert.equal(model.weekParity("2027-01-04", cycle), "odd");
+      assert.equal(model.weekParity("2027-01-11", cycle), "even");
+      assert.equal(model.mondayKey("2027-01-06"), "2027-01-04");
+      assert.equal(model.mondayKey("2026-02-30"), "");
+    },
+  },
+  {
+    name: "study lessons keep old weekly entries and suggest only a real parity occurrence",
+    fn() {
+      const subjects = model.normalizeSubjects([{ id: "math", name: "Математика" }], normalizeConfig);
+      const lessons = model.normalizeLessons([
+        { id: "weekly", subjectId: "math", weekday: 2, startTime: "09:00", endTime: "09:45" },
+        { id: "even", subjectId: "math", weekday: 1, weekType: "even", startTime: "10:00", endTime: "10:45" },
+      ], normalizeConfig, subjects);
+      const cycle = model.normalizeWeekCycle({ anchorMonday: "2026-12-28", anchorParity: "even", updatedAt: "2026-09-27T10:00:00.000Z" });
+      assert.equal(lessons[0].weekType, "all");
+      assert.equal(lessons[1].weekType, "even");
+      assert.equal(model.lessonOccursOnDate(lessons[1], "2027-01-04", cycle), false);
+      assert.equal(model.lessonOccursOnDate(lessons[1], "2027-01-11", cycle), true);
+      assert.equal(model.nextLessonDate([lessons[1]], "math", "2026-12-29", cycle), "2027-01-11");
+      assert.equal(model.nextLessonDate([lessons[1]], "math", "2026-12-29", {}), "");
+      assert.equal(model.nextLessonDate(lessons, "math", "2026-12-29", cycle), "2027-01-05");
+      assert.equal(model.nextLessonDate(lessons, "math", "2026-12-29", {}), "2027-01-05");
+    },
+  },
+  {
     name: "study model keeps only valid subjects, lessons and Drive file identifiers",
     fn() {
       const subjects = model.normalizeSubjects([{ id: "math", name: " Математика ", color: "#123456" }], normalizeConfig);
@@ -50,6 +81,15 @@ module.exports = [
       assert.equal(merged.studySubjects.length, 1);
       assert.equal(merged.studyLessons.length, 1);
       assert.equal(merged.studyFiles.length, 0);
+    },
+  },
+  {
+    name: "study week cycle keeps the newest synced anchor",
+    fn() {
+      const local = { studyWeekCycle: { anchorMonday: "2026-09-28", anchorParity: "even", updatedAt: "2026-09-27T10:00:00Z" } };
+      const remote = { studyWeekCycle: { anchorMonday: "2026-10-05", anchorParity: "odd", updatedAt: "2026-09-27T11:00:00Z" } };
+      assert.deepEqual(mergeStates(local, remote).studyWeekCycle, remote.studyWeekCycle);
+      assert.deepEqual(mergeStates(remote, local).studyWeekCycle, remote.studyWeekCycle);
     },
   },
   {

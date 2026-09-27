@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const os = require("node:os");
 const path = require("node:path");
 const { _electron: electron } = require("playwright-core");
 
@@ -16,6 +17,16 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('.nav-tab[data-view="study"]:visible').click();
     await page.locator('[data-study-tab="schedule"]').click();
 
+    const currentMonday = await page.evaluate(() => {
+      const today = new Date();
+      const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      return window.RhythmStudyModel.mondayKey(key);
+    });
+    await page.locator('#studyWeekCycleForm [name="anchorMonday"]').fill(currentMonday);
+    await page.locator('#studyWeekCycleForm [name="anchorParity"]').selectOption("even");
+    await page.locator('#studyWeekCycleForm button[type="submit"]').click();
+    assert.match(await page.locator("#studyWeekLabel").innerText(), /Чётная неделя/);
+
     await page.locator('#studySubjectForm [name="name"]').fill("Математика");
     await page.locator('#studySubjectForm [name="teacher"]').fill("Иванова");
     await page.locator('#studySubjectForm button[type="submit"]').click();
@@ -31,6 +42,7 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator('#studyLessonForm [name="subjectId"]').selectOption(subjectId);
     await page.locator('#studyLessonForm [name="weekday"]').selectOption("1");
+    await page.locator('#studyLessonForm [name="weekType"]').selectOption("even");
     await page.locator('#studyLessonForm [name="startTime"]').fill("09:00");
     await page.locator('#studyLessonForm [name="endTime"]').fill("09:45");
     await page.locator('#studyLessonForm button[type="submit"]').click();
@@ -42,6 +54,28 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('#studyLessonForm button[type="submit"]').click();
     assert.equal(await page.locator("[data-study-lesson-edit]").getAttribute("data-study-lesson-edit"), lessonId);
     assert.match(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+
+    await page.locator("#studyNextWeek").click();
+    assert.match(await page.locator("#studyWeekLabel").innerText(), /Нечётная неделя/);
+    assert.doesNotMatch(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+    await page.locator('#studyLessonForm [name="subjectId"]').selectOption(subjectId);
+    await page.locator('#studyLessonForm [name="weekday"]').selectOption("1");
+    await page.locator('#studyLessonForm [name="weekType"]').selectOption("odd");
+    await page.locator('#studyLessonForm [name="startTime"]').fill("11:00");
+    await page.locator('#studyLessonForm [name="endTime"]').fill("11:45");
+    await page.locator('#studyLessonForm button[type="submit"]').click();
+    assert.match(await page.locator("#studyScheduleList").innerText(), /11:00–11:45/);
+    await page.locator("#studyPreviousWeek").click();
+    assert.match(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+    assert.doesNotMatch(await page.locator("#studyScheduleList").innerText(), /11:00–11:45/);
+    if (process.env.CAPTURE_STUDY) {
+      const desktopPath = path.join(os.tmpdir(), "parsitasks-study-desktop.png");
+      const mobilePath = path.join(os.tmpdir(), "parsitasks-study-mobile.png");
+      await page.screenshot({ path: desktopPath, fullPage: true });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: mobilePath, fullPage: true });
+      console.log(`study screenshots: ${desktopPath}, ${mobilePath}`);
+    }
 
     await page.locator('[data-study-tab="homework"]').click();
     await page.locator('#studyHomeworkForm [name="subjectId"]').selectOption(subjectId);
@@ -57,7 +91,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('.nav-tab[data-view="tasks"]:visible').click();
     assert.match(await page.locator("#tasksView").innerText(), /Решить упражнения 4–6/);
     assert.deepEqual(errors, []);
-    console.log("e2e ok - study subjects, lessons, edits, and homework in tasks");
+    console.log("e2e ok - study week parity, lessons, edits, and homework in tasks");
   } finally {
     await app.close();
   }

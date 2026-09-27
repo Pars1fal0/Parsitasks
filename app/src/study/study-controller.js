@@ -1,11 +1,13 @@
 (function (global) {
   const WEEKDAYS = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
   const BASE_URL = "https://parsitasks.ru";
+  const studyModel = global.RhythmStudyModel;
 
   function createStudyController(ctx) {
     const root = document.querySelector("#studyView");
     const homeworkForm = root.querySelector("#studyHomeworkForm");
     const lessonForm = root.querySelector("#studyLessonForm");
+    const weekCycleForm = root.querySelector("#studyWeekCycleForm");
     const subjectForm = root.querySelector("#studySubjectForm");
     const materialForm = root.querySelector("#studyMaterialForm");
     let tab = "homework";
@@ -15,6 +17,8 @@
     let lastError = "";
     let statusUserId = "";
     let busy = false;
+    let viewedWeekMonday = studyModel.mondayKey(localDateKey(new Date()));
+    let displayedCycleKey = "";
 
     function bindEvents() {
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.studyTab)));
@@ -28,6 +32,10 @@
       homeworkForm.addEventListener("submit", saveHomework);
       homeworkForm.elements.subjectId.addEventListener("change", suggestDeadline);
       lessonForm.addEventListener("submit", saveLesson);
+      weekCycleForm.addEventListener("submit", saveWeekCycle);
+      root.querySelector("#studyPreviousWeek").addEventListener("click", () => changeWeek(-1));
+      root.querySelector("#studyCurrentWeek").addEventListener("click", () => changeWeek(0));
+      root.querySelector("#studyNextWeek").addEventListener("click", () => changeWeek(1));
       subjectForm.addEventListener("submit", saveSubject);
       materialForm.addEventListener("submit", uploadMaterial);
       root.addEventListener("click", handleAction);
@@ -134,6 +142,7 @@
       [root.querySelector("#studyHomeworkFilter"), root.querySelector("#studyMaterialFilter")].forEach((select) => updateOptions(select, [["all", "Все предметы"], ...choices]));
       renderFileChoices(files);
       renderHomework(state);
+      syncWeekCycleForm(state.studyWeekCycle);
       renderSchedule(state);
       renderMaterials(state);
       renderSubjects(state);
@@ -192,11 +201,19 @@
 
     function renderSchedule(state) {
       const subjects = new Map(state.studySubjects.map((item) => [item.id, item]));
-      const lessons = [...state.studyLessons].sort((a, b) => ((a.weekday + 6) % 7) - ((b.weekday + 6) % 7) || a.startTime.localeCompare(b.startTime));
+      const cycle = state.studyWeekCycle || {};
+      const parity = studyModel.weekParity(viewedWeekMonday, cycle);
+      const endOfWeek = addDaysKey(viewedWeekMonday, 6);
+      const range = `${shortDate(viewedWeekMonday)} – ${shortDate(endOfWeek)}`;
+      root.querySelector("#studyWeekLabel").textContent = `${range} · ${parity ? `${parity === "even" ? "Чётная" : "Нечётная"} неделя` : "Цикл не настроен, показаны все занятия"}`;
+      root.querySelector("#studyCurrentWeek").disabled = viewedWeekMonday === studyModel.mondayKey(localDateKey(new Date()));
+      const lessons = [...state.studyLessons]
+        .filter((lesson) => !parity || lesson.weekType === "all" || !lesson.weekType || lesson.weekType === parity)
+        .sort((a, b) => ((a.weekday + 6) % 7) - ((b.weekday + 6) % 7) || a.startTime.localeCompare(b.startTime));
       let lastDay = -1;
       const nodes = [];
       lessons.forEach((lesson) => {
-        if (lesson.weekday !== lastDay) nodes.push(element("h4", "study-day-heading", WEEKDAYS[lesson.weekday]));
+        if (lesson.weekday !== lastDay) nodes.push(element("h4", "study-day-heading", `${WEEKDAYS[lesson.weekday]}, ${shortDate(addDaysKey(viewedWeekMonday, (lesson.weekday + 6) % 7))}`));
         lastDay = lesson.weekday;
         const subject = subjects.get(lesson.subjectId);
         const row = element("article", "study-item");
@@ -204,6 +221,7 @@
         body.append(element("p", "study-item-title", subject?.name || "Предмет"));
         const meta = element("div", "study-item-meta");
         meta.append(element("span", "", `${lesson.startTime}–${lesson.endTime}`));
+        if (lesson.weekType && lesson.weekType !== "all") meta.append(element("span", "", lesson.weekType === "even" ? "Чётная неделя" : "Нечётная неделя"));
         if (lesson.room) meta.append(element("span", "", lesson.room));
         body.append(meta);
         const actions = element("div", "study-item-actions");
@@ -211,7 +229,32 @@
         row.append(subjectDot(subject?.color), body, actions);
         nodes.push(row);
       });
-      root.querySelector("#studyScheduleList").replaceChildren(...(nodes.length ? nodes : [element("div", "study-empty", "Расписание пусто. Добавьте предмет и занятие.")]));
+      root.querySelector("#studyScheduleList").replaceChildren(...(nodes.length ? nodes : [element("div", "study-empty", state.studyLessons.length ? "На этой неделе занятий нет." : "Расписание пусто. Добавьте предмет и занятие.")]));
+    }
+
+    function syncWeekCycleForm(cycle = {}) {
+      const key = `${cycle.anchorMonday || ""}|${cycle.anchorParity || ""}|${cycle.updatedAt || ""}`;
+      if (key === displayedCycleKey) return;
+      weekCycleForm.elements.anchorMonday.value = cycle.anchorMonday || studyModel.mondayKey(localDateKey(new Date()));
+      weekCycleForm.elements.anchorParity.value = cycle.anchorParity || "even";
+      displayedCycleKey = key;
+    }
+
+    function changeWeek(direction) {
+      viewedWeekMonday = direction === 0 ? studyModel.mondayKey(localDateKey(new Date())) : addDaysKey(viewedWeekMonday, direction * 7);
+      renderSchedule(ctx.getState());
+    }
+
+    function saveWeekCycle(event) {
+      event.preventDefault();
+      const anchorMonday = weekCycleForm.elements.anchorMonday.value;
+      if (studyModel.mondayKey(anchorMonday) !== anchorMonday) { ctx.showToast("Выбери дату понедельника"); return; }
+      ctx.getState().studyWeekCycle = studyModel.normalizeWeekCycle({
+        anchorMonday,
+        anchorParity: weekCycleForm.elements.anchorParity.value,
+        updatedAt: new Date().toISOString(),
+      });
+      ctx.saveState(); ctx.render(); ctx.showToast("Цикл недель сохранён");
     }
 
     function renderSubjects(state) {
@@ -267,7 +310,7 @@
       const state = ctx.getState();
       const existing = state.studyLessons.find((lesson) => lesson.id === form.id.value);
       const now = new Date().toISOString();
-      const next = { id: existing?.id || ctx.createId(), subjectId: form.subjectId.value, weekday: Number(form.weekday.value), startTime: form.startTime.value, endTime: form.endTime.value, room: form.room.value.trim(), createdAt: existing?.createdAt || now, updatedAt: now };
+      const next = { id: existing?.id || ctx.createId(), subjectId: form.subjectId.value, weekday: Number(form.weekday.value), weekType: form.weekType.value, startTime: form.startTime.value, endTime: form.endTime.value, room: form.room.value.trim(), createdAt: existing?.createdAt || now, updatedAt: now };
       if (existing) Object.assign(existing, next);
       else state.studyLessons.push(next);
       resetLessonForm(); ctx.saveState(); ctx.render(); ctx.showToast(existing ? "Занятие обновлено" : "Занятие добавлено");
@@ -320,13 +363,9 @@
     function suggestDeadline() {
       if (homeworkForm.elements.id.value) return;
       const subjectId = homeworkForm.elements.subjectId.value;
-      const days = ctx.getState().studyLessons.filter((lesson) => lesson.subjectId === subjectId).map((lesson) => lesson.weekday);
-      if (!days.length) return;
-      const date = new Date();
-      for (let offset = 1; offset <= 7; offset++) {
-        const candidate = new Date(date.getFullYear(), date.getMonth(), date.getDate() + offset);
-        if (days.includes(candidate.getDay())) { homeworkForm.elements.date.value = localDateKey(candidate); return; }
-      }
+      const state = ctx.getState();
+      const nextDate = studyModel.nextLessonDate(state.studyLessons, subjectId, localDateKey(new Date()), state.studyWeekCycle);
+      if (nextDate) homeworkForm.elements.date.value = nextDate;
     }
 
     async function uploadMaterial(event) {
@@ -402,6 +441,7 @@
         if (!lesson) return;
         const form = lessonForm.elements;
         form.id.value = lesson.id; form.subjectId.value = lesson.subjectId; form.weekday.value = String(lesson.weekday);
+        form.weekType.value = lesson.weekType || "all";
         form.startTime.value = lesson.startTime; form.endTime.value = lesson.endTime; form.room.value = lesson.room || "";
         root.querySelector("#studyLessonFormTitle").textContent = "Изменить занятие";
         lessonForm.querySelector('button[type="submit"]').textContent = "Сохранить занятие";
@@ -488,6 +528,14 @@
     return button;
   }
   function localDateKey(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`; }
+  function addDaysKey(dateKey, days) {
+    const date = new Date(`${dateKey}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+  function shortDate(dateKey) {
+    return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${dateKey}T00:00:00Z`));
+  }
   function displayDate(value) { const [year, month, day] = String(value).split("-"); return `${day}.${month}.${year}`; }
   function formatSize(bytes) { return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} МБ` : `${Math.max(1, Math.round(bytes / 1024))} КБ`; }
   function plural(count, one, few, many) { const n = count % 100; return n >= 11 && n <= 14 ? many : count % 10 === 1 ? one : count % 10 >= 2 && count % 10 <= 4 ? few : many; }

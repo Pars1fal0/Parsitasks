@@ -13,7 +13,7 @@
     <script src="src/platform/shell-version.js?v=1"></script>
     <link rel="stylesheet" href="assets/styles/styles.css?v=40">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
-    <link rel="stylesheet" href="assets/styles/study.css?v=1">
+    <link rel="stylesheet" href="assets/styles/study.css?v=2">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -1199,15 +1199,29 @@
           <div class="study-pane" data-study-pane="schedule" role="tabpanel" hidden>
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyScheduleHeading">
-                <h3 id="studyScheduleHeading">Расписание недели</h3>
+                <div class="study-schedule-heading">
+                  <div><h3 id="studyScheduleHeading">Расписание</h3><p id="studyWeekLabel" class="study-week-label" aria-live="polite"></p></div>
+                  <div class="study-week-navigation" aria-label="Выбор недели">
+                    <button class="icon-button" id="studyPreviousWeek" type="button" aria-label="Предыдущая неделя" title="Предыдущая неделя"><svg class="ui-icon"><use href="#icon-chevron-left"></use></svg></button>
+                    <button class="ghost-button compact-button" id="studyCurrentWeek" type="button">Сегодня</button>
+                    <button class="icon-button" id="studyNextWeek" type="button" aria-label="Следующая неделя" title="Следующая неделя"><svg class="ui-icon"><use href="#icon-chevron-right"></use></svg></button>
+                  </div>
+                </div>
                 <div id="studyScheduleList" class="study-schedule"></div>
               </section>
               <div class="study-side-stack">
+                <form id="studyWeekCycleForm" class="study-form" aria-label="Чередование недель">
+                  <h3>Чередование недель</h3>
+                  <label>Понедельник известной недели<input name="anchorMonday" type="date" required></label>
+                  <label>Эта неделя<select name="anchorParity"><option value="even">Чётная</option><option value="odd">Нечётная</option></select></label>
+                  <button class="ghost-button" type="submit">Сохранить цикл</button>
+                </form>
                 <form id="studyLessonForm" class="study-form" aria-label="Добавить занятие">
                   <h3 id="studyLessonFormTitle">Добавить занятие</h3>
                   <input name="id" type="hidden">
                   <label>Предмет<select name="subjectId" required></select></label>
                   <label>День недели<select name="weekday" required><option value="1">Понедельник</option><option value="2">Вторник</option><option value="3">Среда</option><option value="4">Четверг</option><option value="5">Пятница</option><option value="6">Суббота</option><option value="0">Воскресенье</option></select></label>
+                  <label>Неделя<select name="weekType"><option value="all">Каждую неделю</option><option value="even">По чётным неделям</option><option value="odd">По нечётным неделям</option></select></label>
                   <div class="study-field-row"><label>Начало<input name="startTime" type="time" required></label><label>Конец<input name="endTime" type="time" required></label></div>
                   <label>Аудитория<input name="room" maxlength="80" placeholder="Необязательно"></label>
                   <div class="study-form-actions"><button class="primary-button" type="submit">Добавить в расписание</button><button class="ghost-button" id="studyLessonCancel" type="button" hidden>Отмена</button></div>
@@ -1771,9 +1785,9 @@
     <script src="src/journal/journal-editor.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-model.js?v=1" defer></script>
     <script src="src/core/data-normalizers.js?v=1" defer></script>
-    <script src="src/study/study-model.js?v=1" defer></script>
-    <script src="src/study/study-controller.js?v=1" defer></script>
-    <script src="src/sync/sync-metadata.js?v=6" defer></script>
+    <script src="src/study/study-model.js?v=2" defer></script>
+    <script src="src/study/study-controller.js?v=2" defer></script>
+    <script src="src/sync/sync-metadata.js?v=7" defer></script>
     <script src="src/sync/tombstone-retention.js?v=2" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
     <script src="src/habits/habit-config-history.js?v=1" defer></script>
@@ -1782,9 +1796,9 @@
     <script src="src/integrations/mcp-activity-controller.js?v=1" defer></script>
     <script src="src/platform/pwa-controller.js?v=1" defer></script>
     <script src="src/platform/desktop-update-controller.js?v=2" defer></script>
-    <script src="src/core/state-normalizer.js?v=13" defer></script>
+    <script src="src/core/state-normalizer.js?v=14" defer></script>
     <script src="src/core/state-controller.js?v=1" defer></script>
-    <script src="src/core/state-merge.js?v=8" defer></script>
+    <script src="src/core/state-merge.js?v=9" defer></script>
     <script src="src/core/date-rollover.js?v=1" defer></script>
     <script src="src/core/planning-history.js?v=2" defer></script>
     <script src="src/journal/journal-view.js?v=3" defer></script>
@@ -1830,6 +1844,6 @@
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=2" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=51" defer></script>
+    <script src="src/core/app.js?v=52" defer></script>
   </body>
 </html>

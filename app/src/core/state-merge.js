@@ -92,6 +92,7 @@
       studySubjects,
       studyLessons,
       studyFiles,
+      studyWeekCycle: chooseNewest(localState.studyWeekCycle || {}, remoteState.studyWeekCycle || {}),
       tasks,
       habits: applyEntityOrder(habits, localState.habits, remoteState.habits, localMeta.habitOrderUpdatedAt, remoteMeta.habitOrderUpdatedAt),
       goals,
