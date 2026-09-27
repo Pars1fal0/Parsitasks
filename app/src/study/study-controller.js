@@ -17,7 +17,9 @@
     let lastError = "";
     let statusUserId = "";
     let busy = false;
-    let viewedWeekMonday = studyModel.mondayKey(localDateKey(new Date()));
+    let scheduleMode = "week";
+    let viewedDateKey = localDateKey(new Date());
+    let viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
     let displayedCycleKey = "";
 
     function bindEvents() {
@@ -33,9 +35,10 @@
       homeworkForm.elements.subjectId.addEventListener("change", suggestDeadline);
       lessonForm.addEventListener("submit", saveLesson);
       weekCycleForm.addEventListener("submit", saveWeekCycle);
-      root.querySelector("#studyPreviousWeek").addEventListener("click", () => changeWeek(-1));
-      root.querySelector("#studyCurrentWeek").addEventListener("click", () => changeWeek(0));
-      root.querySelector("#studyNextWeek").addEventListener("click", () => changeWeek(1));
+      root.querySelectorAll("[data-study-schedule-mode]").forEach((button) => button.addEventListener("click", () => setScheduleMode(button.dataset.studyScheduleMode)));
+      root.querySelector("#studyPreviousWeek").addEventListener("click", () => changePeriod(-1));
+      root.querySelector("#studyCurrentWeek").addEventListener("click", () => changePeriod(0));
+      root.querySelector("#studyNextWeek").addEventListener("click", () => changePeriod(1));
       subjectForm.addEventListener("submit", saveSubject);
       materialForm.addEventListener("submit", uploadMaterial);
       root.addEventListener("click", handleAction);
@@ -202,27 +205,40 @@
     function renderSchedule(state) {
       const subjects = new Map(state.studySubjects.map((item) => [item.id, item]));
       const cycle = state.studyWeekCycle || {};
-      const parity = studyModel.weekParity(viewedWeekMonday, cycle);
+      const parity = studyModel.weekParity(viewedDateKey, cycle);
       const endOfWeek = addDaysKey(viewedWeekMonday, 6);
-      const range = `${shortDate(viewedWeekMonday)} – ${shortDate(endOfWeek)}`;
-      root.querySelector("#studyWeekLabel").textContent = `${range} · ${parity ? `${parity === "even" ? "Чётная" : "Нечётная"} неделя` : "Цикл не настроен, показаны все занятия"}`;
-      root.querySelector("#studyCurrentWeek").disabled = viewedWeekMonday === studyModel.mondayKey(localDateKey(new Date()));
+      const periodLabel = scheduleMode === "day"
+        ? `${WEEKDAYS[new Date(`${viewedDateKey}T00:00:00Z`).getUTCDay()]}, ${shortDate(viewedDateKey)}`
+        : `${shortDate(viewedWeekMonday)} – ${shortDate(endOfWeek)}`;
+      root.querySelector("#studyWeekLabel").textContent = `${periodLabel} · ${parity ? `${parity === "even" ? "Чётная" : "Нечётная"} неделя` : "Цикл не настроен"}`;
+      root.querySelectorAll("[data-study-schedule-mode]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.studyScheduleMode === scheduleMode)));
+      root.querySelector("#studyCurrentWeek").disabled = scheduleMode === "day"
+        ? viewedDateKey === localDateKey(new Date())
+        : viewedWeekMonday === studyModel.mondayKey(localDateKey(new Date()));
+      for (const [id, dayLabel, weekLabel] of [["studyPreviousWeek", "Предыдущий день", "Предыдущая неделя"], ["studyNextWeek", "Следующий день", "Следующая неделя"]]) {
+        const button = root.querySelector(`#${id}`);
+        const label = scheduleMode === "day" ? dayLabel : weekLabel;
+        button.setAttribute("aria-label", label);
+        button.title = label;
+      }
+      const viewedWeekday = new Date(`${viewedDateKey}T00:00:00Z`).getUTCDay();
       const lessons = [...state.studyLessons]
-        .filter((lesson) => !parity || lesson.weekType === "all" || !lesson.weekType || lesson.weekType === parity)
+        .filter((lesson) => (scheduleMode === "week" || lesson.weekday === viewedWeekday) && (!parity || lesson.weekType === "all" || !lesson.weekType || lesson.weekType === parity))
         .sort((a, b) => ((a.weekday + 6) % 7) - ((b.weekday + 6) % 7) || a.startTime.localeCompare(b.startTime));
       let lastDay = -1;
       const nodes = [];
       lessons.forEach((lesson) => {
-        if (lesson.weekday !== lastDay) nodes.push(element("h4", "study-day-heading", `${WEEKDAYS[lesson.weekday]}, ${shortDate(addDaysKey(viewedWeekMonday, (lesson.weekday + 6) % 7))}`));
+        if (scheduleMode === "week" && lesson.weekday !== lastDay) nodes.push(element("h4", "study-day-heading", `${WEEKDAYS[lesson.weekday]}, ${shortDate(addDaysKey(viewedWeekMonday, (lesson.weekday + 6) % 7))}`));
         lastDay = lesson.weekday;
         const subject = subjects.get(lesson.subjectId);
         const row = element("article", "study-item");
         const body = element("div");
-        body.append(element("p", "study-item-title", subject?.name || "Предмет"));
+        const headline = element("div", "study-item-headline");
+        headline.append(element("p", "study-item-title", subject?.name || "Предмет"));
+        if (lesson.lessonType) headline.append(element("span", `study-lesson-type is-${lesson.lessonType}`, lesson.lessonType === "lecture" ? "Лекция" : "Практика"));
+        body.append(headline);
         const meta = element("div", "study-item-meta");
         meta.append(element("span", "", `${lesson.startTime}–${lesson.endTime}`));
-        if (lesson.lessonType) meta.append(element("span", "", lesson.lessonType === "lecture" ? "Лекция" : "Практика"));
-        if (lesson.weekType && lesson.weekType !== "all") meta.append(element("span", "", lesson.weekType === "even" ? "Чётная неделя" : "Нечётная неделя"));
         if (lesson.room) meta.append(element("span", "", lesson.room));
         if (lesson.teacher || subject?.teacher) meta.append(element("span", "", lesson.teacher || subject.teacher));
         body.append(meta);
@@ -231,7 +247,7 @@
         row.append(subjectDot(subject?.color), body, actions);
         nodes.push(row);
       });
-      root.querySelector("#studyScheduleList").replaceChildren(...(nodes.length ? nodes : [element("div", "study-empty", state.studyLessons.length ? "На этой неделе занятий нет." : "Расписание пусто. Добавьте предмет и занятие.")]));
+      root.querySelector("#studyScheduleList").replaceChildren(...(nodes.length ? nodes : [element("div", "study-empty", state.studyLessons.length ? `На ${scheduleMode === "day" ? "этот день" : "этой неделе"} занятий нет.` : "Расписание пусто. Добавьте предмет и занятие.")]));
     }
 
     function syncWeekCycleForm(cycle = {}) {
@@ -242,8 +258,21 @@
       displayedCycleKey = key;
     }
 
-    function changeWeek(direction) {
-      viewedWeekMonday = direction === 0 ? studyModel.mondayKey(localDateKey(new Date())) : addDaysKey(viewedWeekMonday, direction * 7);
+    function setScheduleMode(next) {
+      if (next !== "day" && next !== "week") return;
+      if (next === "week") viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
+      scheduleMode = next;
+      renderSchedule(ctx.getState());
+    }
+
+    function changePeriod(direction) {
+      if (scheduleMode === "day") {
+        viewedDateKey = direction === 0 ? localDateKey(new Date()) : addDaysKey(viewedDateKey, direction);
+        viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
+      } else {
+        viewedWeekMonday = direction === 0 ? studyModel.mondayKey(localDateKey(new Date())) : addDaysKey(viewedWeekMonday, direction * 7);
+        viewedDateKey = direction === 0 ? localDateKey(new Date()) : viewedWeekMonday;
+      }
       renderSchedule(ctx.getState());
     }
 

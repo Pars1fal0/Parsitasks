@@ -71,6 +71,24 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#studyPreviousWeek").click();
     assert.match(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
     assert.doesNotMatch(await page.locator("#studyScheduleList").innerText(), /11:00–11:45/);
+    await page.locator('[data-study-schedule-mode="day"]').click();
+    assert.equal(await page.locator('[data-study-schedule-mode="day"]').getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator("#studyNextWeek").getAttribute("aria-label"), "Следующий день");
+    assert.match(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+    if (process.env.CAPTURE_STUDY) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({ path: path.join(os.tmpdir(), "parsitasks-study-day-mobile.png"), fullPage: true });
+      await page.setViewportSize({ width: 1200, height: 800 });
+    }
+    await page.locator("#studyNextWeek").click();
+    assert.doesNotMatch(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+    const selectedDay = await page.locator("#studyWeekLabel").innerText();
+    await page.locator('[data-study-schedule-mode="week"]').click();
+    assert.equal(await page.locator('[data-study-schedule-mode="week"]').getAttribute("aria-pressed"), "true");
+    assert.match(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+    await page.locator('[data-study-schedule-mode="day"]').click();
+    assert.equal(await page.locator("#studyWeekLabel").innerText(), selectedDay);
+    await page.locator('[data-study-schedule-mode="week"]').click();
     if (process.env.CAPTURE_STUDY) {
       const desktopPath = path.join(os.tmpdir(), "parsitasks-study-desktop.png");
       const mobilePath = path.join(os.tmpdir(), "parsitasks-study-mobile.png");

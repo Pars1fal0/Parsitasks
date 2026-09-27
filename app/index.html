@@ -13,7 +13,7 @@
     <script src="src/platform/shell-version.js?v=1"></script>
     <link rel="stylesheet" href="assets/styles/styles.css?v=40">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
-    <link rel="stylesheet" href="assets/styles/study.css?v=3">
+    <link rel="stylesheet" href="assets/styles/study.css?v=4">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -1201,10 +1201,16 @@
               <section class="study-main" aria-labelledby="studyScheduleHeading">
                 <div class="study-schedule-heading">
                   <div><h3 id="studyScheduleHeading">Расписание</h3><p id="studyWeekLabel" class="study-week-label" aria-live="polite"></p></div>
-                  <div class="study-week-navigation" aria-label="Выбор недели">
-                    <button class="icon-button" id="studyPreviousWeek" type="button" aria-label="Предыдущая неделя" title="Предыдущая неделя"><svg class="ui-icon"><use href="#icon-chevron-left"></use></svg></button>
-                    <button class="ghost-button compact-button" id="studyCurrentWeek" type="button">Сегодня</button>
-                    <button class="icon-button" id="studyNextWeek" type="button" aria-label="Следующая неделя" title="Следующая неделя"><svg class="ui-icon"><use href="#icon-chevron-right"></use></svg></button>
+                  <div class="study-schedule-controls">
+                    <div class="study-schedule-modes" role="group" aria-label="Период расписания">
+                      <button type="button" data-study-schedule-mode="day" aria-pressed="false">День</button>
+                      <button type="button" data-study-schedule-mode="week" aria-pressed="true">Неделя</button>
+                    </div>
+                    <div class="study-week-navigation" aria-label="Выбор даты">
+                      <button class="icon-button" id="studyPreviousWeek" type="button" aria-label="Предыдущая неделя" title="Предыдущая неделя"><svg class="ui-icon"><use href="#icon-chevron-left"></use></svg></button>
+                      <button class="ghost-button compact-button" id="studyCurrentWeek" type="button">Сегодня</button>
+                      <button class="icon-button" id="studyNextWeek" type="button" aria-label="Следующая неделя" title="Следующая неделя"><svg class="ui-icon"><use href="#icon-chevron-right"></use></svg></button>
+                    </div>
                   </div>
                 </div>
                 <div id="studyScheduleList" class="study-schedule"></div>
@@ -1217,7 +1223,7 @@
                   <label>День недели<select name="weekday" required><option value="1">Понедельник</option><option value="2">Вторник</option><option value="3">Среда</option><option value="4">Четверг</option><option value="5">Пятница</option><option value="6">Суббота</option><option value="0">Воскресенье</option></select></label>
                   <label>Неделя<select name="weekType"><option value="all">Каждую неделю</option><option value="even">По чётным неделям</option><option value="odd">По нечётным неделям</option></select></label>
                   <div class="study-field-row"><label>Начало<input name="startTime" type="time" required></label><label>Конец<input name="endTime" type="time" required></label></div>
-                  <label>Тип<select name="lessonType"><option value="">Не указан</option><option value="lecture">Лекция</option><option value="practice">Практика</option></select></label>
+                  <label>Тип занятия<select name="lessonType"><option value="">Не указан</option><option value="lecture">Лекция</option><option value="practice">Практика</option></select></label>
                   <label>Преподаватель<input name="teacher" maxlength="120" placeholder="Необязательно"></label>
                   <label>Аудитория<input name="room" maxlength="80" placeholder="Необязательно"></label>
                   <div class="study-form-actions"><button class="primary-button" type="submit">Добавить в расписание</button><button class="ghost-button" id="studyLessonCancel" type="button" hidden>Отмена</button></div>
@@ -1788,7 +1794,7 @@
     <script src="src/nutrition/nutrition-model.js?v=1" defer></script>
     <script src="src/core/data-normalizers.js?v=1" defer></script>
     <script src="src/study/study-model.js?v=3" defer></script>
-    <script src="src/study/study-controller.js?v=3" defer></script>
+    <script src="src/study/study-controller.js?v=4" defer></script>
     <script src="src/sync/sync-metadata.js?v=8" defer></script>
     <script src="src/sync/tombstone-retention.js?v=2" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
