@@ -45,6 +45,8 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('#studyLessonForm [name="weekType"]').selectOption("even");
     await page.locator('#studyLessonForm [name="startTime"]').fill("09:00");
     await page.locator('#studyLessonForm [name="endTime"]').fill("09:45");
+    await page.locator('#studyLessonForm [name="lessonType"]').selectOption("lecture");
+    await page.locator('#studyLessonForm [name="teacher"]').fill("Петров");
     await page.locator('#studyLessonForm button[type="submit"]').click();
     const lessonId = await page.locator("[data-study-lesson-edit]").getAttribute("data-study-lesson-edit");
     assert.ok(lessonId);
@@ -54,6 +56,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('#studyLessonForm button[type="submit"]').click();
     assert.equal(await page.locator("[data-study-lesson-edit]").getAttribute("data-study-lesson-edit"), lessonId);
     assert.match(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+    assert.match(await page.locator("#studyScheduleList").innerText(), /Лекция.*Петров/s);
 
     await page.locator("#studyNextWeek").click();
     assert.match(await page.locator("#studyWeekLabel").innerText(), /Нечётная неделя/);

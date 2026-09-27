@@ -221,8 +221,10 @@
         body.append(element("p", "study-item-title", subject?.name || "Предмет"));
         const meta = element("div", "study-item-meta");
         meta.append(element("span", "", `${lesson.startTime}–${lesson.endTime}`));
+        if (lesson.lessonType) meta.append(element("span", "", lesson.lessonType === "lecture" ? "Лекция" : "Практика"));
         if (lesson.weekType && lesson.weekType !== "all") meta.append(element("span", "", lesson.weekType === "even" ? "Чётная неделя" : "Нечётная неделя"));
         if (lesson.room) meta.append(element("span", "", lesson.room));
+        if (lesson.teacher || subject?.teacher) meta.append(element("span", "", lesson.teacher || subject.teacher));
         body.append(meta);
         const actions = element("div", "study-item-actions");
         actions.append(actionButton("studyLessonEdit", lesson.id, "Изменить занятие", "icon-edit"), actionButton("studyLessonDelete", lesson.id, "Удалить занятие", "icon-trash"));
@@ -310,7 +312,7 @@
       const state = ctx.getState();
       const existing = state.studyLessons.find((lesson) => lesson.id === form.id.value);
       const now = new Date().toISOString();
-      const next = { id: existing?.id || ctx.createId(), subjectId: form.subjectId.value, weekday: Number(form.weekday.value), weekType: form.weekType.value, startTime: form.startTime.value, endTime: form.endTime.value, room: form.room.value.trim(), createdAt: existing?.createdAt || now, updatedAt: now };
+      const next = { id: existing?.id || ctx.createId(), subjectId: form.subjectId.value, weekday: Number(form.weekday.value), weekType: form.weekType.value, startTime: form.startTime.value, endTime: form.endTime.value, lessonType: form.lessonType.value, teacher: form.teacher.value.trim(), room: form.room.value.trim(), createdAt: existing?.createdAt || now, updatedAt: now };
       if (existing) Object.assign(existing, next);
       else state.studyLessons.push(next);
       resetLessonForm(); ctx.saveState(); ctx.render(); ctx.showToast(existing ? "Занятие обновлено" : "Занятие добавлено");
@@ -442,7 +444,8 @@
         const form = lessonForm.elements;
         form.id.value = lesson.id; form.subjectId.value = lesson.subjectId; form.weekday.value = String(lesson.weekday);
         form.weekType.value = lesson.weekType || "all";
-        form.startTime.value = lesson.startTime; form.endTime.value = lesson.endTime; form.room.value = lesson.room || "";
+        form.startTime.value = lesson.startTime; form.endTime.value = lesson.endTime;
+        form.lessonType.value = lesson.lessonType || ""; form.teacher.value = lesson.teacher || ""; form.room.value = lesson.room || "";
         root.querySelector("#studyLessonFormTitle").textContent = "Изменить занятие";
         lessonForm.querySelector('button[type="submit"]').textContent = "Сохранить занятие";
         root.querySelector("#studyLessonCancel").hidden = false;

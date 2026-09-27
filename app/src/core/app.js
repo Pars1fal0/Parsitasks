@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 18;
+﻿const SCHEMA_VERSION = 19;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];

@@ -20,6 +20,8 @@
       return {
         id: String(lesson.id || config.createId()), subjectId: lesson.subjectId, weekday,
         weekType: ["even", "odd"].includes(lesson.weekType) ? lesson.weekType : "all",
+        lessonType: ["lecture", "practice"].includes(lesson.lessonType) ? lesson.lessonType : "",
+        teacher: config.cleanText(lesson.teacher).slice(0, 120),
         startTime, endTime, room: config.cleanText(lesson.room).slice(0, 80),
         createdAt: timestamp(lesson.createdAt), updatedAt: timestamp(lesson.updatedAt || lesson.createdAt),
       };

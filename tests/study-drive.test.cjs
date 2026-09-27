@@ -39,11 +39,13 @@ module.exports = [
       const subjects = model.normalizeSubjects([{ id: "math", name: "Математика" }], normalizeConfig);
       const lessons = model.normalizeLessons([
         { id: "weekly", subjectId: "math", weekday: 2, startTime: "09:00", endTime: "09:45" },
-        { id: "even", subjectId: "math", weekday: 1, weekType: "even", startTime: "10:00", endTime: "10:45" },
+        { id: "even", subjectId: "math", weekday: 1, weekType: "even", lessonType: "lecture", teacher: "Иванова", startTime: "10:00", endTime: "10:45" },
       ], normalizeConfig, subjects);
       const cycle = model.normalizeWeekCycle({ anchorMonday: "2026-12-28", anchorParity: "even", updatedAt: "2026-09-27T10:00:00.000Z" });
       assert.equal(lessons[0].weekType, "all");
       assert.equal(lessons[1].weekType, "even");
+      assert.equal(lessons[1].lessonType, "lecture");
+      assert.equal(lessons[1].teacher, "Иванова");
       assert.equal(model.lessonOccursOnDate(lessons[1], "2027-01-04", cycle), false);
       assert.equal(model.lessonOccursOnDate(lessons[1], "2027-01-11", cycle), true);
       assert.equal(model.nextLessonDate([lessons[1]], "math", "2026-12-29", cycle), "2027-01-11");

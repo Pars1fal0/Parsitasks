@@ -19,7 +19,7 @@
     nutritionTemplates: ["title", "type", "time", "servings", "ingredients", "nutrition", "notes"],
     categories: ["name", "color"],
     studySubjects: ["name", "color", "teacher"],
-    studyLessons: ["subjectId", "weekday", "weekType", "startTime", "endTime", "room"],
+    studyLessons: ["subjectId", "weekday", "weekType", "startTime", "endTime", "lessonType", "teacher", "room"],
     studyFiles: ["googleId", "name", "mime", "size", "subjectId", "url"],
   };
 
