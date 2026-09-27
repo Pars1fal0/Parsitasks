@@ -43,4 +43,11 @@ module.exports = [
       assert.ok(staticFetch.startsWith("event.respondWith"), "static resources must be fetched from the network first");
     },
   },
+  {
+    name: "service worker never caches authenticated API responses",
+    fn() {
+      const serviceWorker = fs.readFileSync(path.resolve(__dirname, "..", "app", "sw.js"), "utf8");
+      assert.match(serviceWorker, /url\.pathname\.startsWith\("\/api\/"\)\) return;/);
+    },
+  },
 ];

@@ -1,9 +1,9 @@
-﻿const SCHEMA_VERSION = 16;
+﻿const SCHEMA_VERSION = 17;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
 const VALID_BACKUP_SCHEDULES = ["0", "5", "15", "30", "60"];
-const VALID_VIEWS = ["tasks", "timeline", "habits", "goals", "overview", "nutrition", "journal", "board", "archive", "settings"];
+const VALID_VIEWS = ["tasks", "timeline", "habits", "goals", "overview", "study", "nutrition", "journal", "board", "archive", "settings"];
 
 const appUtils = window.RhythmAppUtils.createAppUtils({
   getFirstDayOfWeek: () => firstDayOfWeek,
@@ -75,6 +75,10 @@ const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
   pruneSyncMeta: window.RhythmSyncMetadata.pruneSyncMeta,
   normalizeTaskFlags,
   normalizeTaskOrder,
+  normalizeStudySubjects: window.RhythmStudyModel.normalizeSubjects,
+  normalizeStudyLessons: window.RhythmStudyModel.normalizeLessons,
+  normalizeStudyFiles: window.RhythmStudyModel.normalizeFiles,
+  normalizeTaskStudy: window.RhythmStudyModel.normalizeTaskStudy,
   randomCategoryColor,
   recurrence: window.RhythmRecurrence,
   sanitizeColor,
@@ -415,6 +419,7 @@ const els = {
     nutrition: document.querySelector("#nutritionView"),
     overview: document.querySelector("#overviewView"),
     settings: document.querySelector("#settingsView"),
+    study: document.querySelector("#studyView"),
     tasks: document.querySelector("#tasksView"),
     timeline: document.querySelector("#timelineView"),
   },
@@ -886,6 +891,7 @@ const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
     resetHabitForm({ open: false });
     resetGoalForm({ open: false });
     if (result.view === "tasks") clearTaskFilters();
+    if (result.type === "material") studyController.setTab("materials");
     if (result.view === "archive") {
       archiveCategoryFilter = "all";
       archiveSearchQuery = result.title;
@@ -1284,6 +1290,18 @@ const dailyPulseController = window.RhythmDailyPulse.createDailyPulse({
   taskDetails,
 });
 
+const studyController = window.RhythmStudyController.createStudyController({
+  confirmAction,
+  createId,
+  deleteTask: (id) => taskState.deleteTask(id),
+  getAccessToken: async () => (await remoteAuth.ensureFreshSession().catch(() => null))?.access_token || "",
+  getState: () => state,
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
+  render,
+  saveState,
+  showToast,
+});
+
 const viewRenderer = window.RhythmViewRenderer.createViewRenderer({
   renderArchive,
   renderCategories,
@@ -1299,6 +1317,7 @@ const viewRenderer = window.RhythmViewRenderer.createViewRenderer({
   renderSettingsBackupStatus,
   renderTasks,
   renderTimeline,
+  renderStudy: studyController.render,
   renderWeekdayLabels,
 });
 
@@ -1480,6 +1499,7 @@ async function init() {
   nutritionView.bindEvents();
   boardView.bindEvents();
   googleCalendarController.bindEvents();
+  studyController.bindEvents();
   globalSearch.bindEvents();
   appEvents.bind();
   syncNavigationRoute({ replace: true });
@@ -1510,6 +1530,7 @@ async function initializeHostedConfig() {
   const result = await window.RhythmHostedConfig.loadHostedConfig();
   if (!result.managed) {
     await googleCalendarController.initialize();
+    await studyController.initialize();
     return;
   }
   managedRemoteConfig = true;
@@ -1528,6 +1549,7 @@ async function initializeHostedConfig() {
     if (remoteAuth.getSession()?.access_token) await synchronizeAuthenticatedAccount();
   }
   await googleCalendarController.initialize();
+  await studyController.initialize();
 }
 
 async function synchronizeAuthenticatedAccount() {
@@ -2380,7 +2402,9 @@ function sortTasks(a, b, orderMap = new Map()) {
 function taskDetails(task) {
   const details = [];
   const category = getCategory(task.categoryId);
+  const subject = state.studySubjects.find((item) => item.id === task.studySubjectId);
   if (taskHasSchedule(task)) details.push(formatTaskScheduleLabel(task));
+  if (subject) details.push(subject.name);
   if (category) details.push(category.name);
   if (task.repeat !== "none") details.push(formatTaskRepeat(task));
   if (taskHasSchedule(task) && task.reminderOffset !== "none") details.push(reminderLabel(task.reminderOffset));
@@ -2396,9 +2420,12 @@ function taskMatchesSearch(task, query, dateKey = "") {
   if (!search) return true;
 
   const category = getCategory(task.categoryId);
+  const subject = state.studySubjects.find((item) => item.id === task.studySubjectId);
   const haystack = [
     task.title,
     category?.name,
+    subject?.name,
+    task.studyDetails,
     priorityLabels[task.priority],
     formatTaskRepeat(task),
     task.time,
@@ -2426,7 +2453,10 @@ function archiveEntryMatchesSearch(entry, query) {
 
 function taskMetaItems(task) {
   const category = getCategory(task.categoryId);
+  const subject = state.studySubjects.find((item) => item.id === task.studySubjectId);
   const items = [];
+
+  if (subject) items.push({ categoryColor: subject.color, label: subject.name, type: "study" });
 
   if (category) {
     items.push({

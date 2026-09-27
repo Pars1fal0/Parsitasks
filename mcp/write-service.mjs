@@ -420,7 +420,7 @@ function assertOccurrence(task, date) {
 
 function prepareState(state) {
   const next = clone(state);
-  next.schemaVersion = Math.max(16, Number(next.schemaVersion) || 0);
+  next.schemaVersion = Math.max(17, Number(next.schemaVersion) || 0);
   next.tasks = Array.isArray(next.tasks) ? next.tasks : [];
   next.habits = Array.isArray(next.habits) ? next.habits : [];
   next.goals = Array.isArray(next.goals) ? next.goals : [];

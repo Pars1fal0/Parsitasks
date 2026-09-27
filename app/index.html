@@ -13,6 +13,7 @@
     <script src="src/platform/shell-version.js?v=1"></script>
     <link rel="stylesheet" href="assets/styles/styles.css?v=40">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
+    <link rel="stylesheet" href="assets/styles/study.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -54,6 +55,7 @@
       <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 0 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 0 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 0 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
       <symbol id="icon-skip" viewBox="0 0 24 24"><path d="M7 4v16"/><path d="m11 7 5 5-5 5"/><path d="M18 5v14"/></symbol>
       <symbol id="icon-tasks" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></symbol>
+      <symbol id="icon-study" viewBox="0 0 24 24"><path d="M3 5.5c3-1.4 6-1.4 9 .2 3-1.6 6-1.6 9-.2v14c-3-1.4-6-1.4-9 .2-3-1.6-6-1.6-9-.2v-14ZM12 5.7v14"/></symbol>
       <symbol id="icon-target" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/><path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/><path d="M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></symbol>
       <symbol id="icon-text" viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></symbol>
       <symbol id="icon-duplicate" viewBox="0 0 24 24"><path d="M8 8h11v11H8V8Z"/><path d="M5 16H4V4h12v1"/></symbol>
@@ -95,6 +97,10 @@
             <svg class="ui-icon"><use href="#icon-calendar"></use></svg>
             <span>Календарь</span>
           </button>
+          <button class="nav-tab" data-view="study" type="button">
+            <svg class="ui-icon"><use href="#icon-study"></use></svg>
+            <span>Учёба</span>
+          </button>
           <button class="nav-tab" data-view="nutrition" type="button">
             <svg class="ui-icon"><use href="#icon-nutrition"></use></svg>
             <span>Питание</span>
@@ -121,6 +127,10 @@
               <span>Еще</span>
             </summary>
             <div class="nav-more-menu">
+              <button class="nav-tab" data-view="study" type="button">
+                <svg class="ui-icon"><use href="#icon-study"></use></svg>
+                <span>Учёба</span>
+              </button>
               <button class="nav-tab" data-view="goals" type="button">
                 <svg class="ui-icon"><use href="#icon-target"></use></svg>
                 <span>Цели</span>
@@ -1151,6 +1161,87 @@
           </div>
         </section>
 
+        <section class="view study-view" id="studyView" aria-labelledby="studyHeading">
+          <div class="toolbar">
+            <div>
+              <h2 id="studyHeading">Учёба</h2>
+              <p class="muted" id="studySummary">Предметы, занятия и задания в одном месте.</p>
+            </div>
+            <div class="study-drive-control">
+              <span id="studyDriveStatus" aria-live="polite">Проверяем Google Drive...</span>
+              <button class="ghost-button compact-button" id="studyDriveConnect" type="button">Подключить Drive</button>
+              <button class="ghost-button compact-button" id="studyDriveDisconnect" type="button" hidden>Отключить</button>
+            </div>
+          </div>
+          <div class="study-tabs" role="tablist" aria-label="Разделы учёбы">
+            <button type="button" role="tab" data-study-tab="homework" aria-selected="true">Домашнее</button>
+            <button type="button" role="tab" data-study-tab="schedule" aria-selected="false">Расписание</button>
+            <button type="button" role="tab" data-study-tab="materials" aria-selected="false">Материалы</button>
+          </div>
+          <div class="study-pane is-active" data-study-pane="homework" role="tabpanel">
+            <div class="study-layout">
+              <section class="study-main" aria-labelledby="studyHomeworkHeading">
+                <div class="study-section-heading"><h3 id="studyHomeworkHeading">Домашние задания</h3><select id="studyHomeworkFilter" aria-label="Фильтр по предмету"><option value="all">Все предметы</option></select></div>
+                <div id="studyHomeworkList" class="study-list"></div>
+              </section>
+              <form id="studyHomeworkForm" class="study-form" aria-label="Добавить домашнее задание">
+                <h3 id="studyHomeworkFormTitle">Новое задание</h3>
+                <input type="hidden" name="id">
+                <label>Предмет<select name="subjectId" required></select></label>
+                <label>Что сделать<input name="title" maxlength="240" required placeholder="Например, решить задачи 4–6"></label>
+                <label>Подробности<textarea name="details" rows="3" maxlength="4000" placeholder="Страницы, условия, примечания"></textarea></label>
+                <div class="study-field-row"><label>Сдать до<input name="date" type="date" required></label><label>Время, если есть<input name="time" type="time"></label></div>
+                <fieldset class="study-file-picker"><legend>Материалы</legend><div id="studyHomeworkFiles"></div></fieldset>
+                <div class="study-form-actions"><button class="primary-button" type="submit">Сохранить задание</button><button class="ghost-button" id="studyHomeworkCancel" type="button" hidden>Отмена</button></div>
+              </form>
+            </div>
+          </div>
+          <div class="study-pane" data-study-pane="schedule" role="tabpanel" hidden>
+            <div class="study-layout">
+              <section class="study-main" aria-labelledby="studyScheduleHeading">
+                <h3 id="studyScheduleHeading">Расписание недели</h3>
+                <div id="studyScheduleList" class="study-schedule"></div>
+              </section>
+              <div class="study-side-stack">
+                <form id="studyLessonForm" class="study-form" aria-label="Добавить занятие">
+                  <h3 id="studyLessonFormTitle">Добавить занятие</h3>
+                  <input name="id" type="hidden">
+                  <label>Предмет<select name="subjectId" required></select></label>
+                  <label>День недели<select name="weekday" required><option value="1">Понедельник</option><option value="2">Вторник</option><option value="3">Среда</option><option value="4">Четверг</option><option value="5">Пятница</option><option value="6">Суббота</option><option value="0">Воскресенье</option></select></label>
+                  <div class="study-field-row"><label>Начало<input name="startTime" type="time" required></label><label>Конец<input name="endTime" type="time" required></label></div>
+                  <label>Аудитория<input name="room" maxlength="80" placeholder="Необязательно"></label>
+                  <div class="study-form-actions"><button class="primary-button" type="submit">Добавить в расписание</button><button class="ghost-button" id="studyLessonCancel" type="button" hidden>Отмена</button></div>
+                </form>
+                <form id="studySubjectForm" class="study-form" aria-label="Добавить предмет">
+                  <h3 id="studySubjectFormTitle">Предметы</h3>
+                  <input name="id" type="hidden">
+                  <div id="studySubjectList" class="study-subject-list"></div>
+                  <label>Название<input name="name" maxlength="80" required placeholder="Название предмета"></label>
+                  <div class="study-field-row"><label>Цвет<input name="color" type="color" value="#56c8a6"></label><label>Преподаватель<input name="teacher" maxlength="120" placeholder="Необязательно"></label></div>
+                  <div class="study-form-actions"><button class="primary-button" type="submit">Добавить предмет</button><button class="ghost-button" id="studySubjectCancel" type="button" hidden>Отмена</button></div>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div class="study-pane" data-study-pane="materials" role="tabpanel" hidden>
+            <div class="study-layout">
+              <section class="study-main" aria-labelledby="studyMaterialsHeading">
+                <div class="study-section-heading"><h3 id="studyMaterialsHeading">Материалы</h3><select id="studyMaterialFilter" aria-label="Фильтр материалов"><option value="all">Все предметы</option></select></div>
+                <div id="studyMaterialList" class="study-list"></div>
+              </section>
+              <form id="studyMaterialForm" class="study-form" aria-label="Загрузить материал">
+                <h3>Новый материал</h3>
+                <label>Предмет<select name="subjectId"><option value="">Без предмета</option></select></label>
+                <label>Файл<input name="file" type="file" required></label>
+                <progress id="studyUploadProgress" max="100" value="0" hidden></progress>
+                <small id="studyUploadStatus" aria-live="polite"></small>
+                <button class="primary-button" type="submit">Загрузить в Drive</button>
+                <p class="muted">Файл сохранится в вашем Google Drive. В Parsitasks останется только ссылка.</p>
+              </form>
+            </div>
+          </div>
+        </section>
+
         <section class="view" id="archiveView" aria-labelledby="archiveHeading">
           <div class="toolbar">
             <div>
@@ -1680,6 +1771,8 @@
     <script src="src/journal/journal-editor.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-model.js?v=1" defer></script>
     <script src="src/core/data-normalizers.js?v=1" defer></script>
+    <script src="src/study/study-model.js?v=1" defer></script>
+    <script src="src/study/study-controller.js?v=1" defer></script>
     <script src="src/sync/sync-metadata.js?v=6" defer></script>
     <script src="src/sync/tombstone-retention.js?v=2" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
@@ -1737,6 +1830,6 @@
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=2" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=50" defer></script>
+    <script src="src/core/app.js?v=51" defer></script>
   </body>
 </html>

@@ -80,12 +80,18 @@
         )),
       tombstones.categories,
     );
+    const studySubjects = mergeSimpleEntities(localState.studySubjects, remoteState.studySubjects, "studySubjects", localMeta, remoteMeta, tombstones.studySubjects);
+    const studyLessons = mergeSimpleEntities(localState.studyLessons, remoteState.studyLessons, "studyLessons", localMeta, remoteMeta, tombstones.studyLessons);
+    const studyFiles = mergeSimpleEntities(localState.studyFiles, remoteState.studyFiles, "studyFiles", localMeta, remoteMeta, tombstones.studyFiles);
     return {
       ...localState,
       ...remoteState,
       defaultsSeeded: localState.defaultsSeeded === true || remoteState.defaultsSeeded === true || categories.length > 0,
       profile: mergeProfile(localState.profile, remoteState.profile),
       categories,
+      studySubjects,
+      studyLessons,
+      studyFiles,
       tasks,
       habits: applyEntityOrder(habits, localState.habits, remoteState.habits, localMeta.habitOrderUpdatedAt, remoteMeta.habitOrderUpdatedAt),
       goals,
@@ -322,6 +328,7 @@
     const result = {
       tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
+      studySubjects: {}, studyLessons: {}, studyFiles: {},
     };
     Object.keys(result).forEach((type) => {
       const ids = new Set([...Object.keys(local?.[type] || {}), ...Object.keys(remote?.[type] || {})]);

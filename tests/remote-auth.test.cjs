@@ -70,6 +70,27 @@ module.exports = [
     },
   },
   {
+    name: "detects a disabled Google provider without blocking on settings errors",
+    async fn() {
+      const auth = createRemoteAuth({
+        fetch: async (url, options) => {
+          assert.match(url, /auth\/v1\/settings$/);
+          assert.equal(options.headers.apikey, "anon");
+          return { ok: true, json: async () => ({ external: { google: false } }) };
+        },
+        getConfig: () => ({ anonKey: "anon", supabaseUrl: "https://demo.supabase.co" }),
+        storage: createStorage(),
+      });
+      assert.equal(await auth.isGoogleSignInEnabled(), false);
+      const offline = createRemoteAuth({
+        fetch: async () => { throw new Error("offline"); },
+        getConfig: () => ({ anonKey: "anon", supabaseUrl: "https://demo.supabase.co" }),
+        storage: createStorage(),
+      });
+      assert.equal(await offline.isGoogleSignInEnabled(), null);
+    },
+  },
+  {
     name: "restores a Supabase session after the Google OAuth callback",
     async fn() {
       const previousLocation = global.location;

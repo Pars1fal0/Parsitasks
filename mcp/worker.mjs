@@ -26,6 +26,7 @@ import {
 } from "./write-service.mjs";
 import { authenticateSupabaseRequest, createSupabaseStateStore } from "./supabase-state.mjs";
 import { handleGoogleCalendarRequest } from "./google-calendar.mjs";
+import { handleGoogleDriveRequest } from "./google-drive.mjs";
 
 const OAUTH_SCOPES = ["openid", "email"];
 const OAUTH_SECURITY = [{ type: "oauth2", scopes: OAUTH_SCOPES }];
@@ -62,6 +63,12 @@ export default {
       if (url.pathname.startsWith("/api/google-calendar/")) {
         return await handleGoogleCalendarRequest(request, env);
       }
+      if (url.pathname.startsWith("/api/google-drive/")) {
+        const response = await handleGoogleDriveRequest(request, env);
+        const headers = new Headers(response.headers);
+        headers.set("Access-Control-Allow-Origin", "*");
+        return new Response(response.body, { status: response.status, headers });
+      }
       if (url.pathname === "/oauth/consent") {
         if (request.method !== "GET") return methodNotAllowed(["GET"]);
         return consentPage(request, env);
@@ -79,7 +86,7 @@ export default {
       console.error("MCP worker error", error);
       return jsonResponse(
         { error: "internal_error", message: "Внутренняя ошибка Parsitasks MCP" },
-        { status: 500 },
+        { status: 500, headers: url.pathname.startsWith("/api/google-drive/") ? { "Access-Control-Allow-Origin": "*" } : {} },
       );
     }
   },
@@ -807,8 +814,8 @@ function corsResponse() {
   return new Response(null, {
     status: 204,
     headers: {
-      "Access-Control-Allow-Headers": "authorization, content-type, mcp-protocol-version",
-      "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "authorization, content-type, content-range, x-upload-session, mcp-protocol-version",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Max-Age": "86400",
     },

@@ -6,23 +6,26 @@
     journal: "Дневник",
     nutrition: "Питание",
     archive: "Архив",
+    material: "Материал",
   };
 
   function searchWorkspace(state = {}, query = "", options = {}) {
     const search = normalizeQuery(query);
     if (!search) return [];
     const categoryById = new Map((state.categories || []).map((item) => [item.id, item.name]));
+    const subjectById = new Map((state.studySubjects || []).map((item) => [item.id, item.name]));
     const results = [];
 
     (state.tasks || []).forEach((task) => {
       const category = categoryById.get(task.categoryId) || "";
-      if (!matches(`${task.title} ${category}`, search)) return;
+      const subject = subjectById.get(task.studySubjectId) || "";
+      if (!matches(`${task.title} ${category} ${subject} ${task.studyDetails || ""}`, search)) return;
       if (task.completed?.[task.date] !== true) {
         results.push({
           id: task.id,
           type: "task",
           title: task.title,
-          detail: [task.date, category, task.repeat !== "none" ? "Повтор" : ""].filter(Boolean).join(" · "),
+          detail: [task.date, subject, category, task.repeat !== "none" ? "Повтор" : ""].filter(Boolean).join(" · "),
           date: task.date,
           view: "tasks",
         });
@@ -33,11 +36,16 @@
           id: `${task.id}:${date}`,
           type: "archive",
           title: task.title,
-          detail: [date, category, "Выполнено"].filter(Boolean).join(" · "),
+          detail: [date, subject, category, "Выполнено"].filter(Boolean).join(" · "),
           date,
           view: "archive",
         });
       });
+    });
+    (state.studyFiles || []).forEach((file) => {
+      const subject = subjectById.get(file.subjectId) || "";
+      if (!matches(`${file.name} ${subject}`, search)) return;
+      results.push({ id: file.id, type: "material", title: file.name, detail: subject || "Без предмета", view: "study" });
     });
     (state.habits || []).forEach((habit) => {
       if (!matches(`${habit.title} ${habit.unit || ""}`, search)) return;

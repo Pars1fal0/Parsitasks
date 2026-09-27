@@ -175,7 +175,7 @@
     elements.resetButton.addEventListener("click", requestReset);
   }
 
-  function continueWithGoogle() {
+  async function continueWithGoogle() {
     if (busy || !auth) return;
     if (global.location.protocol === "file:") {
       global.open?.(`https://parsitasks.ru/auth?mode=${mode}`, "_blank", "noopener");
@@ -184,6 +184,9 @@
     }
     setBusy(true, "Открываем Google...");
     try {
+      if (await auth.isGoogleSignInEnabled() === false) {
+        throw new Error("Вход через Google сейчас недоступен. Пока используйте email и пароль.");
+      }
       try { global.sessionStorage?.setItem("parsitasks-auth-next", appTarget()); } catch {}
       global.location.assign(auth.createOAuthUrl("google", oauthRedirectUrl()));
     } catch (error) {

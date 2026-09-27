@@ -9,13 +9,16 @@ const CATEGORY_COLORS = ["#19b394", "#4f8cff", "#f59e0b", "#e96b75", "#8b7cf6", 
 
 export function createEmptyState() {
   return {
-    schemaVersion: 16,
+    schemaVersion: 17,
     defaultsSeeded: false,
     profile: { timeZone: "Europe/Moscow" },
     tasks: [],
     habits: [],
     goals: [],
     journalEntries: [],
+    studySubjects: [],
+    studyLessons: [],
+    studyFiles: [],
     nutritionFoods: [],
     nutritionMeals: [],
     nutritionTemplates: [],
@@ -27,6 +30,7 @@ export function createEmptyState() {
     tombstones: {
       tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
+      studySubjects: {}, studyLessons: {}, studyFiles: {},
     },
     syncMeta: emptySyncMeta(),
   };
@@ -442,13 +446,16 @@ function normalizeReminder(value) {
 
 function ensureStateShape(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) throw new Error("Состояние приложения повреждено");
-  state.schemaVersion = Math.max(16, Number(state.schemaVersion) || 0);
+  state.schemaVersion = Math.max(17, Number(state.schemaVersion) || 0);
   state.profile = state.profile && typeof state.profile === "object" ? state.profile : {};
   state.profile.timeZone = normalizeTimeZone(state.profile.timeZone);
   state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
   state.habits = Array.isArray(state.habits) ? state.habits : [];
   state.goals = Array.isArray(state.goals) ? state.goals : [];
   state.journalEntries = Array.isArray(state.journalEntries) ? state.journalEntries : [];
+  state.studySubjects = Array.isArray(state.studySubjects) ? state.studySubjects : [];
+  state.studyLessons = Array.isArray(state.studyLessons) ? state.studyLessons : [];
+  state.studyFiles = Array.isArray(state.studyFiles) ? state.studyFiles : [];
   state.nutritionFoods = Array.isArray(state.nutritionFoods) ? state.nutritionFoods : [];
   state.nutritionMeals = Array.isArray(state.nutritionMeals) ? state.nutritionMeals : [];
   state.nutritionTemplates = Array.isArray(state.nutritionTemplates) ? state.nutritionTemplates : [];

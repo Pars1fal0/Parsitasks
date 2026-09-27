@@ -8,6 +8,7 @@
     const result = {
       tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
+      studySubjects: {}, studyLessons: {}, studyFiles: {},
     };
 
     Object.keys(result).forEach((type) => {

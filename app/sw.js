@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v85-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v86-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -15,6 +15,7 @@ const APP_SHELL = [
   "src/platform/shell-version.js",
   "assets/styles/styles.css",
   "assets/styles/disclosure-menus.css",
+  "assets/styles/study.css",
   "src/core/app-utils.js",
   "src/tasks/quick-input.js",
   "src/tasks/recurrence.js",
@@ -31,6 +32,8 @@ const APP_SHELL = [
   "src/settings/settings-state.js",
   "src/settings/profile-settings.js",
   "src/core/data-normalizers.js",
+  "src/study/study-model.js",
+  "src/study/study-controller.js",
   "src/sync/sync-metadata.js",
   "src/sync/tombstone-retention.js",
   "src/habits/habit-title-history.js",
@@ -147,10 +150,11 @@ self.addEventListener("notificationclick", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  if (new URL(event.request.url).origin !== self.location.origin) return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
   if (event.request.mode === "navigate") {
-    const pathname = new URL(event.request.url).pathname.replace(/\/$/, "") || "/";
+    const pathname = url.pathname.replace(/\/$/, "") || "/";
     const fallback = pathname === "/"
       ? "landing.html"
       : pathname === "/auth"

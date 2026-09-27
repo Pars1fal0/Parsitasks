@@ -13,6 +13,7 @@
 ## Возможности
 
 - задачи на выбранный день с дедлайном, временем, приоритетом, категорией и напоминанием;
+- раздел «Учёба»: предметы, недельное расписание, домашние задания в общем списке задач и личная библиотека материалов на Google Drive;
 - быстрый ввод задач: `Позвонить врачу завтра 10:00 #здоровье !high`;
 - более умный быстрый ввод: `через 2 часа`, `в следующий понедельник вечером`, даты вида `15 июля`;
 - повторяющиеся задачи: каждый день, каждые 2/3 дня, будни, выходные, неделя, месяц, год;
@@ -62,7 +63,7 @@ app/                    Клиентское приложение; источн�
     icons/              Иконка приложения и размеры для PWA
   src/                  Браузерные модули по функциональным областям
     core/ tasks/ habits/ goals/ calendar/ timeline/
-    journal/ board/ nutrition/ auth/ sync/
+    journal/ board/ study/ nutrition/ auth/ sync/
     integrations/ settings/ ui/ platform/ marketing/
 desktop/                Electron: окно, preload, обновления и напоминания
 mcp/                    Cloudflare Worker, OAuth и инструменты ChatGPT
@@ -112,7 +113,7 @@ Parsitasks использует один общий Supabase-проект. Ад�
 1. В Google Auth Platform создай OAuth client типа `Web application`.
 2. Добавь origin `https://parsitasks.ru` и Supabase callback `https://wvkiborhargrzsfwiliq.supabase.co/auth/v1/callback`.
 3. В Supabase открой `Authentication` → `Providers` → `Google`, включи провайдер и укажи Client ID и Client Secret.
-4. В `Authentication` → `URL Configuration` установи Site URL `https://parsitasks.ru` и добавь Redirect URL `https://parsitasks.ru/auth`.
+4. В `Authentication` → `URL Configuration` установи Site URL `https://parsitasks.ru` и добавь Redirect URL `https://parsitasks.ru/auth`. Для входа на локальном сайте добавь также точный Redirect URL `http://127.0.0.1:5185/auth` (или адрес и порт своего локального сервера).
 
 Для локальной проверки отдельно добавь origin `http://127.0.0.1:8790` в Google и Redirect URL `http://127.0.0.1:8790/auth` в Supabase. В production локальные адреса лучше убрать.
 
@@ -143,6 +144,24 @@ $bytes = New-Object byte[] 32
 После `git push` Cloudflare развернёт новую версию. Затем открой `Настройки` → `Google Calendar` → `Подключить Google Calendar`.
 
 Режим `Parsitasks → Google` отправляет временные блоки в основной календарь. Режим `Двусторонняя` дополнительно импортирует обычные события Google как временные блоки Parsitasks. Синхронизируется период от 30 дней назад до 180 дней вперёд. Повторяющиеся задачи разворачиваются в независимые события на конкретные даты, поэтому исключение, перенос или удаление одного дня не изменяет остальные экземпляры серии.
+
+### Учёба и Google Drive
+
+В разделе «Учёба» предметы и занятия хранятся в том же local-first состоянии, что и другие данные Parsitasks. Домашнее задание — обычная задача с привязкой к предмету: выполнение, дедлайн и напоминание видны также в основном списке. При выборе предмета форма предлагает дату следующего занятия; её можно изменить. В «Материалах» файлы загружаются в папку `Parsitasks` **личного Google Drive подключившегося пользователя**. В Supabase и JSON-экспорте сохраняются только метаданные и ID файлов, не их содержимое. Удаление материала из Parsitasks не удаляет его из Drive.
+
+Каждый аккаунт Parsitasks подключает свой Google-аккаунт отдельно. Для подключения используется минимальный scope `drive.file`, отдельный от Google Calendar; refresh-токен хранится зашифрованным в `google_drive_connections` с RLS по `user_id`. Крупные файлы загружаются через возобновляемую сессию небольшими фрагментами. Десктопная версия открывает веб-версию для первоначального согласия Google; после подключения файлы доступны в обоих приложениях через тот же аккаунт Parsitasks.
+
+Настройка для production:
+
+1. В Google Cloud включи `Google Drive API` и добавь scope `https://www.googleapis.com/auth/drive.file` на OAuth consent screen. Используй тот же OAuth client типа `Web application`, что и для Google Calendar.
+2. Добавь разрешённый redirect URI `https://parsitasks.ru/api/google-drive/callback`. Для локальной проверки Worker добавь соответствующий `http://127.0.0.1:<port>/api/google-drive/callback`.
+3. Переведи OAuth consent screen из режима `Testing` в `Production` и пройди требуемую Google проверку для внешних пользователей. В режиме `Testing` подключаться могут только test users, а refresh-токены для этого scope истекают через 7 дней.
+4. Снова выполни `database/supabase-schema.sql` в Supabase SQL Editor. Это добавит таблицу `google_drive_connections` и политики RLS, не удаляя текущие данные.
+5. Проверь, что в Cloudflare заданы `GOOGLE_CALENDAR_CLIENT_ID`, `GOOGLE_CALENDAR_CLIENT_SECRET` и `GOOGLE_TOKEN_ENCRYPTION_KEY`. Drive использует тот же OAuth client, но выдаёт отдельное согласие. После деплоя подключи диск через «Учёба» → «Подключить Drive».
+
+Для локального Worker скопируй `.dev.vars.example` в `.dev.vars` и заполни публичный ключ Supabase, Client ID, Client Secret и ключ шифрования. `.dev.vars` не коммить: локальный Wrangler не получает секреты Cloudflare автоматически. Добавь в Google OAuth client ещё один redirect URI `http://127.0.0.1:5185/api/google-drive/callback` и перезапусти локальный Worker. Вход в Parsitasks через Google и подключение Drive — разные согласия; настройка первого не включает второе автоматически.
+
+Отзыв доступа к Drive, удаление файла в самом Drive или смена Google-аккаунта могут сделать старые ссылки недоступными. JSON-экспорт не является резервной копией бинарных файлов: их нужно сохранять средствами Google Drive. Пока поддерживается загрузка новых файлов; выбор уже существующих файлов через Google Picker остаётся отдельной задачей.
 
 После обновления до `0.17.1` выполни актуальный `database/supabase-schema.sql` ещё раз. Он добавит историю последних 30 облачных версий, краткую сводку для каждой версии и защищённое удаление собственного аккаунта; существующие задачи и аккаунт при этом сохранятся.
 

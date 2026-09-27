@@ -8,6 +8,7 @@
     nutrition: "nutrition",
     overview: "calendar",
     settings: "settings",
+    study: "study",
     tasks: "tasks",
     timeline: "timeline",
   };

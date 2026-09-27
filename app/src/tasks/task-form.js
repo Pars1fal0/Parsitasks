@@ -46,6 +46,10 @@
         notified: { ...(existing?.notified || {}) },
         createdAt: existing?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        studySubjectId: existing?.studySubjectId || "",
+        studyDetails: existing?.studyDetails || "",
+        studyAssignedDate: existing?.studyAssignedDate || "",
+        studyFileIds: existing?.studyFileIds || [],
       };
 
       const isRecurringEdit = Boolean(existing && existing.repeat !== "none" && !existing.sourceTaskId);

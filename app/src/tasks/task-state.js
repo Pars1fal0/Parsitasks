@@ -49,6 +49,7 @@
       state.tombstones ||= {
         tasks: {}, habits: {}, goals: {}, categories: {}, journalEntries: {},
         nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
+        studySubjects: {}, studyLessons: {}, studyFiles: {},
       };
       state.tombstones[type] ||= {};
       state.tombstones[type][id] = new Date().toISOString();

@@ -299,7 +299,7 @@
       meta.replaceChildren();
       ctx.taskMetaItems(task).forEach((item) => {
         const chip = document.createElement("span");
-        chip.className = item.type === "category" ? "task-meta-chip task-category-chip" : "task-meta-chip";
+        chip.className = ["category", "study"].includes(item.type) ? "task-meta-chip task-category-chip" : "task-meta-chip";
         if (item.type === "empty") chip.classList.add("is-empty");
         if (item.categoryColor) {
           const dot = document.createElement("span");

@@ -4,6 +4,7 @@
     tasks: [
       "title", "date", "time", "scheduleMode", "startTime", "endTime", "categoryId", "priority",
       "repeat", "repeatUntil", "sourceTaskId", "movedFromDate", "customRepeat", "reminderOffset",
+      "studySubjectId", "studyDetails", "studyAssignedDate", "studyFileIds",
     ],
     habits: ["startDate", "archived", "archivedAt", "archivedFromDate"],
     goals: ["title", "dueDate", "why"],
@@ -17,6 +18,9 @@
     nutritionMeals: ["date", "type", "time", "title", "servings", "ingredients", "nutrition", "status", "notes"],
     nutritionTemplates: ["title", "type", "time", "servings", "ingredients", "nutrition", "notes"],
     categories: ["name", "color"],
+    studySubjects: ["name", "color", "teacher"],
+    studyLessons: ["subjectId", "weekday", "startTime", "endTime", "room"],
+    studyFiles: ["googleId", "name", "mime", "size", "subjectId", "url"],
   };
 
   function createSyncMetadataTracker(options = {}) {
@@ -128,6 +132,9 @@
       boardItems: new Set(idsOf(state.boardItems)),
       journalEntries: new Set(idsOf(state.journalEntries)),
       categories: new Set(idsOf(state.categories)),
+      studySubjects: new Set(idsOf(state.studySubjects)),
+      studyLessons: new Set(idsOf(state.studyLessons)),
+      studyFiles: new Set(idsOf(state.studyFiles)),
     };
     Object.keys(meta.entityFields).forEach((type) => {
       Object.keys(meta.entityFields[type]).forEach((id) => {

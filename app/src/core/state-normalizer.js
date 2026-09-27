@@ -12,6 +12,9 @@
         goals: [],
         boardItems: [],
         journalEntries: [],
+        studySubjects: [],
+        studyLessons: [],
+        studyFiles: [],
         nutritionFoods: [],
         nutritionMeals: [],
         nutritionTemplates: [],
@@ -74,6 +77,10 @@
         return category.id;
       };
 
+      normalized.studySubjects = config.normalizeStudySubjects?.(raw.studySubjects, config) || [];
+      normalized.studyLessons = config.normalizeStudyLessons?.(raw.studyLessons, config, normalized.studySubjects) || [];
+      normalized.studyFiles = config.normalizeStudyFiles?.(raw.studyFiles, config, normalized.studySubjects) || [];
+
       normalized.tasks = Array.isArray(raw.tasks)
         ? raw.tasks.map((task) => {
             const time = config.cleanTimeValue(task.time);
@@ -108,6 +115,7 @@
               notified: pruneOldNotificationFlags(config.normalizeTaskFlags(task.notified)),
               createdAt: task.createdAt || new Date().toISOString(),
               updatedAt: task.updatedAt || task.createdAt || new Date().toISOString(),
+              ...(config.normalizeTaskStudy?.(task, config, normalized.studySubjects, normalized.studyFiles) || {}),
             };
           })
         : [];
@@ -301,6 +309,7 @@
     const result = {
       tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
+      studySubjects: {}, studyLessons: {}, studyFiles: {},
     };
     Object.keys(result).forEach((type) => {
       Object.entries(value?.[type] || {}).forEach(([id, deletedAt]) => {

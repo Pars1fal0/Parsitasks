@@ -49,6 +49,20 @@
       return url.href;
     }
 
+    async function isGoogleSignInEnabled() {
+      const config = requireConfig();
+      try {
+        const response = await fetchFn(`${config.supabaseUrl}/auth/v1/settings`, {
+          headers: { apikey: config.anonKey },
+        });
+        if (!response.ok) return null;
+        const settings = await response.json();
+        return typeof settings?.external?.google === "boolean" ? settings.external.google : null;
+      } catch {
+        return null;
+      }
+    }
+
     async function authenticate(path, body) {
       const config = requireConfig();
       const response = await fetchFn(`${config.supabaseUrl}/auth/v1/${path}`, {
@@ -197,6 +211,7 @@
       createOAuthUrl,
       getCallbackError,
       getSession,
+      isGoogleSignInEnabled,
       isRecoveryMode,
       refreshSession,
       resetPassword,
