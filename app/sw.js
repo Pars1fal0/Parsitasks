@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v86-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v87-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -16,6 +16,7 @@ const APP_SHELL = [
   "assets/styles/styles.css",
   "assets/styles/disclosure-menus.css",
   "assets/styles/study.css",
+  "assets/styles/notes.css",
   "src/core/app-utils.js",
   "src/tasks/quick-input.js",
   "src/tasks/recurrence.js",
@@ -54,8 +55,10 @@ const APP_SHELL = [
   "src/board/board-assets.js",
   "src/board/board-camera.js",
   "src/journal/journal-model.js",
+  "src/notes/notes-model.js",
   "src/journal/journal-editor.js",
   "src/journal/journal-view.js",
+  "src/notes/notes-view.js",
   "src/board/board-view.js",
   "src/nutrition/nutrition-model.js",
   "src/nutrition/nutrition-controller.js",

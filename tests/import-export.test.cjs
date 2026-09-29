@@ -60,6 +60,31 @@ module.exports = [
     },
   },
   {
+    name: "imports note-only JSON through the normal state pipeline",
+    async fn() {
+      let imported = null;
+      const note = { id: "note-1", title: "Расписание", body: "Аудитория 501" };
+      const importFile = {
+        files: [{ text: async () => JSON.stringify({ app: "Parsitasks", state: { notes: [note] } }) }],
+        value: "selected",
+      };
+      const controller = createImportExport({
+        createUndoSnapshot: () => ({ state: "{}" }),
+        normalizeState: (state) => state,
+        replaceState: (state) => { imported = state; },
+        saveState() {},
+        render() {},
+        showToast() {},
+        storage: { createImportSafetyBackup: () => ({ ok: true }) },
+        els: { importFile },
+      });
+
+      await controller.importData();
+      assert.deepEqual(imported.notes, [note]);
+      assert.equal(importFile.value, "");
+    },
+  },
+  {
     name: "aborts import when the safety backup cannot be written",
     async fn() {
       let replaced = false;

@@ -4,7 +4,7 @@
     board: "Доска идей",
     goals: "Цели",
     habits: "Привычки",
-    journal: "Дневник",
+    journal: "Заметки",
     nutrition: "Питание",
     overview: "Календарь",
     settings: "Настройки",

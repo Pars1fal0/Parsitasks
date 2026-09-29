@@ -12,6 +12,7 @@
         goals: [],
         boardItems: [],
         journalEntries: [],
+        notes: [],
         studySubjects: [],
         studyLessons: [],
         studyFiles: [],
@@ -226,6 +227,7 @@
       normalized.journalEntries = config.normalizeJournalEntries?.(raw.journalEntries, {
         createId: config.createId,
       }) || [];
+      normalized.notes = config.normalizeNotes?.(raw.notes, { createId: config.createId }) || [];
       const foodById = new Map();
       normalized.nutritionFoods = (Array.isArray(raw.nutritionFoods) ? raw.nutritionFoods : [])
         .map((food) => config.normalizeNutritionFood?.(food, { createId: config.createId }))
@@ -309,7 +311,7 @@
 
   function normalizeTombstones(value) {
     const result = {
-      tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, categories: {},
+      tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, notes: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
       studySubjects: {}, studyLessons: {}, studyFiles: {},
     };

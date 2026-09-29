@@ -19,7 +19,7 @@ module.exports = [
           boardItems: [{ type: "text", text: "Идея продукта" }],
         }),
         {
-          counts: { boardItems: 1, goals: 1, habits: 1, journalEntries: 0, nutritionMeals: 0, tasks: 2 },
+          counts: { boardItems: 1, goals: 1, habits: 1, journalEntries: 0, notes: 0, nutritionMeals: 0, tasks: 2 },
           examples: ["Проверить сборку", "Опубликовать", "Читать"],
         },
       );

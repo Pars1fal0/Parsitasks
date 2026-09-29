@@ -6,7 +6,7 @@
     const retentionDays = Math.max(365, Number(options.retentionDays) || DEFAULT_RETENTION_DAYS);
     const cutoff = now - retentionDays * 24 * 60 * 60 * 1000;
     const result = {
-      tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, categories: {},
+      tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, notes: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
       studySubjects: {}, studyLessons: {}, studyFiles: {},
     };

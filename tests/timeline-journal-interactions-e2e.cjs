@@ -131,6 +131,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#confirmAccept").click();
 
     await page.locator('.nav-tab[data-view="journal"]:visible').click();
+    await page.locator('[data-notes-tab="journal"]').click();
     const editor = page.locator("#journalText");
     await editor.fill("Итог дня");
     await editor.press("Control+a");

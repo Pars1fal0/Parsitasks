@@ -44,6 +44,7 @@
         )),
       tombstones.journalEntries,
     );
+    const notes = mergeSimpleEntities(localState.notes, remoteState.notes, "notes", localMeta, remoteMeta, tombstones.notes);
     const nutritionFoods = mergeSimpleEntities(
       localState.nutritionFoods,
       remoteState.nutritionFoods,
@@ -98,6 +99,7 @@
       goals,
       boardItems,
       journalEntries: deduplicateJournalDates(journalEntries),
+      notes,
       nutritionFoods,
       nutritionMeals,
       nutritionTemplates,
@@ -327,7 +329,7 @@
 
   function mergeTombstones(local = {}, remote = {}) {
     const result = {
-      tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, categories: {},
+      tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, notes: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
       studySubjects: {}, studyLessons: {}, studyFiles: {},
     };

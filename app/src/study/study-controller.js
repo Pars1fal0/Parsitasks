@@ -25,6 +25,7 @@
     function bindEvents() {
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.studyTab)));
       root.querySelector("#studyHomeworkFilter").addEventListener("change", render);
+      root.querySelector("#studyOpenNotes").addEventListener("click", () => ctx.openNotesForSubject?.(root.querySelector("#studyHomeworkFilter").value));
       root.querySelector("#studyMaterialFilter").addEventListener("change", render);
       root.querySelector("#studyDriveConnect").addEventListener("click", connect);
       root.querySelector("#studyDriveDisconnect").addEventListener("click", disconnect);
@@ -185,6 +186,8 @@
           body.append(links);
         }
         const actions = element("div", "study-item-actions");
+        const linkedNotes = (state.notes || []).filter((note) => note.taskId === task.id);
+        if (linkedNotes.length) actions.append(actionButton("studyNote", linkedNotes[0].id, `Открыть заметки к заданию «${task.title}»`, "icon-journal"));
         actions.append(actionButton("studyEdit", task.id, "Изменить задание", "icon-edit"), actionButton("studyDelete", task.id, "Удалить задание", "icon-trash"));
         row.append(check, body, actions);
         return row;
@@ -448,9 +451,10 @@
     }
 
     async function handleAction(event) {
-      const button = event.target.closest("button[data-study-edit],button[data-study-delete],button[data-study-lesson-edit],button[data-study-lesson-delete],button[data-study-subject-edit],button[data-study-subject-delete],button[data-study-file-delete]");
+      const button = event.target.closest("button[data-study-note],button[data-study-edit],button[data-study-delete],button[data-study-lesson-edit],button[data-study-lesson-delete],button[data-study-subject-edit],button[data-study-subject-delete],button[data-study-file-delete]");
       if (!button) return;
       const state = ctx.getState();
+      if (button.dataset.studyNote) return ctx.openNote?.(button.dataset.studyNote);
       if (button.dataset.studyEdit) {
         const task = state.tasks.find((item) => item.id === button.dataset.studyEdit);
         if (!task) return;

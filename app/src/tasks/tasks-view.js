@@ -133,6 +133,16 @@
       priority.textContent = ctx.priorityLabels[task.priority] || "Средний";
       priority.classList.add(`priority-${task.priority || "medium"}`);
       renderTaskMeta(meta, task);
+      const linkedNotes = ctx.getNotesForTask?.(task.id) || [];
+      if (linkedNotes.length) {
+        const openNotes = document.createElement("button");
+        openNotes.type = "button";
+        openNotes.className = "task-note-link";
+        openNotes.append(createIcon("journal"), document.createTextNode(` Заметки · ${linkedNotes.length}`));
+        openNotes.setAttribute("aria-label", `Открыть заметки к задаче «${task.title}»`);
+        openNotes.addEventListener("click", () => ctx.openNote?.(linkedNotes[0].id));
+        meta.appendChild(openNotes);
+      }
       if (restoreOverdue) {
         restoreOverdue.hidden = task.acknowledgedOverdue?.[activeDate] !== true;
         restoreOverdue.addEventListener("click", () => ctx.restoreOverdueTask(task, activeDate));
@@ -503,6 +513,15 @@
       button.type = "button";
       button.textContent = label;
       return button;
+    }
+
+    function createIcon(name) {
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      svg.classList.add("ui-icon");
+      use.setAttribute("href", `#icon-${name}`);
+      svg.appendChild(use);
+      return svg;
     }
 
     function appendDetails(node, details) {

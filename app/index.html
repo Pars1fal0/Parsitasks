@@ -13,7 +13,8 @@
     <script src="src/platform/shell-version.js?v=1"></script>
     <link rel="stylesheet" href="assets/styles/styles.css?v=40">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
-    <link rel="stylesheet" href="assets/styles/study.css?v=4">
+    <link rel="stylesheet" href="assets/styles/study.css?v=5">
+    <link rel="stylesheet" href="assets/styles/notes.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -45,6 +46,7 @@
       <symbol id="icon-journal" viewBox="0 0 24 24"><path d="M5 3h13a2 2 0 0 1 2 2v16H7a3 3 0 0 1-3-3V4a1 1 0 0 1 1-1Z"/><path d="M8 3v18M11 8h6M11 12h6"/></symbol>
       <symbol id="icon-nutrition" viewBox="0 0 24 24"><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 1 4 4 4 7h-4"/></symbol>
       <symbol id="icon-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></symbol>
+      <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M8 3h8l-1 6 3 4v2H6v-2l3-4-1-6ZM12 15v6"/></symbol>
       <symbol id="icon-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
       <symbol id="icon-pointer" viewBox="0 0 24 24"><path d="m5 3 14 9-7 2-3 7L5 3Z"/></symbol>
       <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
@@ -107,7 +109,7 @@
           </button>
           <button class="nav-tab" data-view="journal" type="button">
             <svg class="ui-icon"><use href="#icon-journal"></use></svg>
-            <span>Дневник</span>
+            <span>Заметки</span>
           </button>
           <button class="nav-tab" data-view="board" type="button">
             <svg class="ui-icon"><use href="#icon-board"></use></svg>
@@ -137,7 +139,7 @@
               </button>
               <button class="nav-tab" data-view="journal" type="button">
                 <svg class="ui-icon"><use href="#icon-journal"></use></svg>
-                <span>Дневник</span>
+                <span>Заметки</span>
               </button>
               <button class="nav-tab" data-view="board" type="button">
                 <svg class="ui-icon"><use href="#icon-board"></use></svg>
@@ -994,9 +996,64 @@
         </dialog>
 
         <section class="view" id="journalView" aria-labelledby="journalHeading">
-          <div class="toolbar">
+          <div class="toolbar notes-heading">
             <div>
-              <h2 id="journalHeading">Запись дня</h2>
+              <h2 id="journalHeading" class="sr-only">Заметки</h2>
+            </div>
+            <button class="primary-button icon-text-button" id="noteNew" type="button"><svg class="ui-icon"><use href="#icon-plus"></use></svg>Новая заметка</button>
+          </div>
+          <div class="notes-tabs" role="tablist" aria-label="Разделы заметок">
+            <button type="button" role="tab" data-notes-tab="notes" aria-selected="true">Заметки</button>
+            <button type="button" role="tab" data-notes-tab="journal" aria-selected="false">Дневник</button>
+          </div>
+          <div id="notesPane" role="tabpanel">
+            <div class="notes-workspace" id="notesWorkspace">
+              <aside class="notes-sidebar" aria-label="Список заметок">
+                <div class="notes-filters">
+                  <label class="search-box"><svg class="ui-icon"><use href="#icon-search"></use></svg><input id="noteSearch" type="search" placeholder="Поиск заметок" aria-label="Поиск заметок" autocomplete="off"></label>
+                  <select id="noteSubjectFilter" aria-label="Фильтр заметок по предмету"><option value="all">Все заметки</option></select>
+                  <button class="icon-button" id="notePinnedOnly" type="button" aria-label="Только закреплённые" title="Только закреплённые" aria-pressed="false"><svg class="ui-icon"><use href="#icon-pin"></use></svg></button>
+                </div>
+                <div class="notes-count" id="noteCount" aria-live="polite"></div>
+                <div class="notes-list" id="noteList"></div>
+                <div class="notes-empty" id="notesEmpty">Заметок пока нет.</div>
+              </aside>
+              <div class="notes-editor">
+                <div class="notes-placeholder" id="notePlaceholder">
+                  <svg class="ui-icon"><use href="#icon-journal"></use></svg>
+                  <strong>Нет выбранной заметки</strong>
+                </div>
+                <form id="noteForm" class="notes-form" hidden>
+                  <input id="noteId" type="hidden">
+                  <div class="notes-form-top">
+                    <button class="icon-button notes-back" id="noteBack" type="button" aria-label="К списку заметок" title="К списку заметок"><svg class="ui-icon"><use href="#icon-chevron-left"></use></svg></button>
+                    <span id="noteUpdatedAt" class="notes-updated"></span>
+                    <label class="notes-pin-toggle" title="Закрепить заметку"><input id="notePinned" type="checkbox"><svg class="ui-icon"><use href="#icon-pin"></use></svg><span class="sr-only">Закрепить заметку</span></label>
+                    <button class="icon-button notes-delete" id="noteDelete" type="button" aria-label="Удалить заметку" title="Удалить заметку" hidden><svg class="ui-icon"><use href="#icon-trash"></use></svg></button>
+                  </div>
+                  <input id="noteTitle" class="notes-title-input" type="text" maxlength="120" required placeholder="Название заметки" aria-label="Название заметки" autocomplete="off">
+                  <textarea id="noteBody" class="notes-body-input" maxlength="20000" placeholder="Содержание заметки" aria-label="Содержание заметки"></textarea>
+                  <div class="notes-relations">
+                    <label>Предмет<select id="noteSubjectId"><option value="">Без предмета</option></select></label>
+                    <div class="notes-task-picker">
+                      <label for="noteTaskSearch">Задача</label>
+                      <input id="noteTaskSearch" type="search" placeholder="Найти задачу" aria-label="Найти связанную задачу" autocomplete="off">
+                      <select id="noteTaskId" aria-label="Связанная задача"><option value="">Без задачи</option></select>
+                    </div>
+                  </div>
+                  <div class="notes-form-actions">
+                    <button class="primary-button" type="submit">Сохранить</button>
+                    <button class="ghost-button compact-button" id="noteOpenTask" type="button" hidden>Открыть задачу</button>
+                    <span id="noteStatus" role="status" aria-live="polite"></span>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div id="journalPane" role="tabpanel" hidden>
+          <div class="toolbar journal-entry-heading">
+            <div>
+              <h3>Запись дня</h3>
               <p class="muted" id="journalDate">Выбранный день</p>
             </div>
             <span class="journal-save-status" id="journalStatus" role="status" aria-live="polite">Запись сохранится автоматически</span>
@@ -1056,6 +1113,7 @@
                 <div class="journal-history-list" id="journalHistoryList"></div>
               </details>
             </div>
+          </div>
           </div>
         </section>
 
@@ -1181,7 +1239,7 @@
           <div class="study-pane is-active" data-study-pane="homework" role="tabpanel">
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyHomeworkHeading">
-                <div class="study-section-heading"><h3 id="studyHomeworkHeading">Домашние задания</h3><select id="studyHomeworkFilter" aria-label="Фильтр по предмету"><option value="all">Все предметы</option></select></div>
+                <div class="study-section-heading"><h3 id="studyHomeworkHeading">Домашние задания</h3><div class="study-homework-tools"><button class="ghost-button compact-button" id="studyOpenNotes" type="button">Заметки</button><select id="studyHomeworkFilter" aria-label="Фильтр по предмету"><option value="all">Все предметы</option></select></div></div>
                 <div id="studyHomeworkList" class="study-list"></div>
               </section>
               <form id="studyHomeworkForm" class="study-form" aria-label="Добавить домашнее задание">
@@ -1780,7 +1838,7 @@
     <script src="src/integrations/google-calendar-controller.js?v=1" defer></script>
     <script src="src/sync/remote-sync.js?v=2" defer></script>
     <script src="src/sync/remote-sync-controller.js?v=5" defer></script>
-    <script src="src/sync/remote-data-controller.js?v=3" defer></script>
+    <script src="src/sync/remote-data-controller.js?v=4" defer></script>
     <script src="src/sync/device-sync-controller.js?v=1" defer></script>
     <script src="src/sync/sync-history.js?v=1" defer></script>
     <script src="src/sync/sync-diagnostics.js?v=1" defer></script>
@@ -1790,13 +1848,14 @@
     <script src="src/board/board-model.js?v=4" defer></script>
     <script src="src/board/board-assets.js?v=4" defer></script>
     <script src="src/journal/journal-model.js?v=3" defer></script>
+    <script src="src/notes/notes-model.js?v=1" defer></script>
     <script src="src/journal/journal-editor.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-model.js?v=1" defer></script>
     <script src="src/core/data-normalizers.js?v=1" defer></script>
     <script src="src/study/study-model.js?v=4" defer></script>
-    <script src="src/study/study-controller.js?v=5" defer></script>
-    <script src="src/sync/sync-metadata.js?v=8" defer></script>
-    <script src="src/sync/tombstone-retention.js?v=2" defer></script>
+    <script src="src/study/study-controller.js?v=6" defer></script>
+    <script src="src/sync/sync-metadata.js?v=9" defer></script>
+    <script src="src/sync/tombstone-retention.js?v=3" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
     <script src="src/habits/habit-config-history.js?v=1" defer></script>
     <script src="src/habits/habit-freeze.js?v=1" defer></script>
@@ -1804,12 +1863,13 @@
     <script src="src/integrations/mcp-activity-controller.js?v=1" defer></script>
     <script src="src/platform/pwa-controller.js?v=1" defer></script>
     <script src="src/platform/desktop-update-controller.js?v=2" defer></script>
-    <script src="src/core/state-normalizer.js?v=14" defer></script>
+    <script src="src/core/state-normalizer.js?v=15" defer></script>
     <script src="src/core/state-controller.js?v=1" defer></script>
-    <script src="src/core/state-merge.js?v=9" defer></script>
+    <script src="src/core/state-merge.js?v=10" defer></script>
     <script src="src/core/date-rollover.js?v=1" defer></script>
     <script src="src/core/planning-history.js?v=2" defer></script>
     <script src="src/journal/journal-view.js?v=3" defer></script>
+    <script src="src/notes/notes-view.js?v=1" defer></script>
     <script src="src/board/board-camera.js?v=1" defer></script>
     <script src="src/board/board-view.js?v=6" defer></script>
     <script src="src/nutrition/nutrition-controller.js?v=1" defer></script>
@@ -1826,19 +1886,19 @@
     <script src="src/ui/form-dialog.js?v=1" defer></script>
     <script src="src/tasks/categories.js?v=7" defer></script>
     <script src="src/goals/goal-checkpoint-editor.js?v=2" defer></script>
-    <script src="src/ui/global-search.js?v=2" defer></script>
+    <script src="src/ui/global-search.js?v=3" defer></script>
     <script src="src/goals/goals-view.js?v=10" defer></script>
     <script src="src/habits/habit-form.js?v=5" defer></script>
     <script src="src/habits/habits-view.js?v=6" defer></script>
     <script src="src/habits/habit-freeze-dialog.js?v=1" defer></script>
-    <script src="src/settings/import-export.js?v=5" defer></script>
+    <script src="src/settings/import-export.js?v=6" defer></script>
     <script src="src/platform/notifications.js?v=2" defer></script>
     <script src="src/tasks/overdue-controller.js?v=4" defer></script>
     <script src="src/tasks/task-schedule.js?v=1" defer></script>
     <script src="src/tasks/task-form.js?v=12" defer></script>
-    <script src="src/tasks/tasks-view.js?v=14" defer></script>
+    <script src="src/tasks/tasks-view.js?v=15" defer></script>
     <script src="src/tasks/task-moves.js?v=9" defer></script>
-    <script src="src/tasks/task-state.js?v=4" defer></script>
+    <script src="src/tasks/task-state.js?v=5" defer></script>
     <script src="src/settings/settings-sync.js?v=1" defer></script>
     <script src="src/settings/settings-transfer.js?v=2" defer></script>
     <script src="src/sync/save-status.js?v=2" defer></script>
@@ -1850,8 +1910,8 @@
     <script src="src/timeline/timeline-controller.js?v=8" defer></script>
     <script src="src/core/daily-pulse.js?v=1" defer></script>
     <script src="src/core/view-renderer.js?v=2" defer></script>
-    <script src="src/core/app-shell-controller.js?v=2" defer></script>
+    <script src="src/core/app-shell-controller.js?v=3" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=53" defer></script>
+    <script src="src/core/app.js?v=54" defer></script>
   </body>
 </html>

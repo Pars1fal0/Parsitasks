@@ -46,6 +46,7 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator('.nav-tab[data-view="journal"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#journal");
+    await page.locator('[data-notes-tab="journal"]').click();
     await page.locator("#journalText").fill("Сегодня проверил дневник дня.\n\nЗапись сохранилась.");
     await page.waitForTimeout(650);
     assert.equal(
@@ -54,6 +55,7 @@ const { _electron: electron } = require("playwright-core");
     );
     await page.reload();
     await page.waitForSelector('body[data-view="journal"]');
+    await page.locator('[data-notes-tab="journal"]').click();
     assert.match(await page.locator("#journalText").textContent(), /Запись сохранилась/);
 
     assert.equal(await page.locator(".journal-calendar-day").count(), 42);

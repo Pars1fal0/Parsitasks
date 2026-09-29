@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 19;
+﻿const SCHEMA_VERSION = 20;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
@@ -65,6 +65,7 @@ const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
   normalizeMcpActivity: window.RhythmMcpActivity.normalizeActivity,
   normalizeBoardItems: window.RhythmBoardModel.normalizeItems,
   normalizeJournalEntries: window.RhythmJournalModel.normalizeJournalEntries,
+  normalizeNotes: window.RhythmNotesModel.normalizeNotes,
   normalizeNutritionFood: window.RhythmNutritionModel.normalizeFood,
   normalizeNutritionMeal: window.RhythmNutritionModel.normalizeMeal,
   normalizeNutritionSettings: window.RhythmNutritionModel.normalizeSettings,
@@ -278,6 +279,31 @@ const els = {
   importButton: document.querySelector("#importButton"),
   importFile: document.querySelector("#importFile"),
   journalCount: document.querySelector("#journalCount"),
+  journalPane: document.querySelector("#journalPane"),
+  notesPane: document.querySelector("#notesPane"),
+  notesTabs: [...document.querySelectorAll("[data-notes-tab]")],
+  notesWorkspace: document.querySelector("#notesWorkspace"),
+  notesEmpty: document.querySelector("#notesEmpty"),
+  noteNew: document.querySelector("#noteNew"),
+  noteSearch: document.querySelector("#noteSearch"),
+  noteSubjectFilter: document.querySelector("#noteSubjectFilter"),
+  notePinnedOnly: document.querySelector("#notePinnedOnly"),
+  noteCount: document.querySelector("#noteCount"),
+  noteList: document.querySelector("#noteList"),
+  notePlaceholder: document.querySelector("#notePlaceholder"),
+  noteForm: document.querySelector("#noteForm"),
+  noteId: document.querySelector("#noteId"),
+  noteTitle: document.querySelector("#noteTitle"),
+  noteBody: document.querySelector("#noteBody"),
+  notePinned: document.querySelector("#notePinned"),
+  noteSubjectId: document.querySelector("#noteSubjectId"),
+  noteTaskSearch: document.querySelector("#noteTaskSearch"),
+  noteTaskId: document.querySelector("#noteTaskId"),
+  noteDelete: document.querySelector("#noteDelete"),
+  noteOpenTask: document.querySelector("#noteOpenTask"),
+  noteBack: document.querySelector("#noteBack"),
+  noteUpdatedAt: document.querySelector("#noteUpdatedAt"),
+  noteStatus: document.querySelector("#noteStatus"),
   journalCalendarGrid: document.querySelector("#journalCalendarGrid"),
   journalCalendarTitle: document.querySelector("#journalCalendarTitle"),
   journalDate: document.querySelector("#journalDate"),
@@ -561,9 +587,11 @@ const tasksView = window.RhythmTasksView.createTasksView({
   getCategory,
   getOrderedTasksForDate,
   getState: () => state,
+  getNotesForTask: (taskId) => (state.notes || []).filter((note) => note.taskId === taskId),
   getTaskCategoryFilter: () => taskCategoryFilter,
   getTaskFilter: () => taskFilter,
   getTaskSearchQuery: () => taskSearchQuery,
+  openNote: openLinkedNote,
   isTaskDone,
   isTaskExcluded,
   matchesCategoryFilter,
@@ -849,6 +877,18 @@ const journalView = window.RhythmJournalView.createJournalView({
   showToast,
 });
 
+const notesView = window.RhythmNotesView.createNotesView({
+  confirmAction,
+  createId,
+  createUndoSnapshot,
+  els,
+  getState: () => state,
+  openTask: (task) => openDateTasks(task.date, task.id),
+  renderJournal: journalView.render,
+  saveState,
+  showToast,
+});
+
 const boardAssets = window.RhythmBoardAssets.createBoardAssetStore({
   getRemoteConfig: async () => {
     const session = await remoteAuth.ensureFreshSession().catch(() => remoteAuth.getSession());
@@ -893,6 +933,8 @@ const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
     resetGoalForm({ open: false });
     if (result.view === "tasks") clearTaskFilters();
     if (result.type === "material") studyController.setTab("materials");
+    if (result.type === "note") await notesView.openNote(result.id);
+    if (result.type === "journal") await notesView.setMode("journal");
     if (result.view === "archive") {
       archiveCategoryFilter = "all";
       archiveSearchQuery = result.title;
@@ -1298,6 +1340,8 @@ const studyController = window.RhythmStudyController.createStudyController({
   getAccessToken: async () => (await remoteAuth.ensureFreshSession().catch(() => null))?.access_token || "",
   getState: () => state,
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
+  openNote: openLinkedNote,
+  openNotesForSubject,
   render,
   saveState,
   showToast,
@@ -1309,7 +1353,7 @@ const viewRenderer = window.RhythmViewRenderer.createViewRenderer({
   renderDailyPulse,
   renderGoals,
   renderHabits,
-  renderJournal: journalView.render,
+  renderJournal: notesView.render,
   renderNutrition: nutritionView.render,
   renderBoard: boardView.render,
   renderMcpActivity: mcpActivityController.render,
@@ -1345,7 +1389,7 @@ const appEvents = window.RhythmAppEvents.createAppEvents({
     [els.taskForm, els.taskFormPanel],
     [els.habitForm, els.habitFormPanel],
     [els.goalForm, els.goalFormPanel],
-  ].some(([form, panel]) => !panel.classList.contains("is-collapsed") && isFormDirty(form)),
+  ].some(([form, panel]) => !panel.classList.contains("is-collapsed") && isFormDirty(form)) || (activeView === "journal" && notesView.isDirty()),
   calendarDragController,
   changeOverviewMode: (mode, activeButton) => {
     overviewMode = ["week", "month", "year"].includes(mode) ? mode : "week";
@@ -1497,6 +1541,7 @@ async function init() {
   confirmDialog.bindEvents();
   remoteDataController.bindEvents();
   journalView.bindEvents();
+  notesView.bindEvents();
   nutritionView.bindEvents();
   boardView.bindEvents();
   googleCalendarController.bindEvents();
@@ -1571,6 +1616,7 @@ async function synchronizeAuthenticatedAccount() {
       userId,
     }));
     replaceState(pulled.found && pulled.state ? pulled.state : null);
+    notesView.resetForState();
     remoteSyncLastPulledAt = pulled.updatedAt || pulled.clientUpdatedAt || "";
     remoteSyncLastPushedAt = "";
     remoteSyncPending = false;
@@ -1778,6 +1824,26 @@ async function openDateTasks(dateKey, taskId = "") {
     const task = state.tasks.find((item) => item.id === taskId);
     if (task) taskFormController.fillTaskForm(task);
   }
+}
+
+async function openLinkedNote(noteId) {
+  if (!(await confirmDiscardOpenForms())) return;
+  if (!(await notesView.openNote(noteId))) return;
+  activeView = "journal";
+  saveUiState();
+  syncNavigationRoute();
+  render();
+  scrollWorkspaceTop();
+}
+
+async function openNotesForSubject(subjectId = "all") {
+  if (!(await confirmDiscardOpenForms())) return;
+  notesView.setSubjectFilter(subjectId);
+  activeView = "journal";
+  saveUiState();
+  syncNavigationRoute();
+  render();
+  scrollWorkspaceTop();
 }
 
 async function moveTaskToDate(taskId, sourceDateKey, targetDateKey) {
@@ -2227,7 +2293,8 @@ async function confirmDiscardOpenForms() {
     [els.goalForm, els.goalFormPanel],
   ];
   const hasDirtyOpenForm = forms.some(([form, panel]) => panel && !panel.classList.contains("is-collapsed") && isFormDirty(form));
-  if (!hasDirtyOpenForm) return true;
+  const hasDirtyNote = activeView === "journal" && notesView.isDirty();
+  if (!hasDirtyOpenForm && !hasDirtyNote) return true;
   const confirmed = await confirmAction({
     title: "Перейти без сохранения?",
     message: "Открытая форма содержит несохранённые изменения.",
@@ -2235,6 +2302,7 @@ async function confirmDiscardOpenForms() {
     secondaryLabel: "Остаться",
     tone: "danger",
   });
+  if (confirmed === true && hasDirtyNote) notesView.discardDraft();
   return confirmed === true;
 }
 

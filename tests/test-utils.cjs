@@ -8,6 +8,7 @@ const habitTitleHistory = require("../app/src/habits/habit-title-history.js");
 const habitConfigHistory = require("../app/src/habits/habit-config-history.js");
 const mcpActivity = require("../app/src/integrations/mcp-activity.js");
 const journalModel = require("../app/src/journal/journal-model.js");
+const notesModel = require("../app/src/notes/notes-model.js");
 const nutritionModel = require("../app/src/nutrition/nutrition-model.js");
 const boardModel = require("../app/src/board/board-model.js");
 
@@ -89,6 +90,7 @@ function createStateNormalizer() {
     normalizeSyncMeta: syncMetadata.normalizeSyncMeta,
     normalizeMcpActivity: mcpActivity.normalizeActivity,
     normalizeJournalEntries: journalModel.normalizeJournalEntries,
+    normalizeNotes: notesModel.normalizeNotes,
     normalizeNutritionFood: nutritionModel.normalizeFood,
     normalizeNutritionMeal: nutritionModel.normalizeMeal,
     normalizeNutritionTemplate: nutritionModel.normalizeTemplate,

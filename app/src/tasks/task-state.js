@@ -47,7 +47,7 @@
 
     function markDeleted(state, type, id) {
       state.tombstones ||= {
-        tasks: {}, habits: {}, goals: {}, categories: {}, journalEntries: {},
+        tasks: {}, habits: {}, goals: {}, categories: {}, journalEntries: {}, notes: {},
         nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
         studySubjects: {}, studyLessons: {}, studyFiles: {},
       };

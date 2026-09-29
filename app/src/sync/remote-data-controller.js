@@ -212,6 +212,7 @@
       ["tasks", "title"],
       ["habits", "title"],
       ["goals", "title"],
+      ["notes", "title"],
       ["nutritionMeals", "title"],
       ["boardItems", "text"],
     ];

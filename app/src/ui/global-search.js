@@ -4,6 +4,7 @@
     habit: "Привычка",
     goal: "Цель",
     journal: "Дневник",
+    note: "Заметка",
     nutrition: "Питание",
     archive: "Архив",
     material: "Материал",
@@ -78,6 +79,18 @@
         title: `Запись за ${options.formatDate?.(entry.date) || entry.date}`,
         detail: excerptAround(entry.text, search),
         date: entry.date,
+        view: "journal",
+      });
+    });
+    (state.notes || []).forEach((note) => {
+      const subject = subjectById.get(note.subjectId) || "";
+      const task = (state.tasks || []).find((item) => item.id === note.taskId)?.title || "";
+      if (!matches(`${note.title} ${note.body} ${subject} ${task}`, search)) return;
+      results.push({
+        id: note.id,
+        type: "note",
+        title: note.title,
+        detail: [subject, task, excerptAround(note.body, search)].filter(Boolean).join(" · "),
         view: "journal",
       });
     });

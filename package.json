@@ -10,7 +10,7 @@
   "scripts": {
     "desktop": "electron .",
     "desktop:smoke": "electron . --smoke-test",
-    "test:e2e": "node tests/electron-e2e.cjs && node tests/timeline-journal-interactions-e2e.cjs && node tests/menu-popovers-e2e.cjs && node tests/accessibility-e2e.cjs && node tests/study-e2e.cjs",
+    "test:e2e": "node tests/electron-e2e.cjs && node tests/timeline-journal-interactions-e2e.cjs && node tests/menu-popovers-e2e.cjs && node tests/accessibility-e2e.cjs && node tests/study-e2e.cjs && node tests/notes-e2e.cjs",
     "lint": "node tests/lint.cjs",
     "test": "node tests/run-tests.cjs",
     "test:security-live": "node tests/security-live.cjs",
