@@ -55,6 +55,26 @@ module.exports = [
     },
   },
   {
+    name: "homework deadline prefers the next practice and falls back to a lecture",
+    fn() {
+      const cycle = model.normalizeWeekCycle({ anchorMonday: "2026-09-28", anchorParity: "even" });
+      const lecture = { subjectId: "math", weekday: 1, weekType: "even", lessonType: "lecture" };
+      const practice = { subjectId: "math", weekday: 2, weekType: "odd", lessonType: "practice" };
+      assert.equal(model.nextLessonDate([lecture, practice], "math", "2026-09-27", cycle), "2026-10-06");
+      assert.equal(model.nextLessonDate([lecture], "math", "2026-09-27", cycle), "2026-09-28");
+      assert.equal(model.nextLessonDate([lecture, practice], "math", "2026-09-27", {}), "");
+    },
+  },
+  {
+    name: "completed homework stays visible through its due date only",
+    fn() {
+      const dueYesterday = { date: "2026-09-28", completed: { "2026-09-28": true } };
+      assert.equal(model.isHomeworkVisible(dueYesterday, "2026-09-28"), true);
+      assert.equal(model.isHomeworkVisible(dueYesterday, "2026-09-29"), false);
+      assert.equal(model.isHomeworkVisible({ ...dueYesterday, completed: {} }, "2026-09-29"), true);
+    },
+  },
+  {
     name: "study model keeps only valid subjects, lessons and Drive file identifiers",
     fn() {
       const subjects = model.normalizeSubjects([{ id: "math", name: " Математика ", color: "#123456" }], normalizeConfig);

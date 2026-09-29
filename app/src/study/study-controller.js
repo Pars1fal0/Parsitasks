@@ -160,7 +160,8 @@
       const filter = root.querySelector("#studyHomeworkFilter").value;
       const subjects = new Map(state.studySubjects.map((item) => [item.id, item]));
       const files = new Map(state.studyFiles.map((item) => [item.id, item]));
-      const tasks = state.tasks.filter((task) => task.studySubjectId && (filter === "all" || task.studySubjectId === filter))
+      const todayKey = localDateKey(new Date());
+      const tasks = state.tasks.filter((task) => task.studySubjectId && studyModel.isHomeworkVisible(task, todayKey) && (filter === "all" || task.studySubjectId === filter))
         .sort((a, b) => Number(a.completed?.[a.date] === true) - Number(b.completed?.[b.date] === true) || a.date.localeCompare(b.date) || String(a.time).localeCompare(String(b.time)));
       const list = root.querySelector("#studyHomeworkList");
       list.replaceChildren(...(tasks.length ? tasks.map((task) => {
@@ -187,7 +188,7 @@
         actions.append(actionButton("studyEdit", task.id, "Изменить задание", "icon-edit"), actionButton("studyDelete", task.id, "Удалить задание", "icon-trash"));
         row.append(check, body, actions);
         return row;
-      }) : [element("div", "study-empty", "Заданий пока нет. Добавьте первое через форму.")]));
+      }) : [element("div", "study-empty", "Актуальных заданий нет.")]));
     }
 
     function renderFileChoices(files) {

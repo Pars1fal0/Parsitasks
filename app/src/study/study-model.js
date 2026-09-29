@@ -66,13 +66,19 @@
     if (!after) return "";
     const relevant = lessons.filter((lesson) => lesson.subjectId === subjectId && (cycle?.anchorMonday || !lesson.weekType || lesson.weekType === "all"));
     if (!relevant.length) return "";
-    for (let offset = 1; offset <= 14; offset++) {
-      const candidate = new Date(after);
-      candidate.setUTCDate(candidate.getUTCDate() + offset);
-      const key = candidate.toISOString().slice(0, 10);
-      if (relevant.some((lesson) => lessonOccursOnDate(lesson, key, cycle))) return key;
+    for (const preferredType of ["practice", "other"]) {
+      for (let offset = 1; offset <= 14; offset++) {
+        const candidate = new Date(after);
+        candidate.setUTCDate(candidate.getUTCDate() + offset);
+        const key = candidate.toISOString().slice(0, 10);
+        if (relevant.some((lesson) => (preferredType === "practice" ? lesson.lessonType === "practice" : lesson.lessonType !== "practice") && lessonOccursOnDate(lesson, key, cycle))) return key;
+      }
     }
     return "";
+  }
+
+  function isHomeworkVisible(task, todayKey) {
+    return task.completed?.[task.date] !== true || task.date >= todayKey;
   }
 
   function parseDateKey(value) {
@@ -123,7 +129,7 @@
 
   function timestamp(value) { return Number.isFinite(Date.parse(value)) ? value : new Date().toISOString(); }
 
-  const api = { lessonOccursOnDate, mondayKey, nextLessonDate, normalizeFiles, normalizeLessons, normalizeSubjects, normalizeTaskStudy, normalizeWeekCycle, weekParity };
+  const api = { isHomeworkVisible, lessonOccursOnDate, mondayKey, nextLessonDate, normalizeFiles, normalizeLessons, normalizeSubjects, normalizeTaskStudy, normalizeWeekCycle, weekParity };
   global.RhythmStudyModel = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -66,6 +66,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('#studyLessonForm [name="weekType"]').selectOption("odd");
     await page.locator('#studyLessonForm [name="startTime"]').fill("11:00");
     await page.locator('#studyLessonForm [name="endTime"]').fill("11:45");
+    await page.locator('#studyLessonForm [name="lessonType"]').selectOption("practice");
     await page.locator('#studyLessonForm button[type="submit"]').click();
     assert.match(await page.locator("#studyScheduleList").innerText(), /11:00–11:45/);
     await page.locator("#studyPreviousWeek").click();
@@ -99,15 +100,29 @@ const { _electron: electron } = require("playwright-core");
     }
 
     await page.locator('[data-study-tab="homework"]').click();
+    const nextPractice = await page.evaluate((monday) => {
+      const date = new Date(`${monday}T00:00:00Z`);
+      date.setUTCDate(date.getUTCDate() + 7);
+      return date.toISOString().slice(0, 10);
+    }, currentMonday);
+    const dueYesterday = await page.evaluate(() => {
+      const date = new Date();
+      date.setDate(date.getDate() - 1);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    });
     await page.locator('#studyHomeworkForm [name="subjectId"]').selectOption(subjectId);
+    assert.equal(await page.locator('#studyHomeworkForm [name="date"]').inputValue(), nextPractice);
     await page.locator('#studyHomeworkForm [name="title"]').fill("Решить упражнения 4–6");
-    await page.locator('#studyHomeworkForm [name="date"]').fill("2026-09-28");
+    await page.locator('#studyHomeworkForm [name="date"]').fill(dueYesterday);
     await page.locator('#studyHomeworkForm button[type="submit"]').click();
     assert.match(await page.locator("#studyHomeworkList").innerText(), /Решить упражнения 4–6/);
+    await page.locator('#studyHomeworkList [data-study-check]').click();
+    assert.doesNotMatch(await page.locator("#studyHomeworkList").innerText(), /Решить упражнения 4–6/);
 
     const state = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")));
     assert.equal(state.tasks.find((task) => task.title === "Решить упражнения 4–6").studySubjectId, subjectId);
-    await page.locator("#activeDate").fill("2026-09-28");
+    assert.equal(state.tasks.find((task) => task.title === "Решить упражнения 4–6").completed[dueYesterday], true);
+    await page.locator("#activeDate").fill(dueYesterday);
     await page.locator("#activeDate").dispatchEvent("change");
     await page.locator('.nav-tab[data-view="tasks"]:visible').click();
     assert.match(await page.locator("#tasksView").innerText(), /Решить упражнения 4–6/);
