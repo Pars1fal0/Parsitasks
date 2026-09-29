@@ -6,6 +6,31 @@ async function loadService() {
 
 module.exports = [
   {
+    name: "MCP task completion and reversal update linked goal status",
+    async fn() {
+      const service = await loadService();
+      const state = service.createEmptyState();
+      state.tasks.push({
+        id: "goal-task", title: "Закончить доклад", date: "2026-07-20", repeat: "none", completed: {}, excludedDates: {},
+      });
+      state.goals.push({
+        id: "goal-1", title: "Подготовиться", dueDate: "2026-08-01", status: "active", completedAt: "",
+        steps: [], linkedTaskIds: ["goal-task"], habitTargets: [],
+      });
+      const done = service.completeTaskCommand(state, { taskId: "goal-task", date: "2026-07-20" }, {
+        today: "2026-07-20", now: "2026-07-20T12:00:00.000Z",
+      });
+      assert.equal(done.state.goals[0].status, "done");
+      assert.equal(service.getTodayOverview(done.state, "2026-07-20").activeGoals.length, 0);
+      const reversed = service.completeTaskCommand(done.state, { taskId: "goal-task", date: "2026-07-20", completed: false }, {
+        today: "2026-07-20", now: "2026-07-20T13:00:00.000Z",
+      });
+      assert.equal(reversed.state.goals[0].status, "active");
+      assert.equal(reversed.state.goals[0].completedAt, "");
+      assert.equal(service.getTodayOverview(reversed.state, "2026-07-20").activeGoals[0].progress, 0);
+    },
+  },
+  {
     name: "MCP creates a categorized 15-minute task block without duplicating retries",
     async fn() {
       const service = await loadService();

@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
     <link rel="stylesheet" href="assets/styles/study.css?v=5">
     <link rel="stylesheet" href="assets/styles/notes.css?v=1">
+    <link rel="stylesheet" href="assets/styles/goals.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -711,10 +712,9 @@
         </section>
 
         <section class="view" id="goalsView" aria-labelledby="goalsHeading">
-          <div class="toolbar">
+          <div class="toolbar goals-heading">
             <div>
-              <h2 id="goalsHeading">Мои цели</h2>
-              <p class="muted">Разбивай большой результат на понятные чекпоинты и двигайся к нему без лишнего шума.</p>
+              <h2 id="goalsHeading" class="sr-only">Цели</h2>
             </div>
             <button class="primary-button icon-text-button" id="openGoalForm" type="button">
               <svg class="ui-icon"><use href="#icon-plus"></use></svg>
@@ -738,9 +738,9 @@
           </div>
 
           <div class="split-layout goals-layout">
-            <section class="panel main-panel">
+            <section class="goal-list-section">
               <div class="goal-list" id="goalList"></div>
-              <div class="empty-state" id="goalEmpty">Добавь цель, срок и несколько чекпоинтов на пути к результату.</div>
+              <div class="empty-state" id="goalEmpty">Целей пока нет.</div>
             </section>
 
             <aside class="right-rail">
@@ -754,6 +754,8 @@
                 </div>
                 <form id="goalForm" class="stack-form">
                   <input type="hidden" id="goalId">
+                  <input type="hidden" id="goalLinkedTaskIds">
+                  <input type="hidden" id="goalHabitTargets">
                   <label>
                     Название
                     <input id="goalTitle" type="text" maxlength="100" required placeholder="Например: запустить портфолио">
@@ -768,13 +770,23 @@
                       <small>Порядок можно менять перетаскиванием</small>
                     </div>
                     <div class="goal-checkpoint-list" id="goalCheckpointList"></div>
-                    <p class="goal-checkpoint-empty" id="goalCheckpointEmpty">Пока пусто. Добавь первый шаг к цели.</p>
+                    <p class="goal-checkpoint-empty" id="goalCheckpointEmpty">Чекпоинтов нет.</p>
                     <div class="goal-checkpoint-add">
                       <input id="goalCheckpointInput" type="text" maxlength="120" placeholder="Например: собрать материалы">
                       <button class="icon-button" id="addGoalCheckpoint" type="button" aria-label="Добавить чекпоинт" title="Добавить чекпоинт">
                         <svg class="ui-icon"><use href="#icon-plus"></use></svg>
                       </button>
                     </div>
+                  </div>
+                  <div class="goal-link-section">
+                    <div class="goal-link-heading"><span>Задачи</span><small id="goalTaskLinkCount">0 выбрано</small></div>
+                    <input id="goalTaskSearch" class="goal-link-search" type="search" placeholder="Найти задачу" aria-label="Найти задачу для цели" autocomplete="off">
+                    <div id="goalTaskOptions" class="goal-link-options" aria-label="Задачи цели"></div>
+                  </div>
+                  <div class="goal-link-section">
+                    <div class="goal-link-heading"><span>Привычки</span><small id="goalHabitLinkCount">0 выбрано</small></div>
+                    <input id="goalHabitSearch" class="goal-link-search" type="search" placeholder="Найти привычку" aria-label="Найти привычку для цели" autocomplete="off">
+                    <div id="goalHabitOptions" class="goal-link-options" aria-label="Привычки цели"></div>
                   </div>
                   <div class="form-actions">
                     <button class="primary-button" type="submit">Сохранить</button>
@@ -1849,12 +1861,13 @@
     <script src="src/board/board-assets.js?v=4" defer></script>
     <script src="src/journal/journal-model.js?v=3" defer></script>
     <script src="src/notes/notes-model.js?v=1" defer></script>
+    <script src="src/goals/goal-activity.js?v=1" defer></script>
     <script src="src/journal/journal-editor.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-model.js?v=1" defer></script>
     <script src="src/core/data-normalizers.js?v=1" defer></script>
     <script src="src/study/study-model.js?v=4" defer></script>
     <script src="src/study/study-controller.js?v=6" defer></script>
-    <script src="src/sync/sync-metadata.js?v=9" defer></script>
+    <script src="src/sync/sync-metadata.js?v=10" defer></script>
     <script src="src/sync/tombstone-retention.js?v=3" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
     <script src="src/habits/habit-config-history.js?v=1" defer></script>
@@ -1863,9 +1876,9 @@
     <script src="src/integrations/mcp-activity-controller.js?v=1" defer></script>
     <script src="src/platform/pwa-controller.js?v=1" defer></script>
     <script src="src/platform/desktop-update-controller.js?v=2" defer></script>
-    <script src="src/core/state-normalizer.js?v=15" defer></script>
+    <script src="src/core/state-normalizer.js?v=16" defer></script>
     <script src="src/core/state-controller.js?v=1" defer></script>
-    <script src="src/core/state-merge.js?v=10" defer></script>
+    <script src="src/core/state-merge.js?v=11" defer></script>
     <script src="src/core/date-rollover.js?v=1" defer></script>
     <script src="src/core/planning-history.js?v=2" defer></script>
     <script src="src/journal/journal-view.js?v=3" defer></script>
@@ -1887,7 +1900,7 @@
     <script src="src/tasks/categories.js?v=7" defer></script>
     <script src="src/goals/goal-checkpoint-editor.js?v=2" defer></script>
     <script src="src/ui/global-search.js?v=3" defer></script>
-    <script src="src/goals/goals-view.js?v=10" defer></script>
+    <script src="src/goals/goals-view.js?v=11" defer></script>
     <script src="src/habits/habit-form.js?v=5" defer></script>
     <script src="src/habits/habits-view.js?v=6" defer></script>
     <script src="src/habits/habit-freeze-dialog.js?v=1" defer></script>
@@ -1912,6 +1925,6 @@
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=3" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=54" defer></script>
+    <script src="src/core/app.js?v=55" defer></script>
   </body>
 </html>

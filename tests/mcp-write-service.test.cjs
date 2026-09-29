@@ -35,6 +35,29 @@ function recurringTask() {
 
 module.exports = [
   {
+    name: "MCP habit values advance a linked goal only on scheduled days",
+    async fn() {
+      const { taskService, writeService } = await loadServices();
+      const state = taskService.createEmptyState();
+      state.habits.push({
+        id: "goal-habit", title: "Чтение", type: "check", repeat: "weekly", startDate: "2026-07-20",
+        logs: {}, configHistory: [], availabilityHistory: [], archived: false,
+      });
+      state.goals.push({
+        id: "goal-1", title: "Читать", dueDate: "2026-08-01", status: "active", completedAt: "",
+        steps: [], linkedTaskIds: [], habitTargets: [{ habitId: "goal-habit", targetCount: 1, startDate: "2026-07-20" }],
+      });
+      const offDay = writeService.setHabitValueCommand(state, {
+        requestId: "goal-habit-off-day", habitId: "goal-habit", date: "2026-07-21", value: true,
+      }, { today: "2026-07-21", now: "2026-07-21T12:00:00.000Z" });
+      assert.equal(offDay.state.goals[0].status, "active");
+      const scheduledDay = writeService.setHabitValueCommand(offDay.state, {
+        requestId: "goal-habit-scheduled-day", habitId: "goal-habit", date: "2026-07-20", value: true,
+      }, { today: "2026-07-21", now: "2026-07-21T13:00:00.000Z" });
+      assert.equal(scheduledDay.state.goals[0].status, "done");
+    },
+  },
+  {
     name: "MCP edits only one recurring task occurrence and preserves its priority",
     async fn() {
       const { taskService, writeService } = await loadServices();

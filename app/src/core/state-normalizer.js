@@ -186,6 +186,9 @@
             const createdAt = goal.createdAt || new Date().toISOString();
             const status = goal.status === "done" || goal.completed === true ? "done" : "active";
             const legacyTaskIds = normalizeGoalTaskIds(goal.taskIds);
+            const linkedTaskIds = config.normalizeLinkedTaskIds?.(goal.linkedTaskIds) || [];
+            const habitTargets = config.normalizeHabitTargets?.(goal.habitTargets, config.toDateKey(new Date(createdAt))) || [];
+            const hasActivityLinks = linkedTaskIds.length > 0 || habitTargets.length > 0;
             let steps = normalizeGoalSteps(goal.steps, config);
             if (!steps.length && legacyTaskIds.length) {
               steps = legacyTaskIds
@@ -197,9 +200,9 @@
                   done: status === "done" || task.completed?.[task.date] === true,
                 }));
             }
-            if (status === "done" && !steps.length) {
+            if (status === "done" && !steps.length && !hasActivityLinks) {
               steps = [{ id: config.createId(), title: "Цель достигнута", done: true }];
-            } else if (status === "done") {
+            } else if (status === "done" && !hasActivityLinks) {
               steps.forEach((step) => {
                 step.done = true;
               });
@@ -213,6 +216,8 @@
               why: config.cleanText(goal.why),
               dueDate: config.normalizeDateKey(goal.dueDate),
               steps,
+              linkedTaskIds,
+              habitTargets,
               status,
               completedAt: status === "done" ? goal.completedAt || new Date().toISOString() : "",
               createdAt,

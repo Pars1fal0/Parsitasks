@@ -1,7 +1,40 @@
 (function (global) {
+  const goalActivity = global.RhythmGoalActivity || require("./goal-activity.js");
+
   function createGoalsView(ctx) {
     let celebratingGoalId = "";
     const expandedGoalIds = new Set();
+    const selectedTaskIds = new Set();
+    const selectedHabits = new Map();
+
+    function bindEvents() {
+      ctx.els.goalTaskSearch.addEventListener("input", renderTaskOptions);
+      ctx.els.goalHabitSearch.addEventListener("input", renderHabitOptions);
+      ctx.els.goalTaskOptions.addEventListener("change", (event) => {
+        const control = event.target.closest("[data-goal-task-link]");
+        if (!control) return;
+        if (control.checked) selectedTaskIds.add(control.dataset.goalTaskLink);
+        else selectedTaskIds.delete(control.dataset.goalTaskLink);
+        syncLinkFields();
+        renderTaskOptions();
+      });
+      ctx.els.goalHabitOptions.addEventListener("change", (event) => {
+        const control = event.target;
+        const habitId = control.dataset.goalHabitLink || control.dataset.goalHabitCount || control.dataset.goalHabitStart;
+        if (!habitId) return;
+        if (control.dataset.goalHabitLink) {
+          if (control.checked) selectedHabits.set(habitId, { habitId, targetCount: 7, startDate: ctx.toDateKey(new Date()) });
+          else selectedHabits.delete(habitId);
+          renderHabitOptions();
+        } else {
+          const target = selectedHabits.get(habitId);
+          if (!target) return;
+          if (control.dataset.goalHabitCount) target.targetCount = Number(control.value);
+          else target.startDate = control.value;
+        }
+        syncLinkFields();
+      });
+    }
 
     function renderGoals() {
       const goals = [...(ctx.getState().goals || [])];
@@ -27,7 +60,7 @@
       const meta = document.createElement("p");
       const controls = document.createElement("div");
       const status = document.createElement("span");
-      const progressValue = goalProgress(goal);
+      const activity = activityFor(goal);
       const state = goalState(goal, todayKey);
 
       item.className = `goal-item is-${state}`;
@@ -44,11 +77,11 @@
       identity.append(title, meta);
       controls.append(status, createGoalMenu(goal));
       header.append(identity, controls);
-      item.append(header, createGoalProgress(progressValue, goal.steps || []));
+      item.append(header, createGoalProgress(activity));
 
-      const nextCheckpoint = createNextCheckpoint(goal);
+      const nextCheckpoint = createNextCheckpoint(goal, activity);
       if (nextCheckpoint) item.appendChild(nextCheckpoint);
-      item.appendChild(createCheckpointDetails(goal));
+      item.appendChild(createCheckpointDetails(goal, activity));
 
       if (goal.id === celebratingGoalId) {
         item.classList.add("is-celebrating");
@@ -70,6 +103,8 @@
       const id = ctx.els.goalId.value || ctx.createId();
       const existing = ctx.getState().goals.find((goal) => goal.id === id);
       const steps = ctx.checkpointEditor.getSteps();
+      const linkedTaskIds = goalActivity.normalizeLinkedTaskIds([...selectedTaskIds]);
+      const habitTargets = goalActivity.normalizeHabitTargets([...selectedHabits.values()], ctx.toDateKey(new Date()));
 
       if (!title) {
         ctx.showToast("Напиши название цели");
@@ -81,25 +116,28 @@
         ctx.els.goalDueDate.focus();
         return;
       }
-      if (!steps.length) {
-        ctx.showToast("Добавь хотя бы один чекпоинт");
+      if (!steps.length && !linkedTaskIds.length && !habitTargets.length) {
+        ctx.showToast("Добавь чекпоинт, задачу или привычку");
         ctx.checkpointEditor.focus();
         return;
       }
 
       const undo = ctx.createUndoSnapshot();
-      const done = steps.every((step) => step.done);
       const now = new Date().toISOString();
-      ctx.upsertGoal({
+      const goal = {
         id,
         title,
         dueDate,
         steps,
-        status: done ? "done" : "active",
-        completedAt: done ? existing?.completedAt || now : "",
+        linkedTaskIds,
+        habitTargets,
         createdAt: existing?.createdAt || now,
         updatedAt: now,
-      });
+      };
+      const done = goalActivity.goalActivity(goal, ctx.getState(), { todayKey: ctx.toDateKey(new Date()), habitStatusOnDate: ctx.habitStatusOnDate }).achieved;
+      goal.status = done ? "done" : "active";
+      goal.completedAt = done ? existing?.completedAt || now : "";
+      ctx.upsertGoal(goal);
       ctx.saveState();
       resetGoalForm({ open: false });
       renderGoals();
@@ -112,6 +150,7 @@
       ctx.els.goalTitle.value = goal.title || "";
       ctx.els.goalDueDate.value = goal.dueDate || ctx.getActiveDate();
       ctx.checkpointEditor.setSteps(goal.steps || []);
+      setLinks(goal);
       ctx.els.goalFormHeading.textContent = "Редактировать цель";
       ctx.els.resetGoalForm.textContent = "Отмена";
       ctx.els.goalFormPanel.classList.remove("is-collapsed");
@@ -125,9 +164,118 @@
       ctx.els.goalTitle.value = "";
       ctx.els.goalDueDate.value = ctx.getActiveDate();
       ctx.checkpointEditor.setSteps();
+      setLinks();
       ctx.els.goalFormHeading.textContent = "Новая цель";
       ctx.els.resetGoalForm.textContent = "Очистить";
       ctx.markFormPristine?.(ctx.els.goalForm);
+    }
+
+    function setLinks(goal = {}) {
+      selectedTaskIds.clear();
+      goalActivity.normalizeLinkedTaskIds(goal.linkedTaskIds).forEach((id) => selectedTaskIds.add(id));
+      selectedHabits.clear();
+      goalActivity.normalizeHabitTargets(goal.habitTargets, ctx.toDateKey(new Date()))
+        .forEach((target) => selectedHabits.set(target.habitId, target));
+      ctx.els.goalTaskSearch.value = "";
+      ctx.els.goalHabitSearch.value = "";
+      syncLinkFields();
+      renderTaskOptions();
+      renderHabitOptions();
+    }
+
+    function syncLinkFields() {
+      ctx.els.goalLinkedTaskIds.value = JSON.stringify([...selectedTaskIds]);
+      ctx.els.goalHabitTargets.value = JSON.stringify([...selectedHabits.values()]);
+      ctx.els.goalTaskLinkCount.textContent = `${selectedTaskIds.size} выбрано`;
+      ctx.els.goalHabitLinkCount.textContent = `${selectedHabits.size} выбрано`;
+    }
+
+    function renderTaskOptions() {
+      const query = ctx.els.goalTaskSearch.value.trim().toLocaleLowerCase("ru-RU");
+      const tasks = ctx.getState().tasks || [];
+      const byId = new Map(tasks.map((task) => [task.id, task]));
+      const visible = [...selectedTaskIds].map((id) => byId.get(id) || { id, title: "Удалённая задача", date: "" });
+      tasks.filter((task) => !selectedTaskIds.has(task.id) && (!query || task.title.toLocaleLowerCase("ru-RU").includes(query)))
+        .sort((left, right) => right.date.localeCompare(left.date))
+        .slice(0, 40)
+        .forEach((task) => visible.push(task));
+      ctx.els.goalTaskOptions.replaceChildren(...visible.map((task) => {
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        const text = document.createElement("span");
+        const meta = document.createElement("small");
+        label.className = "goal-link-option";
+        input.type = "checkbox";
+        input.className = "goal-link-control";
+        input.dataset.goalTaskLink = task.id;
+        input.checked = selectedTaskIds.has(task.id);
+        text.textContent = task.title;
+        meta.textContent = task.date ? formatShortDate(task.date) : "Связь недоступна";
+        label.append(input, text, meta);
+        return label;
+      }));
+      if (!visible.length) ctx.els.goalTaskOptions.textContent = tasks.length ? "Задачи не найдены" : "Задач пока нет";
+    }
+
+    function renderHabitOptions() {
+      const query = ctx.els.goalHabitSearch.value.trim().toLocaleLowerCase("ru-RU");
+      const habits = ctx.getState().habits || [];
+      const byId = new Map(habits.map((habit) => [habit.id, habit]));
+      const visible = [...selectedHabits.keys()].map((id) => byId.get(id) || { id, title: "Удалённая привычка" });
+      habits.filter((habit) => !selectedHabits.has(habit.id) && (!query || habit.title.toLocaleLowerCase("ru-RU").includes(query)))
+        .slice(0, 40)
+        .forEach((habit) => visible.push(habit));
+      ctx.els.goalHabitOptions.replaceChildren(...visible.map((habit) => {
+        const row = document.createElement("div");
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        const name = document.createElement("span");
+        row.className = "goal-habit-option";
+        label.className = "goal-link-option";
+        input.type = "checkbox";
+        input.className = "goal-link-control";
+        input.dataset.goalHabitLink = habit.id;
+        input.checked = selectedHabits.has(habit.id);
+        name.textContent = habit.title;
+        label.append(input, name);
+        row.append(label);
+        const target = selectedHabits.get(habit.id);
+        if (target) {
+          const controls = document.createElement("div");
+          const countLabel = document.createElement("label");
+          const count = document.createElement("input");
+          const startLabel = document.createElement("label");
+          const start = document.createElement("input");
+          controls.className = "goal-habit-target";
+          countLabel.textContent = "Дней выполнения";
+          count.type = "number";
+          count.min = "1";
+          count.max = "3650";
+          count.required = true;
+          count.value = String(target.targetCount);
+          count.className = "goal-link-control";
+          count.dataset.goalHabitCount = habit.id;
+          startLabel.textContent = "Считать с";
+          start.type = "date";
+          start.required = true;
+          start.value = target.startDate;
+          start.className = "goal-link-control";
+          start.dataset.goalHabitStart = habit.id;
+          countLabel.append(count);
+          startLabel.append(start);
+          controls.append(countLabel, startLabel);
+          row.append(controls);
+        }
+        return row;
+      }));
+      if (!visible.length) ctx.els.goalHabitOptions.textContent = habits.length ? "Привычки не найдены" : "Привычек пока нет";
+    }
+
+    function activityFor(goal) {
+      return goalActivity.goalActivity(goal, ctx.getState(), {
+        todayKey: ctx.toDateKey(new Date()),
+        habitStatusOnDate: ctx.habitStatusOnDate,
+      });
     }
 
     function toggleGoalStep(goalId, stepId, done) {
@@ -138,7 +286,7 @@
       const undo = ctx.createUndoSnapshot();
       const wasDone = goal.status === "done";
       step.done = done;
-      const achieved = goal.steps.length > 0 && goal.steps.every((item) => item.done);
+      const achieved = activityFor(goal).achieved;
       goal.status = achieved ? "done" : "active";
       goal.completedAt = achieved ? goal.completedAt || new Date().toISOString() : "";
       goal.updatedAt = new Date().toISOString();
@@ -206,59 +354,97 @@
       return svg;
     }
 
-    function createGoalProgress(progressValue, steps) {
+    function createGoalProgress(activity) {
       const progress = document.createElement("div");
       const head = document.createElement("div");
       const label = document.createElement("span");
+      const value = document.createElement("strong");
       const bar = document.createElement("div");
       const fill = document.createElement("span");
-      const completeCount = steps.filter((step) => step.done).length;
 
       progress.className = "goal-progress";
       head.className = "goal-progress-head";
-      label.textContent = `${completeCount} из ${steps.length} чекпоинтов`;
+      label.textContent = "Прогресс";
+      value.textContent = `${activity.percent}%`;
       bar.className = "goal-progress-bar";
       bar.setAttribute("role", "progressbar");
-      bar.setAttribute("aria-label", `Прогресс цели: ${completeCount} из ${steps.length} чекпоинтов`);
+      bar.setAttribute("aria-label", `Прогресс цели: ${activity.percent}%`);
       bar.setAttribute("aria-valuemin", "0");
       bar.setAttribute("aria-valuemax", "100");
-      bar.setAttribute("aria-valuenow", String(progressValue));
-      fill.style.width = `${progressValue}%`;
-      head.appendChild(label);
+      bar.setAttribute("aria-valuenow", String(activity.percent));
+      fill.style.width = `${activity.percent}%`;
+      head.append(label, value);
       bar.appendChild(fill);
       progress.append(head, bar);
       return progress;
     }
 
-    function createNextCheckpoint(goal) {
-      const next = (goal.steps || []).find((step) => !step.done);
-      if (!next) return null;
+    function createNextCheckpoint(goal, activity) {
+      const task = activity.taskResults.find((item) => !item.done && item.task);
+      const step = (goal.steps || []).find((item) => !item.done);
+      const habit = activity.habitResults.find((item) => !item.done && item.habit);
+      if (!task && !step && !habit) return null;
       const element = document.createElement("p");
       const label = document.createElement("span");
       element.className = "goal-next-step";
-      label.textContent = "Следующий";
-      element.append(label, document.createTextNode(next.title));
+      label.textContent = task ? "Задача" : step ? "Следующий шаг" : "Привычка";
+      element.append(label, document.createTextNode(task?.task.title || step?.title || habit?.habit.title));
       return element;
     }
 
-    function createCheckpointDetails(goal) {
+    function createCheckpointDetails(goal, activity) {
       const details = document.createElement("details");
       const summary = document.createElement("summary");
       const list = document.createElement("div");
       const steps = goal.steps || [];
-      const doneCount = steps.filter((step) => step.done).length;
       details.className = "goal-details";
       details.open = expandedGoalIds.has(goal.id);
       details.addEventListener("toggle", () => {
         if (details.open) expandedGoalIds.add(goal.id);
         else expandedGoalIds.delete(goal.id);
       });
-      summary.textContent = `Чекпоинты · ${doneCount}/${steps.length}`;
+      summary.textContent = `План · ${activity.total} пунктов`;
       list.className = "goal-steps";
-      list.setAttribute("aria-label", `Чекпоинты цели ${goal.title}`);
+      list.setAttribute("aria-label", `План цели ${goal.title}`);
       steps.forEach((step) => list.appendChild(createCheckpointControl(goal, step)));
+      activity.taskResults.forEach((result) => list.appendChild(createTaskLinkControl(result)));
+      activity.habitResults.forEach((result) => list.appendChild(createHabitLinkControl(result)));
       details.append(summary, list);
       return details;
+    }
+
+    function createTaskLinkControl(result) {
+      const button = document.createElement("button");
+      const marker = document.createElement("span");
+      const title = document.createElement("span");
+      const meta = document.createElement("small");
+      button.type = "button";
+      button.className = `goal-activity-row${result.done ? " is-done" : ""}`;
+      button.disabled = !result.task;
+      marker.className = "goal-activity-marker";
+      marker.append(createIcon(result.done ? "check" : "tasks"));
+      title.textContent = result.task?.title || "Удалённая задача";
+      meta.textContent = result.done ? "Выполнена" : result.task?.date ? formatShortDate(result.task.date) : "Связь недоступна";
+      button.append(marker, title, meta);
+      button.addEventListener("click", () => ctx.openTask?.(result.task));
+      return button;
+    }
+
+    function createHabitLinkControl(result) {
+      const button = document.createElement("button");
+      const marker = document.createElement("span");
+      const title = document.createElement("span");
+      const meta = document.createElement("small");
+      button.type = "button";
+      button.className = `goal-activity-row${result.done ? " is-done" : ""}`;
+      button.disabled = !result.habit;
+      marker.className = "goal-activity-marker";
+      marker.append(createIcon(result.done ? "check" : "habit"));
+      title.textContent = result.habit?.title || "Удалённая привычка";
+      meta.textContent = `Дней: ${result.count}/${result.targetCount}`;
+      button.append(marker, title, meta);
+      button.addEventListener("click", () => ctx.openHabit?.(result.habit));
+      return button;
     }
 
     function createCheckpointControl(goal, step) {
@@ -297,7 +483,7 @@
       return celebration;
     }
 
-    return { createGoalNode, fillGoalForm, renderGoals, resetGoalForm, saveGoalFromForm };
+    return { bindEvents, createGoalNode, fillGoalForm, renderGoals, resetGoalForm, saveGoalFromForm };
   }
 
   function goalStats(goals, todayKey) {
@@ -313,7 +499,8 @@
     );
   }
 
-  function goalProgress(goal) {
+  function goalProgress(goal, state, options) {
+    if (state) return goalActivity.goalActivity(goal, state, options).percent;
     const steps = Array.isArray(goal.steps) ? goal.steps : [];
     if (!steps.length) return goal.status === "done" ? 100 : 0;
     return Math.round((steps.filter((step) => step.done).length / steps.length) * 100);
@@ -351,6 +538,11 @@
     const [year, month, day] = String(dateKey || "").split("-").map(Number);
     if (!year || !month || !day) return dateKey || "";
     return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(new Date(year, month - 1, day));
+  }
+
+  function formatShortDate(dateKey) {
+    const [year, month, day] = String(dateKey || "").split("-");
+    return year && month && day ? `${day}.${month}.${year}` : dateKey;
   }
 
   function diffDays(fromKey, toKey) {

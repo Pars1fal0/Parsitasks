@@ -259,6 +259,9 @@
       idsOf(local.steps), idsOf(remote.steps), localMeta.goalStepOrder?.[local.id], remoteMeta.goalStepOrder?.[remote.id], timestampOf(local), timestampOf(remote),
     );
     const steps = orderFromIds(mergedById, preferredOrder);
+    if (mergedFields.linkedTaskIds?.length || mergedFields.habitTargets?.length) {
+      return { ...mergedFields, steps };
+    }
     const achieved = steps.length > 0 && steps.every((step) => step.done === true);
     return {
       ...mergedFields,

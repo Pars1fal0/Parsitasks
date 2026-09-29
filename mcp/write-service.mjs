@@ -1,5 +1,7 @@
 import { recordMcpActivity, undoMcpActivity } from "./activity-service.mjs";
 import { getTodayOverview, normalizeCustomRepeat, taskScheduledOn } from "./task-service.mjs";
+import goalActivity from "../app/src/goals/goal-activity.js";
+import habitFreeze from "../app/src/habits/habit-freeze.js";
 
 const PRIORITIES = new Set(["low", "medium", "high"]);
 const SCOPES = new Set(["occurrence", "following", "series"]);
@@ -50,6 +52,7 @@ export function updateTaskCommand(state, input, options = {}) {
   target.updatedAt = now;
   if (target.id === task.id) markEntityFields(nextState, "tasks", target.id, changedFields, now);
   addTaskToOrder(nextState, target.date, target.id, now);
+  reconcileLinkedGoals(nextState, now, options.today);
   const summary = `Задача «${target.title}» обновлена`;
   const activity = recordMcpActivity(before, nextState, {
     requestId,
@@ -104,6 +107,7 @@ export function deleteTaskCommand(state, input, options = {}) {
     : scope === "following"
       ? `Задача «${task.title}» удалена с ${occurrenceDate} и далее`
       : `Задача «${task.title}» удалена`;
+  reconcileLinkedGoals(nextState, now, options.today);
   const activity = recordMcpActivity(before, nextState, {
     requestId,
     type: "delete_task",
@@ -152,6 +156,7 @@ export function setHabitValueCommand(state, input, options = {}) {
   }
   habit.updatedAt = now;
   (nextState.syncMeta.habitLogs[habit.id] ||= {})[date] = now;
+  reconcileLinkedGoals(nextState, now, options.today || date);
   const summary = `Привычка «${habit.title}» обновлена за ${date}`;
   const activity = recordMcpActivity(before, nextState, {
     requestId,
@@ -256,8 +261,12 @@ export function updateGoalCheckpointCommand(state, input, options = {}) {
     }
   }
 
-  goal.status = goal.steps.length && goal.steps.every((item) => item.done) ? "done" : "active";
-  goal.completedAt = goal.status === "done" ? now : "";
+  const achieved = goalActivity.goalActivity(goal, nextState, {
+    todayKey: options.today || now.slice(0, 10),
+    habitStatusOnDate: linkedHabitStatusOnDate,
+  }).achieved;
+  goal.status = achieved ? "done" : "active";
+  goal.completedAt = achieved ? goal.completedAt || now : "";
   goal.updatedAt = now;
   const changedStepId = step?.id || input.checkpointId;
   if (changedStepId) (nextState.syncMeta.goalSteps[goal.id] ||= {})[changedStepId] = now;
@@ -521,6 +530,24 @@ function effectiveEntry(history, date) {
     .filter((entry) => entry?.fromDate && entry.fromDate <= date)
     .sort((left, right) => left.fromDate.localeCompare(right.fromDate))
     .at(-1);
+}
+
+function linkedHabitStatusOnDate(habit, date) {
+  const config = effectiveEntry(habit.configHistory, date) || habit;
+  const scheduled = taskScheduledOn({
+    date: habit.startDate || date,
+    repeat: config.repeat || habit.repeat || "daily",
+    customRepeat: config.customRepeat || habit.customRepeat,
+  }, date);
+  return habitFreeze.statusOnDate(habit, date, { scheduled, config });
+}
+
+function reconcileLinkedGoals(state, now, todayKey) {
+  goalActivity.reconcileGoalStatuses(state, {
+    now,
+    todayKey: todayKey || now.slice(0, 10),
+    habitStatusOnDate: linkedHabitStatusOnDate,
+  });
 }
 
 function normalizeRequestId(value) {

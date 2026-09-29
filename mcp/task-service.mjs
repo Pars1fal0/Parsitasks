@@ -1,5 +1,6 @@
 import recurrence from "../app/src/tasks/recurrence.js";
 import habitFreeze from "../app/src/habits/habit-freeze.js";
+import goalActivity from "../app/src/goals/goal-activity.js";
 
 export const normalizeCustomRepeat = recurrence.normalizeCustomRepeat;
 
@@ -42,7 +43,7 @@ export function getTodayOverview(state, dateKey) {
   const habits = habitsForDate(state, dateKey).map((habit) => serializeHabit(habit, dateKey));
   const goals = (Array.isArray(state?.goals) ? state.goals : [])
     .filter((goal) => goal.status !== "done")
-    .map(serializeGoal);
+    .map((goal) => serializeGoal(goal, state, dateKey));
 
   return {
     date: dateKey,
@@ -177,7 +178,7 @@ export function fetchKnowledge(state, compoundId, options = {}) {
   return {
     id: compoundId,
     title: goal.title || "Цель",
-    text: JSON.stringify(serializeGoal(goal)),
+    text: JSON.stringify(serializeGoal(goal, state, options.today || new Date().toISOString().slice(0, 10))),
     url: `${baseUrl}/#goals`,
     metadata: { type: "goal" },
   };
@@ -271,6 +272,11 @@ export function completeTaskCommand(state, input, options = {}) {
   else delete task.completed[date];
   task.updatedAt = now;
   (((nextState.syncMeta.taskFields[task.id] ||= {}).completed ||= {}))[date] = now;
+  goalActivity.reconcileGoalStatuses(nextState, {
+    now,
+    todayKey: options.today || date,
+    habitStatusOnDate: (habit, day) => linkedHabitStatusOnDate(nextState, habit, day),
+  });
   return { changed: true, state: nextState, task, date, completed };
 }
 
@@ -390,18 +396,29 @@ function serializeHabit(habit, dateKey) {
   };
 }
 
-function serializeGoal(goal) {
+function serializeGoal(goal, state, todayKey) {
   const steps = Array.isArray(goal.steps) ? goal.steps : [];
-  const completedSteps = steps.filter((step) => step.done === true).length;
+  const progress = goalActivity.goalActivity(goal, state, {
+    todayKey,
+    habitStatusOnDate: (habit, day) => linkedHabitStatusOnDate(state, habit, day),
+  }).percent;
   return {
     id: goal.id,
     title: goal.title,
     dueDate: goal.dueDate || "",
     why: goal.why || "",
     status: goal.status || "active",
-    progress: steps.length ? Math.round((completedSteps / steps.length) * 100) : 0,
+    progress,
     steps: steps.map((step) => ({ id: step.id, title: step.title, done: step.done === true })),
+    linkedTaskIds: goal.linkedTaskIds || [],
+    habitTargets: goal.habitTargets || [],
   };
+}
+
+function linkedHabitStatusOnDate(state, habit, day) {
+  return habitsForDate(state, day).some((item) => item.id === habit.id)
+    ? serializeHabit(habit, day).status
+    : "not-due";
 }
 
 function ensureCategory(state, name, now, requestId) {

@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 20;
+﻿const SCHEMA_VERSION = 21;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
@@ -66,6 +66,8 @@ const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
   normalizeBoardItems: window.RhythmBoardModel.normalizeItems,
   normalizeJournalEntries: window.RhythmJournalModel.normalizeJournalEntries,
   normalizeNotes: window.RhythmNotesModel.normalizeNotes,
+  normalizeLinkedTaskIds: window.RhythmGoalActivity.normalizeLinkedTaskIds,
+  normalizeHabitTargets: window.RhythmGoalActivity.normalizeHabitTargets,
   normalizeNutritionFood: window.RhythmNutritionModel.normalizeFood,
   normalizeNutritionMeal: window.RhythmNutritionModel.normalizeMeal,
   normalizeNutritionSettings: window.RhythmNutritionModel.normalizeSettings,
@@ -225,7 +227,15 @@ const els = {
   goalFormHeading: document.querySelector("#goalFormHeading"),
   goalFormPanel: document.querySelector("#goalFormPanel"),
   goalId: document.querySelector("#goalId"),
+  goalLinkedTaskIds: document.querySelector("#goalLinkedTaskIds"),
+  goalHabitTargets: document.querySelector("#goalHabitTargets"),
   goalList: document.querySelector("#goalList"),
+  goalTaskSearch: document.querySelector("#goalTaskSearch"),
+  goalTaskOptions: document.querySelector("#goalTaskOptions"),
+  goalTaskLinkCount: document.querySelector("#goalTaskLinkCount"),
+  goalHabitSearch: document.querySelector("#goalHabitSearch"),
+  goalHabitOptions: document.querySelector("#goalHabitOptions"),
+  goalHabitLinkCount: document.querySelector("#goalHabitLinkCount"),
   goalOverdueMetric: document.querySelector("#goalOverdueMetric"),
   goalTitle: document.querySelector("#goalTitle"),
   globalSearchButton: document.querySelector("#globalSearchButton"),
@@ -685,8 +695,11 @@ const goalsView = window.RhythmGoalsView.createGoalsView({
   deleteGoal,
   getActiveDate: () => activeDate,
   getState: () => state,
+  habitStatusOnDate,
   markFormPristine,
   normalizeDateKey,
+  openTask: (task) => openDateTasks(task.date, task.id),
+  openHabit: openLinkedHabit,
   render: renderGoalSurfaces,
   saveState,
   showToast,
@@ -1542,6 +1555,7 @@ async function init() {
   remoteDataController.bindEvents();
   journalView.bindEvents();
   notesView.bindEvents();
+  goalsView.bindEvents();
   nutritionView.bindEvents();
   boardView.bindEvents();
   googleCalendarController.bindEvents();
@@ -1558,6 +1572,9 @@ async function init() {
   renderSettingsBackupStatus();
   renderRemoteSyncStatus();
   updateFileBackupStatus();
+  if (window.RhythmGoalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate })) {
+    saveState({ skipBackup: true });
+  }
   render();
   scrollWorkspaceTop();
   if (initialStateLoad.status === "recovered") showToast("Поврежденные локальные данные восстановлены из backup");
@@ -1824,6 +1841,20 @@ async function openDateTasks(dateKey, taskId = "") {
     const task = state.tasks.find((item) => item.id === taskId);
     if (task) taskFormController.fillTaskForm(task);
   }
+}
+
+async function openLinkedHabit(habit) {
+  if (!(await confirmDiscardOpenForms())) return;
+  activeView = "habits";
+  saveUiState();
+  syncNavigationRoute();
+  render();
+  scrollWorkspaceTop();
+  requestAnimationFrame(() => {
+    const row = [...els.habitList.children].find((item) => item.dataset.habitId === habit.id);
+    row?.scrollIntoView({ block: "center" });
+    row?.querySelector("button, input")?.focus({ preventScroll: true });
+  });
 }
 
 async function openLinkedNote(noteId) {
@@ -2249,7 +2280,7 @@ function isFormDirty(form) {
 }
 
 function serializeForm(form) {
-  const values = [...form.querySelectorAll("input, select, textarea")].map((control) => [
+  const values = [...form.querySelectorAll("input, select, textarea")].filter((control) => !control.classList.contains("goal-link-control") && !control.classList.contains("goal-link-search")).map((control) => [
     control.id || control.name || "",
     control.type === "checkbox" || control.type === "radio" ? control.checked : control.value,
   ]);
@@ -3125,9 +3156,11 @@ function normalizeState(raw) {
 
 function replaceState(nextState) {
   state = stateController.replaceState(nextState);
+  window.RhythmGoalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
 }
 
 function saveState(options = {}) {
+  window.RhythmGoalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
   try {
     state = stateController.saveState(state, options);
     localStorageError = "";

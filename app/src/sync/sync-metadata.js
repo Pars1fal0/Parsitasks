@@ -7,7 +7,7 @@
       "studySubjectId", "studyDetails", "studyAssignedDate", "studyFileIds",
     ],
     habits: ["startDate", "archived", "archivedAt", "archivedFromDate"],
-    goals: ["title", "dueDate", "why"],
+    goals: ["title", "dueDate", "why", "linkedTaskIds", "habitTargets"],
     boardItems: [
       "type", "x", "y", "width", "height", "z", "text", "fontSize", "fontWeight", "color",
       "groupId", "locked",
