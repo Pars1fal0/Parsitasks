@@ -6842,9 +6842,18 @@ body.has-floating-task-form::before {
 
   .date-control {
     display: grid;
-    grid-template-columns: 44px 44px minmax(0, 1fr) 44px 44px;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 44px;
     justify-content: stretch;
     width: 100%;
+    gap: 4px;
+  }
+
+  .topbar { position: relative; }
+
+  .date-control .global-search-button {
+    position: absolute;
+    top: 0;
+    right: 0;
   }
 
   .date-control input {

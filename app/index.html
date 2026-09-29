@@ -10,12 +10,14 @@
     <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
     <link rel="manifest" href="manifest.webmanifest">
     <script src="src/auth/auth-gate.js?v=1"></script>
-    <script src="src/platform/shell-version.js?v=1"></script>
-    <link rel="stylesheet" href="assets/styles/styles.css?v=40">
+    <script src="src/platform/shell-version.js?v=2"></script>
+    <link rel="stylesheet" href="assets/styles/styles.css?v=41">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
-    <link rel="stylesheet" href="assets/styles/study.css?v=5">
+    <link rel="stylesheet" href="assets/styles/study.css?v=6">
     <link rel="stylesheet" href="assets/styles/notes.css?v=1">
     <link rel="stylesheet" href="assets/styles/goals.css?v=1">
+    <link rel="stylesheet" href="assets/styles/calendar-goals.css?v=1">
+    <link rel="stylesheet" href="assets/styles/board.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -566,6 +568,9 @@
               <p class="muted">Задачи с временем разложены по часам выбранного дня.</p>
             </div>
             <div class="timeline-toolbar-actions">
+              <button class="ghost-button compact-button icon-text-button timeline-jump-button" id="timelineJumpToTask" type="button" aria-label="К ближайшей задаче по времени" title="К ближайшей задаче по времени">
+                <svg class="ui-icon"><use href="#icon-target"></use></svg><span>К задаче</span>
+              </button>
               <div class="segmented-control timeline-scale-control" aria-label="Масштаб времени">
                 <button type="button" data-timeline-scale="compact" title="Компактный масштаб">−</button>
                 <button class="is-active" type="button" data-timeline-scale="comfortable" title="Обычный масштаб">1:1</button>
@@ -820,6 +825,17 @@
               <span class="metric-label">Привычки</span>
               <strong id="weeklyHabitMetric">—</strong>
               <p id="weeklyHabitText"></p>
+            </section>
+            <section class="goal-week-review" data-overview-panel="week" aria-labelledby="goalWeekHeading">
+              <div class="goal-week-heading">
+                <div>
+                  <span class="metric-label">Недельный обзор</span>
+                  <h2 id="goalWeekHeading">Цели</h2>
+                  <p id="goalWeekSummary" class="muted"></p>
+                </div>
+                <button class="ghost-button compact-button" id="openGoalsFromCalendar" type="button">Все цели</button>
+              </div>
+              <div class="goal-week-list" id="goalWeekList"></div>
             </section>
             <section class="panel week-board-panel" data-overview-panel="week">
               <div class="panel-heading compact">
@@ -1132,8 +1148,8 @@
         <section class="view board-view" id="boardView" aria-labelledby="boardHeading">
           <div class="toolbar board-heading">
             <div>
-              <h2 id="boardHeading">Доска идей</h2>
-              <p class="muted">Свободное пространство для текста и изображений</p>
+              <h2 class="sr-only" id="boardHeading">Доска</h2>
+              <p class="muted">Проекты, материалы и важные мысли в одном пространстве</p>
             </div>
             <span class="board-save-status" id="boardStatus" role="status" aria-live="polite">Фото хранятся в Supabase Storage</span>
           </div>
@@ -1148,15 +1164,15 @@
                 </button>
               </div>
               <span class="board-toolbar-separator" aria-hidden="true"></span>
-              <button class="icon-button" id="boardAddText" type="button" aria-label="Добавить текст" title="Добавить текст">
-                <svg class="ui-icon"><use href="#icon-text"></use></svg>
-              </button>
-              <button class="icon-button" id="boardAddImage" type="button" aria-label="Добавить изображение" title="Добавить изображение">
-                <svg class="ui-icon"><use href="#icon-image"></use></svg>
-              </button>
-              <button class="icon-button" id="boardAddFrame" type="button" aria-label="Добавить фрейм" title="Добавить фрейм">
-                <svg class="ui-icon"><use href="#icon-frame"></use></svg>
-              </button>
+              <details class="board-add-menu" id="boardAddMenu">
+                <summary class="board-add-trigger"><svg class="ui-icon"><use href="#icon-plus"></use></svg>Добавить</summary>
+                <div class="board-add-options">
+                  <button id="boardAddLink" type="button"><svg class="ui-icon"><use href="#icon-board"></use></svg>Из Parsitasks</button>
+                  <button id="boardAddText" type="button"><svg class="ui-icon"><use href="#icon-text"></use></svg>Текст</button>
+                  <button id="boardAddImage" type="button"><svg class="ui-icon"><use href="#icon-image"></use></svg>Изображение</button>
+                  <button id="boardAddFrame" type="button"><svg class="ui-icon"><use href="#icon-frame"></use></svg>Область</button>
+                </div>
+              </details>
               <span class="board-toolbar-separator" aria-hidden="true"></span>
               <button class="icon-button" id="boardUndo" type="button" aria-label="Отменить" title="Отменить" disabled>
                 <svg class="ui-icon"><use href="#icon-rotate"></use></svg>
@@ -1167,6 +1183,9 @@
             </div>
             <div class="board-selection-toolbar" id="boardSelectionToolbar" role="toolbar" aria-label="Действия с выделением" hidden>
               <div class="board-object-actions">
+                <button class="icon-button" id="boardDelete" type="button" aria-label="Убрать с доски" title="Убрать с доски">
+                  <svg class="ui-icon"><use href="#icon-trash"></use></svg>
+                </button>
                 <button class="icon-button" id="boardDuplicate" type="button" aria-label="Дублировать" title="Дублировать (Ctrl+D)">
                   <svg class="ui-icon"><use href="#icon-duplicate"></use></svg>
                 </button>
@@ -1207,14 +1226,31 @@
                   <input id="boardTextColor" type="color" value="#17191d" aria-label="Любой цвет текста">
                 </label>
               </div>
+              <span class="board-toolbar-separator board-link-separator" aria-hidden="true" hidden></span>
+              <div class="board-link-controls" id="boardLinkControls" role="group" aria-label="Цвет карточки" hidden>
+                <button type="button" class="board-link-swatch" data-board-link-color="#ffffff" style="--swatch: #ffffff" aria-label="Белый" title="Белый"></button>
+                <button type="button" class="board-link-swatch" data-board-link-color="#e8f5f0" style="--swatch: #e8f5f0" aria-label="Мятный" title="Мятный"></button>
+                <button type="button" class="board-link-swatch" data-board-link-color="#efeaff" style="--swatch: #efeaff" aria-label="Сиреневый" title="Сиреневый"></button>
+                <button type="button" class="board-link-swatch" data-board-link-color="#fff0e2" style="--swatch: #fff0e2" aria-label="Персиковый" title="Персиковый"></button>
+                <button type="button" class="board-link-swatch" data-board-link-color="#e8f2ff" style="--swatch: #e8f2ff" aria-label="Голубой" title="Голубой"></button>
+                <button type="button" class="board-link-swatch" data-board-link-color="#fff6d9" style="--swatch: #fff6d9" aria-label="Жёлтый" title="Жёлтый"></button>
+              </div>
             </div>
             <div class="board-world" id="boardWorld"></div>
             <div class="board-marquee" id="boardMarquee" hidden aria-hidden="true"></div>
+            <section class="board-source-picker" id="boardSourcePicker" aria-label="Добавить из Parsitasks" hidden>
+              <div class="board-picker-head"><strong>Добавить на доску</strong><button class="icon-button" id="boardPickerClose" type="button" aria-label="Закрыть"><svg class="ui-icon"><use href="#icon-close"></use></svg></button></div>
+              <div class="board-picker-search"><svg class="ui-icon"><use href="#icon-search"></use></svg><input id="boardSourceSearch" type="search" placeholder="Найти задачу, заметку, цель..." aria-label="Поиск объекта"></div>
+              <select id="boardSourceType" aria-label="Тип объекта"><option value="all">Все разделы</option><option value="task">Задачи</option><option value="goal">Цели</option><option value="note">Заметки</option><option value="subject">Предметы</option><option value="material">Материалы</option></select>
+              <div class="board-picker-results" id="boardSourceResults"></div>
+            </section>
             <div class="board-empty" id="boardEmpty">
               <svg class="ui-icon"><use href="#icon-board"></use></svg>
-              <strong>Доска пока пустая</strong>
-              <span>Дважды нажми для текста · выдели объект и нажми Delete, чтобы удалить</span>
+              <strong>Начни с идеи или проекта</strong>
+              <span>Разложи важные материалы и связанные дела в удобном порядке</span>
+              <div class="board-empty-actions"><button type="button" data-board-template="study">Учёба</button><button type="button" data-board-template="project">Проект</button><button type="button" id="boardStartBlank">Чистая доска</button></div>
             </div>
+            <label class="board-area-nav" id="boardAreaNav" hidden><span class="sr-only">Область доски</span><select id="boardAreaSelect" aria-label="Перейти к области доски"></select></label>
             <div class="board-zoom-controls" aria-label="Масштаб доски">
               <button class="icon-button" id="boardZoomOut" type="button" aria-label="Уменьшить масштаб" title="Уменьшить масштаб">
                 <svg class="ui-icon"><use href="#icon-minus"></use></svg>
@@ -1237,11 +1273,6 @@
               <h2 id="studyHeading">Учёба</h2>
               <p class="muted" id="studySummary">Предметы, занятия и задания в одном месте.</p>
             </div>
-            <div class="study-drive-control">
-              <span id="studyDriveStatus" aria-live="polite">Проверяем Google Drive...</span>
-              <button class="ghost-button compact-button" id="studyDriveConnect" type="button">Подключить Drive</button>
-              <button class="ghost-button compact-button" id="studyDriveDisconnect" type="button" hidden>Отключить</button>
-            </div>
           </div>
           <div class="study-tabs" role="tablist" aria-label="Разделы учёбы">
             <button type="button" role="tab" data-study-tab="homework" aria-selected="true">Домашнее</button>
@@ -1251,7 +1282,7 @@
           <div class="study-pane is-active" data-study-pane="homework" role="tabpanel">
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyHomeworkHeading">
-                <div class="study-section-heading"><h3 id="studyHomeworkHeading">Домашние задания</h3><div class="study-homework-tools"><button class="ghost-button compact-button" id="studyOpenNotes" type="button">Заметки</button><select id="studyHomeworkFilter" aria-label="Фильтр по предмету"><option value="all">Все предметы</option></select></div></div>
+                <div class="study-section-heading"><h3 id="studyHomeworkHeading">Домашние задания</h3><div class="study-homework-tools"><button class="icon-button study-form-jump" id="studyJumpToHomeworkForm" type="button" aria-label="К форме домашнего задания" title="К форме домашнего задания"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button><button class="ghost-button compact-button" id="studyOpenNotes" type="button">Заметки</button><select id="studyHomeworkFilter" aria-label="Фильтр по предмету"><option value="all">Все предметы</option></select></div></div>
                 <div id="studyHomeworkList" class="study-list"></div>
               </section>
               <form id="studyHomeworkForm" class="study-form" aria-label="Добавить домашнее задание">
@@ -1316,6 +1347,11 @@
             </div>
           </div>
           <div class="study-pane" data-study-pane="materials" role="tabpanel" hidden>
+            <div class="study-drive-control">
+              <span id="studyDriveStatus" aria-live="polite">Проверяем Google Drive...</span>
+              <button class="ghost-button compact-button" id="studyDriveConnect" type="button">Подключить Drive</button>
+              <button class="ghost-button compact-button" id="studyDriveDisconnect" type="button" hidden>Отключить</button>
+            </div>
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyMaterialsHeading">
                 <div class="study-section-heading"><h3 id="studyMaterialsHeading">Материалы</h3><select id="studyMaterialFilter" aria-label="Фильтр материалов"><option value="all">Все предметы</option></select></div>
@@ -1857,16 +1893,17 @@
     <script src="src/settings/settings-state.js?v=4" defer></script>
     <script src="src/settings/profile-settings.js?v=2" defer></script>
     <script src="src/auth/hosted-config.js?v=2" defer></script>
-    <script src="src/board/board-model.js?v=4" defer></script>
+    <script src="src/board/board-model.js?v=6" defer></script>
+    <script src="src/board/board-links.js?v=1" defer></script>
     <script src="src/board/board-assets.js?v=4" defer></script>
     <script src="src/journal/journal-model.js?v=3" defer></script>
     <script src="src/notes/notes-model.js?v=1" defer></script>
-    <script src="src/goals/goal-activity.js?v=1" defer></script>
+    <script src="src/goals/goal-activity.js?v=2" defer></script>
     <script src="src/journal/journal-editor.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-model.js?v=1" defer></script>
     <script src="src/core/data-normalizers.js?v=1" defer></script>
     <script src="src/study/study-model.js?v=4" defer></script>
-    <script src="src/study/study-controller.js?v=6" defer></script>
+    <script src="src/study/study-controller.js?v=8" defer></script>
     <script src="src/sync/sync-metadata.js?v=10" defer></script>
     <script src="src/sync/tombstone-retention.js?v=3" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
@@ -1884,7 +1921,7 @@
     <script src="src/journal/journal-view.js?v=3" defer></script>
     <script src="src/notes/notes-view.js?v=1" defer></script>
     <script src="src/board/board-camera.js?v=1" defer></script>
-    <script src="src/board/board-view.js?v=6" defer></script>
+    <script src="src/board/board-view.js?v=8" defer></script>
     <script src="src/nutrition/nutrition-controller.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-view.js?v=1" defer></script>
     <script src="src/core/storage.js?v=1" defer></script>
@@ -1893,7 +1930,7 @@
     <script src="src/ui/disclosure-menus.js?v=1" defer></script>
     <script src="src/core/app-events.js?v=5" defer></script>
     <script src="src/calendar/heatmap-view.js?v=3" defer></script>
-    <script src="src/calendar/calendar-view.js?v=4" defer></script>
+    <script src="src/calendar/calendar-view.js?v=6" defer></script>
     <script src="src/calendar/calendar-drag-controller.js?v=2" defer></script>
     <script src="src/ui/confirm-dialog.js?v=3" defer></script>
     <script src="src/ui/form-dialog.js?v=1" defer></script>
@@ -1917,14 +1954,14 @@
     <script src="src/sync/save-status.js?v=2" defer></script>
     <script src="src/settings/settings-controller.js?v=7" defer></script>
     <script src="src/timeline/timeline-layout.js?v=1" defer></script>
-    <script src="src/timeline/timeline-menu.js?v=3" defer></script>
+    <script src="src/timeline/timeline-menu.js?v=4" defer></script>
     <script src="src/timeline/timeline-drag.js?v=3" defer></script>
-    <script src="src/timeline/timeline-view.js?v=10" defer></script>
+    <script src="src/timeline/timeline-view.js?v=11" defer></script>
     <script src="src/timeline/timeline-controller.js?v=8" defer></script>
     <script src="src/core/daily-pulse.js?v=1" defer></script>
     <script src="src/core/view-renderer.js?v=2" defer></script>
-    <script src="src/core/app-shell-controller.js?v=3" defer></script>
+    <script src="src/core/app-shell-controller.js?v=4" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=55" defer></script>
+    <script src="src/core/app.js?v=60" defer></script>
   </body>
 </html>

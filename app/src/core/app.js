@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 21;
+﻿const SCHEMA_VERSION = 22;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
@@ -436,6 +436,7 @@ const els = {
   timeZoneSetting: document.querySelector("#timeZoneSetting"),
   timelineEmpty: document.querySelector("#timelineEmpty"),
   timelineGrid: document.querySelector("#timelineGrid"),
+  timelineJumpToTask: document.querySelector("#timelineJumpToTask"),
   timelineSummary: document.querySelector("#timelineSummary"),
   timelineUnscheduledCount: document.querySelector("#timelineUnscheduledCount"),
   timelineScaleButtons: [...document.querySelectorAll("[data-timeline-scale]")],
@@ -462,6 +463,10 @@ const els = {
   },
   weekBoardGrid: document.querySelector("#weekBoardGrid"),
   weekBoardLabel: document.querySelector("#weekBoardLabel"),
+  goalWeekHeading: document.querySelector("#goalWeekHeading"),
+  goalWeekList: document.querySelector("#goalWeekList"),
+  goalWeekSummary: document.querySelector("#goalWeekSummary"),
+  openGoalsFromCalendar: document.querySelector("#openGoalsFromCalendar"),
   weeklyHabitMetric: document.querySelector("#weeklyHabitMetric"),
   weeklyHabitText: document.querySelector("#weeklyHabitText"),
   weeklyTaskMetric: document.querySelector("#weeklyTaskMetric"),
@@ -469,10 +474,11 @@ const els = {
 };
 
 [
-  "boardAddFrame", "boardAddImage", "boardAddText", "boardBold", "boardBringFront", "boardColorPresets", "boardDuplicate",
+  "boardAddFrame", "boardAddImage", "boardAddText", "boardAddLink", "boardAddMenu", "boardBold", "boardBringFront", "boardColorPresets", "boardDuplicate", "boardDelete",
   "boardEmpty", "boardFocus", "boardFontSize", "boardGroup", "boardImageInput", "boardLock", "boardMarquee",
   "boardModePan", "boardModeSelect", "boardRedo", "boardSelectionToolbar", "boardSendBack", "boardStatus",
   "boardTextColor", "boardTextControls", "boardUndo", "boardViewport", "boardWorld", "boardZoomIn", "boardZoomLabel", "boardZoomOut",
+  "boardSourcePicker", "boardSourceSearch", "boardSourceType", "boardSourceResults", "boardPickerClose", "boardStartBlank", "boardAreaNav", "boardAreaSelect", "boardLinkControls",
   "nutritionAddMeal", "nutritionCaloriesMetric", "nutritionCarbsMetric", "nutritionCurrentWeek",
   "nutritionEmpty", "nutritionEmptyAction", "nutritionFatMetric", "nutritionFoodCalories", "nutritionFoodCarbs",
   "nutritionFoodCount", "nutritionFoodFat", "nutritionFoodForm", "nutritionFoodId",
@@ -725,14 +731,27 @@ const calendarView = window.RhythmCalendarView.createCalendarView({
   formatShortDate,
   formatWeekday,
   getActiveDate: () => activeDate,
+  getState: () => state,
   getCategory,
   getMonthCalendarDates,
   getOrderedTasksForDate,
   getWeekDates,
   habitsForDate,
+  habitStatusOnDate,
   heatAlpha,
   isTaskDone,
   openDateTasks,
+  openGoals: (goalId) => {
+    activeView = "goals";
+    saveUiState();
+    syncNavigationRoute();
+    render();
+    if (goalId) requestAnimationFrame(() => {
+      [...els.goalList.querySelectorAll("[data-goal-id]")]
+        .find((item) => item.dataset.goalId === goalId)?.scrollIntoView({ block: "center" });
+    });
+    else scrollWorkspaceTop();
+  },
   parseDate,
   priorityLabels,
   statsForDate,
@@ -783,6 +802,7 @@ const timelineController = window.RhythmTimelineController.createTimelineControl
 });
 
 const timelineView = window.RhythmTimelineView.createTimelineView({
+  addDays,
   els,
   clearTaskTime: timelineController.clearTaskTime,
   createTaskAtTime: timelineController.createTaskAtTime,
@@ -796,6 +816,7 @@ const timelineView = window.RhythmTimelineView.createTimelineView({
   isTaskDone,
   moveTaskTime: timelineController.moveTaskTime,
   priorityLabels,
+  postponeTask,
   resizeTaskBlockTime: timelineController.resizeTaskBlockTime,
   setTaskTime: timelineController.setTaskTime,
   shiftTaskTime: timelineController.shiftTaskTime,
@@ -930,9 +951,13 @@ const boardView = window.RhythmBoardView.createBoardView({
   },
   createId,
   els,
+  getState: () => state,
   getItems: () => state.boardItems,
+  links: window.RhythmBoardLinks,
   model: window.RhythmBoardModel,
+  openSource: openBoardSource,
   showToast,
+  todayKey: () => toDateKey(new Date()),
 });
 
 const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
@@ -1865,6 +1890,46 @@ async function openLinkedNote(noteId) {
   syncNavigationRoute();
   render();
   scrollWorkspaceTop();
+}
+
+async function openBoardSource(type, id) {
+  if (type === "task") {
+    const task = state.tasks.find((item) => item.id === id);
+    if (task) await openDateTasks(task.date, task.id);
+    return;
+  }
+  if (type === "note") {
+    await openLinkedNote(id);
+    return;
+  }
+  if (!(await confirmDiscardOpenForms())) return;
+  if (type === "material") {
+    if (!state.studyFiles.some((item) => item.id === id)) return;
+    studyController.setTab("materials");
+    activeView = "study";
+  } else if (type === "subject") {
+    if (!state.studySubjects.some((item) => item.id === id)) return;
+    studyController.setTab("schedule");
+    activeView = "study";
+  } else if (type === "goal") {
+    if (!state.goals.some((item) => item.id === id)) return;
+    activeView = "goals";
+  } else return;
+  saveUiState();
+  syncNavigationRoute();
+  render();
+  scrollWorkspaceTop();
+  if (type === "goal") requestAnimationFrame(() => {
+    const row = [...els.goalList.children].find((item) => item.dataset.goalId === id);
+    row?.scrollIntoView({ block: "center" });
+  });
+  if (type === "subject" || type === "material") requestAnimationFrame(() => {
+    const list = document.querySelector(type === "subject" ? "#studySubjectList" : "#studyMaterialList");
+    const field = type === "subject" ? "studySubjectId" : "studyFileId";
+    const row = [...(list?.children || [])].find((item) => item.dataset[field] === id);
+    row?.scrollIntoView({ block: "center" });
+    row?.querySelector("a, button")?.focus({ preventScroll: true });
+  });
 }
 
 async function openNotesForSubject(subjectId = "all") {

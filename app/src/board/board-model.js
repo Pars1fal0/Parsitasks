@@ -1,5 +1,8 @@
 (function (global) {
-  const ITEM_TYPES = new Set(["text", "image", "frame"]);
+  const ITEM_TYPES = new Set(["text", "image", "frame", "link"]);
+  const LINK_TYPES = new Set(["task", "goal", "note", "subject", "material"]);
+  const LINK_COLORS = new Set(["#ffffff", "#e8f5f0", "#efeaff", "#fff0e2", "#e8f2ff", "#fff6d9"]);
+  const DEFAULT_LINK_COLORS = { task: "#e8f5f0", goal: "#efeaff", note: "#fff0e2", subject: "#e8f2ff", material: "#fff6d9" };
   const MAX_TEXT_LENGTH = 20000;
   const MIN_FONT_SIZE = 8;
   const MAX_FONT_SIZE = 512;
@@ -24,10 +27,13 @@
     const type = value.type;
     const assetId = cleanText(value.assetId, 160);
     if (type === "image" && !assetId) return null;
-    const minimumWidth = type === "frame" ? 240 : 40;
-    const minimumHeight = type === "frame" ? 160 : type === "image" ? 40 : 24;
-    const defaultWidth = type === "frame" ? 720 : type === "image" ? 400 : 360;
-    const defaultHeight = type === "frame" ? 480 : type === "image" ? 280 : 140;
+    const sourceType = cleanText(value.sourceType, 40);
+    const sourceId = cleanText(value.sourceId, 160);
+    if (type === "link" && (!LINK_TYPES.has(sourceType) || !sourceId)) return null;
+    const minimumWidth = type === "frame" ? 240 : type === "link" ? 180 : 40;
+    const minimumHeight = type === "frame" ? 160 : type === "link" ? 96 : type === "image" ? 40 : 24;
+    const defaultWidth = type === "frame" ? 720 : type === "link" ? 300 : type === "image" ? 400 : 360;
+    const defaultHeight = type === "frame" ? 480 : type === "link" ? 156 : type === "image" ? 280 : 140;
     return {
       id: cleanText(value.id, 160) || options.createId?.() || `board-${Date.now().toString(36)}`,
       type,
@@ -48,6 +54,7 @@
       remotePath: type === "image" ? cleanText(value.remotePath, 500) : "",
       mime: type === "image" && /^image\/[a-z0-9.+-]+$/i.test(String(value.mime || "")) ? String(value.mime) : "",
       name: type === "image" ? cleanText(value.name, 240) : "",
+      ...(type === "link" ? { sourceType, sourceId, backgroundColor: normalizeLinkColor(value.backgroundColor, sourceType) } : {}),
       createdAt: validTimestamp(value.createdAt) || now,
       updatedAt: validTimestamp(value.updatedAt) || validTimestamp(value.createdAt) || now,
     };
@@ -104,6 +111,16 @@
     }, options);
   }
 
+  function createLinkItem(input = {}, options = {}) {
+    return normalizeItem({
+      id: options.createId?.(), type: "link", x: input.x, y: input.y,
+      width: input.width || 300, height: input.height || 156, z: input.z,
+      sourceType: input.sourceType, sourceId: input.sourceId,
+      backgroundColor: input.backgroundColor,
+      createdAt: options.now, updatedAt: options.now,
+    }, options);
+  }
+
   function bounds(items = []) {
     if (!items.length) return null;
     const left = Math.min(...items.map((item) => item.x));
@@ -129,6 +146,11 @@
     return /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : "#17191d";
   }
 
+  function normalizeLinkColor(value, sourceType) {
+    const color = String(value || "").trim().toLowerCase();
+    return LINK_COLORS.has(color) ? color : DEFAULT_LINK_COLORS[sourceType] || "#ffffff";
+  }
+
   function validTimestamp(value) {
     return typeof value === "string" && Number.isFinite(Date.parse(value)) ? value : "";
   }
@@ -140,6 +162,7 @@
     bounds,
     createFrameItem,
     createImageItem,
+    createLinkItem,
     createTextItem,
     normalizeItem,
     normalizeItems,

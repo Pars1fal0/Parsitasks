@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { _electron: electron } = require("playwright-core");
 
@@ -46,7 +47,7 @@ const { _electron: electron } = require("playwright-core");
     await page.reload();
     await page.waitForSelector("#pageTitle");
     await page.evaluate(fs.readFileSync(require.resolve("axe-core/axe.min.js"), "utf8"));
-    const views = ["tasks", "timeline", "habits", "goals", "overview", "nutrition", "journal", "archive", "settings"];
+    const views = ["tasks", "timeline", "habits", "goals", "overview", "study", "journal", "board", "archive", "settings"];
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 800 });
       for (const view of views) {
@@ -62,6 +63,13 @@ const { _electron: electron } = require("playwright-core");
         assert.ok(overflow <= 1, `${view} must not overflow horizontally at ${width}px`);
         const screenshot = await page.screenshot();
         assert.ok(screenshot.length > 10_000, `${view} screenshot must not be blank`);
+        if (width === 390 && view === "tasks") {
+          const dateBox = await page.locator("#activeDate").boundingBox();
+          assert.ok(dateBox.width >= 145, "mobile date field must show the full date");
+        }
+        if (process.env.CAPTURE_AUDIT) {
+          await page.screenshot({ path: path.join(os.tmpdir(), `parsitasks-audit-${view}-${width}.png`), animations: "disabled" });
+        }
         const audit = await page.evaluate(async () => window.axe.run(document));
         const blocking = audit.violations.filter((violation) => ["critical", "serious"].includes(violation.impact));
         assert.deepEqual(
@@ -71,6 +79,14 @@ const { _electron: electron } = require("playwright-core");
           `${view} has blocking accessibility violations at ${width}px`,
         );
       }
+    }
+    await page.setViewportSize({ width: 320, height: 700 });
+    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    const compactDateBox = await page.locator("#activeDate").boundingBox();
+    assert.ok(compactDateBox.width >= 130, "date field must remain readable at 320px");
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "tasks must fit 320px");
+    if (process.env.CAPTURE_AUDIT) {
+      await page.screenshot({ path: path.join(os.tmpdir(), "parsitasks-audit-tasks-320.png"), animations: "disabled" });
     }
     console.log("e2e ok - accessibility, nonblank rendering, and horizontal fit");
   } finally {

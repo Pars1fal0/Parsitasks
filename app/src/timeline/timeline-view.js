@@ -36,6 +36,7 @@
       taskDragMime: TASK_DRAG_MIME,
     });
     bindScaleControls();
+    ctx.els.timelineJumpToTask?.addEventListener("click", scrollToUpcomingTask);
 
     function renderTimeline() {
       const viewport = captureViewport();
@@ -55,6 +56,7 @@
       });
 
       ctx.els.timelineSummary.textContent = `${model.timedTasks.length} по времени · ${model.unscheduledTasks.length} без времени`;
+      if (ctx.els.timelineJumpToTask) ctx.els.timelineJumpToTask.disabled = model.timedTasks.length === 0;
       if (ctx.els.timelineUnscheduledCount) ctx.els.timelineUnscheduledCount.textContent = String(model.unscheduledTasks.length);
       ctx.els.timelineGrid.replaceChildren();
       ctx.els.timelineUnscheduledList.replaceChildren();
@@ -112,6 +114,7 @@
       card.classList.toggle("is-deadline-marker", Number.isFinite(entry.minutes) && !entry.isTimeBlock);
       card.classList.toggle("is-just-scheduled", entry.task.id === justScheduledTaskId && entry.isTimeBlock);
       card.dataset.taskId = entry.task.id;
+      if (Number.isFinite(entry.minutes)) card.dataset.startMinutes = String(entry.minutes);
       if (!Number.isFinite(entry.minutes)) card.setAttribute("role", "listitem");
       if (entry.categoryColor) card.style.setProperty("--timeline-color", entry.categoryColor);
       card.addEventListener("click", (event) => {
@@ -636,6 +639,21 @@
         const top = target.getBoundingClientRect().top + (Number(global.scrollY) || 0) - offset;
         global.scrollTo?.({ left: 0, top: Math.max(0, top), behavior: "auto" });
       });
+      return true;
+    }
+
+    function scrollToUpcomingTask() {
+      const tasks = [...ctx.els.timelineGrid.querySelectorAll(".timeline-task.is-scheduled")];
+      if (!tasks.length) return false;
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const upcoming = ctx.getActiveDate() === ctx.toDateKey(now)
+        ? tasks.find((task) => Number(task.dataset.startMinutes) >= currentMinutes && !task.classList.contains("is-done"))
+        : null;
+      const target = upcoming || tasks[0];
+      const offset = Math.min(180, Math.max(112, (global.innerHeight || 800) * 0.18));
+      const top = target.getBoundingClientRect().top + (Number(global.scrollY) || 0) - offset;
+      global.scrollTo?.({ left: 0, top: Math.max(0, top), behavior: "smooth" });
       return true;
     }
 

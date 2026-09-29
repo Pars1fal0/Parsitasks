@@ -5,6 +5,25 @@ const { mergeStates } = require("../app/src/core/state-merge.js");
 
 module.exports = [
   {
+    name: "counts only completed linked activity inside the selected week and before today",
+    fn() {
+      const goal = {
+        linkedTaskIds: ["task"],
+        habitTargets: [{ habitId: "habit", targetCount: 10, startDate: "2026-09-29" }],
+      };
+      const state = {
+        tasks: [{ id: "task", completed: { "2026-09-28": true, "2026-09-29": true, "2026-09-30": false, "2026-10-02": true, "2026-10-05": true } }],
+        habits: [{ id: "habit", logs: { "2026-09-28": true, "2026-09-29": true, "2026-09-30": true, "2026-10-02": true } }],
+      };
+      const week = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02", "2026-10-03", "2026-10-04"];
+      const result = activity.goalWeekActivity(goal, state, week, { todayKey: "2026-09-30" });
+      assert.deepEqual(result, { taskCount: 2, habitCount: 2, hasLinks: true });
+      assert.deepEqual(activity.goalWeekActivity({ linkedTaskIds: [], habitTargets: [], steps: [{ done: true }] }, state, week, { todayKey: "2026-09-30" }), {
+        taskCount: 0, habitCount: 0, hasLinks: false,
+      });
+    },
+  },
+  {
     name: "normalizes goal links while preserving old checkpoints",
     fn() {
       const state = createStateNormalizer().normalizeState({

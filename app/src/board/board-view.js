@@ -24,14 +24,36 @@
     let spacePressed = false;
     let interactionMode = "select";
     let cameraVisibilityChecked = false;
+    let activeAreaId = "";
     const objectUrls = new Map();
     const pendingUploadAttempts = new Map();
 
     function bindEvents() {
-      ctx.els.boardAddText?.addEventListener("click", () => addTextAtCenter());
-      ctx.els.boardAddFrame?.addEventListener("click", () => addFrameAtCenter());
+      ctx.els.boardAddText?.addEventListener("click", () => { closeAddMenu(); addTextAtCenter(); });
+      ctx.els.boardAddFrame?.addEventListener("click", () => { closeAddMenu(); addFrameAtCenter(); });
       ctx.els.boardAddImage?.addEventListener("click", () => {
+        closeAddMenu();
         if (!imageUploadBusy) ctx.els.boardImageInput?.click();
+      });
+      ctx.els.boardAddLink?.addEventListener("click", () => { closeAddMenu(); openSourcePicker(); });
+      ctx.els.boardPickerClose?.addEventListener("click", closeSourcePicker);
+      ctx.els.boardSourceSearch?.addEventListener("input", renderSourceResults);
+      ctx.els.boardSourceType?.addEventListener("change", renderSourceResults);
+      ctx.els.boardSourceResults?.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-board-source]");
+        if (button) addLinkedSource(button.dataset.boardSource, button.dataset.boardSourceId);
+      });
+      ctx.els.boardEmpty?.addEventListener("click", (event) => {
+        const template = event.target.closest("[data-board-template]")?.dataset.boardTemplate;
+        if (template) createTemplate(template);
+        else if (event.target.closest("#boardStartBlank")) {
+          ctx.els.boardAddMenu.open = true;
+          ctx.els.boardAddMenu.querySelector("summary")?.focus();
+        }
+      });
+      ctx.els.boardAreaSelect?.addEventListener("change", () => focusArea(ctx.els.boardAreaSelect.value));
+      global.document.addEventListener("pointerdown", (event) => {
+        if (ctx.els.boardAddMenu?.open && !event.target.closest("#boardAddMenu")) closeAddMenu();
       });
       ctx.els.boardImageInput?.addEventListener("change", async () => {
         const files = [...(ctx.els.boardImageInput.files || [])];
@@ -43,6 +65,7 @@
       ctx.els.boardModeSelect?.addEventListener("click", () => setInteractionMode("select"));
       ctx.els.boardModePan?.addEventListener("click", () => setInteractionMode("pan"));
       ctx.els.boardDuplicate?.addEventListener("click", duplicateSelected);
+      ctx.els.boardDelete?.addEventListener("click", deleteSelected);
       ctx.els.boardGroup?.addEventListener("click", toggleGroupSelected);
       ctx.els.boardBringFront?.addEventListener("click", () => moveSelectionLayer("front"));
       ctx.els.boardSendBack?.addEventListener("click", () => moveSelectionLayer("back"));
@@ -60,6 +83,10 @@
           applyTextColor(swatch.dataset.boardTextColor);
           focusPrimarySelection();
         }
+      });
+      ctx.els.boardLinkControls?.addEventListener("click", (event) => {
+        const swatch = event.target.closest("[data-board-link-color]");
+        if (swatch) applyLinkColor(swatch.dataset.boardLinkColor);
       });
       ctx.els.boardTextColor?.addEventListener("input", () => applyTextColor(ctx.els.boardTextColor.value));
       ctx.els.boardTextColor?.addEventListener("change", focusPrimarySelection);
@@ -103,6 +130,8 @@
 
       ctx.els.boardWorld.replaceChildren(...items.map(createItemNode), ...createGuideNodes());
       ctx.els.boardEmpty.hidden = items.length > 0;
+      renderAreaOptions(items);
+      if (!ctx.els.boardSourcePicker.hidden) renderSourceResults();
       syncHistoryControls();
       applyCamera();
       scheduleCameraVisibilityCheck(items);
@@ -121,13 +150,16 @@
       node.setAttribute("role", "group");
       node.setAttribute("aria-label", item.type === "text"
         ? "Текст на доске"
-        : item.type === "frame" ? `Фрейм: ${item.text}` : "Изображение на доске");
+        : item.type === "frame" ? `Область: ${item.text}`
+          : item.type === "link" ? `Связанный объект: ${ctx.links.resolve(item, ctx.getState())?.title || "Источник"}` : "Изображение на доске");
       applyNodeGeometry(node, item);
 
       if (item.type === "text") {
         node.append(createTextContent(item, node));
       } else if (item.type === "frame") {
         node.append(createFrameContent(item, node));
+      } else if (item.type === "link") {
+        node.append(createLinkContent(item));
       } else {
         node.append(...createImageContent(item));
       }
@@ -162,6 +194,136 @@
         if (!selectedIds.has(item.id)) selectItem(item.id, node);
       });
       return node;
+    }
+
+    function createLinkContent(item) {
+      const source = ctx.links.resolve(item, ctx.getState(), ctx.todayKey());
+      const card = document.createElement("div");
+      const top = document.createElement("div");
+      const kind = document.createElement("span");
+      const status = document.createElement("span");
+      const title = document.createElement("strong");
+      const detail = document.createElement("p");
+      const open = document.createElement("button");
+      card.className = `board-linked-card is-${source?.tone || "neutral"}`;
+      card.style.setProperty("--board-link-bg", item.backgroundColor || "#ffffff");
+      kind.textContent = source?.typeLabel || "Объект";
+      status.className = "board-link-status";
+      status.textContent = source?.status || "";
+      top.className = "board-linked-top";
+      top.append(kind, status);
+      title.textContent = source?.title || "Источник удалён";
+      detail.textContent = source?.detail || "";
+      open.type = "button";
+      open.className = "board-link-open";
+      open.textContent = source?.missing ? "Источник недоступен" : "Открыть";
+      open.disabled = Boolean(source?.missing);
+      open.addEventListener("pointerdown", (event) => event.stopPropagation());
+      open.addEventListener("click", (event) => {
+        event.stopPropagation();
+        ctx.openSource?.(item.sourceType, item.sourceId);
+      });
+      card.append(top, title, detail, open);
+      return card;
+    }
+
+    function closeAddMenu() {
+      ctx.els.boardAddMenu?.removeAttribute("open");
+    }
+
+    function renderAreaOptions(items) {
+      const frames = items.filter((item) => item.type === "frame");
+      ctx.els.boardAreaNav.hidden = frames.length < 2;
+      if (frames.length < 2) return;
+      if (!frames.some((frame) => frame.id === activeAreaId)) activeAreaId = frames[0].id;
+      ctx.els.boardAreaSelect.replaceChildren(...frames.map((frame) => {
+        const option = document.createElement("option");
+        option.value = frame.id;
+        option.textContent = frame.text || "Область";
+        return option;
+      }));
+      ctx.els.boardAreaSelect.value = activeAreaId;
+    }
+
+    function focusArea(id) {
+      const frame = ctx.getItems().find((item) => item.id === id && item.type === "frame");
+      if (!frame) return;
+      activeAreaId = id;
+      const rect = ctx.els.boardViewport.getBoundingClientRect();
+      camera = cameraApi.fitCamera({ left: frame.x, top: frame.y, width: frame.width, height: frame.height }, rect, MIN_ZOOM, MAX_ZOOM);
+      applyCamera();
+      saveCamera();
+    }
+
+    function openSourcePicker() {
+      ctx.els.boardSourcePicker.hidden = false;
+      ctx.els.boardSourceSearch.value = "";
+      ctx.els.boardSourceType.value = "all";
+      renderSourceResults();
+      ctx.els.boardSourceSearch.focus();
+    }
+
+    function closeSourcePicker() {
+      ctx.els.boardSourcePicker.hidden = true;
+      ctx.els.boardViewport.focus({ preventScroll: true });
+    }
+
+    function renderSourceResults() {
+      const linked = ctx.getItems().filter((item) => item.type === "link")
+        .map((item) => `${item.sourceType}:${item.sourceId}`);
+      const sources = ctx.links.list(ctx.getState(), {
+        type: ctx.els.boardSourceType.value,
+        query: ctx.els.boardSourceSearch.value,
+        linked,
+        todayKey: ctx.todayKey(),
+      });
+      ctx.els.boardSourceResults.replaceChildren(...sources.map((source) => {
+        const button = document.createElement("button");
+        const title = document.createElement("strong");
+        const detail = document.createElement("small");
+        button.type = "button";
+        button.className = "board-source-result";
+        button.dataset.boardSource = source.type;
+        button.dataset.boardSourceId = source.id;
+        title.textContent = source.title;
+        detail.textContent = `${source.typeLabel}${source.detail ? ` · ${source.detail}` : ""}`;
+        button.append(title, detail);
+        return button;
+      }));
+      if (!sources.length) ctx.els.boardSourceResults.textContent = "Ничего не найдено";
+    }
+
+    function addLinkedSource(sourceType, sourceId) {
+      const source = ctx.links.resolve({ sourceType, sourceId }, ctx.getState());
+      if (!source || source.missing) return;
+      const world = screenToWorld(viewportCenter().x, viewportCenter().y);
+      const position = findOpenPosition(world.x - 120, world.y - 78, 240, 156, true);
+      const item = ctx.model.createLinkItem({ sourceType, sourceId, ...position, width: 240, z: nextZ() }, {
+        createId: ctx.createId, now: new Date().toISOString(),
+      });
+      if (!item) return;
+      pushUndo();
+      selectedId = item.id;
+      selectedIds = new Set([item.id]);
+      closeSourcePicker();
+      commit([...ctx.getItems(), item]);
+      ctx.showToast("Карточка добавлена на доску");
+    }
+
+    function createTemplate(name) {
+      const labels = name === "study" ? ["Сейчас изучаю", "Материалы", "Важное"]
+        : name === "project" ? ["Идеи", "В работе", "Результат"] : null;
+      if (!labels || ctx.getItems().length) return;
+      const now = new Date().toISOString();
+      const items = labels.map((text, index) => ctx.model.createFrameItem({
+        x: index * 306, y: 36, width: 280, height: 320, z: index, text,
+      }, { createId: ctx.createId, now }));
+      pushUndo();
+      commit(items);
+      activeAreaId = items[0].id;
+      if (ctx.els.boardViewport.getBoundingClientRect().width < 700) focusArea(activeAreaId);
+      else focusContent();
+      ctx.showToast(name === "study" ? "Доска для учёбы готова" : "Доска проекта готова");
     }
 
     function createTextContent(item, node) {
@@ -277,7 +439,7 @@
       });
     }
 
-    function findOpenPosition(baseX, baseY, width, height) {
+    function findOpenPosition(baseX, baseY, width, height, ignoreFrames = false) {
       const directions = [
         [0, 0],
         [-1, 0],
@@ -289,7 +451,7 @@
         [-1, -1],
         [1, -1],
       ];
-      const items = ctx.getItems();
+      const items = ctx.getItems().filter((item) => !ignoreFrames || item.type !== "frame");
       const stepX = width + 40;
       const stepY = height + 40;
       const viewport = ctx.els.boardViewport.getBoundingClientRect();
@@ -393,6 +555,9 @@
         || event.target.closest(".board-toolbar")
         || event.target.closest(".board-selection-toolbar")
         || event.target.closest(".board-zoom-controls")
+        || event.target.closest(".board-source-picker")
+        || event.target.closest(".board-empty")
+        || event.target.closest(".board-area-nav")
       ) return;
       event.preventDefault();
       finishActiveTextEdit();
@@ -494,8 +659,8 @@
         const scaleY = nextBounds.height / Math.max(gesture.groupBounds.height, 1);
         gesture.previews = new Map();
         gesture.originals.forEach((original, id) => {
-          const minimumWidth = original.type === "frame" ? 240 : 40;
-          const minimumHeight = original.type === "frame" ? 160 : original.type === "image" ? 40 : 24;
+          const minimumWidth = original.type === "frame" ? 240 : original.type === "link" ? 180 : 40;
+          const minimumHeight = original.type === "frame" ? 160 : original.type === "link" ? 96 : original.type === "image" ? 40 : 24;
           const preview = {
             x: nextBounds.x + (original.x - gesture.groupBounds.x) * scaleX,
             y: nextBounds.y + (original.y - gesture.groupBounds.y) * scaleY,
@@ -637,10 +802,13 @@
       const rect = ctx.els.boardViewport?.getBoundingClientRect();
       if (!rect?.width || !rect?.height) return;
       if (viewportSize && camera) {
-        camera.x += (rect.width - viewportSize.width) / 2;
-        camera.y += (rect.height - viewportSize.height) / 2;
-        applyCamera();
-        saveCamera();
+        if (rect.width < 700 && activeAreaId) focusArea(activeAreaId);
+        else {
+          camera.x += (rect.width - viewportSize.width) / 2;
+          camera.y += (rect.height - viewportSize.height) / 2;
+          applyCamera();
+          saveCamera();
+        }
       }
       viewportSize = { width: rect.width, height: rect.height };
     }
@@ -666,6 +834,9 @@
         || event.target.closest(".board-toolbar")
         || event.target.closest(".board-selection-toolbar")
         || event.target.closest(".board-zoom-controls")
+        || event.target.closest(".board-source-picker")
+        || event.target.closest(".board-empty")
+        || event.target.closest(".board-area-nav")
       ) return;
       addTextAtCenter({ x: event.clientX, y: event.clientY });
     }
@@ -703,6 +874,11 @@
 
     function handleKeyDown(event) {
       if (!isBoardActive()) return;
+      if (event.key === "Escape" && !ctx.els.boardSourcePicker.hidden) {
+        event.preventDefault();
+        closeSourcePicker();
+        return;
+      }
       const formControl = event.target.closest?.("input, textarea, select, button");
       const commandKey = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
@@ -948,6 +1124,7 @@
     function updateSelection() {
       const selected = ctx.getItems().find((item) => item.id === selectedId);
       const textItems = selectedTexts();
+      const linkItems = selectedLinks();
       const items = selectedItems();
       ctx.els.boardWorld.querySelectorAll(".board-item").forEach((node) => {
         const active = selectedIds.has(node.dataset.id);
@@ -957,9 +1134,22 @@
         node.setAttribute("aria-selected", String(active));
       });
       const showTextTools = textItems.length > 0 && !items.some((item) => item.locked);
+      const showLinkTools = linkItems.length > 0 && !items.some((item) => item.locked);
       if (ctx.els.boardSelectionToolbar) ctx.els.boardSelectionToolbar.hidden = items.length === 0;
       if (ctx.els.boardTextControls) ctx.els.boardTextControls.hidden = !showTextTools;
       ctx.els.boardSelectionToolbar?.querySelector(".board-text-separator")?.toggleAttribute("hidden", !showTextTools);
+      if (ctx.els.boardLinkControls) ctx.els.boardLinkControls.hidden = !showLinkTools;
+      ctx.els.boardSelectionToolbar?.classList.toggle("is-link-selection", showLinkTools);
+      ctx.els.boardSelectionToolbar?.querySelector(".board-link-separator")?.toggleAttribute("hidden", !showLinkTools);
+      if (showLinkTools) {
+        const color = linkItems.every((item) => item.backgroundColor === linkItems[0].backgroundColor)
+          ? linkItems[0].backgroundColor : "";
+        ctx.els.boardLinkControls.querySelectorAll("[data-board-link-color]").forEach((swatch) => {
+          const active = swatch.dataset.boardLinkColor === color;
+          swatch.classList.toggle("is-active", active);
+          swatch.setAttribute("aria-pressed", String(active));
+        });
+      }
       const groupId = selectedGroupId(items);
       if (ctx.els.boardGroup) {
         ctx.els.boardGroup.disabled = items.length < 2;
@@ -1069,6 +1259,15 @@
       updateSelectedText({ color: String(color).toLowerCase() });
     }
 
+    function applyLinkColor(color) {
+      const ids = new Set(selectedLinks().map((item) => item.id));
+      if (!ids.size || selectedItems().some((item) => item.locked)) return;
+      pushUndo();
+      const now = new Date().toISOString();
+      commit(ctx.getItems().map((item) => ids.has(item.id)
+        ? { ...item, backgroundColor: color, updatedAt: now } : item));
+    }
+
     function updateSelectedText(patch) {
       const ids = new Set(selectedTexts().map((item) => item.id));
       if (!ids.size || selectedItems().some((item) => item.locked)) return;
@@ -1089,6 +1288,10 @@
 
     function selectedTexts() {
       return ctx.getItems().filter((item) => selectedIds.has(item.id) && item.type === "text");
+    }
+
+    function selectedLinks() {
+      return ctx.getItems().filter((item) => selectedIds.has(item.id) && item.type === "link");
     }
 
     function selectedItems() {
@@ -1448,14 +1651,32 @@
   }
 
   function resizeGeometry(item, dx, dy, direction) {
-    const minWidth = item.type === "frame" ? 240 : 40;
-    const minHeight = item.type === "frame" ? 160 : item.type === "image" ? 40 : 24;
+    const minWidth = item.type === "frame" ? 240 : item.type === "link" ? 180 : 40;
+    const minHeight = item.type === "frame" ? 160 : item.type === "link" ? 96 : item.type === "image" ? 40 : 24;
     const maxSize = 10000;
     const hasWest = direction.includes("w");
     const hasEast = direction.includes("e");
     const hasNorth = direction.includes("n");
     const hasSouth = direction.includes("s");
     const isCorner = (hasWest || hasEast) && (hasNorth || hasSouth);
+
+    if (item.type === "link") {
+      const ratio = item.width / Math.max(item.height, 1);
+      const widthFromX = item.width + (hasEast ? dx : hasWest ? -dx : 0);
+      const widthFromY = (item.height + (hasSouth ? dy : hasNorth ? -dy : 0)) * ratio;
+      const horizontalChange = Math.abs(widthFromX - item.width) / item.width;
+      const verticalChange = Math.abs(widthFromY - item.width) / item.width;
+      let width = isCorner ? (verticalChange > horizontalChange ? widthFromY : widthFromX)
+        : hasEast || hasWest ? widthFromX : widthFromY;
+      width = clamp(width, Math.max(minWidth, minHeight * ratio), Math.min(maxSize, maxSize * ratio));
+      const height = width / ratio;
+      return {
+        x: hasWest ? item.x + item.width - width : hasEast ? item.x : item.x + (item.width - width) / 2,
+        y: hasNorth ? item.y + item.height - height : hasSouth ? item.y : item.y + (item.height - height) / 2,
+        width,
+        height,
+      };
+    }
 
     if (item.type === "image" && isCorner) {
       const rawWidth = clamp(item.width + (hasEast ? dx : -dx), minWidth, maxSize);
@@ -1544,6 +1765,9 @@
     node.style.height = `${item.height}px`;
     node.style.transform = `translate(${item.x}px, ${item.y}px)`;
     node.style.zIndex = String(item.z);
+    if (item.type === "link") {
+      node.style.setProperty("--board-link-scale", String(clamp(Math.min(item.width / 240, item.height / 156), 0.6, 4)));
+    }
   }
 
   function editableText(node) {

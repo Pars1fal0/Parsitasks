@@ -1,0 +1,56 @@
+.goal-week-review {
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding: 14px 2px 4px;
+  border-top: 1px solid var(--line-strong);
+}
+
+.goal-week-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.goal-week-heading > div { min-width: 0; }
+.goal-week-heading h2 { margin: 3px 0 4px; color: var(--text-strong); font-size: 19px; line-height: 1.25; font-weight: 750; }
+.goal-week-heading p { margin: 0; font-size: 13px; line-height: 1.45; }
+.goal-week-heading .ghost-button { flex: 0 0 auto; }
+
+.goal-week-list { display: grid; min-width: 0; }
+.goal-week-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border-top: 1px solid var(--line);
+  padding: 8px 2px;
+}
+.goal-week-title {
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 2px 0;
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.goal-week-title:hover { color: var(--teal); }
+.goal-week-title:focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+.goal-week-count, .goal-week-next, .goal-week-more { min-width: 0; color: var(--text-soft); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.goal-week-next { color: var(--muted); }
+.goal-week-more { border-top: 1px solid var(--line); padding: 10px 2px; }
+
+@media (max-width: 700px) {
+  .goal-week-review { padding-top: 12px; }
+  .goal-week-heading { gap: 10px; }
+  .goal-week-heading h2 { font-size: 17px; }
+  .goal-week-heading .ghost-button { min-height: 36px; padding: 0 10px; font-size: 12px; }
+  .goal-week-row { grid-template-columns: 1fr; gap: 3px; padding: 10px 2px; }
+}

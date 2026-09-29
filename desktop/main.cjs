@@ -202,7 +202,7 @@ function createWindow() {
         );
         const formBlockSource = state.tasks.find((task) => task.title === "Smoke Time Block");
         state.tasks.push({ ...structuredClone(formBlockSource), id: "smoke-form-block-to-none", title: "Smoke Form Block To None" });
-        fillTaskForm(state.tasks.find((task) => task.id === "smoke-form-block-to-none"));
+        await fillTaskForm(state.tasks.find((task) => task.id === "smoke-form-block-to-none"));
         document.querySelector("#taskScheduleNone").checked = true;
         document.querySelector("#taskScheduleNone").dispatchEvent(new Event("change", { bubbles: true }));
         const noTimeFieldsExclusive =
@@ -235,7 +235,7 @@ function createWindow() {
           completed: {}, acknowledgedOverdue: {}, excludedDates: {}, notified: {},
         });
         render();
-        fillTaskForm(state.tasks.find((task) => task.id === "smoke-repeat-form-edit"));
+        await fillTaskForm(state.tasks.find((task) => task.id === "smoke-repeat-form-edit"));
         const repeatEditScopeVisible =
           document.querySelector("#taskRepeatEditScope")?.hidden === false &&
           document.querySelector("#taskDate")?.disabled === true;
@@ -273,7 +273,7 @@ function createWindow() {
           !document.querySelector("#quickTaskPreview")?.hidden &&
           document.querySelector("#quickTaskPreview")?.textContent.includes("Smoke Quick") &&
           document.querySelector("#quickTaskPreview")?.textContent.includes("10:00");
-        submit(document.querySelector("#quickTaskForm"));
+        await saveQuickTask(new Event("submit", { cancelable: true }));
         const quickTaskCard = [...document.querySelectorAll(".task-item")].find((item) => item.querySelector("h3")?.textContent === "Smoke Quick");
         const quickTaskCreated =
           Boolean(quickTaskCard) &&
@@ -284,17 +284,17 @@ function createWindow() {
         const quickBlockPreviewVisible =
           !document.querySelector("#quickTaskPreview")?.hidden &&
           document.querySelector("#quickTaskPreview")?.textContent.includes("14:00-15:30");
-        submit(document.querySelector("#quickTaskForm"));
+        await saveQuickTask(new Event("submit", { cancelable: true }));
         const quickBlockCreated = state.tasks.some(
           (task) => task.title === "Smoke Quick Block" && task.scheduleMode === "block" && task.startTime === "14:00" && task.endTime === "15:30",
         );
         const quickTaskId = quickTaskCard?.dataset.taskId;
         const quickSourceDate = document.querySelector("#activeDate").value;
         const quickTargetDate = addDays(quickSourceDate, 1);
-        if (quickTaskId) moveTaskToDate(quickTaskId, quickSourceDate, quickTargetDate);
+        if (quickTaskId) await moveTaskToDate(quickTaskId, quickSourceDate, quickTargetDate);
         const calendarDragMove =
           Boolean(quickTaskId) &&
-          document.querySelector("#activeDate").value === quickTargetDate &&
+          document.querySelector("#activeDate").value === quickSourceDate &&
           state.tasks.some((task) => task.id === quickTaskId && task.date === quickTargetDate);
         click('[data-view="overview"]');
         const hasWeekBoard =
@@ -367,7 +367,7 @@ function createWindow() {
 
         click('[data-view="tasks"]');
         document.querySelector("#quickTaskInput").value = "Smoke Undo 2026-07-12 #SmokeQuick";
-        submit(document.querySelector("#quickTaskForm"));
+        await saveQuickTask(new Event("submit", { cancelable: true }));
         const hasUndoButton = document.querySelector("#appToast button")?.textContent === "Отменить";
         const undoTaskCreated = state.tasks.some((task) => task.title === "Smoke Undo");
         document.querySelector("#appToast button")?.click();
@@ -555,6 +555,8 @@ function createWindow() {
           /AM|PM|дп|пп/i.test(item.textContent),
         );
         const smokeQuickTask = state.tasks.find((task) => task.title === "Smoke Quick");
+        activeDate = smokeQuickTask.date;
+        render();
         const smokeQuickTimeBefore = smokeQuickTask?.time;
         const timelineQuickActionsRemoved = document.querySelectorAll(".timeline-time-action").length === 0;
         document.querySelector('.timeline-task[data-task-id="' + smokeQuickTask?.id + '"] .timeline-task-main')?.dispatchEvent(
@@ -568,6 +570,7 @@ function createWindow() {
           document.querySelector("#taskScheduleBlock")?.checked &&
           document.querySelector("#taskStartTime")?.value === "10:15" &&
           document.querySelector("#taskEndTime")?.value === "11:15";
+        resetTaskForm({ open: false });
         const unscheduledTimelineTask = {
           id: "smoke-unscheduled-timeline",
           title: "Smoke Unscheduled Timeline",
@@ -627,6 +630,7 @@ function createWindow() {
         );
         movedTimelineCard = openTimelineTaskMenu("smoke-unscheduled-timeline");
         movedTimelineCard?.querySelector('.timeline-menu-item[data-action="details"]')?.click();
+        await Promise.resolve();
         const timelineMenuDetailsWorks =
           document.querySelector("#taskId")?.value === "smoke-unscheduled-timeline" &&
           document.querySelector("#taskTitle")?.value === "Smoke Unscheduled Timeline";
@@ -930,6 +934,14 @@ function createWindow() {
       const failedChecks = Object.entries(result).filter(([key, value]) => key !== "title" && value !== true);
       if (failedChecks.length) {
         console.error(`SMOKE_FAIL ${JSON.stringify(failedChecks)}`);
+        const context = await mainWindow.webContents.executeJavaScript(`({
+          activeView, activeDate,
+          taskTitles: state.tasks.map((task) => ({ title: task.title, date: task.date, scheduleMode: task.scheduleMode })),
+          visibleView: document.querySelector(".view.is-active")?.id,
+          quickInput: document.querySelector("#quickTaskInput")?.value,
+          modalOpen: [...document.querySelectorAll("dialog[open]")].map((dialog) => dialog.id),
+        })`);
+        console.error(`SMOKE_CONTEXT ${JSON.stringify(context)}`);
         app.exit(1);
         return;
       }

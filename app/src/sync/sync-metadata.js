@@ -11,7 +11,7 @@
     boardItems: [
       "type", "x", "y", "width", "height", "z", "text", "fontSize", "fontWeight", "color",
       "groupId", "locked",
-      "assetId", "remotePath", "mime", "name",
+      "assetId", "remotePath", "mime", "name", "sourceType", "sourceId", "backgroundColor",
     ],
     journalEntries: ["date", "text", "revisions"],
     notes: ["title", "body", "pinned", "subjectId", "taskId"],

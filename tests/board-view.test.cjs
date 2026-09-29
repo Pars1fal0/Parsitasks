@@ -3,6 +3,19 @@ const { MAX_ZOOM, MIN_ZOOM, resizeGeometry, snapMove } = require("../app/src/boa
 
 module.exports = [
   {
+    name: "linked card resize keeps its aspect ratio from corner and side handles",
+    fn() {
+      const item = { type: "link", x: 10, y: 20, width: 240, height: 156 };
+      const corner = resizeGeometry(item, 120, 30, "se");
+      const side = resizeGeometry(item, 120, 0, "e");
+      assert.equal(corner.width, 360);
+      assert.equal(corner.height, 234);
+      assert.equal(side.width, 360);
+      assert.equal(side.height, 234);
+      assert.equal(side.y, -19);
+    },
+  },
+  {
     name: "allows a near-infinite board zoom range",
     fn() {
       assert.ok(MIN_ZOOM <= 0.02);

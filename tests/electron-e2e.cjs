@@ -100,6 +100,7 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator('.nav-tab[data-view="board"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#board");
+    await page.locator("#boardAddMenu summary").click();
     await page.locator("#boardAddText").click();
     await waitForBoardEditor(page);
     await page.locator(".board-text-content").fill("Удаляемый объект");
@@ -112,6 +113,7 @@ const { _electron: electron } = require("playwright-core");
       0,
     );
 
+    await page.locator("#boardAddMenu summary").click();
     await page.locator("#boardAddText").click();
     await waitForBoardEditor(page);
     await page.locator(".board-text-content").fill("Идея для проверки");
@@ -133,6 +135,7 @@ const { _electron: electron } = require("playwright-core");
       }),
       true,
     );
+    await page.locator("#boardAddMenu summary").click();
     await page.locator("#boardAddText").click();
     await waitForBoardEditor(page);
     await page.locator(".board-text-content").last().fill("Второй объект");
@@ -246,6 +249,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("#boardViewport").getAttribute("data-mode"), "pan");
     await page.locator("#boardModeSelect").click();
     assert.equal(await page.locator("#boardViewport").getAttribute("data-mode"), "select");
+    await page.locator("#boardAddMenu summary").click();
     await page.locator("#boardAddFrame").click();
     await waitForBoardEditor(page, ".board-frame-title");
     await page.locator(".board-frame-title").fill("План запуска");

@@ -25,6 +25,7 @@
     function bindEvents() {
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.studyTab)));
       root.querySelector("#studyHomeworkFilter").addEventListener("change", render);
+      root.querySelector("#studyJumpToHomeworkForm").addEventListener("click", () => homeworkForm.scrollIntoView({ block: "start", behavior: "smooth" }));
       root.querySelector("#studyOpenNotes").addEventListener("click", () => ctx.openNotesForSubject?.(root.querySelector("#studyHomeworkFilter").value));
       root.querySelector("#studyMaterialFilter").addEventListener("change", render);
       root.querySelector("#studyDriveConnect").addEventListener("click", connect);
@@ -295,6 +296,7 @@
     function renderSubjects(state) {
       root.querySelector("#studySubjectList").replaceChildren(...state.studySubjects.map((subject) => {
         const row = element("div", "study-subject-row");
+        row.dataset.studySubjectId = subject.id;
         const label = element("span");
         label.append(element("span", "", subject.name));
         if (subject.teacher) label.append(element("small", "", subject.teacher));
@@ -309,6 +311,7 @@
       const files = state.studyFiles.filter((file) => filter === "all" || file.subjectId === filter).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       root.querySelector("#studyMaterialList").replaceChildren(...(files.length ? files.map((file) => {
         const row = element("article", "study-item");
+        row.dataset.studyFileId = file.id;
         const body = element("div");
         const title = element("p", "study-item-title");
         const link = element("a", "", file.name);

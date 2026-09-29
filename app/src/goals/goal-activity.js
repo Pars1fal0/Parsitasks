@@ -53,6 +53,28 @@
     };
   }
 
+  function goalWeekActivity(goal, state = {}, weekDates = [], options = {}) {
+    const todayKey = options.todayKey || dateKey(new Date());
+    const dates = new Set(weekDates.filter((day) => isDateKey(day) && day <= todayKey));
+    const tasks = new Map((state.tasks || []).map((task) => [task.id, task]));
+    const habits = new Map((state.habits || []).map((habit) => [habit.id, habit]));
+    const taskCount = normalizeLinkedTaskIds(goal.linkedTaskIds).reduce((count, id) => {
+      const completed = tasks.get(id)?.completed || {};
+      return count + [...dates].filter((day) => completed[day] === true).length;
+    }, 0);
+    const habitCount = normalizeHabitTargets(goal.habitTargets).reduce((count, target) => {
+      const habit = habits.get(target.habitId);
+      if (!habit) return count;
+      return count + [...dates].filter((day) => day >= target.startDate
+        && habitComplete(habit, day, options.habitStatusOnDate)).length;
+    }, 0);
+    return {
+      taskCount,
+      habitCount,
+      hasLinks: Boolean(normalizeLinkedTaskIds(goal.linkedTaskIds).length || normalizeHabitTargets(goal.habitTargets).length),
+    };
+  }
+
   function reconcileGoalStatuses(state, options = {}) {
     const now = options.now || new Date().toISOString();
     let changed = false;
@@ -85,7 +107,7 @@
     return Number.isFinite(date.getTime()) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "";
   }
 
-  const api = { goalActivity, normalizeHabitTargets, normalizeLinkedTaskIds, reconcileGoalStatuses };
+  const api = { goalActivity, goalWeekActivity, normalizeHabitTargets, normalizeLinkedTaskIds, reconcileGoalStatuses };
   global.RhythmGoalActivity = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

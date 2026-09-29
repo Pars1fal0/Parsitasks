@@ -72,6 +72,20 @@ const { _electron: electron } = require("playwright-core");
     state = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")));
     assert.equal(state.goals.find((item) => item.id === goal.id).status, "done");
 
+    await page.locator('.nav-tab[data-view="overview"]:visible').click();
+    assert.equal(await page.locator("#goalWeekList .goal-week-row").count(), 1);
+    assert.match(await page.locator("#goalWeekSummary").innerText(), /1 из 1/);
+    assert.match(await page.locator("#goalWeekList").innerText(), /1 задача · 1 отметка привычек/);
+    if (process.env.CAPTURE_GOAL_REVIEW) {
+      await page.screenshot({ path: path.join(os.tmpdir(), "parsitasks-goal-week-desktop.png"), animations: "disabled" });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
+      await page.screenshot({ path: path.join(os.tmpdir(), "parsitasks-goal-week-mobile.png"), animations: "disabled" });
+      await page.setViewportSize({ width: 1200, height: 800 });
+    }
+    await page.locator("#goalWeekList .goal-week-title").click();
+    assert.equal(await goalRow.isVisible(), true);
+
     await goalRow.locator(".goal-details summary").click();
     assert.match(await goalRow.innerText(), /Подготовить презентацию/);
     assert.match(await goalRow.innerText(), /Дней: 1\/1/);

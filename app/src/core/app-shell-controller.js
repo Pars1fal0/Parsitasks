@@ -1,7 +1,7 @@
 (function (global) {
   const PAGE_TITLES = {
     archive: "Архив",
-    board: "Доска идей",
+    board: "Доска",
     goals: "Цели",
     habits: "Привычки",
     journal: "Заметки",

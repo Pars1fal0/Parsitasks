@@ -130,6 +130,19 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#closeTaskForm").click();
     await page.locator("#confirmAccept").click();
 
+    const viewedDate = await page.locator("#activeDate").inputValue();
+    await blockCard.locator(".timeline-menu-button").click();
+    assert.equal(await blockCard.locator('.timeline-menu-item[data-action="postpone-next"]').isVisible(), true);
+    await blockCard.locator('.timeline-menu-item[data-action="postpone-next"]').click();
+    const movedDate = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1"))
+      .tasks.find((item) => item.id === "e2e-timeline-block").date);
+    assert.notEqual(movedDate, viewedDate);
+    assert.equal(await page.locator('[data-task-id="e2e-timeline-block"]').count(), 0);
+    await page.locator("#appToast button", { hasText: "Отменить" }).click();
+    assert.equal(await page.locator('[data-task-id="e2e-timeline-block"]').count(), 1);
+    await page.locator("#timelineJumpToTask").click();
+    await page.waitForFunction(() => scrollY > 200);
+
     await page.locator('.nav-tab[data-view="journal"]:visible').click();
     await page.locator('[data-notes-tab="journal"]').click();
     const editor = page.locator("#journalText");

@@ -15,6 +15,14 @@ const { _electron: electron } = require("playwright-core");
   try {
     await page.waitForSelector("#pageTitle");
     await page.locator('.nav-tab[data-view="study"]:visible').click();
+    assert.equal(await page.locator("#studyDriveStatus").isVisible(), false);
+    await page.locator('[data-study-tab="materials"]').click();
+    assert.equal(await page.locator("#studyDriveStatus").isVisible(), true);
+    await page.locator('[data-study-tab="homework"]').click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator("#studyJumpToHomeworkForm").click();
+    await page.waitForFunction(() => document.querySelector("#studyHomeworkForm").getBoundingClientRect().top < innerHeight * 0.5);
+    await page.setViewportSize({ width: 1200, height: 800 });
     await page.locator('[data-study-tab="schedule"]').click();
 
     const currentMonday = await page.evaluate(() => {

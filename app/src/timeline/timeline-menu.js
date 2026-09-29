@@ -19,8 +19,18 @@
       menu.className = "timeline-task-menu";
       menu.setAttribute("role", "menu");
       menu.hidden = true;
+      const activeDate = ctx.getActiveDate();
+      const today = ctx.toDateKey(new Date());
       menu.append(
         createMenuItem(entry.done ? "Снова активна" : "Завершить", "complete", () => ctx.toggleTaskDone?.(entry.task.id)),
+        ...(!entry.done ? [
+          createMenuItem(activeDate === today ? "На завтра" : "На следующий день", "postpone-next", () => {
+            ctx.postponeTask?.(entry.task, activeDate, ctx.addDays(activeDate, 1));
+          }),
+          ...(activeDate < today ? [createMenuItem("На сегодня", "postpone-today", () => {
+            ctx.postponeTask?.(entry.task, activeDate, today, { clearPastTimeToday: true });
+          })] : []),
+        ] : []),
         ...(Number.isFinite(entry.minutes)
           ? [createMenuItem("Создать рядом", "create-neighbor", () => ctx.createTaskBeside?.(entry))]
           : []),
