@@ -2,8 +2,8 @@
   function createGoalCheckpointEditor(ctx) {
     let steps = [];
     let draggedId = "";
-    const itemLabel = ctx.itemLabel || "Чекпоинт";
-    const itemsLabel = ctx.itemsLabel || "Чекпоинты";
+    const itemLabel = ctx.itemLabel || "Этап";
+    const itemsLabel = ctx.itemsLabel || "Этапы цели";
 
     function setSteps(value = []) {
       steps = value.map((step) => ({ id: step.id || ctx.createId(), title: clean(step.title), done: step.done === true })).filter((step) => step.title);
@@ -84,7 +84,7 @@
       grip.type = "button";
       grip.draggable = true;
       grip.title = "Перетащить или переместить стрелками";
-      grip.setAttribute("aria-label", ctx.itemLabel ? `Изменить порядок: ${step.title}` : `Изменить порядок чекпоинта ${step.title}`);
+      grip.setAttribute("aria-label", `Изменить порядок: ${step.title}`);
       grip.appendChild(createIcon("grip"));
       grip.addEventListener("keydown", (event) => {
         if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;

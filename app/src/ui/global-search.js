@@ -24,7 +24,7 @@
       const checklistText = (task.checklist || []).map((item) => item.title).join(" · ");
       if (!matches(`${base} ${checklistText}`, search)) return;
       const checklistMatch = checklistText && (!matches(base, search) || (task.checklist || []).some((item) => matches(item.title, search)));
-      const checklistDetail = checklistMatch ? `Чек-лист: ${excerptAround(checklistText, search)}` : "";
+      const checklistDetail = checklistMatch ? `Шаги задачи: ${excerptAround(checklistText, search)}` : "";
       if (task.completed?.[task.date] !== true) {
         results.push({
           id: task.id,
@@ -59,7 +59,7 @@
         id: habit.id,
         type: "habit",
         title: habit.title,
-        detail: habit.archived ? "Приостановлена" : "Активна",
+        detail: habit.archived ? "Убрана из активных" : "Активна",
         date: habit.startDate,
         view: "habits",
       });

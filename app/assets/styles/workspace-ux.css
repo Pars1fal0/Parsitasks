@@ -10,6 +10,54 @@
 .task-extra-fields > .stack-form { margin-top: 8px; }
 .task-extra-fields:not([open]) > .stack-form { display: none; }
 .task-extra-fields { border-top: 1px solid var(--line); }
+.day-progress { display: none; position: relative; align-items: center; gap: 12px; padding: 0 0 8px; margin-bottom: 4px; }
+.day-progress strong { font-size: 28px; line-height: 1; flex: 0 0 auto; }
+.day-progress-copy { display: grid; gap: 2px; min-width: 0; }
+.day-progress-copy > span { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.day-progress-copy > .day-progress-label { font-size: 13px; color: var(--text-strong); font-weight: 600; }
+.day-progress-track { position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--line); overflow: hidden; }
+.day-progress-track > span { display: block; height: 100%; background: var(--teal); width: 0; }
+@media (max-width: 900px) {
+  .day-progress { display: flex; }
+  .sidebar:has(.nav-more[open]) { z-index: 75; }
+}
+.focus-board[hidden], .sidebar-pulse[hidden] { display: none !important; }
+body:is([data-view="nutrition"], [data-view="settings"], [data-view="study"], [data-view="journal"], [data-view="board"], [data-view="archive"], [data-view="goals"]) .day-progress { display: none; }
+#taskCounter { display: none; }
+#settingsView .settings-intro { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#settingsView .settings-grid { display: block; width: 100%; max-width: 800px; }
+#settingsView .settings-primary-group { display: block; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 0; box-shadow: none; }
+#settingsView .settings-summary { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 14px 0; margin: 0; border-radius: 0; }
+#settingsView .settings-summary h2 { font-size: 18px; line-height: 1.4; margin: 0; }
+#settingsView .settings-summary .metric-label { display: none; }
+#settingsView details[open] > .settings-summary::after { transform: rotate(225deg); }
+#settingsView .settings-subsection { padding: 0; margin: 0; border-top: 1px solid var(--line); }
+#settingsView .settings-subsection > summary h2 { font-size: 15px; }
+#settingsView .settings-row { grid-template-columns: minmax(0, 1fr) minmax(160px, 230px); padding: 14px 0; gap: 20px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; }
+#settingsView .settings-row > :is(input, select) { width: 100%; min-width: 0; }
+#settingsView .settings-row > input:not([type="checkbox"]):not([type="radio"]), #settingsView .quiet-hours-fields input { min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-input); color: var(--text-strong); font: inherit; font-size: 14px; }
+#settingsView .quiet-hours-toggle { min-height: 44px; margin-top: 10px; font-size: 14px; font-weight: 600; }
+#settingsView .quiet-hours-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 180px)); padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+#settingsView .quiet-hours-fields input { width: 100%; min-width: 0; }
+#settingsView .settings-status { font-size: 12px; line-height: 1.5; margin-block: 12px; overflow-wrap: anywhere; }
+#settingsView .settings-primary-group > button { margin: 6px 8px 12px 0; }
+#settingsView .settings-actions { padding: 12px 0; gap: 8px; }
+#settingsView .settings-subsection > :is(form, .navigation-preferences, .category-list) { margin-bottom: 14px; }
+#settingsView .settings-account-card { background: transparent; border: 0; padding: 12px 0; box-shadow: none; }
+#settingsView .settings-actions { flex-wrap: wrap; }
+#settingsView .settings-actions button { white-space: normal; }
+#nutritionView .nutrition-content { display: flex; flex-direction: column; align-items: stretch; gap: 16px; }
+#nutritionView .nutrition-week-panel { padding: 0; background: transparent; border: 0; box-shadow: none; }
+.nutrition-day-summary { border-top: 1px solid var(--line); padding-top: 16px; }
+.nutrition-day-summary > h3 { font-size: 18px; margin: 0 0 12px; }
+#nutritionView .nutrition-side { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+#nutritionView .nutrition-details { background: transparent; padding: 0; border: 0; border-top: 1px solid var(--line); box-shadow: none; border-radius: 0; }
+#nutritionView .nutrition-details > summary { min-height: 44px; padding: 12px 0; overflow-wrap: anywhere; }
+#nutritionView .nutrition-details[open] { grid-column: 1 / -1; order: 1; }
+@media (max-width: 680px) { #nutritionView .nutrition-side { grid-template-columns: minmax(0, 1fr); } }
+.task-checklist:not([open]) > div { display: none; }
+.task-checklist > summary { min-height: 32px; padding-block: 6px; }
+#tasksView .task-meta:not(:has(:not([hidden]))) { display: none; }
 .study-subject-setup { margin-bottom: 20px; }
 .study-subject-setup .study-form { max-width: 520px; }
 .study-form[hidden], .time-presets[hidden] { display: none; }
@@ -25,7 +73,7 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 #tasksView .task-filter-disclosure[open] { flex: 1 1 100%; }
 #tasksView #openTaskForm { width: auto; min-height: 44px; padding: 10px 12px; white-space: nowrap; }
 #tasksView #openTaskForm > span { display: inline; }
-#tasksView .quick-task-disclosure { margin: 0 0 12px; }
+#tasksView .quick-task-disclosure { margin: 0 0 8px; }
 #tasksView .quick-task-disclosure > summary { display: none; }
 #tasksView .quick-task-form { padding: 0; margin: 0; gap: 8px; }
 #tasksView .quick-task-form > .primary-button { width: 44px; min-width: 44px; height: 44px; padding: 10px; }
@@ -33,6 +81,7 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 #tasksView .quick-task-form:focus-within .quick-input-hints { display: flex; }
 #tasksView .main-panel { padding: 0; border: 0; background: transparent; box-shadow: none; }
 #tasksView .main-panel > .panel-heading { margin: 0 0 8px; }
+#tasksView .main-panel > .panel-heading:has(#tasksHeading) { display: none; }
 #tasksHeading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 #taskProgressRing { display: none; }
 #taskCounter { margin: 0; }
@@ -43,7 +92,8 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 #tasksView .postpone-tomorrow-menu { display: block; }
 #tasksView .task-more > summary { min-width: 44px; min-height: 44px; }
 .focus-progress .focus-bar { display: none; }
-.sidebar-pulse strong { font-size: 24px; }
+.sidebar-pulse { border-radius: 8px; }
+.sidebar-pulse strong { font-size: 30px; }
 .sidebar-pulse-summary { white-space: pre-line; }
 .focus-progress { width: auto; min-width: 140px; }
 .focus-progress span { font-size: 18px; }
@@ -70,6 +120,13 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 .feature-row-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .feature-row-actions select { min-width: 0; max-width: 100%; }
 @media (max-width: 680px) {
+  body[data-view="settings"] .topbar { margin-bottom: 12px; }
+  body[data-view="settings"] #todayLabel { display: none; }
+  body[data-view="settings"] #pageTitle { font-size: 24px; line-height: 1.3; }
+  #settingsView .settings-row { grid-template-columns: minmax(0, 1fr) minmax(125px, 45%); gap: 12px; }
+  #settingsView .accent-settings-row, #settingsView .remote-version-row { grid-template-columns: minmax(0, 1fr); }
+  #settingsView .accent-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #settingsView .settings-summary { min-height: 54px; }
   .navigation-custom .nav-tabs { grid-template-columns: repeat(var(--mobile-nav-count, 5), minmax(0, 1fr)); }
   .navigation-custom .nav-tabs > button.nav-tab { display: none; order: var(--mobile-nav-order, 10); }
   .navigation-custom .nav-tabs > button.nav-tab.is-mobile-pin:not(.is-section-hidden) { display: grid; }
@@ -90,6 +147,8 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 .nutrition-week-board.is-day .nutrition-day-column { min-height: 0; }
 .nutrition-week-board.is-day .nutrition-meal-group { max-width: 760px; }
 .nutrition-week-board.is-day .nutrition-meal-card { font-size: 15px; }
+.nutrition-week-board.is-day .nutrition-meal-card > strong { font-size: 15px; overflow-wrap: anywhere; }
+.nutrition-week-board.is-day .nutrition-meal-card > small { font-size: 12px; overflow-wrap: anywhere; }
 .nutrition-meal-status { color: var(--text-soft); font-weight: 600; }
 #nutritionIngredientsError { color: var(--coral); white-space: normal; overflow-wrap: anywhere; }
 
@@ -106,11 +165,12 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
   #tasksView .quick-task-form { grid-template-columns: minmax(0, 1fr) 44px; }
   #tasksView .quick-task-form > .primary-button { grid-column: 2; grid-row: 1; }
   #tasksView .quick-task-preview, #tasksView .quick-input-hints { grid-column: 1 / -1; }
-  #tasksView .task-item { grid-template-columns: 4px 44px minmax(0, 1fr) 44px; gap: 6px; padding-right: 0; }
-  #tasksView .task-item > .check-button { width: 44px; height: 44px; }
+  #tasksView .task-item { grid-template-columns: 24px 44px minmax(0, 1fr) 44px; gap: 6px; padding-right: 0; }
+  #tasksView .task-item > .task-accent { display: none; }
+  #tasksView .task-item > .check-button { grid-column: 2; grid-row: 1; width: 44px; height: 44px; }
   #tasksView .task-item > .task-actions { grid-column: 4; grid-row: 1; align-self: start; padding-right: 0; }
-  #tasksView .task-item > .drag-handle { position: static; grid-column: 4; grid-row: 2; width: 44px; height: 44px; }
-  #tasksView .task-item > .task-content { grid-column: 3; grid-row: 1 / 3; }
+  #tasksView .task-item > .drag-handle { position: static; grid-column: 1; grid-row: 1; width: 24px; height: 44px; }
+  #tasksView .task-item > .task-content { grid-column: 3; grid-row: 1; }
   #tasksView .task-item .task-meta-chip, #tasksView .task-item .priority-pill { padding: 2px 5px; }
   #tasksView .task-item .task-row h3 { display: block; overflow: visible; -webkit-line-clamp: unset; }
   #nutritionView > .toolbar { gap: 8px; margin-bottom: 10px; }
@@ -130,7 +190,7 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
   #nutritionView .nutrition-metrics > div { padding: 8px 6px; min-width: 0; }
   #nutritionView .nutrition-metrics span, #nutritionView .nutrition-metrics small { font-size: 11px; overflow-wrap: anywhere; }
   #nutritionView .nutrition-metrics strong { font-size: 20px; }
-  #nutritionView .nutrition-week-panel { padding: 12px; }
+  #nutritionView .nutrition-week-panel { padding: 0; }
   #nutritionView .nutrition-week-board.is-day .nutrition-day-column { padding: 0; border: 0; }
   #nutritionView .nutrition-week-board.is-day .nutrition-day-heading { display: none; }
 }

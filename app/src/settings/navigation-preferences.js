@@ -1,10 +1,12 @@
 (function (global) {
   const LABELS = { tasks: "Задачи", timeline: "Время", habits: "Привычки", goals: "Цели", overview: "Календарь", study: "Учёба", nutrition: "Питание", journal: "Заметки", board: "Доска", archive: "Архив", settings: "Настройки" };
-  const DEFAULT_MOBILE = ["tasks", "timeline", "habits", "overview"];
+  const DEFAULT_MOBILE = ["tasks", "habits", "overview"];
+  const DEFAULT_HIDDEN = Object.keys(LABELS).filter((view) => !DEFAULT_MOBILE.includes(view) && view !== "settings");
 
   function normalize(value = {}) {
     value ||= {};
-    const hidden = [...new Set(Array.isArray(value.hidden) ? value.hidden : [])].filter((view) => Object.hasOwn(LABELS, view) && view !== "settings");
+    const customized = Array.isArray(value.hidden) || Array.isArray(value.mobile);
+    const hidden = [...new Set(Array.isArray(value.hidden) ? value.hidden : customized ? [] : DEFAULT_HIDDEN)].filter((view) => Object.hasOwn(LABELS, view) && view !== "settings");
     const mobile = [...new Set(Array.isArray(value.mobile) ? value.mobile : DEFAULT_MOBILE)]
       .filter((view) => Object.hasOwn(LABELS, view) && !hidden.includes(view)).slice(0, 4);
     if (!mobile.length) mobile.push(Object.keys(LABELS).find((view) => !hidden.includes(view)));
@@ -86,6 +88,13 @@
         pins.append(label);
       }
       container.append(visibility, pins);
+      const basic = document.createElement("button");
+      basic.type = "button";
+      basic.className = "ghost-button";
+      basic.textContent = "Только основные разделы";
+      basic.title = "Задачи, привычки и календарь";
+      basic.addEventListener("click", () => ctx.updatePreferences(normalize()));
+      container.append(basic);
       if (focused) container.querySelector(`[data-navigation-key="${focused}"]`)?.focus();
     }
 

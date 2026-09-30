@@ -9,6 +9,7 @@ const { _electron: electron } = require("playwright-core");
     executablePath: require("electron"),
   });
   const page = await app.firstWindow();
+  await require("./navigation-fixture.cjs").enableAllSections(page);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   try {
@@ -138,6 +139,7 @@ const { _electron: electron } = require("playwright-core");
       await page.locator("#boardAddLink").click();
       await page.locator("#boardSourceType").selectOption(type);
       await page.locator(`[data-board-source="${type}"]`).click();
+      await page.locator("#boardFocus").click();
       await page.locator(".board-linked-card").filter({ hasText: title }).locator(".board-link-open").click();
       assert.equal(await page.locator(view).isVisible(), true);
       assert.equal(await page.locator(target).isVisible(), true);

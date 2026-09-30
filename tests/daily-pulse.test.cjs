@@ -7,7 +7,7 @@ module.exports = [
     fn() {
       const els = Object.fromEntries([
         "focusTitle", "focusMeta", "focusPercent", "focusBar", "todayOpenMetric", "todayDoneMetric",
-        "habitDoneMetric", "habitFrozenMetric", "sideProgressValue", "sideProgressBar", "sideProgressSummary",
+        "habitDoneMetric", "habitFrozenMetric", "sideProgressValue", "sideProgressBar", "sideProgressSummary", "dayProgressValue", "dayProgressSummary", "dayProgressBar",
       ].map((key) => [key, { style: {}, textContent: "" }]));
       const controller = createDailyPulse({
         els,
@@ -24,6 +24,9 @@ module.exports = [
       assert.equal(els.focusTitle.textContent, "Следующая");
       assert.equal(els.sideProgressSummary.textContent, "Задачи: 1 из 2 · Привычки: 1 из 1");
       assert.equal(els.sideProgressValue.textContent, "75%");
+      assert.equal(els.dayProgressValue.textContent, "75%");
+      assert.equal(els.dayProgressBar.style.width, "75%");
+      assert.equal(els.dayProgressSummary.textContent, "Задачи: 1 из 2 · Привычки: 1 из 1");
       assert.equal(els.focusPercent.textContent, "1 из 2 задач");
     },
   },

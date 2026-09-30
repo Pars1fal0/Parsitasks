@@ -8,6 +8,7 @@ const { _electron: electron } = require("playwright-core");
     executablePath: require("electron"),
   });
   const page = await electronApp.firstWindow();
+  await require("./navigation-fixture.cjs").enableAllSections(page);
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
@@ -42,7 +43,7 @@ const { _electron: electron } = require("playwright-core");
     await waitForDisclosurePosition(taskCard.locator(".task-more"));
     assertMenuFits(await menuBounds(taskCard.locator(".task-more-menu")), "task menu");
     assert.ok((await taskCard.locator(".task-more-menu").boundingBox()).height > 100, "task menu must not collapse on mobile");
-    await page.locator("#pageTitle").click();
+    await page.mouse.click(1, 1);
     assert.equal(await taskCard.locator(".task-more").getAttribute("open"), null, "outside click must close task menu");
 
     await page.locator('.nav-tab[data-view="habits"]:visible').click();

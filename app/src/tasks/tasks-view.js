@@ -4,6 +4,7 @@
     let draggedTaskDate = "";
     let overdueVisibleCount = 20;
     let historicalVisibleCount = 60;
+    const expandedChecklists = new Set();
     const activeFilters = ctx.els.activeTaskFilters;
     const activeFiltersLabel = ctx.els.activeTaskFiltersLabel;
     const filterSummary = ctx.els.taskFilterSummary;
@@ -140,7 +141,14 @@
         const summary = document.createElement("summary");
         const list = document.createElement("div");
         details.className = "task-checklist";
-        const update = () => { const progress = global.RhythmTaskChecklist.progress(task, activeDate); summary.textContent = `Чек-лист: ${progress.done} из ${progress.total}`; };
+        const expansionKey = `${task.id}:${activeDate}`;
+        details.open = expandedChecklists.has(expansionKey);
+        details.addEventListener("toggle", () => {
+          if (!details.isConnected) return;
+          if (details.open) expandedChecklists.add(expansionKey);
+          else expandedChecklists.delete(expansionKey);
+        });
+        const update = () => { const progress = global.RhythmTaskChecklist.progress(task, activeDate); summary.textContent = `Шаги: ${progress.done} из ${progress.total}`; };
         update();
         task.checklist.forEach((item) => {
           const label = document.createElement("label");
@@ -238,6 +246,7 @@
       });
 
       node.querySelector(".edit-task").addEventListener("click", () => ctx.fillTaskForm(task));
+      node.querySelector(".duplicate-task").addEventListener("click", () => ctx.duplicateTask(task.id));
       const postponeTomorrow = () => {
         ctx.postponeTask(task, activeDate, ctx.addDays(activeDate, 1));
       };
@@ -337,7 +346,7 @@
 
     function renderTaskMeta(meta, task) {
       meta.replaceChildren();
-      ctx.taskMetaItems(task).forEach((item) => {
+      ctx.taskMetaItems(task).filter((item) => !["empty", "reminder"].includes(item.type)).forEach((item) => {
         const chip = document.createElement("span");
         chip.className = ["category", "study"].includes(item.type) ? "task-meta-chip task-category-chip" : "task-meta-chip";
         if (item.type === "empty") chip.classList.add("is-empty");

@@ -6,6 +6,7 @@ const { _electron: electron } = require("playwright-core");
 (async () => {
   const app = await electron.launch({ args: [path.resolve(__dirname, ".."), "--e2e-test"], executablePath: require("electron") });
   const page = await app.firstWindow();
+  await require("./navigation-fixture.cjs").enableAllSections(page);
   page.setDefaultTimeout(10000);
   page.on("dialog", (dialog) => dialog.accept().catch(() => {}));
   const errors = [];

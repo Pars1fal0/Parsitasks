@@ -18,7 +18,7 @@
     let templateEditorId = "";
     let owner = local.owner();
     const compactQuery = global.matchMedia("(max-width: 820px)");
-    const period = () => local.read("nutrition-period", compactQuery.matches ? "day" : "week");
+    const period = () => local.read("nutrition-period", "day");
     const mealStatus = () => local.read("nutrition-status", "");
     const mealDraft = local.formDraft(ctx.els.nutritionMealForm,
       () => templateEditorId ? `recipe-draft:${templateEditorId}` : `meal-draft:${ctx.els.nutritionMealId.value || "new"}`, (saved) => {
@@ -26,7 +26,22 @@
         discardDraftButton.hidden = !saved;
       });
 
+    function organizeLayout() {
+      const content = document.querySelector("#nutritionView .nutrition-content");
+      const tools = content.querySelector(".nutrition-side");
+      const summary = document.createElement("section");
+      summary.className = "nutrition-day-summary";
+      summary.setAttribute("aria-labelledby", "nutritionSummaryHeading");
+      summary.append(text("h3", "Итог дня"));
+      summary.firstElementChild.id = "nutritionSummaryHeading";
+      [".nutrition-status-modes", ".nutrition-metrics", "#nutritionCalculationNote"].forEach((selector) => summary.append(document.querySelector(selector)));
+      content.insertBefore(summary, tools);
+      content.querySelector(".nutrition-week-panel").classList.remove("panel");
+      tools.querySelectorAll(".nutrition-details").forEach((details) => details.classList.remove("panel"));
+    }
+
     function bindEvents() {
+      organizeLayout();
       mealDraft.bind();
       discardDraftButton.addEventListener("click", async () => {
         closeMealForm();
@@ -110,6 +125,7 @@
       const state = ctx.getState();
       const week = ctx.model.nutritionWeek(state.nutritionMeals, ctx.getActiveDate(), ctx.getFirstDayOfWeek());
       const dayMode = period() === "day";
+      document.querySelector("#nutritionSummaryHeading").textContent = dayMode ? "Итог дня" : "Итог недели";
       const dates = dayMode ? [ctx.getActiveDate()] : week.days;
       const status = mealStatus();
       document.querySelectorAll("[data-nutrition-period]").forEach((button) => {
@@ -217,11 +233,11 @@
       const values = info.values;
       card.append(text(
         "small",
-        info.status === "unknown" ? "Калории и БЖУ не рассчитаны"
-          : `${Math.round(values.calories)} ккал · Б ${round(values.protein)} · Ж ${round(values.fat)} · У ${round(values.carbs)}${info.status === "partial" ? ` · Неполный расчёт: без данных ${info.missing}` : ""}`,
+        info.status === "unknown" ? "— ккал"
+          : `${info.status === "partial" ? "≈ " : ""}${Math.round(values.calories)} ккал · Б ${round(values.protein)} · Ж ${round(values.fat)} · У ${round(values.carbs)}`,
       ));
       const actions = element("div", "nutrition-meal-actions");
-      const eaten = actionButton(meal.status === "eaten" ? "Вернуть в план" : "Съедено");
+      const eaten = actionButton(meal.status === "eaten" ? "Вернуть в план" : "Отметить съеденным");
       eaten.addEventListener("click", () => ctx.setMealStatus(meal.id, meal.status === "eaten" ? "planned" : "eaten"));
       const skipped = actionButton(meal.status === "skipped" ? "Вернуть в план" : "Пропустить");
       skipped.addEventListener("click", () => ctx.setMealStatus(meal.id, meal.status === "skipped" ? "planned" : "skipped"));

@@ -404,6 +404,9 @@ const els = {
   sideProgressBar: document.querySelector("#sideProgressBar"),
   sideProgressSummary: document.querySelector("#sideProgressSummary"),
   sideProgressValue: document.querySelector("#sideProgressValue"),
+  dayProgressValue: document.querySelector("#dayProgressValue"),
+  dayProgressBar: document.querySelector("#dayProgressBar"),
+  dayProgressSummary: document.querySelector("#dayProgressSummary"),
   taskCategoryId: document.querySelector("#taskCategoryId"),
   taskCategoryFilter: document.querySelector("#taskCategoryFilter"),
   taskCounter: document.querySelector("#taskCounter"),
@@ -596,6 +599,7 @@ const tasksView = window.RhythmTasksView.createTasksView({
   confirmAction,
   deleteTask,
   deleteMovedReplacement,
+  duplicateTask: (taskId) => timelineController.duplicateTask(taskId),
   escapeHtml,
   excludeTaskDate,
   excludedTasksForDate,
@@ -3016,7 +3020,7 @@ function updateSetting(name, value) {
       saveUiState();
       scheduleAutoBackup();
       settingsController.syncControls();
-      showToast(backupSchedule === "0" ? "Плановый бэкап выключен" : "Расписание бэкапа обновлено");
+      showToast(backupSchedule === "0" ? "Резервное копирование по расписанию выключено" : "Расписание резервного копирования обновлено");
       break;
     case "firstDayOfWeek":
       firstDayOfWeek = normalizeFirstDayOfWeek(value);
@@ -3120,12 +3124,12 @@ function applyImportedSettings(settings = {}) {
 function renderSettingsBackupStatus() {
   if (!els.settingsBackupStatus) return;
   if (backupSchedule === "0") {
-    els.settingsBackupStatus.textContent = "Авто-бэкап выключен";
+    els.settingsBackupStatus.textContent = "Резервное копирование по расписанию выключено";
     return;
   }
   const last = lastAutoBackupAt ? formatBackupDate(lastAutoBackupAt) : "еще не запускался";
   const next = nextAutoBackupAt ? formatBackupDate(nextAutoBackupAt) : "ожидает расписание";
-  els.settingsBackupStatus.textContent = `Последний авто-бэкап: ${last} · следующий: ${next}`;
+  els.settingsBackupStatus.textContent = `Последняя резервная копия: ${last} · следующая: ${next}`;
 }
 
 function isRemoteSyncReady() {

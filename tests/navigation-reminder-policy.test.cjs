@@ -5,7 +5,10 @@ const { createSettingsState } = require("../app/src/settings/settings-state.js")
 
 module.exports = [
   { name: "normalizes navigation without hiding settings or duplicating bottom slots", fn() {
-    assert.deepEqual(navigation.normalize(), { hidden: [], mobile: ["tasks", "timeline", "habits", "overview"] });
+    assert.deepEqual(navigation.normalize(), { hidden: ["timeline", "goals", "study", "nutrition", "journal", "board", "archive"], mobile: ["tasks", "habits", "overview"] });
+    assert.deepEqual(navigation.normalize(null), navigation.normalize());
+    assert.deepEqual(navigation.normalize({ hidden: [], mobile: ["tasks", "timeline", "habits", "overview"] }), { hidden: [], mobile: ["tasks", "timeline", "habits", "overview"] });
+    assert.deepEqual(navigation.normalize({ hidden: [] }).hidden, []);
     const prefs = navigation.normalize({ hidden: ["settings", "board", "bad", "toString"], mobile: ["study", "journal", "journal", "board", "tasks", "habits", "goals"] });
     assert.deepEqual(prefs, { hidden: ["board"], mobile: ["study", "journal", "tasks", "habits"] });
     assert.deepEqual(navigation.normalize({ hidden: Object.keys(navigation.LABELS), mobile: [] }), { hidden: Object.keys(navigation.LABELS).filter((view) => view !== "settings"), mobile: ["settings"] });

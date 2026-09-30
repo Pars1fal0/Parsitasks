@@ -89,6 +89,7 @@
       resetInlineCategory();
       ctx.els.taskFormPanel.classList.remove("is-collapsed");
       if (ctx.els.taskFormHeading) ctx.els.taskFormHeading.textContent = "Редактировать задачу";
+      ctx.els.taskForm.querySelector('button[type="submit"]').textContent = "Сохранить";
       if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Отмена";
       ctx.els.taskId.value = task.id;
       ctx.els.taskTitle.value = task.title;
@@ -121,6 +122,7 @@
     function resetTaskForm(options = {}) {
       ctx.els.taskFormPanel.classList.toggle("is-collapsed", options.open === false);
       if (ctx.els.taskFormHeading) ctx.els.taskFormHeading.textContent = "Новая задача";
+      ctx.els.taskForm.querySelector('button[type="submit"]').textContent = "Создать";
       if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Очистить";
       ctx.els.taskForm.reset();
       checklistEditor.setSteps();
@@ -144,7 +146,7 @@
       ctx.syncTaskTimePresets();
       syncRepeatEditScope(false);
       const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
-      if (extra) extra.open = Boolean(ctx.els.taskCategoryId.value);
+      if (extra) extra.open = false;
       ctx.markFormPristine?.(ctx.els.taskForm);
     }
 

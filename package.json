@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.28.0",
+  "version": "0.29.0",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",
@@ -10,7 +10,7 @@
   "scripts": {
     "desktop": "electron .",
     "desktop:smoke": "electron . --smoke-test",
-    "test:e2e": "node tests/electron-e2e.cjs && node tests/timeline-journal-interactions-e2e.cjs && node tests/menu-popovers-e2e.cjs && node tests/accessibility-e2e.cjs && node tests/study-e2e.cjs && node tests/notes-e2e.cjs && node tests/goals-activity-e2e.cjs && node tests/board-workspace-e2e.cjs && node tests/ux-reliability-e2e.cjs && node tests/weekly-habits-checklists-e2e.cjs && node tests/ux-streamlining-e2e.cjs && node tests/personal-workspace-e2e.cjs",
+    "test:e2e": "node tests/electron-e2e.cjs && node tests/timeline-journal-interactions-e2e.cjs && node tests/menu-popovers-e2e.cjs && node tests/accessibility-e2e.cjs && node tests/study-e2e.cjs && node tests/notes-e2e.cjs && node tests/goals-activity-e2e.cjs && node tests/board-workspace-e2e.cjs && node tests/ux-reliability-e2e.cjs && node tests/weekly-habits-checklists-e2e.cjs && node tests/ux-streamlining-e2e.cjs && node tests/personal-workspace-e2e.cjs && node tests/simple-workspace-e2e.cjs && node tests/clear-controls-e2e.cjs",
     "lint": "node tests/lint.cjs",
     "test": "node tests/run-tests.cjs",
     "test:dependencies": "npm audit --audit-level=high",

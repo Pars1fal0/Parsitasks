@@ -12,7 +12,7 @@ module.exports = [
       const result = searchWorkspace(state, "собрать данные")[0];
       assert.equal(result.title, "Презентация");
       assert.equal(result.checklistMatch, true);
-      assert.match(result.detail, /Чек-лист: Собрать данные/);
+      assert.match(result.detail, /Шаги задачи: Собрать данные/);
       assert.equal(searchWorkspace(state, "неизвестный")[0].detail, "Нет данных о калориях");
       assert.match(searchWorkspace(state, "вода")[0].detail, /^0 ккал/);
       state.tasks[0].completed = { "2026-09-30": true };

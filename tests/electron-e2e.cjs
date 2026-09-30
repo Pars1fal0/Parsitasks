@@ -8,6 +8,7 @@ const { _electron: electron } = require("playwright-core");
     executablePath: require("electron"),
   });
   const page = await electronApp.firstWindow();
+  await require("./navigation-fixture.cjs").enableAllSections(page);
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
@@ -70,7 +71,7 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator('.nav-tab[data-view="nutrition"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#nutrition");
-    assert.equal(await page.locator(".nutrition-day-column").count(), 7);
+    assert.equal(await page.locator(".nutrition-day-column").count(), 1);
     const nutritionDaysFit = await page.evaluate(() => {
       const board = document.querySelector(".nutrition-week-panel").getBoundingClientRect();
       const lastDay = document.querySelector(".nutrition-day-column:last-child").getBoundingClientRect();
@@ -321,10 +322,10 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator('.nav-tab[data-view="settings"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#settings");
-    assert.equal(await page.locator(".settings-accordion").first().getAttribute("open"), null);
+    assert.equal(await page.locator(".settings-primary-group").count(), 3);
     assert.equal(await page.locator("#remoteSyncPushButton").isDisabled(), true);
     assert.equal(await page.locator("#remoteSyncPullButton").isDisabled(), true);
-    await page.locator(".settings-accordion").first().locator("summary").click();
+    await page.locator("#themePreference").evaluate((field) => { field.closest("details").open = true; });
     await page.locator('.accent-option:has(input[value="blue"])').click();
     assert.equal(await page.evaluate(() => document.documentElement.dataset.accent), "blue");
     assert.equal(

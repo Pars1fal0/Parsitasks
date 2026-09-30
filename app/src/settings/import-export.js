@@ -57,7 +57,7 @@
         .catch(() => {
           if (ctx.els.fileBackupStatus) {
             ctx.els.fileBackupStatus.hidden = false;
-            ctx.els.fileBackupStatus.textContent = "Файловый бэкап: ошибка записи";
+            ctx.els.fileBackupStatus.textContent = "Файловая копия: ошибка записи";
           }
           return { ok: false, reason: "write-failed" };
         });
@@ -70,27 +70,27 @@
       try {
         const info = await window.rhythmDesktop.getFileBackupInfo();
         if (info?.latest?.mtimeMs) {
-          ctx.els.fileBackupStatus.textContent = `Файловый бэкап: ${formatBackupDate(info.latest.mtimeMs)}`;
+          ctx.els.fileBackupStatus.textContent = `Файловая копия: ${formatBackupDate(info.latest.mtimeMs)}`;
         } else {
-          ctx.els.fileBackupStatus.textContent = "Файловый бэкап: папка готова";
+          ctx.els.fileBackupStatus.textContent = "Файловая копия: папка готова";
         }
       } catch {
-        ctx.els.fileBackupStatus.textContent = "Файловый бэкап: недоступен";
+        ctx.els.fileBackupStatus.textContent = "Файловая копия недоступна";
       }
     }
 
     async function openBackupFolder() {
       if (!window.rhythmDesktop?.openBackupFolder) {
-        ctx.showToast("Папка бэкапов доступна в desktop-версии приложения");
+        ctx.showToast("Папка резервных копий доступна в приложении для компьютера");
         return { ok: false, reason: "desktop-unavailable" };
       }
 
       try {
         const result = await window.rhythmDesktop.openBackupFolder();
-        ctx.showToast(result?.ok ? "Папка бэкапов открыта" : "Не удалось открыть папку бэкапов");
+        ctx.showToast(result?.ok ? "Папка резервных копий открыта" : "Не удалось открыть папку резервных копий");
         return result;
       } catch {
-        ctx.showToast("Не удалось открыть папку бэкапов");
+        ctx.showToast("Не удалось открыть папку резервных копий");
         return { ok: false, reason: "open-failed" };
       }
     }
@@ -104,11 +104,11 @@
 
       if (result.ok) {
         updateBackupStatus();
-        if (!silent) ctx.showToast("Локальный бэкап обновлен");
+        if (!silent) ctx.showToast("Локальная резервная копия обновлена");
         return result;
       }
 
-      if (!silent && result.reason !== "throttled") ctx.showToast("Не удалось создать бэкап");
+      if (!silent && result.reason !== "throttled") ctx.showToast("Не удалось создать резервную копию");
       return result;
     }
 
@@ -119,17 +119,17 @@
     async function restoreBackup() {
       const backup = loadBackup();
       if (!backup) {
-        ctx.showToast("Локальный бэкап пока не найден");
+        ctx.showToast("Локальная резервная копия пока не найдена");
         return;
       }
 
       const backupDate = backup.exportedAt ? formatBackupDate(backup.exportedAt) : "без даты";
-      const message = `Восстановить данные из локального бэкапа (${backupDate})? Текущий план будет заменен.`;
+      const message = `Восстановить данные из локальной резервной копии (${backupDate})? Текущий план будет заменён.`;
       const confirmed = await ctx.confirmAction({
             confirmLabel: "Восстановить",
             message,
             tone: "danger",
-            title: "Восстановить бэкап?",
+            title: "Восстановить резервную копию?",
           });
       if (!confirmed) return;
 
@@ -152,10 +152,10 @@
     function updateBackupStatus() {
       const backup = loadBackup();
       if (!backup?.exportedAt) {
-        ctx.els.backupStatus.textContent = "Бэкап еще не создан";
+        ctx.els.backupStatus.textContent = "Резервная копия ещё не создана";
         return;
       }
-      ctx.els.backupStatus.textContent = `Бэкап: ${formatBackupDate(backup.exportedAt)}`;
+      ctx.els.backupStatus.textContent = `Резервная копия: ${formatBackupDate(backup.exportedAt)}`;
     }
 
     function formatBackupDate(value) {

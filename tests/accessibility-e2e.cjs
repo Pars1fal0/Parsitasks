@@ -10,6 +10,7 @@ const { _electron: electron } = require("playwright-core");
     executablePath: require("electron"),
   });
   const page = await electronApp.firstWindow();
+  await require("./navigation-fixture.cjs").enableAllSections(page);
 
   try {
     await page.waitForSelector("#pageTitle");

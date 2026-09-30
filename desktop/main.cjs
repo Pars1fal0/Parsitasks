@@ -416,7 +416,7 @@ function createWindow() {
         const fileBackupUiVisible =
           Boolean(document.querySelector("#openBackupFolderButton")) &&
           !document.querySelector("#fileBackupStatus")?.hidden &&
-          document.querySelector("#fileBackupStatus")?.textContent.includes("Файловый бэкап");
+          document.querySelector("#fileBackupStatus")?.textContent.includes("Файловая копия");
         const openBackupFolderWorks = openBackupFolderResult?.ok && Boolean(openBackupFolderResult.path);
 
         activeDate = state.tasks.find((task) => task.id === quickTaskId)?.date || activeDate;
@@ -661,7 +661,7 @@ function createWindow() {
         backupScheduleSelect.value = "15";
         backupScheduleSelect.dispatchEvent(new Event("change", { bubbles: true }));
         const backupSettingWorks = backupScheduleSelect.value === "15";
-        const settingsBackupStatusWorks = document.querySelector("#settingsBackupStatus")?.textContent.includes("следующий");
+        const settingsBackupStatusWorks = document.querySelector("#settingsBackupStatus")?.textContent.includes("следующая");
         const notificationSelect = document.querySelector("#notificationSetting");
         notificationSelect.value = "off";
         notificationSelect.dispatchEvent(new Event("change", { bubbles: true }));
@@ -755,7 +755,8 @@ function createWindow() {
           (getComputedStyle(mobileTaskRailNode).display === "none" || mobileTaskPanel?.top < mobileTaskRail?.top) &&
           getComputedStyle(document.querySelector(".focus-board")).display === "none";
         const mobileNavColumns = getComputedStyle(document.querySelector(".nav-tabs")).gridTemplateColumns.split(" ").filter(Boolean).length;
-        const mobileNavigationFits = mobileNavColumns === 5;
+        const expectedNavColumns = navigationPreferences.mobile.length + (document.querySelector(".nav-more").hidden ? 0 : 1);
+        const mobileNavigationFits = mobileNavColumns === expectedNavColumns && document.documentElement.scrollWidth <= innerWidth + 1;
         click('[data-view="overview"]');
         await new Promise((resolve) => setTimeout(resolve, 30));
         click('[data-overview-mode="year"]');

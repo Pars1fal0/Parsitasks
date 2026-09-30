@@ -117,7 +117,7 @@
         return;
       }
       if (!steps.length && !linkedTaskIds.length && !habitTargets.length) {
-        ctx.showToast("Добавь чекпоинт, задачу или привычку");
+        ctx.showToast("Добавь этап, задачу или привычку");
         ctx.checkpointEditor.focus();
         return;
       }
@@ -294,7 +294,7 @@
 
       ctx.saveState();
       renderGoals();
-      ctx.showToast(achieved && !wasDone ? "Цель достигнута" : done ? "Чекпоинт пройден" : "Чекпоинт снова активен", { undo });
+      ctx.showToast(achieved && !wasDone ? "Цель достигнута" : done ? "Этап выполнен" : "Этап снова активен", { undo });
     }
 
     async function deleteGoal(goalId) {
@@ -302,7 +302,7 @@
       if (!goal) return;
       const confirmed = await ctx.confirmAction?.({
         title: "Удалить цель?",
-        message: `Цель «${goal.title}» и её чекпоинты будут удалены.`,
+        message: `Цель «${goal.title}» и её этапы будут удалены.`,
         confirmLabel: "Удалить",
         tone: "danger",
       });

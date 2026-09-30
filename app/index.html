@@ -177,26 +177,26 @@
         <div class="data-actions">
           <button class="ghost-button icon-text-button" id="exportButton" type="button">
             <svg class="ui-icon"><use href="#icon-download"></use></svg>
-            Экспорт
+            Скачать данные
           </button>
           <button class="ghost-button icon-text-button" id="importButton" type="button">
             <svg class="ui-icon"><use href="#icon-upload"></use></svg>
-            Импорт
+            Загрузить данные
           </button>
           <button class="ghost-button icon-text-button" id="restoreBackupButton" type="button">
             <svg class="ui-icon"><use href="#icon-rotate"></use></svg>
-            Восстановить
+            Восстановить копию
           </button>
-          <div class="storage-note" id="backupStatus" aria-live="polite" aria-atomic="true">Бэкап еще не создан</div>
-          <button class="ghost-button compact-button" id="openBackupFolderButton" type="button" hidden>Папка бэкапов</button>
-          <div class="storage-note" id="fileBackupStatus" aria-live="polite" aria-atomic="true" hidden>Файловый бэкап недоступен</div>
+          <div class="storage-note" id="backupStatus" aria-live="polite" aria-atomic="true">Резервная копия ещё не создана</div>
+          <button class="ghost-button compact-button" id="openBackupFolderButton" type="button" hidden>Открыть папку копий</button>
+          <div class="storage-note" id="fileBackupStatus" aria-live="polite" aria-atomic="true" hidden>Файловая копия недоступна</div>
           <input id="importFile" type="file" accept="application/json,.json" hidden>
         </div>
 
         <div class="sidebar-footer">
           <button class="ghost-button icon-text-button" id="notifyButton" type="button">
             <svg class="ui-icon"><use href="#icon-bell"></use></svg>
-            Уведомления
+            Разрешить уведомления
           </button>
           <div class="storage-note" id="desktopStatus">Данные на этом устройстве</div>
         </div>
@@ -253,7 +253,12 @@
           <button class="primary-button compact-button" id="applyUpdateButton" type="button">Обновить</button>
         </div>
 
-        <section class="focus-board" aria-label="Состояние дня">
+        <section class="day-progress" aria-label="Общий прогресс выбранного дня">
+          <strong id="dayProgressValue">—</strong>
+          <div class="day-progress-copy"><span class="day-progress-label">Прогресс за день</span><span id="dayProgressSummary">Нет обязательных дел</span></div>
+          <div class="day-progress-track" aria-hidden="true"><span id="dayProgressBar"></span></div>
+        </section>
+        <section class="focus-board" aria-label="Состояние дня" hidden>
           <article class="focus-card">
             <div class="focus-copy">
               <span class="metric-label">Следующее действие</span>
@@ -306,7 +311,7 @@
                   <input id="taskSearch" type="search" placeholder="Название, категория, повтор" autocomplete="off">
                 </span>
               </label>
-                <button class="ghost-button compact-button" id="clearTaskSearch" type="button">Сбросить</button>
+                <button class="ghost-button compact-button" id="clearTaskSearch" type="button">Очистить поиск</button>
               </div>
             </details>
             <div class="toolbar-actions">
@@ -394,7 +399,7 @@
                   </label>
                   <label>Дата<input id="taskDate" type="date" required></label>
                   <details class="task-extra-fields" id="taskExtraFields">
-                    <summary>Дополнительно</summary>
+                    <summary>Дополнительные настройки</summary>
                     <div class="stack-form">
                   <div class="deadline-card">
                     <div class="deadline-title">
@@ -555,18 +560,18 @@
                     </div>
                   </fieldset>
                   <div class="goal-checkpoint-editor">
-                    <div class="goal-checkpoint-heading"><strong>Чек-лист</strong></div>
+                    <div class="goal-checkpoint-heading"><strong>Шаги задачи</strong></div>
                     <div class="goal-checkpoint-list" id="taskChecklistEditorList"></div>
                     <small id="taskChecklistEmpty" class="muted">Пунктов пока нет</small>
                     <div class="goal-checkpoint-add">
-                      <input id="taskChecklistInput" type="text" maxlength="120" placeholder="Новый пункт" aria-label="Новый пункт чек-листа">
-                      <button class="icon-button" id="addTaskChecklistItem" type="button" title="Добавить пункт" aria-label="Добавить пункт"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button>
+                      <input id="taskChecklistInput" type="text" maxlength="120" placeholder="Новый шаг" aria-label="Новый шаг задачи">
+                      <button class="icon-button" id="addTaskChecklistItem" type="button" title="Добавить шаг" aria-label="Добавить шаг"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button>
                     </div>
                   </div>
                     </div>
                   </details>
                   <div class="form-actions">
-                    <button class="primary-button" type="submit">Сохранить</button>
+                    <button class="primary-button" type="submit">Создать</button>
                     <button class="ghost-button" id="resetTaskForm" type="button">Очистить</button>
                   </div>
                 </form>
@@ -633,7 +638,7 @@
               <div class="habit-list" id="habitList"></div>
               <div class="empty-state" id="habitEmpty">Добавь первую привычку.</div>
               <details class="habit-archive-panel" id="habitArchivePanel" hidden>
-                <summary><span>Приостановленные привычки</span><span id="habitArchiveCount"></span></summary>
+                <summary><span>Неактивные привычки</span><span id="habitArchiveCount"></span></summary>
                 <div class="habit-archive-list" id="habitArchiveList"></div>
               </details>
             </section>
@@ -791,14 +796,14 @@
                   </label>
                   <div class="goal-checkpoint-editor">
                     <div class="goal-checkpoint-heading">
-                      <span>Чекпоинты</span>
+                      <span>Этапы цели</span>
                       <small>Порядок можно менять перетаскиванием</small>
                     </div>
                     <div class="goal-checkpoint-list" id="goalCheckpointList"></div>
-                    <p class="goal-checkpoint-empty" id="goalCheckpointEmpty">Чекпоинтов нет.</p>
+                    <p class="goal-checkpoint-empty" id="goalCheckpointEmpty">Этапы не добавлены.</p>
                     <div class="goal-checkpoint-add">
                       <input id="goalCheckpointInput" type="text" maxlength="120" placeholder="Например: собрать материалы">
-                      <button class="icon-button" id="addGoalCheckpoint" type="button" aria-label="Добавить чекпоинт" title="Добавить чекпоинт">
+                      <button class="icon-button" id="addGoalCheckpoint" type="button" aria-label="Добавить этап" title="Добавить этап">
                         <svg class="ui-icon"><use href="#icon-plus"></use></svg>
                       </button>
                     </div>
@@ -935,11 +940,11 @@
               </div>
               <button class="primary-button compact-button icon-text-button" id="nutritionAddMeal" type="button">
                 <svg class="ui-icon"><use href="#icon-plus"></use></svg>
-                Блюдо
+                Добавить блюдо
               </button>
               <button class="ghost-button compact-button icon-text-button" id="nutritionOpenLibrary" type="button">
                 <svg class="ui-icon"><use href="#icon-journal"></use></svg>
-                Мои блюда
+                Библиотека блюд
               </button>
             </div>
           </div>
@@ -966,9 +971,9 @@
               </div>
             </section>
             <aside class="nutrition-side">
-              <details class="panel nutrition-details" open>
+              <details class="panel nutrition-details">
                 <summary>
-                  <span>Список покупок</span>
+                  <span>Покупки на неделю</span>
                   <small id="nutritionShoppingCount">0</small>
                 </summary>
                 <div class="nutrition-shopping-list" id="nutritionShoppingList"></div>
@@ -1000,7 +1005,7 @@
                   </div>
                   <div class="nutrition-food-row">
                     <input id="nutritionFoodUnit" type="text" maxlength="20" value="г" aria-label="Единица измерения">
-                    <button class="ghost-button compact-button" type="submit">Сохранить</button>
+                    <button class="ghost-button compact-button" type="submit">Сохранить продукт</button>
                   </div>
                 </form>
                 <div class="nutrition-food-list" id="nutritionFoodList"></div>
@@ -1400,8 +1405,8 @@
           <div class="study-pane" data-study-pane="materials" role="tabpanel" hidden>
             <div class="study-drive-control">
               <span id="studyDriveStatus" aria-live="polite">Проверяем Google Drive...</span>
-              <button class="ghost-button compact-button" id="studyDriveConnect" type="button">Подключить Drive</button>
-              <button class="ghost-button compact-button" id="studyDriveDisconnect" type="button" hidden>Отключить</button>
+              <button class="ghost-button compact-button" id="studyDriveConnect" type="button">Подключить Google Drive</button>
+              <button class="ghost-button compact-button" id="studyDriveDisconnect" type="button" hidden>Отключить Google Drive</button>
             </div>
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyMaterialsHeading">
@@ -1471,10 +1476,9 @@
         </section>
 
         <section class="view" id="settingsView" aria-labelledby="settingsHeading">
-          <div class="toolbar">
+          <div class="toolbar settings-intro">
             <div>
               <h2 id="settingsHeading">Параметры приложения</h2>
-              <p class="muted">Персонализация интерфейса и поведения приложения.</p>
             </div>
           </div>
           <section class="settings-account-card panel" aria-labelledby="remoteAuthHeading">
@@ -1502,7 +1506,6 @@
               <label class="settings-row">
                 <span>
                   <strong>Тема</strong>
-                  <small>Темная тема остается основной, но можно выбрать светлую или системную.</small>
                 </span>
                 <select id="themePreference" aria-label="Тема приложения">
                   <option value="dark">Темная</option>
@@ -1514,7 +1517,6 @@
                 <legend class="sr-only">Акцентный цвет интерфейса</legend>
                 <span>
                   <strong>Цвет интерфейса</strong>
-                  <small>Меняет основные кнопки, активные состояния, индикаторы и подсветку.</small>
                 </span>
                 <div class="accent-picker" role="radiogroup" aria-label="Цвет интерфейса">
                   <label class="accent-option is-emerald">
@@ -1542,7 +1544,6 @@
               <label class="settings-row">
                 <span>
                   <strong>Плотность</strong>
-                  <small>Компактный режим делает списки, панели и формы плотнее.</small>
                 </span>
                 <select id="densityPreference" aria-label="Плотность интерфейса">
                   <option value="comfortable">Обычная</option>
@@ -1552,7 +1553,6 @@
               <label class="settings-row">
                 <span>
                   <strong>Формат времени</strong>
-                  <small>Меняет отображение времени в карточках и таймлайне.</small>
                 </span>
                 <select id="timeFormat" aria-label="Формат времени">
                   <option value="24">24 часа</option>
@@ -1562,7 +1562,6 @@
               <label class="settings-row">
                 <span>
                   <strong>Первый день недели</strong>
-                  <small>Влияет на недельную доску, месяц и подписи календаря.</small>
                 </span>
                 <select id="firstDayOfWeek" aria-label="Первый день недели">
                   <option value="monday">Понедельник</option>
@@ -1595,15 +1594,15 @@
               <summary class="panel-heading compact settings-summary">
                 <div>
                   <span class="metric-label">Данные</span>
-                  <h2 id="dataSettingsHeading">Бэкапы и экспорт</h2>
+                  <h2 id="dataSettingsHeading">Аккаунт и данные</h2>
                 </div>
               </summary>
               <label class="settings-row">
                 <span>
-                  <strong>Плановый бэкап</strong>
-                  <small>Создает локальный и файловый бэкап по расписанию, если приложение открыто.</small>
+                  <strong>Автоматическая резервная копия</strong>
+                  <small>Создаёт резервные копии по расписанию, если приложение открыто.</small>
                 </span>
-                <select id="backupSchedule" aria-label="Расписание авто-бэкапа">
+                <select id="backupSchedule" aria-label="Расписание резервного копирования">
                   <option value="0">Выключен</option>
                   <option value="5">Каждые 5 минут</option>
                   <option value="15">Каждые 15 минут</option>
@@ -1612,12 +1611,12 @@
                 </select>
               </label>
               <div class="settings-actions">
-                <button class="ghost-button compact-button" id="settingsExportButton" type="button">Экспорт JSON</button>
-                <button class="ghost-button compact-button" id="settingsImportDataButton" type="button">Импорт JSON</button>
-                <button class="ghost-button compact-button" id="settingsRestoreBackupButton" type="button">Восстановить</button>
-                <button class="ghost-button compact-button" id="settingsOpenBackupFolderButton" type="button">Папка бэкапов</button>
+                <button class="ghost-button compact-button" id="settingsExportButton" type="button">Скачать данные (JSON)</button>
+                <button class="ghost-button compact-button" id="settingsImportDataButton" type="button">Загрузить данные из файла</button>
+                <button class="ghost-button compact-button" id="settingsRestoreBackupButton" type="button">Восстановить резервную копию</button>
+                <button class="ghost-button compact-button" id="settingsOpenBackupFolderButton" type="button">Открыть папку копий</button>
               </div>
-              <p class="settings-status" id="settingsBackupStatus" aria-live="polite" aria-atomic="true">Авто-бэкап ожидает расписание</p>
+              <p class="settings-status" id="settingsBackupStatus" aria-live="polite" aria-atomic="true">Резервное копирование ожидает расписания</p>
             </details>
             <details class="panel settings-panel settings-accordion" id="desktopUpdatePanel" aria-labelledby="desktopUpdateHeading" hidden>
               <summary class="panel-heading compact settings-summary">
@@ -1636,7 +1635,7 @@
               <p class="settings-status" id="desktopUpdateStatus" aria-live="polite" aria-atomic="true">Обновления ещё не проверялись</p>
               <div class="settings-actions">
                 <button class="primary-button compact-button" id="desktopCheckUpdateButton" type="button">Проверить обновления</button>
-                <button class="ghost-button compact-button" id="desktopOpenReleasesButton" type="button">Открыть GitHub Releases</button>
+                <button class="ghost-button compact-button" id="desktopOpenReleasesButton" type="button">Все версии приложения</button>
               </div>
             </details>
             <details class="panel settings-panel settings-accordion categories-settings" aria-labelledby="categoriesHeading">
@@ -1660,7 +1659,7 @@
               <summary class="panel-heading compact settings-summary">
                 <div>
                   <span class="metric-label">Синхронизация</span>
-                  <h2 id="syncSettingsHeading">Синхронизация устройств</h2>
+                  <h2 id="syncSettingsHeading">Диагностика синхронизации</h2>
                 </div>
               </summary>
               <label class="settings-row">
@@ -1675,7 +1674,7 @@
               </label>
               <p class="settings-status">Общая база Parsitasks подключается автоматически. На другом устройстве достаточно войти в тот же аккаунт. Открытое приложение проверяет изменения каждые 30 секунд и при возврате в окно.</p>
               <details class="sync-technical" id="syncTechnicalSettings">
-                <summary>Параметры проекта Supabase для локальной разработки</summary>
+                <summary>Технические параметры</summary>
                 <label class="settings-row">
                   <span>
                     <strong>Адрес проекта</strong>
@@ -1712,12 +1711,12 @@
               <div class="settings-actions">
                 <button class="ghost-button compact-button" id="remoteSnapshotsLoadButton" type="button">Показать версии</button>
                 <button class="ghost-button compact-button" id="remoteSnapshotRestoreButton" type="button" disabled>Восстановить версию</button>
-                <button class="ghost-button compact-button danger-button" id="remoteAccountDeleteButton" type="button">Удалить аккаунт и облако</button>
+                <button class="ghost-button compact-button danger-button" id="remoteAccountDeleteButton" type="button">Удалить аккаунт и данные</button>
               </div>
               <p class="settings-status" id="remoteSnapshotsStatus" aria-live="polite">История версий ещё не загружена</p>
               <div class="settings-actions">
-                <button class="ghost-button compact-button" id="settingsExportSettingsButton" type="button">Экспорт настроек</button>
-                <button class="ghost-button compact-button" id="settingsImportSettingsButton" type="button">Импорт настроек</button>
+                <button class="ghost-button compact-button" id="settingsExportSettingsButton" type="button">Скачать настройки</button>
+                <button class="ghost-button compact-button" id="settingsImportSettingsButton" type="button">Загрузить настройки из файла</button>
                 <input id="settingsImportFile" type="file" accept="application/json,.json" hidden>
               </div>
             </details>
@@ -1792,13 +1791,12 @@
               <summary class="panel-heading compact settings-summary">
                 <div>
                   <span class="metric-label">Система</span>
-                  <h2 id="notificationsSettingsHeading">Уведомления</h2>
+                  <h2 id="notificationsSettingsHeading">Напоминания</h2>
                 </div>
               </summary>
               <label class="settings-row">
                 <span>
                   <strong>Напоминания</strong>
-                  <small>Пауза отключает браузерные и фоновые напоминания без удаления времени в задачах.</small>
                 </span>
                 <select id="notificationSetting" aria-label="Настройка уведомлений">
                   <option value="on">Включены</option>
@@ -1872,6 +1870,7 @@
             <input class="postpone-date-input" type="date" aria-label="Дата переноса">
             <button class="ghost-button compact-button restore-overdue-task" type="button" hidden>Вернуть в просроченные</button>
             <button class="ghost-button compact-button edit-task" type="button">Изменить</button>
+            <button class="ghost-button compact-button duplicate-task" type="button">Дублировать</button>
             <button class="ghost-button compact-button exclude-task" type="button">Убрать только этот день</button>
             <button class="ghost-button compact-button danger-button delete-task" type="button">Удалить</button>
           </div>
@@ -1931,7 +1930,7 @@
             <div class="habit-more-menu">
               <button class="habit-menu-action edit-habit" type="button"><svg class="ui-icon"><use href="#icon-edit"></use></svg>Изменить</button>
               <button class="habit-menu-action freeze-habit" type="button"><svg class="ui-icon"><use href="#icon-snowflake"></use></svg>Заморозить…</button>
-              <button class="habit-menu-action archive-habit" type="button"><svg class="ui-icon"><use href="#icon-archive"></use></svg>Приостановить</button>
+              <button class="habit-menu-action archive-habit" type="button"><svg class="ui-icon"><use href="#icon-archive"></use></svg>Убрать из активных</button>
               <button class="habit-menu-action is-danger delete-habit" type="button"><svg class="ui-icon"><use href="#icon-trash"></use></svg>Удалить</button>
             </div>
           </details>

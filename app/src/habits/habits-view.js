@@ -189,7 +189,7 @@
         Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, false, activeDate));
         ctx.saveState();
         ctx.render();
-        ctx.showToast("Привычка приостановлена", { undo });
+        ctx.showToast("Привычка убрана из активных", { undo });
       });
       node.querySelector(".delete-habit").addEventListener("click", async () => {
         const confirmed = await ctx.confirmAction({
@@ -222,7 +222,7 @@
         const row = document.createElement("article");
         const title = document.createElement("strong");
         const actions = document.createElement("div");
-        const restore = createArchiveButton("Вернуть");
+        const restore = createArchiveButton("Вернуть в активные");
         const remove = createArchiveButton("Удалить", true);
         row.className = "habit-archive-item";
         title.textContent = habit.title;

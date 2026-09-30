@@ -9,6 +9,7 @@ const { _electron: electron } = require("playwright-core");
     executablePath: require("electron"),
   });
   const page = await app.firstWindow();
+  await require("./navigation-fixture.cjs").enableAllSections(page);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
 

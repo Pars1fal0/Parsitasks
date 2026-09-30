@@ -110,7 +110,7 @@
           ? weekActivity.taskCount + weekActivity.habitCount
             ? `${weekActivity.taskCount} ${russianCount(weekActivity.taskCount, ["задача", "задачи", "задач"])} · ${weekActivity.habitCount} ${russianCount(weekActivity.habitCount, ["отметка", "отметки", "отметок"])} привычек`
             : "Без отметок за неделю"
-          : `${steps.filter((step) => step.done).length} из ${steps.length} чекпоинтов · без недельных дат`;
+          : `${steps.filter((step) => step.done).length} из ${steps.length} этапов · без недельных дат`;
         next.className = "goal-week-next";
         const nextTask = activity.taskResults.find((item) => !item.done && item.task);
         const nextStep = (goal.steps || []).find((item) => !item.done);

@@ -40,6 +40,9 @@
       if (!summary.length) summary.push("Нет обязательных дел");
       if (frozenHabits) summary.push(`Заморожено ${frozenHabits}`);
       ctx.els.sideProgressSummary.textContent = summary.join(" · ");
+      if (ctx.els.dayProgressValue) ctx.els.dayProgressValue.textContent = values.length ? `${pulse}%` : "—";
+      if (ctx.els.dayProgressBar) ctx.els.dayProgressBar.style.width = `${pulse}%`;
+      if (ctx.els.dayProgressSummary) ctx.els.dayProgressSummary.textContent = summary.join(" · ");
 
       return { doneHabits, doneTasks: doneTasks.length, frozenHabits, habitPercent, openTasks: openTasks.length, pulse, taskPercent };
     }

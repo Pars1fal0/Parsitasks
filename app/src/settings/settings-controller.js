@@ -2,7 +2,38 @@
   function createSettingsController(ctx) {
     const settingsSync = global.RhythmSettingsSync.createSettingsSync(ctx);
 
+    function organizeLayout() {
+      const grid = document.querySelector("#settingsView .settings-grid");
+      const section = (heading) => document.querySelector(`#${heading}`).closest("details");
+      const appearance = section("appearanceHeading");
+      const reminders = section("notificationsSettingsHeading");
+      const account = section("dataSettingsHeading");
+      const children = [...grid.children];
+      const identity = document.querySelector(".settings-account-card");
+      identity.classList.remove("panel");
+      account.querySelector(":scope > summary").after(identity);
+      [appearance, reminders, account].forEach((group) => {
+        group.classList.remove("panel");
+        group.classList.add("settings-primary-group");
+      });
+      children.filter((node) => ![appearance, reminders, account].includes(node)).forEach((node) => {
+        node.classList.remove("panel", "settings-panel", "settings-accordion");
+        node.classList.add("settings-subsection");
+        const destination = node.contains(document.querySelector("#navigationPreferences")) || node.contains(ctx.els.categoryForm) ? appearance : account;
+        destination.append(node);
+      });
+      const status = document.querySelector("#remoteSyncStatus");
+      account.querySelector(".settings-account-card").after(status);
+      const deleteAccount = document.querySelector("#remoteAccountDeleteButton");
+      const danger = document.createElement("div");
+      danger.className = "settings-actions";
+      danger.append(deleteAccount);
+      account.append(danger);
+      grid.replaceChildren(appearance, reminders, account);
+    }
+
     function bindEvents() {
+      organizeLayout();
       ctx.els.settingsExportButton?.addEventListener("click", ctx.exportData);
       ctx.els.settingsImportDataButton?.addEventListener("click", () => ctx.els.importFile?.click());
       ctx.els.settingsRestoreBackupButton?.addEventListener("click", ctx.restoreBackup);
