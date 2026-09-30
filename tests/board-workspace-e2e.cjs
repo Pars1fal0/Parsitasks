@@ -46,12 +46,15 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await taskCard.count(), 1);
     assert.match(await taskCard.innerText(), /В работе/);
     const taskNode = page.locator('.board-item.board-link').filter({ hasText: "Подготовить доклад" });
+    await page.locator("#boardFocus").click();
     await taskCard.click();
     const beforeResize = await taskCard.evaluate((card) => ({
       title: parseFloat(getComputedStyle(card.querySelector("strong")).fontSize),
       button: parseFloat(getComputedStyle(card.querySelector("button")).fontSize),
     }));
     const resizeHandle = await taskNode.locator('[data-board-resize="se"]').boundingBox();
+    const viewport = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+    assert.ok(resizeHandle.x >= 0 && resizeHandle.y >= 0 && resizeHandle.x + resizeHandle.width <= viewport.width && resizeHandle.y + resizeHandle.height <= viewport.height, "resize handle must be inside the viewport");
     await page.mouse.move(resizeHandle.x + resizeHandle.width / 2, resizeHandle.y + resizeHandle.height / 2);
     await page.mouse.down();
     await page.mouse.move(resizeHandle.x + resizeHandle.width / 2 + 120, resizeHandle.y + resizeHandle.height / 2 + 78, { steps: 8 });
