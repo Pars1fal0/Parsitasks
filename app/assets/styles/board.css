@@ -1,4 +1,5 @@
 .board-toolbar, .board-selection-toolbar, .board-zoom-controls { z-index: 25; }
+.board-toolbar:has(.board-add-menu[open]) { z-index: 30; }
 .board-add-menu { position: relative; }
 .board-add-trigger {
   display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 11px;

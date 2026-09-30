@@ -14,6 +14,7 @@ const { _electron: electron } = require("playwright-core");
   page.on("pageerror", (error) => errors.push(error.message));
   try {
     await page.waitForSelector("#pageTitle");
+    await page.setViewportSize({ width: 1024, height: 768 });
     const todayKey = await page.evaluate(() => {
       const state = JSON.parse(localStorage.getItem("rhythm-day-state-v1"));
       const today = new Date();
