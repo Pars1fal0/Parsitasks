@@ -122,7 +122,7 @@ module.exports = [
         tasks: [{ id: "homework", title: "Задачи 5–7", date: "2026-09-28", studySubjectId: "math", completed: {} }],
         studyFiles: [{ id: "book", name: "Учебник.pdf", subjectId: "math" }],
       };
-      assert.equal(searchWorkspace(state, "математика").length, 2);
+      assert.equal(searchWorkspace(state, "математика").length, 3);
       assert.equal(searchWorkspace(state, "учебник")[0].view, "study");
     },
   },

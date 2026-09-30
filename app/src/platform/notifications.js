@@ -50,6 +50,15 @@
           if (item && (date >= ctx.toDateKey(now) || item.snooze || item.at >= new Date(now.getTime() - 86400000))) reminders.push(item);
         });
       });
+      const seen = new Set(reminders.map((item) => reminderKey(item.kind, item.entity.id, item.dateKey)));
+      (state.tasks || []).forEach((task) => {
+        if (!task.dueDate || !dates.has(task.dueDate) || task.excludedDates?.[task.date]) return;
+        const occurrenceDate = task.date || task.dueDate;
+        const key = reminderKey("task", task.id, occurrenceDate);
+        if (seen.has(key)) return;
+        const item = reminderFor(task, occurrenceDate, "task", queue);
+        if (item) { seen.add(key); reminders.push(item); }
+      });
       return reminders.sort((a, b) => a.at - b.at);
     }
 
@@ -68,7 +77,7 @@
     function snoozeReminder(kind, id, dateKey, choice) {
       if (!["task", "habit"].includes(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
       const entity = ctx.getState()[kind === "habit" ? "habits" : "tasks"].find((item) => item.id === id);
-      if (!entity || (kind === "task" && !ctx.taskOccursOn(entity, dateKey)) || !reminderFor(entity, dateKey, kind)) {
+      if (!entity || (kind === "task" && !ctx.taskOccursOn(entity, dateKey) && !(entity.date === null && entity.dueDate === dateKey)) || !reminderFor(entity, dateKey, kind)) {
         renderCenter(); ctx.showToast?.("Это событие больше не требует напоминания"); return false;
       }
       const until = allowed(global.RhythmReminderPolicy.snoozeUntil(nowDate(), choice)).toISOString();
@@ -129,8 +138,8 @@
         row.dataset.reminderId = item.entity.id;
         const title = document.createElement("strong"); title.textContent = item.kind === "habit" ? ctx.habitTitleOnDate?.(item.entity, item.dateKey) || item.entity.title : item.entity.title;
         const detail = document.createElement("small");
-        const occurrence = ctx.parseDate(item.dateKey).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-        detail.textContent = `${item.kind === "habit" ? "Привычка" : "Задача"} за ${occurrence} · ${item.snooze ? "Отложено: " : item.entity.notified?.[item.dateKey] ? "Отправлено: " : ""}${item.at.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+        const occurrence = ctx.parseDate(item.entity.dueDate || item.dateKey).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+        detail.textContent = `${item.kind === "habit" ? "Привычка за" : item.entity.dueDate ? "Сдать до" : "Задача за"} ${occurrence} · ${item.snooze ? "Отложено: " : item.entity.notified?.[item.dateKey] ? "Отправлено: " : ""}${item.at.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
         const actions = document.createElement("div"); actions.className = "feature-row-actions";
         const select = document.createElement("select"); select.setAttribute("aria-label", `Отложить: ${title.textContent}`);
         [["10", "10 минут"], ["30", "30 минут"], ["60", "1 час"], ["tomorrow", "Завтра, 09:00"]].forEach(([value, text]) => select.add(new Option(text, value)));
@@ -262,15 +271,15 @@
     }
 
     function getDueDate(task, dateKey) {
-      const [hours, minutes] = (ctx.cleanTimeValue(task.time) || "09:00").split(":").map(Number);
-      const date = ctx.parseDate(dateKey);
+      const [hours, minutes] = (ctx.cleanTimeValue(task.dueDate ? task.dueTime : task.time) || "09:00").split(":").map(Number);
+      const date = ctx.parseDate(task.dueDate || dateKey);
       date.setHours(hours || 0, minutes || 0, 0, 0);
       return date;
     }
 
     function getTaskDeadlineDate(task, dateKey) {
-      const date = ctx.parseDate(dateKey);
-      const time = ctx.cleanTimeValue(task.time);
+      const date = ctx.parseDate(task.dueDate || dateKey);
+      const time = ctx.cleanTimeValue(task.dueDate ? task.dueTime : task.time);
       if (!time) {
         date.setHours(23, 59, 59, 999);
         return date;
@@ -282,11 +291,13 @@
     }
 
     function getReminderDate(task, dateKey) {
-      const reminderTime = task.scheduleMode === "block" ? ctx.cleanTimeValue(task.startTime) : ctx.cleanTimeValue(task.time);
-      if (!reminderTime || task.reminderOffset === "none") return null;
-      const offset = Number(task.reminderOffset || 0);
+      const reminderTime = task.dueDate ? ctx.cleanTimeValue(task.dueTime)
+        : task.scheduleMode === "block" ? ctx.cleanTimeValue(task.startTime) : ctx.cleanTimeValue(task.time);
+      const reminderOffset = task.dueDate ? task.dueReminderOffset : task.reminderOffset;
+      if (!reminderTime || reminderOffset === "none") return null;
+      const offset = Number(reminderOffset || 0);
       if (!Number.isFinite(offset)) return null;
-      const reminder = ctx.parseDate(dateKey);
+      const reminder = ctx.parseDate(task.dueDate || dateKey);
       const [hours, minutes] = reminderTime.split(":").map(Number);
       reminder.setHours(hours, minutes, 0, 0);
       reminder.setMinutes(reminder.getMinutes() - offset);

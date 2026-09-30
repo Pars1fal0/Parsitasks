@@ -9,6 +9,11 @@
     let pinnedOnly = false;
     let formSnapshot = "";
     let loadedUpdatedAt = "";
+    let draftOwner = null;
+    let restorePending = true;
+    const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId,
+      onError: () => { els.noteStatus.textContent = "Черновик не сохранён. Сохрани заметку перед закрытием."; } });
+    const draftKey = (id = selectedId) => `note-draft:${id || "new"}`;
 
     function bindEvents() {
       els.notesTabs.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.notesTab)));
@@ -30,9 +35,21 @@
       els.noteDelete.addEventListener("click", deleteNote);
       els.noteOpenTask.addEventListener("click", openTask);
       els.noteBack.addEventListener("click", backToList);
+      els.noteForm.querySelector("#noteDiscardDraft")?.addEventListener("click", async () => {
+        if (await ctx.confirmAction({ title: "Удалить черновик заметки?", confirmLabel: "Удалить черновик", tone: "danger" })) discardDraft();
+      });
+      els.noteForm.addEventListener("keydown", (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") { event.preventDefault(); els.noteForm.requestSubmit(); }
+      });
     }
 
     function render() {
+      if (local && draftOwner !== local.owner()) { resetSelection(); draftOwner = local.owner(); restorePending = true; }
+      if (restorePending && mode === "notes") {
+        restorePending = false;
+        const id = local?.read("note-active-draft");
+        if (id !== null && id !== undefined) restoreDraft(id);
+      }
       document.body.classList.toggle("notes-mode", mode === "notes");
       els.notesTabs.forEach((button) => button.setAttribute("aria-selected", String(button.dataset.notesTab === mode)));
       els.notesPane.hidden = mode !== "notes";
@@ -116,7 +133,9 @@
       mode = "notes";
       selectedId = "";
       creating = true;
+      restorePending = false;
       fillEditor(null);
+      restoreDraft("");
       render();
       els.noteTitle.focus();
     }
@@ -129,7 +148,9 @@
       mode = "notes";
       selectedId = id;
       creating = false;
+      restorePending = false;
       fillEditor(note);
+      restoreDraft(id);
       render();
       return true;
     }
@@ -150,6 +171,8 @@
       loadedUpdatedAt = note?.updatedAt || "";
       formSnapshot = captureForm();
       els.noteStatus.textContent = "";
+      const discard = els.noteForm.querySelector("#noteDiscardDraft");
+      if (discard) discard.hidden = true;
       updateOpenTask();
     }
 
@@ -195,9 +218,19 @@
       else state.notes.push(note);
       delete state.tombstones?.notes?.[note.id];
       const saved = ctx.saveState();
+      if (saved === false) {
+        ctx.restoreState?.(undo);
+        persistDraft();
+        els.noteStatus.textContent = "Не удалось сохранить заметку. Черновик оставлен на устройстве.";
+        renderList();
+        return;
+      }
+      local?.remove(draftKey());
+      if (local?.read("note-active-draft") === selectedId) local.remove("note-active-draft");
       selectedId = note.id;
       creating = false;
       loadedUpdatedAt = note.updatedAt;
+      els.noteForm.querySelector("#noteDiscardDraft")?.setAttribute("hidden", "");
       if (saved !== false) formSnapshot = captureForm();
       els.noteDelete.hidden = false;
       els.noteUpdatedAt.textContent = `Изменена ${formatDate(note.updatedAt)}`;
@@ -220,6 +253,8 @@
       state.notes = state.notes.filter((item) => item.id !== note.id);
       state.tombstones.notes ||= {};
       state.tombstones.notes[note.id] = new Date().toISOString();
+      local?.remove(draftKey(note.id));
+      if (local?.read("note-active-draft") === note.id) local.remove("note-active-draft");
       ctx.saveState();
       resetSelection();
       render();
@@ -227,8 +262,8 @@
     }
 
     async function openTask() {
-      if (!(await confirmDiscard())) return;
       const taskId = els.noteTaskId.value;
+      if (!(await confirmDiscard())) return;
       const task = (ctx.getState().tasks || []).find((item) => item.id === taskId);
       if (task) ctx.openTask(task);
     }
@@ -236,6 +271,7 @@
     async function backToList() {
       if (!(await confirmDiscard())) return;
       resetSelection();
+      restorePending = false;
       render();
       els.noteNew.focus();
     }
@@ -244,24 +280,33 @@
       return mode === "notes" && !els.noteForm.hidden && formSnapshot !== captureForm();
     }
 
+    function hasUnpersistedChanges() {
+      return isDirty() && (!local || JSON.stringify(local.read(draftKey())?.fields) !== captureForm());
+    }
+
     async function confirmDiscard() {
       if (!isDirty()) return true;
       const confirmed = await ctx.confirmAction({
-        title: "Уйти без сохранения?",
-        message: "Изменения в заметке ещё не сохранены.",
-        confirmLabel: "Не сохранять",
+        title: "Оставить заметку черновиком?",
+        message: "Изменения ещё не сохранены в заметке. Черновик останется на этом устройстве, его можно продолжить позже.",
+        confirmLabel: "Оставить черновик и уйти",
         secondaryLabel: "Продолжить редактирование",
         tone: "danger",
       });
       if (confirmed !== true) return false;
-      discardDraft();
+      if (!persistDraft()) return false;
+      resetSelection();
+      restorePending = true;
       return true;
     }
 
     function discardDraft() {
+      local?.remove(draftKey());
+      if (local?.read("note-active-draft") === selectedId) local.remove("note-active-draft");
       const note = currentNote();
       if (note) fillEditor(note);
       else resetSelection();
+      restorePending = false;
     }
 
     function resetSelection() {
@@ -279,6 +324,8 @@
       els.noteSearch.value = "";
       els.noteSubjectFilter.value = "all";
       pinnedOnly = false;
+      draftOwner = null;
+      restorePending = true;
     }
 
     function setSubjectFilter(subjectId = "all") {
@@ -304,14 +351,44 @@
     }
 
     function markDirtyStatus() {
-      els.noteStatus.textContent = isDirty() ? "Не сохранено" : "";
+      if (isDirty()) persistDraft();
+      else els.noteStatus.textContent = "Без изменений";
+    }
+
+    function persistDraft() {
+      if (!local || (draftOwner !== null && draftOwner !== local.owner())) return false;
+      const saved = local.write(draftKey(), { id: selectedId, fields: JSON.parse(captureForm()), baseUpdatedAt: loadedUpdatedAt })
+        && local.write("note-active-draft", selectedId);
+      els.noteStatus.textContent = saved ? "Черновик на устройстве · не сохранено в заметке" : "Черновик не сохранён";
+      const remove = els.noteForm.querySelector("#noteDiscardDraft");
+      if (remove) remove.hidden = !saved;
+      return saved;
+    }
+
+    function restoreDraft(id) {
+      const draft = local?.read(draftKey(id));
+      if (!draft?.fields) return false;
+      const note = (ctx.getState().notes || []).find((item) => item.id === id);
+      selectedId = note?.id || ""; creating = !note;
+      fillEditor(note || null);
+      const fields = draft.fields;
+      els.noteTitle.value = fields.title || ""; els.noteBody.value = fields.body || "";
+      els.notePinned.checked = fields.pinned === true;
+      els.noteSubjectId.value = fields.subjectId || "";
+      renderTaskOptions(fields.taskId || "");
+      els.noteStatus.textContent = note && draft.baseUpdatedAt && note.updatedAt !== draft.baseUpdatedAt
+        ? "Восстановлен черновик. Сохранённая заметка изменилась — проверь текст перед сохранением."
+        : "Восстановлен черновик на этом устройстве";
+      const remove = els.noteForm.querySelector("#noteDiscardDraft");
+      if (remove) remove.hidden = false;
+      return true;
     }
 
     function updateOpenTask() {
       els.noteOpenTask.hidden = !(ctx.getState().tasks || []).some((task) => task.id === els.noteTaskId.value);
     }
 
-    return { bindEvents, confirmDiscard, discardDraft, isDirty, newNote, openNote, render, resetForState, setMode, setSubjectFilter };
+    return { bindEvents, confirmDiscard, discardDraft, hasUnpersistedChanges, isDirty, newNote, openNote, render, resetForState, setMode, setSubjectFilter };
   }
 
   function option(value, label) {

@@ -69,6 +69,7 @@ module.exports = [
         value: "selected",
       };
       const controller = createImportExport({
+        confirmAction: async (preview) => { assert.match(preview.message, /заметок: 1/); return true; },
         createUndoSnapshot: () => ({ state: "{}" }),
         normalizeState: (state) => state,
         replaceState: (state) => { imported = state; },
@@ -93,6 +94,7 @@ module.exports = [
         value: "selected",
       };
       const controller = createImportExport({
+        confirmAction: async () => true,
         createUndoSnapshot: () => ({ state: '{"tasks":[{"id":"safe"}]}' }),
         normalizeState: (state) => state,
         replaceState: () => { replaced = true; },

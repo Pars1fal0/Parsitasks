@@ -5,16 +5,33 @@
     let celebratingGoalId = "";
     const expandedGoalIds = new Set();
     const selectedTaskIds = new Set();
+    const selectedTaskTargets = new Map();
     const selectedHabits = new Map();
 
     function bindEvents() {
       ctx.els.goalTaskSearch.addEventListener("input", renderTaskOptions);
       ctx.els.goalHabitSearch.addEventListener("input", renderHabitOptions);
       ctx.els.goalTaskOptions.addEventListener("change", (event) => {
-        const control = event.target.closest("[data-goal-task-link]");
+        const control = event.target.closest("[data-goal-task-link], [data-goal-task-count], [data-goal-task-start], [data-goal-task-mode]");
         if (!control) return;
-        if (control.checked) selectedTaskIds.add(control.dataset.goalTaskLink);
-        else selectedTaskIds.delete(control.dataset.goalTaskLink);
+        const id = control.dataset.goalTaskLink || control.dataset.goalTaskCount || control.dataset.goalTaskStart || control.dataset.goalTaskMode;
+        if (control.dataset.goalTaskLink) {
+          if (control.checked) {
+            selectedTaskIds.add(id);
+            const task = ctx.getState().tasks.find((item) => item.id === id);
+            selectedTaskTargets.set(id, { taskId: id, mode: task?.repeat !== "none" ? "count" : "once",
+              targetCount: task?.repeat !== "none" ? 7 : 1, startDate: task?.repeat !== "none" ? ctx.toDateKey(new Date()) : "" });
+          } else { selectedTaskIds.delete(id); selectedTaskTargets.delete(id); }
+        } else {
+          const target = selectedTaskTargets.get(id);
+          if (!target) return;
+          if (control.dataset.goalTaskMode) {
+            target.mode = control.value;
+            target.targetCount = target.mode === "count" ? Math.max(1, target.targetCount) : 1;
+            target.startDate = target.mode === "legacy" ? "" : target.startDate || ctx.toDateKey(new Date());
+          } else if (control.dataset.goalTaskCount) target.targetCount = Number(control.value);
+          else target.startDate = control.value;
+        }
         syncLinkFields();
         renderTaskOptions();
       });
@@ -104,6 +121,7 @@
       const existing = ctx.getState().goals.find((goal) => goal.id === id);
       const steps = ctx.checkpointEditor.getSteps();
       const linkedTaskIds = goalActivity.normalizeLinkedTaskIds([...selectedTaskIds]);
+      const taskTargets = goalActivity.normalizeTaskTargets([...selectedTaskTargets.values()], ctx.toDateKey(new Date()));
       const habitTargets = goalActivity.normalizeHabitTargets([...selectedHabits.values()], ctx.toDateKey(new Date()));
 
       if (!title) {
@@ -130,6 +148,7 @@
         dueDate,
         steps,
         linkedTaskIds,
+        taskTargets,
         habitTargets,
         createdAt: existing?.createdAt || now,
         updatedAt: now,
@@ -172,7 +191,11 @@
 
     function setLinks(goal = {}) {
       selectedTaskIds.clear();
+      selectedTaskTargets.clear();
       goalActivity.normalizeLinkedTaskIds(goal.linkedTaskIds).forEach((id) => selectedTaskIds.add(id));
+      const stored = goalActivity.normalizeTaskTargets(goal.taskTargets);
+      selectedTaskIds.forEach((id) => selectedTaskTargets.set(id, stored.find((item) => item.taskId === id)
+        || { taskId: id, mode: "legacy", targetCount: 1, startDate: "" }));
       selectedHabits.clear();
       goalActivity.normalizeHabitTargets(goal.habitTargets, ctx.toDateKey(new Date()))
         .forEach((target) => selectedHabits.set(target.habitId, target));
@@ -185,6 +208,8 @@
 
     function syncLinkFields() {
       ctx.els.goalLinkedTaskIds.value = JSON.stringify([...selectedTaskIds]);
+      const taskTargetsField = ctx.els.goalForm.querySelector("#goalTaskTargets");
+      if (taskTargetsField) taskTargetsField.value = JSON.stringify([...selectedTaskTargets.values()]);
       ctx.els.goalHabitTargets.value = JSON.stringify([...selectedHabits.values()]);
       ctx.els.goalTaskLinkCount.textContent = `${selectedTaskIds.size} выбрано`;
       ctx.els.goalHabitLinkCount.textContent = `${selectedHabits.size} выбрано`;
@@ -200,6 +225,7 @@
         .slice(0, 40)
         .forEach((task) => visible.push(task));
       ctx.els.goalTaskOptions.replaceChildren(...visible.map((task) => {
+        const row = document.createElement("div");
         const label = document.createElement("label");
         const input = document.createElement("input");
         const text = document.createElement("span");
@@ -212,7 +238,35 @@
         text.textContent = task.title;
         meta.textContent = task.date ? formatShortDate(task.date) : "Позже · без даты";
         label.append(input, text, meta);
-        return label;
+        row.append(label);
+        const target = selectedTaskTargets.get(task.id);
+        if (target) {
+          const controls = document.createElement("div");
+          controls.className = "goal-task-target";
+          const mode = document.createElement("select");
+          mode.dataset.goalTaskMode = task.id;
+          mode.setAttribute("aria-label", `Вклад задачи ${task.title}`);
+          [["once", "Одно выполнение"], ["count", "Несколько выполнений"], ...(target.mode === "legacy" ? [["legacy", "Старое правило: любое прошлое выполнение"]] : [])]
+            .forEach(([value, title]) => mode.add(new Option(title, value)));
+          mode.value = target.mode;
+          controls.append(mode);
+          if (target.mode !== "legacy") {
+            if (target.mode === "count") {
+              const label = document.createElement("label"); label.textContent = "Выполнений";
+              const count = document.createElement("input"); count.type = "number"; count.min = "1"; count.max = "3650"; count.required = true;
+              count.value = target.targetCount; count.dataset.goalTaskCount = task.id; label.append(count); controls.append(label);
+            }
+            const label = document.createElement("label"); label.textContent = "Считать с";
+            const start = document.createElement("input"); start.type = "date"; start.required = target.mode === "count";
+            start.value = target.startDate; start.dataset.goalTaskStart = task.id; label.append(start); controls.append(label);
+          }
+          const preview = document.createElement("small");
+          const result = goalActivity.goalActivity({ linkedTaskIds: [task.id], taskTargets: [target] }, ctx.getState(), { todayKey: ctx.toDateKey(new Date()) }).taskResults[0];
+          preview.textContent = `Уже засчитано: ${Math.min(result.count, result.targetCount)} из ${result.targetCount}${target.mode === "legacy" ? " · включая прошлую историю" : ""}`;
+          controls.append(preview);
+          row.append(controls);
+        }
+        return row;
       }));
       if (!visible.length) ctx.els.goalTaskOptions.textContent = tasks.length ? "Задачи не найдены" : "Задач пока нет";
     }
@@ -364,7 +418,7 @@
 
       progress.className = "goal-progress";
       head.className = "goal-progress-head";
-      label.textContent = "Прогресс";
+      label.textContent = "Выполнено из плана";
       value.textContent = `${activity.percent}%`;
       bar.className = "goal-progress-bar";
       bar.setAttribute("role", "progressbar");
@@ -424,7 +478,8 @@
       marker.className = "goal-activity-marker";
       marker.append(createIcon(result.done ? "check" : "tasks"));
       title.textContent = result.task?.title || "Удалённая задача";
-      meta.textContent = result.done ? "Выполнена" : result.task?.date ? formatShortDate(result.task.date) : result.task ? "Позже · без даты" : "Связь недоступна";
+      meta.textContent = result.mode === "count" ? `${result.count} из ${result.targetCount} · с ${formatShortDate(result.startDate)}`
+        : result.done ? "Выполнена" : result.task?.date ? formatShortDate(result.task.date) : result.task ? "Позже · без даты" : "Связь недоступна";
       button.append(marker, title, meta);
       button.addEventListener("click", () => ctx.openTask?.(result.task));
       return button;

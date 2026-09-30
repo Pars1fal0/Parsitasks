@@ -366,6 +366,8 @@ function serializeTask(task, dateKey, categories) {
     time: task.time || "",
     startTime: task.startTime || "",
     endTime: task.endTime || "",
+    dueDate: task.dueDate || "",
+    dueTime: task.dueTime || "",
     priority: task.priority || "medium",
     category: categories.get(task.categoryId)?.name || "",
     completed: task.completed?.[dateKey] === true,
@@ -413,6 +415,7 @@ function serializeGoal(goal, state, todayKey) {
     steps: steps.map((step) => ({ id: step.id, title: step.title, done: step.done === true })),
     linkedTaskIds: goal.linkedTaskIds || [],
     habitTargets: goal.habitTargets || [],
+    taskTargets: goal.taskTargets || [],
   };
 }
 

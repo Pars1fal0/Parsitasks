@@ -3,12 +3,13 @@
   const ENTITY_FIELDS = {
     tasks: [
       "title", "date", "deferredFromDate", "time", "scheduleMode", "startTime", "endTime", "categoryId", "priority",
+      "dueDate", "dueTime", "dueReminderOffset",
       "repeat", "repeatUntil", "sourceTaskId", "movedFromDate", "customRepeat", "reminderOffset",
       "studySubjectId", "studyDetails", "studyAssignedDate", "studyFileIds",
       "checklist",
     ],
     habits: ["startDate", "archived", "archivedAt", "archivedFromDate", "reminderTime", "notified"],
-    goals: ["title", "dueDate", "why", "linkedTaskIds", "habitTargets"],
+    goals: ["title", "dueDate", "why", "linkedTaskIds", "taskTargets", "habitTargets"],
     boardItems: [
       "type", "x", "y", "width", "height", "z", "text", "fontSize", "fontWeight", "color",
       "groupId", "locked",

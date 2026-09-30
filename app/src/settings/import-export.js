@@ -24,16 +24,29 @@
       const file = ctx.els.importFile.files?.[0];
       if (!file) return;
 
-      const undo = ctx.createUndoSnapshot();
+      const owner = ctx.getUserId?.();
       try {
         const text = await file.text();
         const parsed = JSON.parse(text);
         const candidate = extractImportState(parsed);
         const importedState = ctx.normalizeState(candidate);
+        const counts = [["tasks", "задач"], ["habits", "привычек"], ["notes", "заметок"], ["goals", "целей"], ["studySubjects", "предметов"], ["studyLessons", "занятий"], ["studyFiles", "ссылок на файлы"], ["boardItems", "объектов доски"], ["journalEntries", "записей дневника"], ["categories", "категорий"]]
+          .map(([field, label]) => `${label}: ${importedState[field]?.length || 0}`).join(" · ");
+        const exported = Number.isFinite(Date.parse(parsed.exportedAt)) ? new Date(parsed.exportedAt).toLocaleString("ru-RU") : "не указана";
+        if (ctx.getUserId?.() !== owner) return;
+        const confirmed = await ctx.confirmAction?.({ title: "Заменить данные из файла?",
+          message: `Дата копии: ${exported}\n${counts}\n\nВсе текущие данные будут заменены. Перед заменой сохранится резервная копия. Файлы Google Drive не входят в JSON: здесь только ссылки.`,
+          confirmLabel: "Заменить данные", tone: "danger" });
+        if (confirmed !== true || ctx.getUserId?.() !== owner) return;
+        const undo = ctx.createUndoSnapshot();
         const safetyBackup = createImportSafetyBackup(undo);
         if (safetyBackup?.ok === false) throw new Error("safety-backup-failed");
         ctx.replaceState(importedState);
-        ctx.saveState({ skipBackup: true });
+        if (ctx.saveState({ skipBackup: true }) === false) {
+          ctx.replaceState(ctx.normalizeState(JSON.parse(undo.state)));
+          ctx.render();
+          throw new Error("save-failed");
+        }
         ctx.render();
         ctx.showToast("Данные импортированы. Предыдущие данные сохранены", { undo });
       } catch {

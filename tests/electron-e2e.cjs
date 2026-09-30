@@ -392,11 +392,10 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('.nav-tab[data-view="overview"]:visible').click();
     await page.locator('[data-overview-mode="week"]').click();
     assert.equal(await page.locator(".focus-board").evaluate((node) => getComputedStyle(node).display), "none");
-    assert.equal(
-      await page.locator("#overviewView .metric-panel").first().evaluate((node) => getComputedStyle(node).display),
-      "none",
-      "summary metrics must not push the selected calendar period below the fold on mobile",
-    );
+    assert.equal(await page.locator(".calendar-insights").evaluate((node) => node.open), false);
+    const weekBox = await page.locator(".week-board-panel").boundingBox();
+    const insightsBox = await page.locator(".calendar-insights").boundingBox();
+    assert.ok(weekBox.y < insightsBox.y, "calendar must precede collapsed insights on mobile");
     await page.locator("#updateBanner").evaluate((node) => { node.hidden = false; });
     const updateBox = await page.locator("#updateBanner").boundingBox();
     assert.ok(updateBox && updateBox.x >= 0 && updateBox.x + updateBox.width <= 390.5, "update banner must fit mobile");

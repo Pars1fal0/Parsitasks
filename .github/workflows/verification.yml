@@ -37,6 +37,8 @@ jobs:
         run: npm run lint
       - name: Run UI scenarios
         run: npm run test:e2e
+      - name: Verify planning and recovery workflows
+        run: npm run test:planning
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

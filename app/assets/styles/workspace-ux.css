@@ -173,6 +173,102 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 .goal-week-review[hidden] { display: none !important; }
 .metric-panel > strong { overflow-wrap: anywhere; }
 
+/* Planning views share one compact hierarchy; nutrition is intentionally unchanged. */
+.task-pane-tabs { display: grid; grid-template-columns: 1fr 1fr 1.7fr; width: min(100%, 590px); margin-bottom: 16px; }
+.task-pane-tabs > button { min-height: 44px; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px; font-size: 14px; }
+.task-pane-tabs > button > span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+#tasksView [hidden] { display: none !important; }
+#tasksView:not([data-pane="day"]) .task-progress-ring,
+#tasksView:not([data-pane="day"]) #excludedPanel { display: none; }
+#tasksView[data-pane="later"] #laterTaskPanel > summary,
+#tasksView[data-pane="backlog"] #historicalTaskPanel > summary { display: none; }
+#laterTaskPanel, #historicalTaskPanel { margin-top: 0; }
+.historical-task-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.historical-task-item > div:first-of-type { display: grid; gap: 4px; }
+.historical-task-item strong { font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.historical-task-item > div:first-of-type > span { color: var(--muted); font-size: 12px; }
+.historical-task-item > div:last-child { display: flex; gap: 6px; flex-wrap: wrap; }
+#taskSelectMode { width: auto; max-width: 100%; padding: 8px 12px; }
+#taskSelectMode span { display: inline; }
+#taskBulkForm { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.task-due-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px 0 0; margin: 0; border: 0; border-top: 1px solid var(--line); }
+.task-due-fields legend { padding: 0 8px 0 0; color: var(--text); font-weight: 650; }
+.task-due-fields > label:last-child { grid-column: 1 / -1; }
+.task-due-fields > .study-field-row { grid-column: 1 / -1; }
+.goal-task-target { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 0 12px 28px; }
+.goal-task-target > select, .goal-task-target > small { grid-column: 1 / -1; }
+.goal-task-target label { font-size: 12px; display: grid; gap: 6px; color: var(--muted); }
+.goal-task-target small { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.calendar-toolbar-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.study-layer-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; color: var(--text-soft); cursor: pointer; }
+.study-layer-toggle input { accent-color: var(--teal); width: 18px; height: 18px; }
+.calendar-insights { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 12px; min-width: 0; }
+.calendar-insights > summary { min-height: 44px; padding: 12px 0; cursor: pointer; font-size: 15px; font-weight: 650; }
+.calendar-insights-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 12px; }
+.calendar-insights .goal-week-review { grid-column: 1 / -1; }
+.calendar-study-event { display: grid; gap: 4px; width: 100%; text-align: left; padding: 10px; border: 1px solid var(--line); border-left: 3px solid var(--lesson-color, var(--teal)); border-radius: 6px; background: var(--surface-elevated); color: var(--text); cursor: pointer; min-width: 0; }
+.calendar-study-event:hover { border-color: var(--lesson-color, var(--teal)); }
+.calendar-study-event strong { font-size: 12px; font-weight: 600; line-height: 1.45; overflow-wrap: anywhere; }
+.calendar-study-event small { font-size: 11px; color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.month-study-events > summary { padding: 6px 0; color: var(--teal); font-size: 12px; cursor: pointer; overflow-wrap: anywhere; }
+.timeline-task.is-study-event { cursor: pointer; border-left: 3px solid var(--timeline-color); }
+.timeline-task.is-study-event .timeline-task-main { padding-right: 12px; }
+#studyDeadlineSuggestion { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+#studyDeadlineSuggestion:empty { display: none; }
+.notes-form-top { position: sticky; top: 0; z-index: 3; flex-wrap: wrap; padding: 10px 0; background: var(--surface); border-bottom: 1px solid var(--line); }
+.notes-workspace { overflow: clip; }
+#noteStatus { flex: 1 0 100%; order: 5; font-size: 12px; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere; }
+#noteStatus:empty { display: none; }
+.notes-relations-disclosure { border-top: 1px solid var(--line); padding-top: 8px; }
+.notes-relations-disclosure > summary { min-height: 44px; padding: 12px 0; font-size: 13px; color: var(--muted); cursor: pointer; }
+.note-save { min-height: 44px; }
+body[data-view="journal"].notes-mode .date-control { border: 0; padding: 0; background: transparent; }
+body[data-view="study"]:not(.study-schedule-mode) .date-control { border: 0; padding: 0; background: transparent; }
+body:is([data-view="goals"], [data-view="board"], [data-view="archive"], [data-view="settings"]) .date-control { display: flex; width: auto; align-self: flex-end; padding: 0; border: 0; background: transparent; }
+body:is([data-view="goals"], [data-view="board"], [data-view="archive"], [data-view="settings"]) .date-control > :not(.global-search-button) { display: none; }
+#overviewView[data-mode="year"] .study-layer-toggle { display: none; }
+#habitsView .habit-item { padding: 16px 18px; min-height: 0; }
+#habitsView .split-layout > .main-panel { background: transparent; border: 0; padding: 0; box-shadow: none; }
+#habitsView .habit-item h3 { font-size: 16px; font-weight: 650; line-height: 1.45; }
+#habitsView .habit-streak { font-size: 12px; line-height: 1.55; }
+@media (max-width: 900px) {
+  body:not([data-view="nutrition"]) .app-shell { grid-template-rows: 64px auto; align-items: start; }
+  body:not([data-view="nutrition"]) .sidebar { height: 64px; min-height: 64px; align-self: start; padding: 10px 14px; }
+}
+@media (max-width: 680px) {
+  body:not([data-view="nutrition"]) .topbar { gap: 8px; margin-bottom: 12px; }
+  body:not([data-view="nutrition"]) #pageTitle { font-size: 24px; line-height: 1.3; }
+  body:not([data-view="nutrition"]) #todayLabel { display: none; }
+  .task-pane-tabs { margin-bottom: 10px; }
+  .task-pane-tabs > button { gap: 4px; padding: 8px 4px; font-size: 12px; }
+  #tasksView > .toolbar .toolbar-actions { flex-wrap: wrap; gap: 6px; }
+  #tasksView #taskSelectMode { min-height: 44px; font-size: 12px; }
+  #tasksView .historical-task-item .primary-button { width: auto; }
+  .historical-task-item > div:last-child > button { flex: 1 1 120px; font-size: 12px; }
+  body[data-view="overview"] .day-progress { display: none; }
+  #overviewView > .toolbar h2, #overviewView > .toolbar .muted { display: none; }
+  #overviewView > .toolbar { margin-bottom: 8px; }
+  .calendar-toolbar-actions { justify-content: space-between; width: 100%; gap: 6px; }
+  .calendar-insights-body { grid-template-columns: 1fr; gap: 12px; }
+  .calendar-insights .metric-panel { padding: 16px; }
+  .calendar-insights .metric-panel strong { font-size: 28px; }
+  #overviewView .week-board-panel { padding: 12px 0; }
+  #overviewView .goal-week-review { margin-top: 0; }
+  .month-study-events > summary { font-size: 10px; }
+  .month-study-events[open] { grid-column: 1 / -1; }
+  .notes-form-top { top: 64px; gap: 6px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
+  .notes-form-top #noteStatus { grid-column: 1 / -1; }
+  .notes-updated { display: none; }
+  .notes-form { padding: 12px; gap: 12px; }
+  .notes-form .notes-body-input { min-height: 220px; }
+  .notes-form-top .note-save { margin-left: 0; padding: 8px 6px; min-width: 0; width: 100%; font-size: 12px; }
+  .notes-pin-toggle { width: 44px; height: 44px; }
+  #studyHeading, #habitsHeading, #timelineHeading { display: none; }
+  #habitsView .habit-item { padding: 12px 10px; }
+  #habitsView .habit-list { gap: 8px; }
+  body[data-view="study"] .date-control:has(#activeDate[hidden]) { border: 0; background: transparent; padding: 0; }
+}
+
 .nutrition-status-modes { margin-bottom: 12px; }
 .nutrition-calculation-note { margin: 0 0 12px; font-size: 13px; line-height: 1.5; }
 .nutrition-metrics { margin-bottom: 12px; }

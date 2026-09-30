@@ -10,12 +10,13 @@
       recurringWindowDays,
     } = options;
     const yesterdayKey = addDays(todayKey, -1);
+    const limitDate = options.includeYesterday ? todayKey : yesterdayKey;
     const entries = [];
 
     tasks.forEach((task) => {
       if (!task.date) return;
       if (task.repeat === "none") {
-        if (task.date < yesterdayKey && !isTaskDone(task, task.date) && task.acknowledgedOverdue?.[task.date] !== true) {
+        if (task.date < limitDate && !isTaskDone(task, task.date) && !isTaskExcluded(task, task.date) && task.acknowledgedOverdue?.[task.date] !== true) {
           entries.push({ dateKey: task.date, recurring: false, task });
         }
         return;
@@ -25,7 +26,7 @@
         ? [task.date, addDays(todayKey, -recurringWindowDays)].sort().at(-1)
         : task.date;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate || "")) return;
-      for (let dateKey = startDate; dateKey < yesterdayKey; dateKey = addDays(dateKey, 1)) {
+      for (let dateKey = startDate; dateKey < limitDate; dateKey = addDays(dateKey, 1)) {
         if (task.repeatUntil && dateKey > task.repeatUntil) break;
         if (!taskOccursOn(task, dateKey) || isTaskDone(task, dateKey) || isTaskExcluded(task, dateKey)) continue;
         if (task.acknowledgedOverdue?.[dateKey] === true) continue;

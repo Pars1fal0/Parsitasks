@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 24;
+﻿const SCHEMA_VERSION = 25;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
@@ -69,6 +69,7 @@ const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
   normalizeJournalEntries: window.RhythmJournalModel.normalizeJournalEntries,
   normalizeNotes: window.RhythmNotesModel.normalizeNotes,
   normalizeLinkedTaskIds: window.RhythmGoalActivity.normalizeLinkedTaskIds,
+  normalizeTaskTargets: window.RhythmGoalActivity.normalizeTaskTargets,
   normalizeHabitTargets: window.RhythmGoalActivity.normalizeHabitTargets,
   normalizeNutritionFood: window.RhythmNutritionModel.normalizeFood,
   normalizeNutritionMeal: window.RhythmNutritionModel.normalizeMeal,
@@ -113,6 +114,8 @@ let taskFilter = ["all", "open", "done"].includes(initialUiState.taskFilter)
   ? initialUiState.taskFilter
   : "all";
 let activeView = initialRoute?.view || (VALID_VIEWS.includes(initialUiState.activeView) ? initialUiState.activeView : "tasks");
+let taskPane = ["day", "later", "backlog"].includes(initialUiState.taskPane) ? initialUiState.taskPane : "day";
+let showStudyEvents = initialUiState.showStudyEvents !== false;
 let overviewMode = initialRoute?.overviewMode || (["week", "month", "year"].includes(initialUiState.overviewMode)
   ? initialUiState.overviewMode
   : "week");
@@ -589,6 +592,10 @@ const calendarDragController = window.RhythmCalendarDragController.createCalenda
 });
 
 const tasksView = window.RhythmTasksView.createTasksView({
+  getPane: () => taskPane,
+  onPaneChange: (value) => { taskPane = value; saveUiState(); updateQuickTaskPreview(); },
+  deferTasks: deferSelectedTasks,
+  dismissTasks: dismissSelectedTasks,
   els,
   priorityLabels,
   addDays,
@@ -738,6 +745,8 @@ const goalsView = window.RhythmGoalsView.createGoalsView({
 });
 
 const calendarView = window.RhythmCalendarView.createCalendarView({
+  getStudyEvents,
+  openStudyLesson,
   els,
   attachTaskChipDrag,
   attachTaskDropZone,
@@ -818,6 +827,8 @@ const timelineController = window.RhythmTimelineController.createTimelineControl
 });
 
 const timelineView = window.RhythmTimelineView.createTimelineView({
+  getStudyEvents,
+  openStudyLesson,
   addDays,
   els,
   clearTaskTime: timelineController.clearTaskTime,
@@ -928,6 +939,8 @@ const journalView = window.RhythmJournalView.createJournalView({
 });
 
 const notesView = window.RhythmNotesView.createNotesView({
+  restoreState: (snapshot) => replaceState(normalizeState(JSON.parse(snapshot.state))),
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
   confirmAction,
   createId,
   createUndoSnapshot,
@@ -987,6 +1000,8 @@ const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
     resetGoalForm({ open: false });
     if (result.view === "tasks") clearTaskFilters();
     if (result.type === "material") studyController.setTab("materials");
+    if (result.type === "subject") studyController.setTab("schedule");
+    if (result.view === "tasks") tasksView.setPane(result.date === null ? "later" : "day");
     if (result.type === "note") await notesView.openNote(result.id);
     if (result.type === "journal") await notesView.setMode("journal");
     if (result.view === "archive") {
@@ -1004,7 +1019,14 @@ const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
     syncNavigationRoute();
     render();
     scrollWorkspaceTop();
+    if (result.type === "board") requestAnimationFrame(() => boardView.focusItem(result.id));
+    if (result.type === "subject") requestAnimationFrame(() => {
+      const row = [...document.querySelectorAll("[data-study-subject-edit]")].find((button) => button.dataset.studySubjectEdit === result.id);
+      for (let parent = row?.parentElement; parent; parent = parent.parentElement) if (parent.tagName === "DETAILS") parent.open = true;
+      row?.scrollIntoView({ block: "center" }); row?.focus({ preventScroll: true });
+    });
     if (result.type === "task") {
+      tasksView.setPane(result.date === null ? "later" : "day");
       requestAnimationFrame(() => {
         if (state.tasks.find((task) => task.id === result.id)?.date === null) {
           const panel = document.querySelector("#laterTaskPanel");
@@ -1078,6 +1100,7 @@ const taskFormController = window.RhythmTaskForm.createTaskForm({
   getDefaultCategoryId: () => state.categories.some((category) => category.id === taskCategoryFilter)
     ? taskCategoryFilter : "",
   afterSave: (task) => {
+    if (activeView === "tasks") tasksView.setPane(task.date === null ? "later" : "day");
     if (activeView === "tasks" && (
       (taskFilter === "done" && !isTaskDone(task, activeDate)) ||
       (taskFilter === "open" && isTaskDone(task, activeDate)) || !matchesCategoryFilter(task, taskCategoryFilter) ||
@@ -1190,6 +1213,7 @@ const categoriesController = window.RhythmCategories.createCategories({
 });
 
 const importExportController = window.RhythmImportExport.createImportExport({
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
   els,
   confirmAction,
   createUndoSnapshot,
@@ -1474,7 +1498,7 @@ const appEvents = window.RhythmAppEvents.createAppEvents({
     [els.taskForm, els.taskFormPanel],
     [els.habitForm, els.habitFormPanel],
     [els.goalForm, els.goalFormPanel],
-  ].some(([form, panel]) => !panel.classList.contains("is-collapsed") && isFormDirty(form)) || (activeView === "journal" && notesView.isDirty()),
+  ].some(([form, panel]) => !panel.classList.contains("is-collapsed") && isFormDirty(form)) || (activeView === "journal" && notesView.hasUnpersistedChanges()),
   calendarDragController,
   changeOverviewMode: (mode, activeButton) => {
     overviewMode = ["week", "month", "year"].includes(mode) ? mode : "week";
@@ -1577,6 +1601,10 @@ const appEvents = window.RhythmAppEvents.createAppEvents({
     if (!(await confirmDiscardOpenForms())) return;
     restoreTaskFormPanel();
     resetTaskForm({ open: true });
+    if (taskPane === "later") {
+      els.taskForm.querySelector("#taskDeferred").checked = true;
+      els.taskForm.querySelector("#taskDeferred").dispatchEvent(new Event("change"));
+    }
     els.taskTitle.focus();
   },
   applyTimePreset: taskScheduleController.applyPreset,
@@ -1610,6 +1638,14 @@ seedIfEmpty();
 init();
 
 async function init() {
+  document.querySelectorAll("[data-study-layer]").forEach((input) => {
+    input.checked = showStudyEvents;
+    input.addEventListener("change", () => {
+      showStudyEvents = input.checked;
+      document.querySelectorAll("[data-study-layer]").forEach((item) => { item.checked = showStudyEvents; });
+      saveUiState(); render();
+    });
+  });
   els.activeDate.value = activeDate;
   els.taskSearch.value = taskSearchQuery;
   els.archiveSearch.value = archiveSearchQuery;
@@ -1901,6 +1937,7 @@ function deleteGoal(goalId) {
 
 async function openDateTasks(dateKey, taskId = "") {
   if (!(await confirmDiscardOpenForms())) return;
+  tasksView.setPane(dateKey === null ? "later" : "day");
   if (taskId) clearTaskFilters();
   activeDate = normalizeDateKey(dateKey, activeDate);
   activeView = "tasks";
@@ -1927,6 +1964,22 @@ async function openLinkedHabit(habit) {
     const row = [...els.habitList.children].find((item) => item.dataset.habitId === habit.id);
     row?.scrollIntoView({ block: "center" });
     row?.querySelector("button, input")?.focus({ preventScroll: true });
+  });
+}
+
+function getStudyEvents(dateKey) {
+  return showStudyEvents ? window.RhythmStudyModel.eventsForDate(state, dateKey) : [];
+}
+
+async function openStudyLesson(lessonId, dateKey) {
+  if (!(await confirmDiscardOpenForms())) return;
+  activeDate = dateKey;
+  activeView = "study";
+  studyController.setTab("schedule");
+  saveUiState(); syncNavigationRoute(); render();
+  requestAnimationFrame(() => {
+    const button = [...document.querySelectorAll("[data-study-lesson-edit]")].find((item) => item.dataset.studyLessonEdit === lessonId);
+    button?.scrollIntoView({ block: "center" }); button?.focus({ preventScroll: true });
   });
 }
 
@@ -2097,6 +2150,31 @@ function moveSelectedTasks(entries, targetDateKey) {
   return true;
 }
 
+function deferSelectedTasks(entries) {
+  const undo = createUndoSnapshot();
+  const result = window.RhythmTaskMoves.moveTasksToLater({ state, entries, helpers: { createId, taskScheduledOn } });
+  if (!result.moved) { showToast("Выполненные и уже отложенные задачи не изменены"); return false; }
+  if (saveState() === false) { replaceState(JSON.parse(undo.state)); render(); return false; }
+  render(); showToast(`В Позже: ${result.moved}`, { undo });
+  return true;
+}
+
+async function dismissSelectedTasks(entries) {
+  const dated = entries.filter((entry) => entry.dateKey);
+  if (!dated.length) { showToast("У отложенных задач ещё нет даты выполнения"); return false; }
+  if (!await confirmAction({ title: "Убрать из незавершённых?",
+    message: "Выбранные дни больше не появятся в этом списке. Задачи останутся в своей дате без отметки выполнения; будущие повторы не изменятся.", confirmLabel: "Не выполнять" })) return false;
+  const undo = createUndoSnapshot();
+  dated.forEach(({ taskId, dateKey }) => {
+    const task = state.tasks.find((item) => item.id === taskId);
+    if (!task) return;
+    task.acknowledgedOverdue ||= {}; task.acknowledgedOverdue[dateKey] = true; task.updatedAt = new Date().toISOString();
+  });
+  if (saveState() === false) { replaceState(JSON.parse(undo.state)); render(); return false; }
+  render(); showToast(`Убрано из незавершённых: ${dated.length}`, { undo });
+  return true;
+}
+
 function renderGoals() {
   goalsView.renderGoals();
 }
@@ -2186,6 +2264,8 @@ async function saveQuickTask(event) {
 
   state.tasks.push(task);
   activeView = "tasks";
+  if (taskPane === "later") Object.assign(task, { date: null, time: "", scheduleMode: "none", startTime: "", endTime: "", reminderOffset: "none" });
+  if (taskPane === "backlog") tasksView.setPane("day");
   if (taskFilter === "done" || !matchesCategoryFilter(task, taskCategoryFilter) ||
     !taskMatchesSearch(task, taskSearchQuery, activeDate)) clearTaskFilters();
   saveUiState();
@@ -2195,9 +2275,9 @@ async function saveQuickTask(event) {
   saveState();
   resetTaskForm({ open: false });
   render();
-  showToast(`Добавлено на ${formatLongDate(task.date)}: ${task.title}`, {
+  showToast(task.date ? `Добавлено на ${formatLongDate(task.date)}: ${task.title}` : `Добавлено в Позже: ${task.title}`, {
     undo,
-    ...(task.date !== activeDate ? { action: { label: "Открыть день", onClick: () => openDateTasks(task.date) } } : {}),
+    ...(task.date && task.date !== activeDate ? { action: { label: "Открыть день", onClick: () => openDateTasks(task.date) } } : {}),
   });
 }
 
@@ -2216,8 +2296,8 @@ function updateQuickTaskPreview() {
       ? `новая категория: ${parsed.categoryName}`
       : "";
   const details = [
-    formatLongDate(parsed.date),
-    parsed.scheduleMode === "block" ? formatTaskWindow(parsed) : parsed.time ? formatTaskTime(parsed.time) : "без времени",
+    taskPane === "later" ? "Позже · без даты" : formatLongDate(parsed.date),
+    taskPane === "later" ? "без времени" : parsed.scheduleMode === "block" ? formatTaskWindow(parsed) : parsed.time ? formatTaskTime(parsed.time) : "без времени",
     category || "без категории",
     priorityLabels[parsed.priority],
   ];
@@ -2466,7 +2546,8 @@ async function confirmDiscardOpenForms() {
   ];
   const hasDirtyOpenForm = forms.some(([form, panel]) => panel && !panel.classList.contains("is-collapsed") && isFormDirty(form));
   const hasDirtyNote = activeView === "journal" && notesView.isDirty();
-  if (!hasDirtyOpenForm && !hasDirtyNote) return true;
+  if (hasDirtyNote && !(await notesView.confirmDiscard())) return false;
+  if (!hasDirtyOpenForm) return true;
   const confirmed = await confirmAction({
     title: "Перейти без сохранения?",
     message: "Открытая форма содержит несохранённые изменения.",
@@ -2474,7 +2555,6 @@ async function confirmDiscardOpenForms() {
     secondaryLabel: "Остаться",
     tone: "danger",
   });
-  if (confirmed === true && hasDirtyNote) notesView.discardDraft();
   return confirmed === true;
 }
 
@@ -2697,6 +2777,7 @@ function taskMetaItems(task) {
   }
 
   if (taskHasSchedule(task)) items.push({ label: formatTaskScheduleLabel(task), type: "schedule" });
+  if (task.dueDate) items.push({ label: `Сдать ${formatShortDate(task.dueDate)}${task.dueTime ? `, ${formatTime(task.dueTime)}` : ""}`, type: "due" });
   if (task.repeat !== "none") items.push({ label: formatTaskRepeat(task), type: "repeat" });
   if (taskHasSchedule(task) && task.reminderOffset !== "none") {
     items.push({ label: reminderLabel(task.reminderOffset), type: "reminder" });
@@ -2890,6 +2971,8 @@ function saveUiState() {
       remoteSyncUrl,
       taskCategoryFilter,
       taskFilter,
+      taskPane,
+      showStudyEvents,
       taskSearchQuery,
       themePreference,
       timeFormat,

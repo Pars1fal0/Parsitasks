@@ -115,19 +115,20 @@ function createWindow() {
         });
         saveState({ skipBackup: true, skipRemote: true });
         render();
-        const acknowledgeItem = [...document.querySelectorAll(".overdue-item")].find((item) => item.querySelector("h3")?.textContent === "Smoke acknowledge overdue");
-        acknowledgeItem?.querySelector(".overdue-more-trigger")?.click();
-        acknowledgeItem?.querySelector(".overdue-acknowledge")?.click();
+        tasksView.setPane("backlog");
+        const acknowledgeItem = [...document.querySelectorAll(".historical-task-item")].find((item) => item.querySelector("strong")?.textContent === "Smoke acknowledge overdue");
+        [...(acknowledgeItem?.querySelectorAll("button") || [])].find((button) => button.textContent === "Не выполнять")?.click();
         const acknowledgedTask = state.tasks.find((task) => task.id === "smoke-acknowledge-overdue");
         const overdueAcknowledgeWorks =
           acknowledgedTask?.acknowledgedOverdue?.[addDays(toDateKey(new Date()), -1)] === true &&
           acknowledgedTask?.completed?.[addDays(toDateKey(new Date()), -1)] !== true &&
-          ![...document.querySelectorAll(".overdue-item h3")].some((item) => item.textContent === "Smoke acknowledge overdue");
-        const overdueVisibleOnNextDay = [...document.querySelectorAll(".overdue-item h3")].some((item) => item.textContent === "Smoke hidden overdue");
+          ![...document.querySelectorAll(".historical-task-item strong")].some((item) => item.textContent === "Smoke acknowledge overdue");
+        const overdueVisibleOnNextDay = [...document.querySelectorAll(".historical-task-item strong")].some((item) => item.textContent === "Smoke hidden overdue");
         activeDate = addDays(activeDate, 1);
         render();
-        const overdueGoneAfterNextDay = ![...document.querySelectorAll(".overdue-item h3")].some((item) => item.textContent === "Smoke hidden overdue");
+        const backlogStaysAfterNextDay = [...document.querySelectorAll(".historical-task-item strong")].some((item) => item.textContent === "Smoke hidden overdue");
         activeDate = addDays(activeDate, -1);
+        tasksView.setPane("day");
         render();
         activeDate = addDays(activeDate, -1);
         render();
@@ -135,15 +136,16 @@ function createWindow() {
         const overdueRestoreWorks = acknowledgedTask?.acknowledgedOverdue?.[addDays(toDateKey(new Date()), -1)] !== true;
         activeDate = addDays(activeDate, 1);
         render();
-        document.querySelector("#overdueToggle")?.click();
-        const overdueHideWorks = document.querySelector("#overduePanel")?.hidden === true && overdueHidden === true;
-        document.querySelector("#overdueToggle")?.click();
-        document.querySelector("#overdueAcknowledgeAll")?.click();
+        const overdueHideWorks = document.querySelector("#historicalTaskPanel")?.hidden === true;
+        tasksView.setPane("backlog");
+        click("#taskSelectMode"); click("#taskSelectAll"); click("#taskBulkDismiss"); click("#confirmAccept");
+        await new Promise((resolve) => setTimeout(resolve, 0));
         const overdueBulkAcknowledgeWorks = ["smoke-overdue-toggle", "smoke-acknowledge-overdue"].every((id) => {
           const task = state.tasks.find((item) => item.id === id);
           const yesterday = addDays(toDateKey(new Date()), -1);
           return task?.acknowledgedOverdue?.[yesterday] === true && task?.completed?.[yesterday] !== true;
-        }) && document.querySelector("#overduePanel")?.classList.contains("is-visible") === false;
+        }) && document.querySelector("#historicalTaskPanel")?.hidden === true;
+        tasksView.setPane("day");
         state.tasks = state.tasks.filter((task) => !["smoke-overdue-toggle", "smoke-acknowledge-overdue"].includes(task.id));
         const viewBeforeMore = activeView;
         document.querySelector(".nav-more-summary")?.click();
@@ -864,7 +866,7 @@ function createWindow() {
           overdueAcknowledgeWorks,
           overdueBulkAcknowledgeWorks,
           overdueRestoreWorks,
-          overdueVisibleOnlyNextDay: overdueVisibleOnNextDay && overdueGoneAfterNextDay,
+          backlogIndependentOfBrowsedDate: overdueVisibleOnNextDay && backlogStaysAfterNextDay,
           moreMenuKeepsView,
           scheduleFieldsExclusive: deadlineFieldsExclusive && blockFieldsExclusive && noTimeFieldsExclusive,
           formBlockToNoTimeWorks,

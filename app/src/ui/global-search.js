@@ -8,6 +8,8 @@
     nutrition: "Питание",
     archive: "Архив",
     material: "Материал",
+    subject: "Предмет",
+    board: "Доска",
   };
 
   function searchWorkspace(state = {}, query = "", options = {}) {
@@ -25,7 +27,7 @@
       if (!matches(`${base} ${checklistText}`, search)) return;
       const checklistMatch = checklistText && (!matches(base, search) || (task.checklist || []).some((item) => matches(item.title, search)));
       const checklistDetail = checklistMatch ? `Шаги задачи: ${excerptAround(checklistText, search)}` : "";
-      if (task.completed?.[task.date] !== true) {
+      if (task.completed?.[task.date || task.dueDate] !== true) {
         results.push({
           id: task.id,
           type: "task",
@@ -52,6 +54,16 @@
       const subject = subjectById.get(file.subjectId) || "";
       if (!matches(`${file.name} ${subject}`, search)) return;
       results.push({ id: file.id, type: "material", title: file.name, detail: subject || "Без предмета", view: "study" });
+    });
+    (state.studySubjects || []).forEach((subject) => {
+      const teachers = [...new Set([subject.teacher, ...(state.studyLessons || []).filter((lesson) => lesson.subjectId === subject.id).map((lesson) => lesson.teacher)].filter(Boolean))].join(" · ");
+      if (!matches(`${subject.name} ${teachers}`, search)) return;
+      results.push({ id: subject.id, type: "subject", title: subject.name, detail: teachers || "Расписание и материалы", view: "study" });
+    });
+    (state.boardItems || []).forEach((item) => {
+      if (!["text", "frame"].includes(item.type) || !matches(item.text, search)) return;
+      results.push({ id: item.id, type: "board", title: excerpt(item.text) || "Область доски",
+        detail: item.type === "frame" ? "Область доски" : excerptAround(item.text, search), view: "board" });
     });
     (state.habits || []).forEach((habit) => {
       if (!matches(`${habit.title} ${habit.unit || ""}`, search)) return;

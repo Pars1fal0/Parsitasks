@@ -203,7 +203,7 @@
       renderMaterials(state);
       renderSubjects(state);
       renderDrive();
-      const open = (state.tasks || []).filter((task) => task.studySubjectId && task.completed?.[task.date] !== true).length;
+      const open = (state.tasks || []).filter((task) => task.studySubjectId && task.completed?.[task.date || task.dueDate] !== true).length;
       root.querySelector("#studySummary").textContent = open ? `${open} ${plural(open, "задание", "задания", "заданий")} ${open === 1 ? "ждёт" : "ждут"} выполнения`
         : state.tasks.some((task) => task.studySubjectId) ? "Все домашние задания выполнены" : "Домашних заданий пока нет";
       if (!homeworkForm.elements.id.value && !homeworkForm.elements.date.value) homeworkForm.elements.date.value = ctx.getActiveDate();
@@ -216,11 +216,12 @@
       const files = new Map(state.studyFiles.map((item) => [item.id, item]));
       const todayKey = localDateKey(new Date());
       const tasks = state.tasks.filter((task) => task.studySubjectId && studyModel.isHomeworkVisible(task, todayKey) && (filter === "all" || task.studySubjectId === filter))
-        .sort((a, b) => Number(a.completed?.[a.date] === true) - Number(b.completed?.[b.date] === true) || a.date.localeCompare(b.date) || String(a.time).localeCompare(String(b.time)));
+        .sort((a, b) => Number(a.completed?.[a.date || a.dueDate] === true) - Number(b.completed?.[b.date || b.dueDate] === true)
+          || String(a.dueDate || a.date).localeCompare(String(b.dueDate || b.date)) || String(a.dueTime || a.time).localeCompare(String(b.dueTime || b.time)));
       const list = root.querySelector("#studyHomeworkList");
       list.replaceChildren(...(tasks.length ? tasks.map((task) => {
         const subject = subjects.get(task.studySubjectId);
-        const done = task.completed?.[task.date] === true;
+        const done = task.completed?.[task.date || task.dueDate] === true;
         const attachments = (task.studyFileIds || []).map((id) => files.get(id)).filter(Boolean);
         const row = element("article", `study-item${done ? " is-done" : ""}`);
         const check = element("input", "study-check");
@@ -230,7 +231,10 @@
         const meta = element("div", "study-item-meta");
         const subjectLabel = element("span");
         subjectLabel.append(subjectDot(subject?.color), document.createTextNode(` ${subject?.name || "Предмет удалён"}`));
-        meta.append(subjectLabel, element("span", "", `Сдать ${displayDate(task.date)}${task.time ? `, ${task.time}` : ""}`));
+        const due = task.dueDate || task.date;
+        const dueTime = task.dueTime ?? task.time;
+        meta.append(subjectLabel, element("span", "", `Сдать ${displayDate(due)}${dueTime ? `, ${dueTime}` : ""}`));
+        if (task.date !== due) meta.append(element("span", "", task.date ? `Подготовка ${displayDate(task.date)}` : "Подготовка пока не запланирована"));
         body.append(meta);
         if (task.studyDetails) body.append(element("p", "study-item-details", task.studyDetails));
         if (attachments.length) {
@@ -428,19 +432,28 @@
       const form = homeworkForm.elements;
       const state = ctx.getState();
       const existing = state.tasks.find((task) => task.id === form.id.value);
-      const previous = existing ? { ...existing } : null;
+      const previous = existing ? JSON.parse(JSON.stringify(existing)) : null;
       const now = new Date().toISOString();
       const time = form.time.value;
       const next = {
         id: existing?.id || ctx.createId(), title: form.title.value.trim(), date: form.date.value,
-        time, scheduleMode: time ? "deadline" : "none", startTime: "", endTime: "",
+        time: existing?.time || "", scheduleMode: existing?.scheduleMode || "none", startTime: existing?.startTime || "", endTime: existing?.endTime || "",
+        dueDate: form.date.value, dueTime: time, dueReminderOffset: time ? existing?.dueReminderOffset || "60" : "none",
         categoryId: existing?.categoryId || "", priority: existing?.priority || "medium", repeat: "none", repeatUntil: "", customRepeat: {},
-        reminderOffset: time ? (existing?.reminderOffset && existing.reminderOffset !== "none" ? existing.reminderOffset : "60") : "none",
-        completed: existing?.completed || {}, acknowledgedOverdue: existing?.acknowledgedOverdue || {}, excludedDates: {}, notified: {},
+        reminderOffset: existing?.reminderOffset || "none",
+        completed: { ...existing?.completed }, acknowledgedOverdue: { ...existing?.acknowledgedOverdue }, excludedDates: {}, notified: {},
+        checklist: existing?.checklist || [], checklistLogs: JSON.parse(JSON.stringify(existing?.checklistLogs || {})),
         studySubjectId: form.subjectId.value, studyDetails: form.details.value.trim(), studyAssignedDate: existing?.studyAssignedDate || localDateKey(new Date()),
         studyFileIds: [...root.querySelectorAll('#studyHomeworkFiles input[type="checkbox"]:checked')].map((input) => input.value),
         createdAt: existing?.createdAt || now, updatedAt: now,
       };
+      next.date = form.planDate.value || form.date.value;
+      if (existing && next.date !== existing.date) {
+        const sourceDate = existing.date || (existing.completed?.[existing.dueDate] === true ? existing.dueDate : existing.deferredFromDate);
+        global.RhythmTaskChecklist?.moveDate(next, sourceDate, next.date);
+        if (next.completed[sourceDate] === true) { delete next.completed[sourceDate]; next.completed[next.date] = true; }
+        next.notified = {};
+      }
       if (!next.title || !next.studySubjectId || !next.date) return;
       if (existing) Object.assign(existing, next);
       else state.tasks.push(next);
@@ -457,6 +470,7 @@
       homeworkDraft.clear();
       homeworkForm.reset(); homeworkForm.elements.id.value = "";
       homeworkForm.elements.date.value = ctx.getActiveDate();
+      root.querySelector("#studyDeadlineSuggestion").textContent = "";
       draftStatus.textContent = "";
       discardDraftButton.hidden = true;
       root.querySelector("#studyHomeworkFormTitle").textContent = "Новое задание";
@@ -468,7 +482,13 @@
       const subjectId = homeworkForm.elements.subjectId.value;
       const state = ctx.getState();
       const nextDate = studyModel.nextLessonDate(state.studyLessons, subjectId, ctx.getActiveDate(), state.studyWeekCycle);
-      if (nextDate) homeworkForm.elements.date.value = nextDate;
+      const hint = root.querySelector("#studyDeadlineSuggestion");
+      if (nextDate) {
+        homeworkForm.elements.date.value = nextDate;
+        const lesson = studyModel.eventsForDate(state, nextDate).find((item) => item.subjectId === subjectId && item.lessonType === "practice")
+          || studyModel.eventsForDate(state, nextDate).find((item) => item.subjectId === subjectId);
+        hint.textContent = `Следующая ${lesson?.lessonType === "practice" ? "практика" : "лекция"}: ${shortDate(nextDate)} · отсчёт от ${shortDate(ctx.getActiveDate())}`;
+      } else hint.textContent = "Следующего занятия нет. Выберите срок сдачи.";
     }
 
     async function uploadMaterial(event) {
@@ -534,7 +554,9 @@
         }
         const form = homeworkForm.elements;
         form.id.value = task.id; form.subjectId.value = task.studySubjectId; form.title.value = task.title;
-        form.details.value = task.studyDetails || ""; form.date.value = task.date; form.time.value = task.time || "";
+        form.details.value = task.studyDetails || ""; form.date.value = task.dueDate || task.date; form.time.value = task.dueTime ?? task.time ?? "";
+        form.planDate.value = task.date !== (task.dueDate || task.date) ? task.date || "" : "";
+        root.querySelector("#studyDeadlineSuggestion").textContent = "";
         root.querySelectorAll('#studyHomeworkFiles input[type="checkbox"]').forEach((input) => { input.checked = task.studyFileIds?.includes(input.value) || false; });
         root.querySelector("#studyHomeworkFormTitle").textContent = "Изменить задание";
         root.querySelector("#studyHomeworkCancel").hidden = false;
@@ -598,11 +620,15 @@
       if (!id) return;
       const task = ctx.getState().tasks.find((item) => item.id === id);
       if (!task) return;
+      const date = task.date || task.dueDate;
+      if (!date) return;
+      const previous = { completed: { ...task.completed }, updatedAt: task.updatedAt };
       task.completed ||= {};
-      if (event.target.checked) task.completed[task.date] = true;
-      else delete task.completed[task.date];
+      if (event.target.checked) task.completed[date] = true;
+      else delete task.completed[date];
       task.updatedAt = new Date().toISOString();
-      ctx.saveState(); ctx.render();
+      if (ctx.saveState() === false) Object.assign(task, previous);
+      ctx.render();
     }
 
     function removeEntity(type, id) {

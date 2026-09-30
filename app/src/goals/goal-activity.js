@@ -18,19 +18,41 @@
     return [...byId.values()].slice(0, 100);
   }
 
+  function normalizeTaskTargets(value, fallbackDate = "") {
+    const targets = new Map();
+    for (const entry of Array.isArray(value) ? value : []) {
+      const taskId = String(entry?.taskId || "").trim().slice(0, 160);
+      if (!taskId) continue;
+      const mode = entry.mode === "count" ? "count" : entry.mode === "legacy" ? "legacy" : "once";
+      const requested = Number(entry.targetCount);
+      targets.set(taskId, { taskId, mode,
+        targetCount: mode === "count" && Number.isFinite(requested) ? Math.min(3650, Math.max(1, Math.round(requested))) : 1,
+        startDate: isDateKey(entry.startDate) ? entry.startDate : mode === "count" ? fallbackDate : "" });
+    }
+    return [...targets.values()].slice(0, 100);
+  }
+
   function goalActivity(goal, state = {}, options = {}) {
     const todayKey = options.todayKey || dateKey(new Date());
     const steps = Array.isArray(goal.steps) ? goal.steps : [];
     const taskIds = normalizeLinkedTaskIds(goal.linkedTaskIds);
     const habitTargets = normalizeHabitTargets(goal.habitTargets, dateKey(new Date(goal.createdAt || Date.now())));
     const tasks = new Map((state.tasks || []).map((task) => [task.id, task]));
+    const taskTargets = new Map(normalizeTaskTargets(goal.taskTargets, dateKey(new Date(goal.createdAt || Date.now())))
+      .map((target) => [target.taskId, target]));
     const habits = new Map((state.habits || []).map((habit) => [habit.id, habit]));
     const checkpointDone = steps.filter((step) => step.done === true).length;
     const taskResults = taskIds.map((taskId) => {
       const task = tasks.get(taskId);
-      const done = Boolean(task && Object.entries(task.completed || {})
-        .some(([day, completed]) => completed === true && day <= todayKey));
-      return { taskId, task, done };
+      const target = taskTargets.get(taskId) || { mode: "legacy", targetCount: 1, startDate: "" };
+      const dates = new Set();
+      (state.tasks || []).filter((item) => item.id === taskId || item.sourceTaskId === taskId).forEach((item) => {
+        Object.entries(item.completed || {}).forEach(([day, completed]) => {
+          if (completed === true && isDateKey(day) && day <= todayKey && (!target.startDate || day >= target.startDate)) dates.add(day);
+        });
+      });
+      const count = dates.size;
+      return { taskId, task, ...target, count, done: Boolean(task && count >= target.targetCount) };
     });
     const habitResults = habitTargets.map((target) => {
       const habit = habits.get(target.habitId);
@@ -40,7 +62,7 @@
       return { ...target, habit, count, done: count >= target.targetCount };
     });
     const total = steps.length + taskResults.length + habitResults.length;
-    const completed = checkpointDone + taskResults.filter((item) => item.done).length
+    const completed = checkpointDone + taskResults.reduce((sum, item) => sum + (item.task ? Math.min(1, item.count / item.targetCount) : 0), 0)
       + habitResults.reduce((sum, item) => sum + Math.min(1, item.count / item.targetCount), 0);
     return {
       checkpointDone,
@@ -59,8 +81,14 @@
     const tasks = new Map((state.tasks || []).map((task) => [task.id, task]));
     const habits = new Map((state.habits || []).map((habit) => [habit.id, habit]));
     const taskCount = normalizeLinkedTaskIds(goal.linkedTaskIds).reduce((count, id) => {
-      const completed = tasks.get(id)?.completed || {};
-      return count + [...dates].filter((day) => completed[day] === true).length;
+      if (!tasks.has(id)) return count;
+      const target = normalizeTaskTargets(goal.taskTargets).find((item) => item.taskId === id);
+      const completedDates = new Set();
+      (state.tasks || []).filter((item) => item.id === id || item.sourceTaskId === id).forEach((task) => {
+        [...dates].filter((day) => task.completed?.[day] === true && (!target?.startDate || day >= target.startDate))
+          .forEach((day) => completedDates.add(day));
+      });
+      return count + completedDates.size;
     }, 0);
     const habitCount = normalizeHabitTargets(goal.habitTargets).reduce((count, target) => {
       const habit = habits.get(target.habitId);
@@ -107,7 +135,7 @@
     return Number.isFinite(date.getTime()) ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "";
   }
 
-  const api = { goalActivity, goalWeekActivity, normalizeHabitTargets, normalizeLinkedTaskIds, reconcileGoalStatuses };
+  const api = { goalActivity, goalWeekActivity, normalizeHabitTargets, normalizeLinkedTaskIds, normalizeTaskTargets, reconcileGoalStatuses };
   global.RhythmGoalActivity = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

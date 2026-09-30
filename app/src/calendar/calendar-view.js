@@ -2,6 +2,18 @@
   function createCalendarView(ctx) {
     let centeredWeek = "";
     const heatmapView = global.RhythmHeatmapView.createHeatmapView(ctx);
+    const grid = ctx.els.views?.overview?.querySelector(".overview-grid");
+    if (grid) {
+      const insights = document.createElement("details");
+      insights.className = "calendar-insights";
+      const mobile = global.matchMedia?.("(max-width: 680px)");
+      insights.open = !mobile?.matches;
+      mobile?.addEventListener?.("change", () => { insights.open = !mobile.matches; });
+      const summary = document.createElement("summary"); summary.textContent = "Итоги и цели";
+      const body = document.createElement("div"); body.className = "calendar-insights-body";
+      grid.querySelectorAll(".metric-panel, .goal-week-review").forEach((panel) => body.appendChild(panel));
+      insights.append(summary, body); grid.appendChild(insights);
+    }
     ctx.els.openGoalsFromCalendar?.addEventListener("click", () => ctx.openGoals());
 
     function renderOverview() {
@@ -144,6 +156,7 @@
 
       week.forEach((dateKey) => {
         const tasks = ctx.getOrderedTasksForDate(dateKey);
+        const lessons = ctx.getStudyEvents?.(dateKey) || [];
         const openTasks = tasks.filter((task) => !ctx.isTaskDone(task, dateKey));
         const doneCount = tasks.length - openTasks.length;
         const column = document.createElement("article");
@@ -165,12 +178,14 @@
         day.textContent = String(ctx.parseDate(dateKey).getDate());
         count.className = "week-board-count";
         count.textContent = tasks.length ? `${doneCount}/${tasks.length} выполнено` : "Пока без задач";
+        if (lessons.length) count.textContent += ` · ${lessons.length} занятий`;
         list.className = "week-board-list";
         header.append(weekday, day);
 
+        lessons.forEach((lesson) => list.appendChild(createStudyChip(lesson, dateKey)));
         if (tasks.length) {
           tasks.forEach((task) => list.appendChild(createWeekTaskChip(task, dateKey)));
-        } else {
+        } else if (!lessons.length) {
           const empty = document.createElement("span");
           empty.className = "week-board-empty";
           empty.textContent = "Нет задач";
@@ -220,6 +235,7 @@
       dates.forEach((dateKey) => {
         const date = ctx.parseDate(dateKey);
         const tasks = ctx.getOrderedTasksForDate(dateKey);
+        const lessons = ctx.getStudyEvents?.(dateKey) || [];
         const openTasks = tasks.filter((task) => !ctx.isTaskDone(task, dateKey));
         const doneCount = tasks.length - openTasks.length;
         const habitCount = ctx.habitsForDate(dateKey).length;
@@ -235,6 +251,7 @@
         if (openTasks.length) details.push(`${openTasks.length} открыто`);
         if (doneCount) details.push(`${doneCount} готово`);
         if (habitCount) details.push(`${habitCount} привычек`);
+        if (lessons.length) details.push(`${lessons.length} занятий`);
 
         dayCell.className = "month-day calendar-drop-zone";
         dayCell.dataset.date = dateKey;
@@ -253,6 +270,11 @@
           head.appendChild(progress);
         }
         items.className = "month-day-items";
+        if (lessons.length) {
+          const summary = document.createElement("details"); summary.className = "month-study-events";
+          const label = document.createElement("summary"); label.textContent = `Занятия: ${lessons.length}`;
+          summary.append(label, ...lessons.map((lesson) => createStudyChip(lesson, dateKey))); items.appendChild(summary);
+        }
         visibleTasks.forEach((task) => items.appendChild(createMonthTaskChip(task, dateKey)));
         if (hiddenCount > 0) appendHiddenMonthTasks(dayCell, items, hiddenTasks, dateKey, hiddenCount);
         dayCell.append(head, items);
@@ -278,6 +300,16 @@
         moreButton.textContent = expanded ? "Скрыть" : `+${hiddenCount}`;
       });
       items.append(moreButton, hiddenList);
+    }
+
+    function createStudyChip(lesson, dateKey) {
+      const button = document.createElement("button"); button.type = "button"; button.className = "calendar-study-event";
+      button.style.setProperty("--lesson-color", lesson.color);
+      button.dataset.studyLessonId = lesson.id;
+      const title = document.createElement("strong"); title.textContent = lesson.title;
+      const detail = document.createElement("small"); detail.textContent = [lesson.startTime + "–" + lesson.endTime, lesson.typeLabel, lesson.room].filter(Boolean).join(" · ");
+      button.title = [lesson.title, detail.textContent, lesson.teacher].filter(Boolean).join(" · ");
+      button.append(title, detail); button.addEventListener("click", () => ctx.openStudyLesson?.(lesson.id, dateKey)); return button;
     }
 
     function createMonthTaskChip(task, dateKey) {

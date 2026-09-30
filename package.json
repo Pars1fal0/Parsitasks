@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.30.0",
+  "version": "0.31.0",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",
@@ -14,6 +14,7 @@
     "lint": "node tests/lint.cjs",
     "test": "node tests/run-tests.cjs",
     "test:dependencies": "npm audit --audit-level=high",
+    "test:planning": "node tests/planning-workspace-e2e.cjs",
     "verify:production": "node scripts/check-production.cjs",
     "test:security-live": "node tests/security-live.cjs",
     "test:sync-live": "node tests/remote-sync-live.cjs",

@@ -4,6 +4,9 @@
     const deferredControl = ctx.els.taskForm.querySelector("#taskDeferred");
     const scopePanel = ctx.els.taskRepeatEditScope;
     const extraPanel = ctx.els.taskForm.querySelector("#taskExtraFields");
+    const dueDateField = ctx.els.taskForm.querySelector("#taskDueDate");
+    const dueTimeField = ctx.els.taskForm.querySelector("#taskDueTime");
+    const dueReminderField = ctx.els.taskForm.querySelector("#taskDueReminder");
     if (scopePanel && extraPanel) extraPanel.before(scopePanel);
     deferredControl?.addEventListener("change", () => setDeferred(deferredControl.checked));
     const checklistEditor = global.RhythmGoalCheckpointEditor?.createGoalCheckpointEditor({
@@ -46,6 +49,9 @@
         id,
         title: ctx.cleanText(ctx.els.taskTitle.value),
         date: deferred ? null : ctx.els.taskDate.value || ctx.getActiveDate(),
+        dueDate: ctx.normalizeDateKey(dueDateField.value, ""),
+        dueTime: dueTimeField.value,
+        dueReminderOffset: dueTimeField.value && dueDateField.value ? dueReminderField.value : "none",
         deferredFromDate: deferred ? existing?.date || existing?.deferredFromDate || "" : "",
         scheduleMode,
         startTime,
@@ -72,11 +78,16 @@
         studyAssignedDate: existing?.studyAssignedDate || "",
         studyFileIds: existing?.studyFileIds || [],
       };
+      if (task.repeat !== "none" && task.dueDate) {
+        ctx.showToast("Отдельный срок доступен для разовой задачи. Для повтора используй время каждого дня.");
+        return;
+      }
+      if (dueTimeField.value && !task.dueDate) { ctx.showToast("Выбери дату сдачи"); dueDateField.focus(); return; }
 
       const isRecurringEdit = Boolean(existing && existing.repeat !== "none" && !existing.sourceTaskId);
       if (existing && !isRecurringEdit && task.date && existing.date !== task.date) {
         global.RhythmTaskChecklist.moveDate(task, existing.date || existing.deferredFromDate, task.date);
-        const previousDate = existing.date || existing.deferredFromDate;
+        const previousDate = existing.date || (existing.completed?.[existing.dueDate] === true ? existing.dueDate : existing.deferredFromDate);
         if (previousDate && task.completed[previousDate] === true) {
           delete task.completed[previousDate];
           task.completed[task.date] = true;
@@ -127,6 +138,9 @@
         deferredControl.checked = task.date === null;
       }
       ctx.els.taskTime.value = ctx.cleanTimeValue(task.time);
+      dueDateField.value = task.dueDate || (task.studySubjectId ? task.date : "") || "";
+      dueTimeField.value = task.dueTime || "";
+      dueReminderField.value = task.dueReminderOffset || "none";
       ctx.setTaskScheduleMode(ctx.isTimeBlock(task) ? "block" : ctx.cleanTimeValue(task.time) ? "deadline" : "none");
       ctx.els.taskStartTime.value = ctx.cleanTimeValue(task.startTime);
       ctx.els.taskEndTime.value = ctx.cleanTimeValue(task.endTime);
@@ -143,7 +157,7 @@
       setDeferred(task.date === null);
       const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
       if (extra) extra.open = Boolean(task.categoryId || task.priority === "high" || task.priority === "low"
-        || task.repeat !== "none" || task.time || task.checklist?.length);
+        || task.repeat !== "none" || task.time || task.dueDate || task.checklist?.length);
       ctx.markFormPristine?.(ctx.els.taskForm);
       ctx.els.taskTitle.focus();
     }
@@ -162,6 +176,9 @@
       ctx.els.taskDate.disabled = false;
       if (deferredControl) { deferredControl.checked = false; deferredControl.disabled = false; }
       ctx.els.taskTime.value = "";
+      dueDateField.value = "";
+      dueTimeField.value = "";
+      dueReminderField.value = "none";
       ctx.setTaskScheduleMode("none");
       ctx.els.taskStartTime.value = "";
       ctx.els.taskEndTime.value = "";
@@ -242,7 +259,7 @@
     }
 
     function notificationScheduleChanged(previous, next) {
-      return ["date", "scheduleMode", "startTime", "endTime", "time", "reminderOffset"]
+      return ["date", "scheduleMode", "startTime", "endTime", "time", "reminderOffset", "dueDate", "dueTime", "dueReminderOffset"]
         .some((field) => String(previous?.[field] || "") !== String(next?.[field] || ""));
     }
 

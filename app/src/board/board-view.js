@@ -828,6 +828,17 @@
       saveCamera();
     }
 
+    function focusItem(id) {
+      const item = ctx.getItems().find((item) => item.id === id);
+      if (!item) return false;
+      const rect = ctx.els.boardViewport.getBoundingClientRect();
+      camera = cameraApi.fitCamera(ctx.model.bounds([item]), rect, MIN_ZOOM, Math.min(MAX_ZOOM, 1.5));
+      applyCamera(); saveCamera();
+      selectItem(id);
+      findItemNode(id)?.focus({ preventScroll: true });
+      return true;
+    }
+
     function handleCanvasDoubleClick(event) {
       if (
         event.target.closest(".board-item")
@@ -1646,6 +1657,7 @@
     return {
       bindEvents,
       focusContent,
+      focusItem,
       render,
     };
   }

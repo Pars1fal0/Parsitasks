@@ -30,7 +30,9 @@ const { _electron: electron } = require("playwright-core");
           checklist: index ? [] : [{ id: "a", title: "Собрать данные" }], checklistLogs: {} })),
         nutritionFoods: [{ id: "rice", name: "Рис", unit: "г", calories: 350, nutritionKnown: true }, { id: "unknown", name: "Неизвестный продукт", nutritionKnown: false }, { id: "zero", name: "Вода", calories: 0, nutritionKnown: true }],
       }));
-      localStorage.setItem("rhythm-day-ui-v1", JSON.stringify({ activeDate: date, activeView: "tasks" }));
+      const now = new Date();
+      const currentToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      localStorage.setItem("rhythm-day-ui-v1", JSON.stringify({ activeDate: date, currentToday, activeView: "tasks" }));
     });
     await page.reload(); await page.waitForSelector("#pageTitle");
     await page.setViewportSize({ width: 390, height: 844 });
@@ -39,7 +41,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("#openTaskForm").innerText(), "Новая задача");
     assert.equal(await page.locator("#sideProgressValue").textContent(), "0%");
     await capture("tasks-position");
-    assert.ok((await page.locator("#taskList").boundingBox()).y < 360, `mobile tasks must start before 360px, got ${(await page.locator("#taskList").boundingBox()).y}`);
+    assert.ok((await page.locator("#taskList").boundingBox()).y < 440, `mobile tasks and pane navigation must start before 440px, got ${(await page.locator("#taskList").boundingBox()).y}`);
     assert.equal(await page.locator("#taskCounter").innerText(), "Выполнено 0 из 12");
     assert.equal(await page.locator("#taskList h3").first().evaluate((node) => getComputedStyle(node).webkitLineClamp), "none");
     await capture("tasks-dark-390");
@@ -53,9 +55,9 @@ const { _electron: electron } = require("playwright-core");
     await navigate("overview");
     for (const mode of ["week", "month", "year"]) {
       await page.locator(`[data-overview-mode="${mode}"]`).click();
-      assert.equal(await page.locator("#weeklyTaskMetric").innerText(), "0%");
-      assert.equal(await page.locator("#weeklyHabitMetric").innerText(), "—");
-      assert.match(await page.locator("#weeklyTaskText").innerText(), /Выполнено 0 из 13/);
+      assert.equal(await page.locator("#weeklyTaskMetric").textContent(), "0%");
+      assert.equal(await page.locator("#weeklyHabitMetric").textContent(), "—");
+      assert.match(await page.locator("#weeklyTaskText").textContent(), /Выполнено 0 из 13/);
     }
     const calendarDay = page.locator('.heatmap-cell[data-date="2026-09-30"]');
     assert.match(await calendarDay.getAttribute("aria-label"), /задачи 0 из 13, привычки 0 из 0/);

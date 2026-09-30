@@ -78,7 +78,18 @@
   }
 
   function isHomeworkVisible(task, todayKey) {
-    return task.completed?.[task.date] !== true || task.date >= todayKey;
+    return task.completed?.[task.date || task.dueDate] !== true || (task.dueDate || task.date) >= todayKey;
+  }
+
+  function eventsForDate(state = {}, dateKey) {
+    const subjects = new Map((state.studySubjects || []).map((subject) => [subject.id, subject]));
+    return (state.studyLessons || []).filter((lesson) => subjects.has(lesson.subjectId)
+      && lessonOccursOnDate(lesson, dateKey, state.studyWeekCycle)).map((lesson) => {
+      const subject = subjects.get(lesson.subjectId);
+      return { ...lesson, date: dateKey, title: subject.name, color: subject.color,
+        teacher: lesson.teacher || subject.teacher || "",
+        typeLabel: lesson.lessonType === "practice" ? "Практика" : lesson.lessonType === "lecture" ? "Лекция" : "Занятие" };
+    }).sort((a, b) => a.startTime.localeCompare(b.startTime));
   }
 
   function parseDateKey(value) {
@@ -129,7 +140,7 @@
 
   function timestamp(value) { return Number.isFinite(Date.parse(value)) ? value : new Date().toISOString(); }
 
-  const api = { isHomeworkVisible, lessonOccursOnDate, mondayKey, nextLessonDate, normalizeFiles, normalizeLessons, normalizeSubjects, normalizeTaskStudy, normalizeWeekCycle, weekParity };
+  const api = { eventsForDate, isHomeworkVisible, lessonOccursOnDate, mondayKey, nextLessonDate, normalizeFiles, normalizeLessons, normalizeSubjects, normalizeTaskStudy, normalizeWeekCycle, weekParity };
   global.RhythmStudyModel = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

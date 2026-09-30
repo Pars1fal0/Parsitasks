@@ -289,6 +289,11 @@
         </section>
 
         <section class="view is-active" id="tasksView" aria-labelledby="tasksHeading">
+          <div class="task-pane-tabs segmented-control" role="group" aria-label="Список задач">
+            <button type="button" data-task-pane="day" aria-pressed="true">День <span id="taskDayCount"></span></button>
+            <button type="button" data-task-pane="later" aria-pressed="false">Позже <span id="taskLaterBadge"></span></button>
+            <button type="button" data-task-pane="backlog" aria-pressed="false">Незавершённые <span id="taskBacklogBadge"></span></button>
+          </div>
           <div class="toolbar">
             <details class="task-filter-disclosure">
               <summary id="taskFilterSummary">Фильтры и поиск</summary>
@@ -376,6 +381,8 @@
                 <button class="ghost-button compact-button" id="taskSelectAll" type="button">Выбрать все</button>
                 <label>Перенести на<input id="taskBulkDate" type="date" required></label>
                 <button class="primary-button compact-button" type="submit">Перенести</button>
+                <button class="ghost-button compact-button" id="taskBulkLater" type="button">В Позже</button>
+                <button class="ghost-button compact-button" id="taskBulkDismiss" type="button">Не выполнять</button>
                 <button class="icon-button" id="taskBulkCancel" type="button" title="Отменить выбор" aria-label="Отменить выбор"><svg class="ui-icon"><use href="#icon-close"></use></svg></button>
               </form>
               <div class="task-list" id="taskList"></div>
@@ -413,11 +420,16 @@
                     Название
                     <input id="taskTitle" type="text" maxlength="80" required placeholder="Например: закрыть отчет">
                   </label>
-                  <label>Дата<input id="taskDate" type="date" required></label>
+                  <label>Запланировано на<input id="taskDate" type="date" required></label>
                   <label class="task-defer-toggle"><input id="taskDeferred" type="checkbox">Без даты · в список «Позже»</label>
                   <details class="task-extra-fields" id="taskExtraFields">
                     <summary>Дополнительные настройки</summary>
                     <div class="stack-form">
+                  <fieldset class="task-due-fields">
+                    <legend>Отдельный срок выполнения</legend>
+                    <div class="study-field-row"><label>Сдать до<input id="taskDueDate" type="date"></label><label>Время сдачи<input id="taskDueTime" type="time"></label></div>
+                    <label>Напомнить о сроке<select id="taskDueReminder"><option value="none">Не напоминать</option><option value="0">В момент сдачи</option><option value="15">За 15 минут</option><option value="60">За час</option><option value="1440">За день</option></select></label>
+                  </fieldset>
                   <div class="deadline-card">
                     <div class="deadline-title">
                       <svg class="ui-icon"><use href="#icon-clock"></use></svg>
@@ -605,6 +617,7 @@
               <p class="muted">Задачи с временем разложены по часам выбранного дня.</p>
             </div>
             <div class="timeline-toolbar-actions">
+              <label class="study-layer-toggle"><input type="checkbox" data-study-layer checked>Занятия</label>
               <button class="ghost-button compact-button icon-text-button timeline-jump-button" id="timelineJumpToTask" type="button" aria-label="К ближайшей задаче по времени" title="К ближайшей задаче по времени">
                 <svg class="ui-icon"><use href="#icon-target"></use></svg><span>К задаче</span>
               </button>
@@ -830,6 +843,7 @@
                   </div>
                   <div class="goal-link-section">
                     <div class="goal-link-heading"><span>Задачи</span><small id="goalTaskLinkCount">0 выбрано</small></div>
+                  <input id="goalTaskTargets" type="hidden">
                     <input id="goalTaskSearch" class="goal-link-search" type="search" placeholder="Найти задачу" aria-label="Найти задачу для цели" autocomplete="off">
                     <div id="goalTaskOptions" class="goal-link-options" aria-label="Задачи цели"></div>
                   </div>
@@ -854,11 +868,11 @@
               <h2 id="overviewHeading">Обзор недели</h2>
               <p class="muted">Сводка по задачам и привычкам вокруг выбранной даты.</p>
             </div>
-            <div class="segmented-control overview-mode-control" aria-label="Период обзора">
+            <div class="calendar-toolbar-actions"><label class="study-layer-toggle"><input type="checkbox" data-study-layer checked>Занятия</label><div class="segmented-control overview-mode-control" aria-label="Период обзора">
               <button class="is-active" type="button" data-overview-mode="week">Неделя</button>
               <button type="button" data-overview-mode="month">Месяц</button>
               <button type="button" data-overview-mode="year">Год</button>
-            </div>
+            </div></div>
           </div>
           <div class="overview-grid">
             <section class="panel metric-panel metric-panel-dark">
@@ -1124,23 +1138,24 @@
                   <div class="notes-form-top">
                     <button class="icon-button notes-back" id="noteBack" type="button" aria-label="К списку заметок" title="К списку заметок"><svg class="ui-icon"><use href="#icon-chevron-left"></use></svg></button>
                     <span id="noteUpdatedAt" class="notes-updated"></span>
+                    <span id="noteStatus" role="status" aria-live="polite"></span>
+                    <button class="primary-button compact-button note-save" type="submit"><svg class="ui-icon"><use href="#icon-check"></use></svg><span>Сохранить</span></button>
                     <label class="notes-pin-toggle" title="Закрепить заметку"><input id="notePinned" type="checkbox"><svg class="ui-icon"><use href="#icon-pin"></use></svg><span class="sr-only">Закрепить заметку</span></label>
                     <button class="icon-button notes-delete" id="noteDelete" type="button" aria-label="Удалить заметку" title="Удалить заметку" hidden><svg class="ui-icon"><use href="#icon-trash"></use></svg></button>
                   </div>
                   <input id="noteTitle" class="notes-title-input" type="text" maxlength="120" required placeholder="Название заметки" aria-label="Название заметки" autocomplete="off">
                   <textarea id="noteBody" class="notes-body-input" maxlength="20000" placeholder="Содержание заметки" aria-label="Содержание заметки"></textarea>
-                  <div class="notes-relations">
+                  <details class="notes-relations-disclosure"><summary>Связи с предметом и задачей</summary><div class="notes-relations">
                     <label>Предмет<select id="noteSubjectId"><option value="">Без предмета</option></select></label>
                     <div class="notes-task-picker">
                       <label for="noteTaskSearch">Задача</label>
                       <input id="noteTaskSearch" type="search" placeholder="Найти задачу" aria-label="Найти связанную задачу" autocomplete="off">
                       <select id="noteTaskId" aria-label="Связанная задача"><option value="">Без задачи</option></select>
                     </div>
-                  </div>
+                  </div></details>
                   <div class="notes-form-actions">
-                    <button class="primary-button" type="submit">Сохранить</button>
                     <button class="ghost-button compact-button" id="noteOpenTask" type="button" hidden>Открыть задачу</button>
-                    <span id="noteStatus" role="status" aria-live="polite"></span>
+                    <button class="ghost-button compact-button" id="noteDiscardDraft" type="button" hidden>Удалить черновик</button>
                   </div>
                 </form>
               </div>
@@ -1343,7 +1358,7 @@
             </div>
           </div>
           <div class="study-tabs" role="tablist" aria-label="Разделы учёбы">
-            <button type="button" role="tab" data-study-tab="homework" aria-selected="true">Домашнее</button>
+            <button type="button" role="tab" data-study-tab="homework" aria-selected="true">Домашние задания</button>
             <button type="button" role="tab" data-study-tab="schedule" aria-selected="false">Расписание</button>
             <button type="button" role="tab" data-study-tab="materials" aria-selected="false">Материалы</button>
           </div>
@@ -1363,6 +1378,8 @@
                 <label>Что сделать<input name="title" maxlength="240" required placeholder="Например, решить задачи 4–6"></label>
                 <label>Подробности<textarea name="details" rows="3" maxlength="4000" placeholder="Страницы, условия, примечания"></textarea></label>
                 <div class="study-field-row"><label>Сдать до<input name="date" type="date" required></label><label>Время, если есть<input name="time" type="time"></label></div>
+                <small id="studyDeadlineSuggestion" role="status"></small>
+                <label>Запланировать подготовку на<input name="planDate" type="date"></label>
                 <fieldset class="study-file-picker"><legend>Материалы</legend><div id="studyHomeworkFiles"></div></fieldset>
                 <small id="studyHomeworkDraftStatus" role="status"></small>
                 <button class="ghost-button" id="studyHomeworkDiscardDraft" type="button" hidden>Удалить черновик</button>

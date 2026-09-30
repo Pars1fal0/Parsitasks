@@ -40,6 +40,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#noteTitle").fill("Формула Эйлера");
     await page.locator("#noteBody").fill("V - E + F = 2. Применить к домашнему заданию.");
     await page.locator("#notePinned").check();
+    await page.locator(".notes-relations-disclosure > summary").click();
     await page.locator("#noteSubjectId").selectOption(subjectId);
     await page.locator("#noteTaskId").selectOption(task.id);
     await page.locator('#noteForm button[type="submit"]').click();

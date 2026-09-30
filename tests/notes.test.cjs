@@ -62,9 +62,10 @@ module.exports = [
         studySubjects: [{ id: "math", name: "Математика" }],
         notes: [{ id: "note", title: "Формулы", body: "", subjectId: "math", taskId: "" }],
       }, "математика");
-      assert.equal(results.length, 1);
-      assert.equal(results[0].type, "note");
-      assert.equal(results[0].view, "journal");
+      assert.equal(results.length, 2);
+      assert.equal(results.find((result) => result.id === "note").type, "note");
+      assert.equal(results.find((result) => result.id === "note").view, "journal");
+      assert.equal(results.find((result) => result.id === "math").type, "subject");
     },
   },
 ];

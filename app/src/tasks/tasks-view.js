@@ -9,6 +9,9 @@
     let selectionMode = false;
     let selectionDate = null;
     let selectableEntries = [];
+    let pane = ctx.getPane?.() || "day";
+    const entryKey = (entry) => `${entry.taskId}:${entry.dateKey || "later"}`;
+    document.querySelectorAll("[data-task-pane]").forEach((button) => button.addEventListener("click", () => setPane(button.dataset.taskPane)));
     const selectionButton = document.querySelector("#taskSelectMode");
     const bulkForm = document.querySelector("#taskBulkForm");
     const bulkDate = document.querySelector("#taskBulkDate");
@@ -28,9 +31,24 @@
       renderTasks();
     });
     document.querySelector("#taskSelectAll")?.addEventListener("click", () => {
-      selectableEntries.forEach((entry) => selectedTasks.set(entry.taskId, entry));
+      selectableEntries.forEach((entry) => selectedTasks.set(entryKey(entry), entry));
       renderTasks();
     });
+    document.querySelector("#taskBulkLater")?.addEventListener("click", () => {
+      if (ctx.deferTasks?.([...selectedTasks.values()])) { selectedTasks.clear(); selectionMode = false; renderTasks(); }
+    });
+    document.querySelector("#taskBulkDismiss")?.addEventListener("click", async () => {
+      if (await ctx.dismissTasks?.([...selectedTasks.values()])) { selectedTasks.clear(); selectionMode = false; renderTasks(); }
+    });
+
+    function setPane(next) {
+      if (!["day", "later", "backlog"].includes(next)) return;
+      pane = next;
+      selectionMode = false;
+      selectedTasks.clear();
+      ctx.onPaneChange?.(pane);
+      renderTasks();
+    }
     bulkForm?.addEventListener("submit", (event) => {
       event.preventDefault();
       if (ctx.moveTasks([...selectedTasks.values()], bulkDate.value)) {
@@ -81,18 +99,35 @@
       if (activeFiltersLabel) activeFiltersLabel.textContent = filterLabels.join(" · ");
       if (filterSummary) filterSummary.textContent = filterLabels.length ? `Фильтры и поиск (${filterLabels.length})` : "Фильтры и поиск";
 
-      renderOverdueTasks();
-      const laterTasks = ctx.getState().tasks.filter((task) => task.date === null
-        && ctx.matchesCategoryFilter(task, ctx.getTaskCategoryFilter())
+      const allLaterTasks = ctx.getState().tasks.filter((task) => task.date === null && task.completed?.[task.dueDate] !== true);
+      const laterTasks = allLaterTasks.filter((task) =>
+        ctx.matchesCategoryFilter(task, ctx.getTaskCategoryFilter())
         && ctx.taskMatchesSearch(task, ctx.getTaskSearchQuery(), activeDate)
         && ctx.getTaskFilter() !== "done");
-      selectableEntries = [...visibleTasks.map((task) => ({ taskId: task.id, dateKey: activeDate })),
-        ...laterTasks.map((task) => ({ taskId: task.id, dateKey: null }))];
-      const visibleIds = new Set(selectableEntries.map((entry) => entry.taskId));
+      const allBacklog = backlogEntries();
+      const backlog = allBacklog.filter(({ task, dateKey }) => ctx.matchesCategoryFilter(task, ctx.getTaskCategoryFilter())
+        && ctx.taskMatchesSearch(task, ctx.getTaskSearchQuery(), dateKey) && ctx.getTaskFilter() !== "done");
+      selectableEntries = pane === "day" ? visibleTasks.map((task) => ({ taskId: task.id, dateKey: activeDate }))
+        : pane === "later" ? laterTasks.map((task) => ({ taskId: task.id, dateKey: null }))
+        : backlog.map(({ task, dateKey }) => ({ taskId: task.id, dateKey }));
+      const visibleIds = new Set(selectableEntries.map(entryKey));
       for (const id of selectedTasks.keys()) if (!visibleIds.has(id)) selectedTasks.delete(id);
       ctx.els.taskList.replaceChildren();
       visibleTasks.forEach((task) => ctx.els.taskList.appendChild(createTaskNode(task, canReorder)));
       renderLaterTasks(laterTasks);
+      document.querySelector("#tasksView").dataset.pane = pane;
+      document.querySelectorAll("[data-task-pane]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.taskPane === pane));
+        button.classList.toggle("is-active", button.dataset.taskPane === pane);
+      });
+      document.querySelector("#taskDayCount").textContent = String(tasks.length);
+      document.querySelector("#taskLaterBadge").textContent = String(allLaterTasks.length);
+      document.querySelector("#taskBacklogBadge").textContent = String(allBacklog.length);
+      laterPanel.hidden = pane !== "later";
+      laterPanel.open = true;
+      ctx.els.taskList.hidden = pane !== "day";
+      ctx.els.overduePanel.hidden = true;
+      if (ctx.els.overdueToggle) ctx.els.overdueToggle.hidden = true;
       updateSelection();
 
       const doneCount = tasks.filter((task) => ctx.isTaskDone(task, activeDate)).length;
@@ -100,20 +135,27 @@
       const empty = taskEmptyState({ total: tasks.length, done: doneCount, visible: visibleTasks.length,
         filtered: Boolean(hasActiveFilters), filter: ctx.getTaskFilter(),
         statusOnly: ctx.getTaskCategoryFilter() === "all" && !ctx.getTaskSearchQuery() });
-      ctx.els.taskEmpty.textContent = empty.message;
-      ctx.els.taskEmpty.classList.toggle("is-visible", empty.visible);
-      if (emptyReset) emptyReset.hidden = !empty.reset;
+      const nonDayEmpty = pane !== "day" && !selectableEntries.length;
+      ctx.els.taskEmpty.textContent = pane === "day" ? empty.message : hasActiveFilters ? "По этим фильтрам ничего не найдено"
+        : pane === "later" ? "Отложенных задач пока нет" : "Незавершённых задач нет";
+      ctx.els.taskEmpty.classList.toggle("is-visible", pane === "day" ? empty.visible : nonDayEmpty);
+      if (emptyReset) emptyReset.hidden = pane === "day" ? !empty.reset : !(nonDayEmpty && hasActiveFilters);
       ctx.els.taskCounter.textContent = hasActiveFilters
         ? `${visibleTasks.length} из ${tasks.length} найдено · ${doneCount} выполнено`
         : tasks.length ? `Выполнено ${doneCount} из ${tasks.length}` : "Пока нет задач";
+      if (pane !== "day") ctx.els.taskCounter.textContent = `${selectableEntries.length} ${pane === "later" ? "отложено" : "незавершено"}${hasActiveFilters ? " · с учётом фильтров" : ""}`;
       ctx.els.taskProgress.textContent = tasks.length ? `${percent}%` : "—";
       ctx.els.taskProgressRing.setAttribute("aria-label", tasks.length ? `Выполнение задач: ${percent}%` : "Задач на выбранный день нет");
       ctx.els.taskProgressRing.style.setProperty("--progress", `${percent * 3.6}deg`);
       renderExcludedTasks();
-      renderHistoricalTasks();
+      renderHistoricalTasks(backlog);
     }
 
     function updateSelection() {
+      const dismiss = document.querySelector("#taskBulkDismiss");
+      if (dismiss) dismiss.hidden = pane !== "backlog";
+      const later = document.querySelector("#taskBulkLater");
+      if (later) later.hidden = pane === "later";
       if (selectionButton) {
         selectionButton.hidden = !selectableEntries.length;
         selectionButton.setAttribute("aria-pressed", String(selectionMode));
@@ -122,7 +164,8 @@
         selectionButton.querySelector("span").textContent = selectionMode ? "Закончить выбор" : "Выбрать задачи";
       }
       if (!bulkForm) return;
-      bulkForm.hidden = selectedTasks.size === 0;
+      bulkForm.hidden = !selectionMode;
+      bulkForm.querySelectorAll('button[type="submit"], #taskBulkLater, #taskBulkDismiss').forEach((button) => { button.disabled = selectedTasks.size === 0; });
       document.querySelector("#taskBulkCount").textContent = `Выбрано: ${selectedTasks.size}`;
       if (!bulkDate.value) bulkDate.value = ctx.addDays(ctx.getActiveDate(), 1);
     }
@@ -132,11 +175,12 @@
       label.className = "task-select-control";
       const input = document.createElement("input");
       input.type = "checkbox";
-      input.checked = selectedTasks.has(task.id);
+      const entry = { taskId: task.id, dateKey };
+      input.checked = selectedTasks.has(entryKey(entry));
       input.setAttribute("aria-label", `Выбрать задачу «${task.title}»`);
       input.addEventListener("change", () => {
-        if (input.checked) selectedTasks.set(task.id, { taskId: task.id, dateKey });
-        else selectedTasks.delete(task.id);
+        if (input.checked) selectedTasks.set(entryKey(entry), entry);
+        else selectedTasks.delete(entryKey(entry));
         updateSelection();
       });
       label.append(input);
@@ -191,17 +235,17 @@
       if (selectionMode && tasks.length && laterPanel) laterPanel.open = true;
     }
 
-    function renderHistoricalTasks() {
+    function backlogEntries() {
+      const entries = global.RhythmPlanningHistory.buildBacklogEntries({ addDays: ctx.addDays, includeYesterday: true,
+        isTaskDone: ctx.isTaskDone, isTaskExcluded: ctx.isTaskExcluded, taskOccursOn: ctx.taskOccursOn,
+        tasks: ctx.getState().tasks, todayKey: ctx.toDateKey(new Date()) });
+      return entries;
+    }
+
+    function renderHistoricalTasks(entries) {
       if (!ctx.els.historicalTaskPanel) return;
-      const entries = global.RhythmPlanningHistory.buildBacklogEntries({
-        addDays: ctx.addDays,
-        isTaskDone: ctx.isTaskDone,
-        isTaskExcluded: ctx.isTaskExcluded,
-        taskOccursOn: ctx.taskOccursOn,
-        tasks: ctx.getState().tasks,
-        todayKey: ctx.toDateKey(new Date()),
-      });
-      ctx.els.historicalTaskPanel.hidden = entries.length === 0;
+      ctx.els.historicalTaskPanel.hidden = pane !== "backlog" || entries.length === 0;
+      ctx.els.historicalTaskPanel.open = true;
       ctx.els.historicalTaskCount.textContent = String(entries.length);
       ctx.els.historicalTaskList.replaceChildren();
       entries.slice(0, historicalVisibleCount).forEach((entry) => {
@@ -214,12 +258,21 @@
         const open = createButton("ghost-button compact-button", "Открыть день");
         const acknowledge = createButton("ghost-button compact-button", "Скрыть из просроченных");
         const today = createButton("primary-button compact-button", "Перенести на сегодня");
+        const later = createButton("ghost-button compact-button", "В Позже");
+        const done = createButton("ghost-button compact-button", "Готово");
         row.className = "historical-task-item";
         title.textContent = task.title;
         date.textContent = `${ctx.formatLongDate(dateKey)}${entry.recurring ? " · повтор" : ""}`;
         content.append(title, date);
-        actions.append(open, acknowledge, today);
+        acknowledge.textContent = "Не выполнять";
+        actions.append(today, later, done, open, acknowledge);
+        if (selectionMode) row.append(createSelection(task, dateKey));
         row.append(content, actions);
+        later.addEventListener("click", () => ctx.deferTasks?.([{ taskId: task.id, dateKey }]));
+        done.addEventListener("click", () => {
+          const undo = ctx.createUndoSnapshot(); task.completed ||= {}; task.completed[dateKey] = true;
+          ctx.saveState(); ctx.render(); ctx.showToast("Задача выполнена", { undo });
+        });
         open.addEventListener("click", () => ctx.openDate(dateKey));
         acknowledge.addEventListener("click", () => ctx.acknowledgeOverdueTask(task, dateKey));
         today.addEventListener("click", () => ctx.postponeTask(task, dateKey, ctx.toDateKey(new Date()), { clearPastTimeToday: true }));
@@ -229,7 +282,7 @@
         const more = createButton("ghost-button compact-button", `Показать ещё (${entries.length - historicalVisibleCount})`);
         more.addEventListener("click", () => {
           historicalVisibleCount += 60;
-          renderHistoricalTasks();
+          renderHistoricalTasks(entries);
         });
         ctx.els.historicalTaskList.appendChild(more);
       }
@@ -724,6 +777,8 @@
       renderExcludedTasks,
       renderOverdueTasks,
       renderTasks,
+      getPane: () => pane,
+      setPane,
     };
   }
 

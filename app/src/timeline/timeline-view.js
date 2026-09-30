@@ -44,18 +44,24 @@
       const hourHeight = scaleHeights[timelineScale];
       const activeDate = ctx.getActiveDate();
       const now = ctx.getNow?.() || new Date();
+      const lessons = (ctx.getStudyEvents?.(activeDate) || []).map((event) => ({
+        id: `lesson:${event.id}:${activeDate}`, title: event.title, date: activeDate, priority: "medium",
+        scheduleMode: "block", time: event.endTime, startTime: event.startTime, endTime: event.endTime,
+        studyEvent: event, completed: {},
+      }));
       const model = buildTimelineModel({
         activeDate,
         formatTime: ctx.formatTime,
         getCategory: ctx.getCategory,
-        isTaskDone: ctx.isTaskDone,
+        isTaskDone: (task, date) => task.studyEvent ? false : ctx.isTaskDone(task, date),
         now,
         priorityLabels: ctx.priorityLabels,
-        tasks: ctx.getOrderedTasksForDate(activeDate),
+        tasks: [...ctx.getOrderedTasksForDate(activeDate), ...lessons],
         todayKey: ctx.toDateKey?.(now),
       });
 
       ctx.els.timelineSummary.textContent = `${model.timedTasks.length} по времени · ${model.unscheduledTasks.length} без времени`;
+      if (lessons.length) ctx.els.timelineSummary.textContent += ` · ${lessons.length} занятий`;
       if (ctx.els.timelineJumpToTask) ctx.els.timelineJumpToTask.disabled = model.timedTasks.length === 0;
       if (ctx.els.timelineUnscheduledCount) ctx.els.timelineUnscheduledCount.textContent = String(model.unscheduledTasks.length);
       ctx.els.timelineGrid.replaceChildren();
@@ -103,9 +109,12 @@
       const time = document.createElement("strong");
       const title = document.createElement("span");
       const meta = document.createElement("small");
-      const actions = taskMenu.createTaskMenu(entry);
+      const study = entry.task.studyEvent;
+      const actions = study ? null : taskMenu.createTaskMenu(entry);
 
       card.className = `timeline-task priority-${entry.task.priority || "medium"}`;
+      card.classList.toggle("is-study-event", Boolean(study));
+      if (study) card.style.setProperty("--timeline-color", study.color);
       card.classList.toggle("is-scheduled", Number.isFinite(entry.minutes));
       card.classList.toggle("is-unscheduled", !Number.isFinite(entry.minutes));
       card.classList.toggle("is-done", entry.done);
@@ -116,10 +125,11 @@
       card.dataset.taskId = entry.task.id;
       if (Number.isFinite(entry.minutes)) card.dataset.startMinutes = String(entry.minutes);
       if (!Number.isFinite(entry.minutes)) card.setAttribute("role", "listitem");
-      if (entry.categoryColor) card.style.setProperty("--timeline-color", entry.categoryColor);
+      if (!study && entry.categoryColor) card.style.setProperty("--timeline-color", entry.categoryColor);
       card.addEventListener("click", (event) => {
         if (card.dataset.suppressClick === "true" || event.target.closest(".timeline-resize-handle, .timeline-create-neighbor-button, .timeline-menu-button, .timeline-task-menu")) return;
-        ctx.fillTaskForm(entry.task);
+        if (study) ctx.openStudyLesson?.(study.id, ctx.getActiveDate());
+        else ctx.fillTaskForm(entry.task);
       });
       if (Number.isFinite(entry.minutes)) {
         card.style.setProperty("--timeline-task-top", `${minuteOffsetToPx(entry.minutes, scaleHeights[timelineScale])}px`);
@@ -128,7 +138,7 @@
         card.style.setProperty("--timeline-column-gap", entry.columnCount > 1 ? "6px" : "0px");
         card.dataset.overlapCount = String(entry.columnCount || 1);
         card.setAttribute("aria-grabbed", "false");
-        if (ctx.moveTaskTime) card.addEventListener("pointerdown", (event) => startTaskDrag(event, entry));
+        if (!study && ctx.moveTaskTime) card.addEventListener("pointerdown", (event) => startTaskDrag(event, entry));
       } else if (ctx.moveTaskTime) {
         timelineDrag.attachUnscheduledDrag(card, entry);
       }
@@ -142,7 +152,7 @@
       main.type = "button";
       main.className = "timeline-task-main";
       main.setAttribute("aria-label", `${entry.title}, ${entry.timeLabel || "без времени"}`);
-      if (Number.isFinite(entry.minutes) && ctx.shiftTaskTime) {
+      if (!study && Number.isFinite(entry.minutes) && ctx.shiftTaskTime) {
         main.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight");
         main.addEventListener("keydown", (event) => handleTaskKeydown(event, entry));
       }
@@ -151,14 +161,15 @@
       title.textContent = entry.title;
       title.title = entry.title;
       meta.textContent = entry.isOverdue ? `${entry.metaLabel} · просрочено` : entry.metaLabel;
+      if (study) meta.textContent = [study.typeLabel, study.room, study.teacher].filter(Boolean).join(" · ");
       top.append(time, title);
       main.append(top, meta);
       if (!Number.isFinite(entry.minutes) && ctx.moveTaskTime) card.appendChild(createUnscheduledDragHandle(entry));
       card.append(main);
-      if (Number.isFinite(entry.minutes) && ctx.createTaskAtTime) card.appendChild(createNeighborButton(entry));
-      card.append(actions);
+      if (!study && Number.isFinite(entry.minutes) && ctx.createTaskAtTime) card.appendChild(createNeighborButton(entry));
+      if (actions) card.append(actions);
 
-      if (entry.isTimeBlock && ctx.resizeTaskBlockTime) {
+      if (!study && entry.isTimeBlock && ctx.resizeTaskBlockTime) {
         card.appendChild(createResizeHandle(entry, "start"));
         card.appendChild(createResizeHandle(entry, "end"));
       }

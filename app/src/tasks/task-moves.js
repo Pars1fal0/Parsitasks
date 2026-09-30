@@ -5,7 +5,7 @@
     if (task.repeat === "none") {
       moveSingleTask(state, task, sourceDateKey, targetDateKey, { clearTime: shouldClearTime });
     } else {
-      moveRecurringOccurrence(state, task, sourceDateKey, targetDateKey, { clearTime: shouldClearTime }, helpers);
+      moveRecurringOccurrence(state, task, sourceDateKey, targetDateKey, { clearTime: shouldClearTime, separateOccurrence: options.separateOccurrence }, helpers);
     }
 
     return { targetDate: targetDateKey };
@@ -13,12 +13,18 @@
 
   function moveSingleTask(state, task, sourceDateKey, targetDateKey, options = {}) {
     sourceDateKey ||= task.deferredFromDate || "";
+    if (task.date === null && task.dueDate && task.completed?.[task.dueDate] === true) sourceDateKey = task.dueDate;
+    if (task.studySubjectId && !task.dueDate) {
+      task.dueDate = task.date;
+      task.dueTime = task.time || "";
+      task.dueReminderOffset = task.reminderOffset || "none";
+    }
     const wasDone = task.completed?.[sourceDateKey] === true;
     task.completed = task.completed || {};
     task.notified = task.notified || {};
     task.date = targetDateKey;
     task.deferredFromDate = "";
-    global.RhythmTaskChecklist?.moveDate(task, sourceDateKey, targetDateKey);
+    if (targetDateKey) global.RhythmTaskChecklist?.moveDate(task, sourceDateKey, targetDateKey);
     if (options.clearTime) {
       task.time = "";
       task.scheduleMode = "none";
@@ -44,13 +50,13 @@
     task.updatedAt = new Date().toISOString();
 
     const targetHasNaturalOccurrence = targetDateKey !== sourceDateKey && helpers.taskScheduledOn?.(task, targetDateKey);
-    if (targetHasNaturalOccurrence && !options.clearTime) {
+    if (targetHasNaturalOccurrence && !options.clearTime && !options.separateOccurrence) {
       delete task.excludedDates[targetDateKey];
       if (wasDone) (task.completed ||= {})[targetDateKey] = true;
       global.RhythmTaskChecklist?.moveDate(task, sourceDateKey, targetDateKey);
       return;
     }
-    if (targetHasNaturalOccurrence) task.excludedDates[targetDateKey] = true;
+    if (targetHasNaturalOccurrence && !options.separateOccurrence) task.excludedDates[targetDateKey] = true;
 
     state.tasks.push({
       id: helpers.createId?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
@@ -67,6 +73,9 @@
       movedFromDate: sourceDateKey,
       customRepeat: {},
       reminderOffset: task.reminderOffset,
+      dueDate: task.dueDate || "",
+      dueTime: task.dueTime || "",
+      dueReminderOffset: task.dueReminderOffset || "none",
       checklist: clone(task.checklist || []),
       checklistLogs: { [targetDateKey]: clone(task.checklistLogs?.[sourceDateKey] || {}) },
       completed: wasDone ? { [targetDateKey]: true } : {},
@@ -89,6 +98,11 @@
     if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateKey || "") || !Number.isFinite(date.getTime())
       || date.toISOString().slice(0, 10) !== targetDateKey) return { moved: 0, skipped: entries.length };
     const seen = new Set();
+    const sourceDates = new Map();
+    entries.forEach(({ taskId, dateKey }) => {
+      if (!sourceDates.has(taskId)) sourceDates.set(taskId, new Set());
+      sourceDates.get(taskId).add(dateKey);
+    });
     let moved = 0;
     let skipped = 0;
     entries.forEach(({ taskId, dateKey }) => {
@@ -101,7 +115,7 @@
       }
       seen.add(key);
       postponeTask({ state, task, sourceDateKey: dateKey, targetDateKey,
-        options: { clearPastTimeToday: true }, helpers });
+        options: { clearPastTimeToday: true, separateOccurrence: sourceDates.get(taskId).size > 1 }, helpers });
       moved += 1;
     });
     return { moved, skipped };
@@ -110,6 +124,37 @@
   function removeTaskFromOrder(state, taskId, dateKey) {
     if (!Array.isArray(state.taskOrder?.[dateKey])) return;
     state.taskOrder[dateKey] = state.taskOrder[dateKey].filter((id) => id !== taskId);
+  }
+
+  function moveTasksToLater({ state, entries = [], helpers = {} }) {
+    let moved = 0;
+    const seen = new Set();
+    for (const { taskId, dateKey } of entries) {
+      const key = `${taskId}:${dateKey}`;
+      const task = state.tasks.find((item) => item.id === taskId);
+      if (!task?.date || seen.has(key) || task.completed?.[dateKey] === true
+        || !helpers.taskScheduledOn?.(task, dateKey) || task.excludedDates?.[dateKey]) continue;
+      seen.add(key);
+      if (task.repeat === "none") {
+        const from = task.date;
+        moveSingleTask(state, task, dateKey, null, { clearTime: true });
+        task.deferredFromDate = from;
+      } else {
+        const now = new Date().toISOString();
+        const copy = { ...copyTaskIdentity(task), id: helpers.createId?.() || createFallbackId(), date: null,
+          deferredFromDate: dateKey, repeat: "none", repeatUntil: "", customRepeat: {}, sourceTaskId: task.id,
+          movedFromDate: dateKey, time: "", scheduleMode: "none", startTime: "", endTime: "", reminderOffset: "none",
+          completed: {}, notified: {}, excludedDates: {}, acknowledgedOverdue: {},
+          checklistLogs: { [dateKey]: clone(task.checklistLogs?.[dateKey] || {}) }, createdAt: now, updatedAt: now };
+        task.excludedDates ||= {};
+        task.excludedDates[dateKey] = true;
+        task.updatedAt = now;
+        state.tasks.push(copy);
+        removeTaskFromOrder(state, task.id, dateKey);
+      }
+      moved += 1;
+    }
+    return { moved };
   }
 
   function updateRecurringTaskSchedule({ state, task, dateKey, schedule, scope, helpers = {} }) {
@@ -296,6 +341,13 @@
       categoryId: task.categoryId || "",
       priority: task.priority || "medium",
       reminderOffset: task.reminderOffset || "none",
+      dueDate: task.dueDate || "",
+      dueTime: task.dueTime || "",
+      dueReminderOffset: task.dueReminderOffset || "none",
+      studySubjectId: task.studySubjectId || "",
+      studyDetails: task.studyDetails || "",
+      studyAssignedDate: task.studyAssignedDate || "",
+      studyFileIds: clone(task.studyFileIds || []),
       checklist: clone(task.checklist || []),
     };
   }
@@ -352,6 +404,7 @@
 
   const api = {
     moveTasksToDate,
+    moveTasksToLater,
     moveRecurringSeriesFollowing,
     moveRecurringOccurrence,
     moveSingleTask,
