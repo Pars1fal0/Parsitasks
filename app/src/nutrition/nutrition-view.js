@@ -12,12 +12,16 @@
       onError: () => ctx.showToast("Не удалось сохранить изменения на этом устройстве") });
     const draftStatus = document.querySelector("#nutritionMealDraftStatus");
     const discardDraftButton = document.querySelector("#nutritionMealDiscardDraft");
+    const libraryDialog = document.querySelector("#nutritionLibraryDialog");
+    const templatePicker = document.querySelector("#nutritionTemplatePicker");
+    const saveToLibrary = document.querySelector("#nutritionMealSaveToLibrary");
+    let templateEditorId = "";
     let owner = local.owner();
     const compactQuery = global.matchMedia("(max-width: 820px)");
     const period = () => local.read("nutrition-period", compactQuery.matches ? "day" : "week");
     const mealStatus = () => local.read("nutrition-status", "");
     const mealDraft = local.formDraft(ctx.els.nutritionMealForm,
-      () => `meal-draft:${ctx.els.nutritionMealId.value || "new"}`, (saved) => {
+      () => templateEditorId ? `recipe-draft:${templateEditorId}` : `meal-draft:${ctx.els.nutritionMealId.value || "new"}`, (saved) => {
         draftStatus.textContent = saved ? "Черновик сохранён на этом устройстве" : "Черновик не сохранён";
         discardDraftButton.hidden = !saved;
       });
@@ -52,6 +56,23 @@
       ctx.els.nutritionNextWeek?.addEventListener("click", () => shiftWeek(period() === "day" ? 1 : 7));
       ctx.els.nutritionCurrentWeek?.addEventListener("click", () => ctx.setActiveDate(ctx.today()));
       ctx.els.nutritionAddMeal?.addEventListener("click", () => openMealForm());
+      document.querySelector("#nutritionOpenLibrary").addEventListener("click", () => { renderLibrary(); libraryDialog.showModal(); });
+      document.querySelector("#nutritionLibraryClose").addEventListener("click", () => libraryDialog.close());
+      document.querySelector("#nutritionLibrarySearch").addEventListener("input", renderLibrary);
+      document.querySelector("#nutritionLibraryCreate").addEventListener("click", () => { libraryDialog.close(); openMealForm(null, "", { template: {}, editTemplate: true }); });
+      templatePicker.addEventListener("change", async () => {
+        const template = ctx.getState().nutritionTemplates.find((item) => item.id === templatePicker.value);
+        templatePicker.value = "";
+        if (!template) return;
+        const input = ctx.els.nutritionMealTitle.value || ctx.els.nutritionMealIngredients.value;
+        if (input) {
+          ctx.els.nutritionMealDialog.close();
+          const confirmed = await ctx.confirmAction({ title: "Заменить состав блюда?", message: "Введённые название и состав будут заменены рецептом из библиотеки.", confirmLabel: "Заменить" });
+          ctx.els.nutritionMealDialog.showModal();
+          if (!confirmed) return;
+        }
+        fillRecipeFields(template); mealDraft.save();
+      });
       ctx.els.nutritionEmptyAction?.addEventListener("click", () => openMealForm());
       ctx.els.nutritionMealClose?.addEventListener("click", closeMealForm);
       ctx.els.nutritionMealCancel?.addEventListener("click", closeMealForm);
@@ -82,6 +103,8 @@
         ctx.els.nutritionMealDialog.close();
         ctx.els.nutritionMealForm.reset();
         ctx.els.nutritionMealId.value = "";
+        templateEditorId = "";
+        libraryDialog.close();
         owner = local.owner();
       }
       const state = ctx.getState();
@@ -128,6 +151,8 @@
       renderShopping(weekMeals, week.start);
       renderTargets(state.nutritionSettings);
       renderFoods(state.nutritionFoods);
+      renderLibrary();
+      renderTemplatePicker();
     }
 
     function renderWeek(week, state, dates, status) {
@@ -204,9 +229,11 @@
       edit.addEventListener("click", () => openMealForm(meal));
       const duplicate = actionButton("Дублировать");
       duplicate.addEventListener("click", () => ctx.duplicateMeal(meal.id));
+      const library = actionButton("Сохранить в библиотеку");
+      library.addEventListener("click", () => ctx.saveTemplate({ ...meal, id: "" }));
       const remove = actionButton("Удалить", "is-danger");
       remove.addEventListener("click", () => ctx.deleteMeal(meal.id));
-      actions.append(eaten, skipped, edit, duplicate, remove);
+      actions.append(eaten, skipped, edit, duplicate, library, remove);
       card.append(actions);
       return card;
     }
@@ -269,10 +296,11 @@
         }));
     }
 
-    function openMealForm(meal = null, date = "") {
-      const target = meal || {};
-      ctx.els.nutritionMealHeading.textContent = meal ? "Изменить блюдо" : "Новое блюдо";
-      ctx.els.nutritionMealId.value = target.id || "";
+    function openMealForm(meal = null, date = "", options = {}) {
+      const target = options.template || meal || {};
+      templateEditorId = options.editTemplate ? target.id || "new" : "";
+      ctx.els.nutritionMealHeading.textContent = templateEditorId ? "Рецепт в библиотеке" : meal ? "Изменить блюдо" : "Новое блюдо";
+      ctx.els.nutritionMealId.value = meal?.id || "";
       ctx.els.nutritionMealTitle.value = target.title || "";
       ctx.els.nutritionMealDate.value = target.date || date || ctx.getActiveDate();
       ctx.els.nutritionMealType.value = target.type || "breakfast";
@@ -287,10 +315,17 @@
       ctx.els.nutritionMealFat.value = target.manualNutrition ? target.nutrition?.fat ?? "" : target.nutrition?.fat || "";
       ctx.els.nutritionMealCarbs.value = target.manualNutrition ? target.nutrition?.carbs ?? "" : target.nutrition?.carbs || "";
       ctx.els.nutritionMealNotes.value = target.notes || "";
-      const restored = mealDraft.restore();
+      saveToLibrary.checked = false;
+      saveToLibrary.closest("label").hidden = Boolean(templateEditorId);
+      ctx.els.nutritionMealDate.closest("label").hidden = Boolean(templateEditorId);
+      document.querySelector("#nutritionTemplatePickerLabel").hidden = Boolean(templateEditorId);
+      ctx.els.nutritionMealForm.querySelector("button[type=submit]").textContent = templateEditorId ? "Сохранить рецепт" : "Сохранить блюдо";
+      renderTemplatePicker();
+      const restored = (!options.template || options.editTemplate) && mealDraft.restore();
       draftStatus.textContent = restored ? "Восстановлен черновик на этом устройстве" : "";
       discardDraftButton.hidden = !restored;
       ctx.els.nutritionMealDialog.showModal();
+      if (options.template && !options.editTemplate) mealDraft.save();
       global.setTimeout(() => ctx.els.nutritionMealTitle.focus(), 0);
     }
 
@@ -310,8 +345,8 @@
         return;
       }
       const existing = state.nutritionMeals.find((meal) => meal.id === ctx.els.nutritionMealId.value);
-      const result = ctx.saveMeal({
-        id: ctx.els.nutritionMealId.value,
+      const input = {
+        id: templateEditorId ? templateEditorId === "new" ? "" : templateEditorId : ctx.els.nutritionMealId.value,
         title: ctx.els.nutritionMealTitle.value,
         date: ctx.els.nutritionMealDate.value,
         type: ctx.els.nutritionMealType.value,
@@ -330,7 +365,9 @@
         notes: ctx.els.nutritionMealNotes.value,
         status: existing?.status || "planned",
         createdAt: existing?.createdAt,
-      });
+        saveToLibrary: saveToLibrary.checked && !templateEditorId,
+      };
+      const result = templateEditorId ? ctx.saveTemplate(input) : ctx.saveMeal(input);
       if (result !== false) {
         mealDraft.clear();
         draftStatus.textContent = "";
@@ -339,9 +376,60 @@
       }
     }
 
+    function fillRecipeFields(template) {
+      ctx.els.nutritionMealTitle.value = template.title || "";
+      ctx.els.nutritionMealType.value = template.type || "other";
+      ctx.els.nutritionMealTime.value = template.time || "";
+      ctx.els.nutritionMealServings.value = template.servings || 1;
+      ctx.els.nutritionMealIngredients.value = ctx.model.formatIngredientsText(template.ingredients);
+      ctx.els.nutritionMealIngredients.setCustomValidity("");
+      document.querySelector("#nutritionIngredientsError").textContent = "";
+      ["Calories", "Protein", "Fat", "Carbs"].forEach((name) => {
+        ctx.els[`nutritionMeal${name}`].value = template.manualNutrition && (name !== "Calories" || template.manualCaloriesKnown !== false) ? template.nutrition?.[name.toLowerCase()] ?? "" : "";
+      });
+      ctx.els.nutritionMealNotes.value = template.notes || "";
+    }
+
+    function renderTemplatePicker() {
+      const value = templatePicker.value;
+      templatePicker.replaceChildren(new Option("Выбрать блюдо", ""));
+      ctx.getState().nutritionTemplates.slice().sort((a, b) => a.title.localeCompare(b.title, "ru-RU"))
+        .forEach((template) => templatePicker.add(new Option(template.title, template.id)));
+      templatePicker.value = value;
+      document.querySelector("#nutritionTemplatePickerLabel").hidden = Boolean(templateEditorId) || !ctx.getState().nutritionTemplates.length;
+    }
+
+    async function useTemplate(template) {
+      libraryDialog.close();
+      if (local.read("meal-draft:new") && !await ctx.confirmAction({ title: "Заменить черновик блюда?", confirmLabel: "Заменить" })) { libraryDialog.showModal(); return; }
+      openMealForm(null, ctx.getActiveDate(), { template });
+    }
+
+    function renderLibrary() {
+      const state = ctx.getState();
+      const query = document.querySelector("#nutritionLibrarySearch").value.trim().toLocaleLowerCase("ru-RU");
+      const templates = state.nutritionTemplates.filter((template) => `${template.title} ${template.ingredients.map((item) => item.name).join(" ")}`.toLocaleLowerCase("ru-RU").includes(query))
+        .sort((a, b) => a.title.localeCompare(b.title, "ru-RU"));
+      const list = document.querySelector("#nutritionLibraryList");
+      list.replaceChildren();
+      if (!templates.length) list.append(text("p", query ? "Блюда не найдены" : "В библиотеке пока нет рецептов", "muted"));
+      templates.forEach((template) => {
+        const row = element("article", "meal-library-row");
+        row.dataset.templateId = template.id;
+        row.append(text("strong", template.title), text("small", ctx.model.formatIngredientsText(template.ingredients) || "Без указанного состава"));
+        const actions = element("div", "feature-row-actions");
+        const use = actionButton("Добавить на день"); use.addEventListener("click", () => useTemplate(template));
+        const edit = iconButton("icon-edit", `Изменить рецепт: ${template.title}`);
+        edit.addEventListener("click", () => { libraryDialog.close(); openMealForm(null, "", { template, editTemplate: true }); });
+        const remove = iconButton("icon-trash", `Удалить рецепт: ${template.title}`);
+        remove.addEventListener("click", async () => { libraryDialog.close(); await ctx.deleteTemplate(template.id); renderLibrary(); libraryDialog.showModal(); });
+        actions.append(use, edit, remove); row.append(actions); list.append(row);
+      });
+    }
+
     function saveFood(event) {
       event.preventDefault();
-      ctx.saveFood({
+      const saved = ctx.saveFood({
         id: ctx.els.nutritionFoodId.value,
         name: ctx.els.nutritionFoodName.value,
         unit: ctx.els.nutritionFoodUnit.value,
@@ -350,6 +438,7 @@
         fat: ctx.els.nutritionFoodFat.value,
         carbs: ctx.els.nutritionFoodCarbs.value,
       });
+      if (saved === false) return;
       event.target.reset();
       ctx.els.nutritionFoodId.value = "";
       ctx.els.nutritionFoodUnit.value = "г";
@@ -368,7 +457,8 @@
 
     function saveTargets(event) {
       event.preventDefault();
-      ctx.saveSettings({
+      const draft = global.RhythmWorkspaceLocal.captureForm(event.target);
+      const saved = ctx.saveSettings({
         targets: {
           calories: ctx.els.nutritionTargetCalories.value,
           protein: ctx.els.nutritionTargetProtein.value,
@@ -377,6 +467,7 @@
         },
         paused: ctx.els.nutritionPaused.checked,
       });
+      if (saved === false) global.RhythmWorkspaceLocal.restoreForm(event.target, draft);
     }
 
     function shiftWeek(days) {

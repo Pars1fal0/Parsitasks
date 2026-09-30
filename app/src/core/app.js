@@ -127,6 +127,8 @@ let overdueHidden = initialUiState.overdueHidden === true;
 let themePreference = normalizeThemePreference(initialUiState.themePreference);
 let accentPreference = normalizeAccentPreference(initialUiState.accentPreference);
 let notificationSetting = normalizeNotificationSetting(initialUiState.notificationSetting);
+let navigationPreferences = window.RhythmNavigationPreferences.normalize(initialUiState.navigationPreferences);
+let quietHours = window.RhythmReminderPolicy.normalizeQuietHours(initialUiState.quietHours);
 let backupSchedule = normalizeBackupSchedule(initialUiState.backupSchedule);
 let firstDayOfWeek = normalizeFirstDayOfWeek(initialUiState.firstDayOfWeek);
 let densityPreference = normalizeDensityPreference(initialUiState.densityPreference);
@@ -1010,6 +1012,7 @@ const nutritionController = window.RhythmNutritionController.createNutritionCont
   getState: () => state,
   model: window.RhythmNutritionModel,
   now: () => new Date().toISOString(),
+  onRollback: syncDesktopReminders,
   render,
   saveState,
   showToast,
@@ -1209,6 +1212,7 @@ const settingsController = window.RhythmSettingsController.createSettingsControl
   requestNotifications,
   resetInterfaceSettings: settingsTransfer.resetInterfaceSettings,
   restoreBackup,
+  showToast,
   updateSetting,
   updateJournalPermission,
   updateTimeZone,
@@ -1354,9 +1358,12 @@ const mcpActivityController = window.RhythmMcpActivityController.createMcpActivi
 
 const notificationsController = window.RhythmNotifications.createNotifications({
   els,
+  enableNotifications: requestNotifications,
   cleanTimeValue,
   getCategory,
   getNotificationsEnabled: () => notificationSetting === "on",
+  getQuietHours: () => quietHours,
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
   getState: () => state,
   habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
   isTaskDone,
@@ -1423,6 +1430,7 @@ const appShellController = window.RhythmAppShellController.createAppShellControl
   getActiveDate: () => activeDate,
   getActiveView: () => activeView,
   getOverviewMode: () => overviewMode,
+  isMobilePinned: (view) => navigationController.isPinned(view),
   navigationState: window.RhythmNavigationState,
   renderSaveStatus,
   restoreTaskFormPanel,
@@ -1431,6 +1439,12 @@ const appShellController = window.RhythmAppShellController.createAppShellControl
   setOverviewMode: (value) => { overviewMode = value; },
   syncTaskTimePresets,
   viewRenderer,
+});
+
+const navigationController = window.RhythmNavigationPreferences.createNavigationPreferences({
+  els,
+  getPreferences: () => navigationPreferences,
+  updatePreferences: (value) => updateSetting("navigationPreferences", value),
 });
 
 const appEvents = window.RhythmAppEvents.createAppEvents({
@@ -1598,6 +1612,7 @@ async function init() {
   googleCalendarController.bindEvents();
   studyController.bindEvents();
   globalSearch.bindEvents();
+  notificationsController.bindEvents();
   appEvents.bind();
   syncNavigationRoute({ replace: true });
   resetTaskForm({ open: false });
@@ -2817,6 +2832,8 @@ function saveUiState() {
       lastAutoBackupAt,
       localStateUpdatedAt,
       notificationSetting,
+      navigationPreferences,
+      quietHours,
       overviewMode,
       overdueHidden,
       remoteSyncAnonKey,
@@ -2916,6 +2933,8 @@ function applyThemePreference() {
 function applySettingsPreferences() {
   document.documentElement.dataset.accent = accentPreference;
   document.documentElement.dataset.density = densityPreference;
+  navigationController.apply();
+  navigationController.renderControls();
   if (els.notificationSetting) els.notificationSetting.value = notificationSetting;
   if (els.backupSchedule) els.backupSchedule.value = backupSchedule;
   if (els.firstDayOfWeek) els.firstDayOfWeek.value = firstDayOfWeek;
@@ -2936,6 +2955,8 @@ function getUiSettings() {
     firstDayOfWeek,
     localStateUpdatedAt,
     notificationSetting,
+    navigationPreferences,
+    quietHours,
     remoteSyncAnonKey,
     remoteSyncAccountId,
     remoteSyncEnabled,
@@ -2954,6 +2975,20 @@ function getRemoteUiSettings(overrides = {}) {
 
 function updateSetting(name, value) {
   switch (name) {
+    case "navigationPreferences":
+      navigationPreferences = window.RhythmNavigationPreferences.normalize(value);
+      saveUiState();
+      navigationController.apply();
+      navigationController.renderControls();
+      render();
+      break;
+    case "quietHours":
+      quietHours = window.RhythmReminderPolicy.normalizeQuietHours(value);
+      saveUiState();
+      settingsController.syncControls();
+      syncDesktopReminders();
+      notificationsController.renderCenter();
+      break;
     case "accentPreference":
       accentPreference = normalizeAccentPreference(value);
       applySettingsPreferences();
@@ -3052,6 +3087,7 @@ function resetInterfacePreferences() {
   densityPreference = "comfortable";
   timeFormat = "24";
   firstDayOfWeek = "monday";
+  navigationPreferences = window.RhythmNavigationPreferences.normalize();
   applyThemePreference();
   applySettingsPreferences();
   saveUiState();
@@ -3065,6 +3101,8 @@ function applyImportedSettings(settings = {}) {
   themePreference = normalized.themePreference;
   accentPreference = normalized.accentPreference;
   notificationSetting = normalized.notificationSetting;
+  navigationPreferences = normalized.navigationPreferences;
+  quietHours = normalized.quietHours;
   backupSchedule = normalized.backupSchedule;
   firstDayOfWeek = normalized.firstDayOfWeek;
   densityPreference = normalized.densityPreference;

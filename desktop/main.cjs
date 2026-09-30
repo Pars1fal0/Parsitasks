@@ -4,6 +4,7 @@ const os = require("node:os");
 const path = require("node:path");
 const { fileURLToPath } = require("node:url");
 const { createUpdateManager } = require("./update-manager.cjs");
+const reminderPolicy = require("../app/src/platform/reminder-policy.js");
 
 const appRoot = path.join(__dirname, "..", "app");
 const isSmokeTest = process.argv.includes("--smoke-test");
@@ -15,6 +16,7 @@ let tray = null;
 let isQuitting = false;
 let backgroundNoticeShown = false;
 let reminderSnapshot = [];
+let reminderQuietHours = reminderPolicy.normalizeQuietHours();
 let lastFileBackupAt = 0;
 let updateManager = null;
 const sentReminders = new Set();
@@ -273,9 +275,15 @@ function createWindow() {
           !document.querySelector("#quickTaskPreview")?.hidden &&
           document.querySelector("#quickTaskPreview")?.textContent.includes("Smoke Quick") &&
           document.querySelector("#quickTaskPreview")?.textContent.includes("10:00");
+        const quickViewedDate = activeDate;
         await saveQuickTask(new Event("submit", { cancelable: true }));
+        const quickDatePreserved = activeDate === quickViewedDate;
+        const createdQuickTask = state.tasks.find((task) => task.title === "Smoke Quick");
+        activeDate = createdQuickTask?.date || quickViewedDate;
+        render();
         const quickTaskCard = [...document.querySelectorAll(".task-item")].find((item) => item.querySelector("h3")?.textContent === "Smoke Quick");
         const quickTaskCreated =
+          quickDatePreserved &&
           Boolean(quickTaskCard) &&
           quickTaskCard?.querySelector(".task-meta")?.textContent.includes("10:00") &&
           quickTaskCard?.querySelector(".priority-pill")?.textContent === "Высокий";
@@ -304,6 +312,7 @@ function createWindow() {
         document.querySelector('.month-task-chip[data-task-id="' + quickTaskId + '"]')?.dispatchEvent(
           new KeyboardEvent("keydown", { altKey: true, bubbles: true, cancelable: true, key: "ArrowRight" }),
         );
+        await new Promise((resolve) => setTimeout(resolve, 0));
         const calendarKeyboardMove =
           Boolean(calendarKeyboardDateBefore) &&
           state.tasks.find((task) => task.id === quickTaskId)?.date === addDays(calendarKeyboardDateBefore, 1);
@@ -368,9 +377,10 @@ function createWindow() {
         click('[data-view="tasks"]');
         document.querySelector("#quickTaskInput").value = "Smoke Undo 2026-07-12 #SmokeQuick";
         await saveQuickTask(new Event("submit", { cancelable: true }));
-        const hasUndoButton = document.querySelector("#appToast button")?.textContent === "Отменить";
+        const undoButton = [...document.querySelectorAll("#appToast button")].find((button) => button.textContent === "Отменить");
+        const hasUndoButton = Boolean(undoButton);
         const undoTaskCreated = state.tasks.some((task) => task.title === "Smoke Undo");
-        document.querySelector("#appToast button")?.click();
+        undoButton?.click();
         const undoRestored = !state.tasks.some((task) => task.title === "Smoke Undo");
         const backupBeforeImport = localStorage.getItem("rhythm-day-backup-v1");
         const importUndo = createUndoSnapshot();
@@ -409,6 +419,8 @@ function createWindow() {
           document.querySelector("#fileBackupStatus")?.textContent.includes("Файловый бэкап");
         const openBackupFolderWorks = openBackupFolderResult?.ok && Boolean(openBackupFolderResult.path);
 
+        activeDate = state.tasks.find((task) => task.id === quickTaskId)?.date || activeDate;
+        render();
         click('[data-view="timeline"]');
         const timelineVisible =
           document.body.dataset.view === "timeline" &&
@@ -1094,6 +1106,7 @@ function registerIpc() {
   ipcMain.on("reminders:sync", (event, payload) => {
     if (!isTrustedIpcEvent(event)) return;
     reminderSnapshot = normalizeReminderSnapshot(payload);
+    reminderQuietHours = reminderPolicy.normalizeQuietHours(payload?.quietHours);
     checkReminders();
   });
 
@@ -1171,6 +1184,9 @@ function normalizeReminderSnapshot(payload) {
       category: String(reminder?.category || "").slice(0, 120),
       reminderAt,
       dueAt,
+      taskId: String(reminder?.taskId || "").slice(0, 240),
+      habitId: String(reminder?.habitId || "").slice(0, 240),
+      dateKey: /^\d{4}-\d{2}-\d{2}$/.test(reminder?.dateKey) ? reminder.dateKey : "",
     }];
   });
 }
@@ -1266,9 +1282,11 @@ async function pruneFileBackups(backupDir) {
 }
 
 function checkReminders() {
+  if (isAutomationTest) return;
   if (!Notification.isSupported()) return;
 
   const now = Date.now();
+  if (reminderPolicy.nextAllowed(new Date(now), reminderQuietHours).getTime() > now) return;
   reminderSnapshot.forEach((reminder) => {
     const reminderAt = Date.parse(reminder.reminderAt);
     const dueAt = Date.parse(reminder.dueAt);
@@ -1281,7 +1299,9 @@ function checkReminders() {
       id: reminder.id,
       title: reminder.title,
       body: reminderBody(reminder),
+      reminder,
     });
+    mainWindow?.webContents.send("reminders:delivered", reminder);
   });
 }
 
@@ -1293,9 +1313,12 @@ function reminderBody(reminder) {
   return parts.join(" · ");
 }
 
-function showNotification({ title, body }) {
+function showNotification({ title, body, reminder }) {
   const notification = new Notification({ title, body });
-  notification.on("click", showMainWindow);
+  notification.on("click", () => {
+    showMainWindow();
+    if (reminder) mainWindow?.webContents.send("reminders:clicked", reminder);
+  });
   notification.show();
 }
 

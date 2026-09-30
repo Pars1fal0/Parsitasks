@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const crypto = require("node:crypto");
 const esbuild = require("esbuild");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "..");
 const appSource = path.join(root, "app");
@@ -51,4 +52,16 @@ esbuild.buildSync({
 });
 
 fs.writeFileSync(path.join(output, ".nojekyll"), "", "utf8");
-console.log(`web build ok - ${files.length + 1} files - cache ${buildHash}`);
+let sourceRevision = process.env.GITHUB_SHA || null;
+if (!sourceRevision) {
+  try { sourceRevision = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch {}
+}
+// Cloudflare consumes routing/header configuration; these are not public assets.
+const assets = Object.fromEntries([...files.filter((file) => !["_headers", "_redirects"].includes(file)), "oauth-consent.js"].map((file) => [
+  `/${file}`, crypto.createHash("sha256").update(fs.readFileSync(path.join(output, file))).digest("hex"),
+]));
+fs.writeFileSync(path.join(output, "release.json"), JSON.stringify({
+  version: JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version,
+  buildHash, sourceRevision, assets,
+}, null, 2), "utf8");
+console.log(`web build ok - ${files.length + 2} files - cache ${buildHash}`);

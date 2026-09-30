@@ -39,6 +39,17 @@ module.exports = [
     },
   },
   {
+    name: "checks every change in least-privilege Windows CI before a release",
+    fn() {
+      const workflow = fs.readFileSync(path.join(root, ".github", "workflows", "verification.yml"), "utf8");
+      assert.match(workflow, /contents:\s*read/);
+      assert.match(workflow, /persist-credentials:\s*false/);
+      assert.match(workflow, /windows-latest/);
+      for (const command of ["npm ci", "npm run test:dependencies", "npm test", "npm run lint", "npm run test:e2e", "npm run desktop:smoke", "npm run build:web", "npm run build:worker"]) assert.ok(workflow.includes(command), command);
+      for (const [, ref] of workflow.matchAll(/uses:\s*[^\s]+@([^\s#]+)/g)) assert.match(ref, /^[a-f0-9]{40}$/);
+    },
+  },
+  {
     name: "does not contain backend Supabase or common private key material",
     fn() {
       const trackedSources = [

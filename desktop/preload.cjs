@@ -4,6 +4,16 @@ contextBridge.exposeInMainWorld("rhythmDesktop", {
   syncReminders(payload) {
     ipcRenderer.send("reminders:sync", payload);
   },
+  onReminderClicked(callback) {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("reminders:clicked", listener);
+    return () => ipcRenderer.removeListener("reminders:clicked", listener);
+  },
+  onReminderDelivered(callback) {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on("reminders:delivered", listener);
+    return () => ipcRenderer.removeListener("reminders:delivered", listener);
+  },
   showTestNotification() {
     return ipcRenderer.invoke("reminders:test");
   },

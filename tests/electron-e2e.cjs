@@ -420,7 +420,7 @@ const { _electron: electron } = require("playwright-core");
         navigationBox && navigationBox.x >= 0 && navigationBox.x + navigationBox.width <= width + 0.5,
         `navigation must fit ${width}px`,
       );
-      const mobileLabels = await page.locator(".nav-tabs > .nav-tab[data-mobile-label] span").evaluateAll((nodes) =>
+      const mobileLabels = await page.locator(".nav-tabs > .nav-tab[data-mobile-label]:visible span").evaluateAll((nodes) =>
         nodes.map((node) => getComputedStyle(node, "::after").content.replaceAll('"', "")),
       );
       assert.deepEqual(mobileLabels, ["Задачи", "Время", "Привыч.", "Кален."]);

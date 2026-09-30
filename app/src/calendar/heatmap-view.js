@@ -129,7 +129,7 @@
         habitFrozen: stats.habitFrozen || 0,
         habitTotal: stats.habitTotal || 0,
         taskPercent: stats.taskPercent,
-        tooltip: `${formatLongDate(dateKey)} (${dateKey}): задачи ${stats.taskPercent}%, привычки ${Number.isFinite(stats.habitTotal) ? `${stats.habitDone || 0} из ${stats.habitTotal}` : `${stats.habitPercent}%`}${stats.habitFrozen ? `, заморожено ${stats.habitFrozen}` : ""}`,
+        tooltip: `${formatLongDate(dateKey)} (${dateKey}): задачи ${stats.taskDone || 0} из ${stats.taskTotal || 0}, привычки ${stats.habitDone || 0} из ${stats.habitTotal || 0}${stats.habitFrozen ? `, заморожено ${stats.habitFrozen}` : ""}`,
       });
     }
 

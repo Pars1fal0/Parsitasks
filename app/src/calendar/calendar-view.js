@@ -35,12 +35,12 @@
         habitTotal += progress.target;
       }));
 
-      ctx.els.weeklyTaskMetric.textContent = taskTotal ? `${taskDone} из ${taskTotal}` : "—";
-      ctx.els.weeklyHabitMetric.textContent = habitTotal ? `${habitDone} из ${habitTotal}` : "—";
+      ctx.els.weeklyTaskMetric.textContent = taskTotal ? `${Math.round(taskDone / taskTotal * 100)}%` : "—";
+      ctx.els.weeklyHabitMetric.textContent = habitTotal ? `${Math.round(habitDone / habitTotal * 100)}%` : "—";
       if (ctx.els.overviewHeading) ctx.els.overviewHeading.textContent = period.heading;
-      ctx.els.weeklyTaskText.textContent = taskTotal ? `Выполнено из плана ${period.suffix}` : `Нет задач ${period.suffix}`;
+      ctx.els.weeklyTaskText.textContent = taskTotal ? `Выполнено ${taskDone} из ${taskTotal} ${period.suffix}` : `Нет задач ${period.suffix}`;
       ctx.els.weeklyHabitText.textContent = `${habitTotal
-        ? `Выполнено из плана ${period.suffix}${weeklyGoals.size ? ", включая недельные цели" : ""}`
+        ? `Выполнено ${habitDone} из ${habitTotal} ${period.suffix}${weeklyGoals.size ? ", включая недельные цели" : ""}`
         : `Нет обязательных привычек ${period.suffix}`}${habitFrozen ? ` · заморожено ${habitFrozen}` : ""}`;
       if (mode === "week") {
         renderGoalWeek(week);

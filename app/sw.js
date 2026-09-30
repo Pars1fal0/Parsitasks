@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v97-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v98-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -90,6 +90,8 @@ const APP_SHELL = [
   "src/habits/habits-view.js",
   "src/settings/import-export.js",
   "src/platform/notifications.js",
+  "src/platform/reminder-policy.js",
+  "src/settings/navigation-preferences.js",
   "src/tasks/overdue-controller.js",
   "src/tasks/task-form.js",
   "src/tasks/task-schedule.js",
@@ -151,10 +153,14 @@ self.addEventListener("notificationclick", (event) => {
       const existing = clients.find((client) => new URL(client.url).origin === self.location.origin);
       if (existing) {
         await existing.focus();
-        if ("navigate" in existing) await existing.navigate(targetUrl);
+        if (new URL(existing.url).pathname === "/app") existing.postMessage({ type: "open-reminders" });
+        else if ("navigate" in existing) {
+          const url = new URL(targetUrl); url.searchParams.set("reminders", "1"); await existing.navigate(url.href);
+        }
         return;
       }
-      await self.clients.openWindow(targetUrl);
+      const url = new URL(targetUrl); url.searchParams.set("reminders", "1");
+      await self.clients.openWindow(url.href);
     }),
   );
 });

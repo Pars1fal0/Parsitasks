@@ -43,6 +43,8 @@
         densityPreference: normalizeDensityPreference(settings.densityPreference),
         firstDayOfWeek: normalizeFirstDayOfWeek(settings.firstDayOfWeek),
         notificationSetting: normalizeNotificationSetting(settings.notificationSetting),
+        navigationPreferences: global.RhythmNavigationPreferences?.normalize(settings.navigationPreferences) || { hidden: [], mobile: ["tasks", "timeline", "habits", "overview"] },
+        quietHours: global.RhythmReminderPolicy?.normalizeQuietHours(settings.quietHours) || { enabled: false, start: "22:00", end: "08:00" },
         themePreference: normalizeThemePreference(settings.themePreference),
         timeFormat: normalizeTimeFormat(settings.timeFormat),
       };

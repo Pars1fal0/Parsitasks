@@ -1,28 +1,155 @@
 ﻿(function (global) {
   function createNotifications(ctx) {
     const pendingNotifications = new Set();
+    const acknowledgedSnoozes = new Set();
+    const local = (ctx.reminderStorage || global.localStorage) && global.RhythmWorkspaceLocal?.createWorkspaceLocal({
+      storage: ctx.reminderStorage, getUserId: ctx.getUserId,
+      onError: () => ctx.showToast?.("Не удалось сохранить отложенное напоминание"),
+    });
+    const desktop = () => global.rhythmDesktop || global.window?.rhythmDesktop;
+    const nowDate = () => ctx.getNow?.() || new Date();
+    const allowed = (date) => global.RhythmReminderPolicy?.nextAllowed(date, ctx.getQuietHours?.()) || new Date(date);
+    const reminderKey = (kind, id, date) => JSON.stringify([kind, id, date]);
+    const acknowledgementKey = (kind, id, date, until) => JSON.stringify([ctx.getUserId?.() || "local", kind, id, date, until]);
+    function snoozes() {
+      const value = local?.read("reminder-snoozes", {}) || {};
+      return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    }
+    function activeSnooze(kind, id, date, queue = snoozes()) {
+      const entry = queue[reminderKey(kind, id, date)];
+      return entry && !entry.delivered && Number.isFinite(Date.parse(entry.until))
+        && !acknowledgedSnoozes.has(acknowledgementKey(kind, id, date, entry.until)) ? entry : null;
+    }
+    function reminderFor(entity, dateKey, kind, queue) {
+      if (kind === "habit") {
+        if (!global.RhythmHabitSchedule.shouldRemind(entity, dateKey)) return null;
+      } else if (ctx.isTaskDone(entity, dateKey)) return null;
+      const base = kind === "habit" ? habitReminderDate(entity, dateKey) : getReminderDate(entity, dateKey);
+      if (!base) return null;
+      const snooze = activeSnooze(kind, entity.id, dateKey, queue);
+      return { entity, dateKey, kind, snooze, at: allowed(snooze ? new Date(snooze.until) : base) };
+    }
+    function collectReminders(days = 7) {
+      const state = ctx.getState();
+      const now = nowDate();
+      const dates = new Set();
+      const queue = snoozes();
+      for (let offset = -1; offset <= days; offset += 1) {
+        const day = new Date(now); day.setDate(day.getDate() + offset); dates.add(ctx.toDateKey(day));
+      }
+      Object.entries(queue).forEach(([key, entry]) => {
+        if (entry?.delivered || !Number.isFinite(Date.parse(entry?.until))) return;
+        try { const parts = JSON.parse(key); if (/^\d{4}-\d{2}-\d{2}$/.test(parts[2])) dates.add(parts[2]); } catch { /* Ignore malformed local entries. */ }
+      });
+      const reminders = [];
+      dates.forEach((date) => {
+        const tasks = ctx.tasksForDate ? ctx.tasksForDate(date) : (state.tasks || []).filter((task) => ctx.taskOccursOn(task, date));
+        tasks.forEach((task) => { const item = reminderFor(task, date, "task", queue); if (item) reminders.push(item); });
+        (state.habits || []).forEach((habit) => {
+          const item = reminderFor(habit, date, "habit", queue);
+          if (item && (date >= ctx.toDateKey(now) || item.snooze || item.at >= new Date(now.getTime() - 86400000))) reminders.push(item);
+        });
+      });
+      return reminders.sort((a, b) => a.at - b.at);
+    }
+
+    function markDelivered(entity, dateKey, kind) {
+      const entry = activeSnooze(kind, entity.id, dateKey);
+      if (entry) {
+        acknowledgedSnoozes.add(acknowledgementKey(kind, entity.id, dateKey, entry.until));
+        const values = snoozes(); values[reminderKey(kind, entity.id, dateKey)] = { ...entry, delivered: true };
+        local?.write("reminder-snoozes", values);
+      }
+      entity.notified ||= {};
+      entity.notified[dateKey] = true;
+      ctx.saveState();
+    }
+
+    function snoozeReminder(kind, id, dateKey, choice) {
+      if (!["task", "habit"].includes(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
+      const entity = ctx.getState()[kind === "habit" ? "habits" : "tasks"].find((item) => item.id === id);
+      if (!entity || (kind === "task" && !ctx.taskOccursOn(entity, dateKey)) || !reminderFor(entity, dateKey, kind)) {
+        renderCenter(); ctx.showToast?.("Это событие больше не требует напоминания"); return false;
+      }
+      const until = allowed(global.RhythmReminderPolicy.snoozeUntil(nowDate(), choice)).toISOString();
+      const entries = snoozes();
+      // Keep the local queue bounded without removing pending reminders.
+      Object.entries(entries).forEach(([key, entry]) => { if (entry.delivered && Date.parse(entry.until) < nowDate().getTime() - 30 * 86400000) delete entries[key]; });
+      entries[reminderKey(kind, id, dateKey)] = { until, delivered: false };
+      if (!local?.write("reminder-snoozes", entries)) return false;
+      syncDesktopReminders(); renderCenter();
+      ctx.showToast?.(`Напоминание отложено до ${new Date(until).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`);
+      return true;
+    }
+
+    function bindEvents() {
+      ["openReminderCenter", "settingsReminderCenter"].forEach((id) => document.querySelector(`#${id}`)?.addEventListener("click", openCenter));
+      document.querySelector("#reminderClose")?.addEventListener("click", () => document.querySelector("#reminderDialog").close());
+      document.querySelector("#reminderPermissionButton")?.addEventListener("click", async () => {
+        if (ctx.enableNotifications) await ctx.enableNotifications();
+        else await requestNotifications();
+        renderCenter();
+      });
+      global.navigator?.serviceWorker?.addEventListener("message", (event) => { if (event.data?.type === "open-reminders") openCenter(); });
+      desktop()?.onReminderClicked?.(openCenter);
+      desktop()?.onReminderDelivered?.((payload) => {
+        const kind = payload.habitId ? "habit" : "task";
+        const entity = ctx.getState()[kind === "habit" ? "habits" : "tasks"].find((item) => item.id === (payload.habitId || payload.taskId));
+        if (entity) markDelivered(entity, payload.dateKey, kind);
+        if (document.querySelector("#reminderDialog")?.open) renderCenter();
+      });
+      const url = new URL(global.location.href);
+      if (url.searchParams.has("reminders")) {
+        url.searchParams.delete("reminders"); global.history.replaceState(global.history.state, "", url.href); openCenter();
+      }
+    }
+    function openCenter() {
+      renderCenter();
+      const dialog = document.querySelector("#reminderDialog");
+      if (!dialog.open) dialog.showModal();
+    }
+    function renderCenter() {
+      const list = global.document?.querySelector?.("#reminderList");
+      if (!list) return;
+      list.replaceChildren();
+      const quiet = ctx.getQuietHours?.();
+      const permissionButton = document.querySelector("#reminderPermissionButton");
+      if (permissionButton) {
+        const enabled = ctx.getNotificationsEnabled?.() !== false;
+        permissionButton.hidden = enabled && (Boolean(desktop()) || global.Notification?.permission === "granted");
+        permissionButton.textContent = enabled ? "Разрешить уведомления" : "Включить напоминания";
+        permissionButton.disabled = !desktop() && !("Notification" in global);
+      }
+      document.querySelector("#reminderStatus").textContent = ctx.getNotificationsEnabled?.() === false ? "Напоминания на паузе"
+        : quiet?.enabled ? `Тихие часы: ${quiet.start}–${quiet.end}` : "Тихие часы выключены";
+      const entries = collectReminders();
+      if (!entries.length) { const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "На ближайшие дни напоминаний нет"; list.append(empty); }
+      entries.forEach((item) => {
+        const row = document.createElement("div"); row.className = "reminder-row";
+        row.dataset.reminderId = item.entity.id;
+        const title = document.createElement("strong"); title.textContent = item.kind === "habit" ? ctx.habitTitleOnDate?.(item.entity, item.dateKey) || item.entity.title : item.entity.title;
+        const detail = document.createElement("small");
+        const occurrence = ctx.parseDate(item.dateKey).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+        detail.textContent = `${item.kind === "habit" ? "Привычка" : "Задача"} за ${occurrence} · ${item.snooze ? "Отложено: " : item.entity.notified?.[item.dateKey] ? "Отправлено: " : ""}${item.at.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+        const actions = document.createElement("div"); actions.className = "feature-row-actions";
+        const select = document.createElement("select"); select.setAttribute("aria-label", `Отложить: ${title.textContent}`);
+        [["10", "10 минут"], ["30", "30 минут"], ["60", "1 час"], ["tomorrow", "Завтра, 09:00"]].forEach(([value, text]) => select.add(new Option(text, value)));
+        const button = document.createElement("button"); button.type = "button"; button.className = "ghost-button compact-button"; button.textContent = "Отложить";
+        button.addEventListener("click", () => snoozeReminder(item.kind, item.entity.id, item.dateKey, select.value));
+        actions.append(select, button); row.append(title, detail, actions); list.append(row);
+      });
+    }
 
     function checkDueNotifications() {
       if (ctx.getNotificationsEnabled && !ctx.getNotificationsEnabled()) return;
       if (!("Notification" in window) || Notification.permission !== "granted") return;
-      const now = new Date();
-
-      ctx.getState().tasks.forEach((task) => {
-        const dates = candidateReminderDates(task, now);
-        dates.forEach((dateKey) => {
-          const reminderAt = getReminderDate(task, dateKey);
-          if (!reminderAt || reminderAt > now || ctx.isTaskDone(task, dateKey) || task.notified?.[dateKey]) return;
-          deliverNotification(task, dateKey);
-        });
+      if (desktop()) return;
+      const now = nowDate();
+      if (allowed(now) > now) return;
+      collectReminders(1).forEach(({ entity, dateKey, kind, at, snooze }) => {
+        if (at > now || (entity.notified?.[dateKey] && !snooze)) return;
+        deliverNotification(entity, dateKey, kind);
       });
-      if (!global.rhythmDesktop) {
-        const dateKey = ctx.toDateKey(now);
-        (ctx.getState().habits || []).forEach((habit) => {
-          if (!global.RhythmHabitSchedule.shouldRemind(habit, dateKey) || habit.notified?.[dateKey]) return;
-          const reminderAt = habitReminderDate(habit, dateKey);
-          if (reminderAt && reminderAt <= now) deliverNotification(habit, dateKey, "habit");
-        });
-      }
     }
 
     async function deliverNotification(task, dateKey, kind = "task") {
@@ -32,16 +159,14 @@
       try {
         const options = { body: kind === "habit" ? ctx.habitTitleOnDate?.(task, dateKey) || task.title : task.title,
           data: { dateKey, [kind === "habit" ? "habitId" : "taskId"]: task.id, url: kind === "habit" ? "/app#habits" : "/app#tasks" }, tag };
-        if (!global.rhythmDesktop && global.navigator?.serviceWorker) {
+        if (!desktop() && global.navigator?.serviceWorker) {
           const registration = await global.navigator.serviceWorker.getRegistration?.();
           if (registration?.showNotification) await registration.showNotification("Parsitasks", options);
-          else new Notification("Parsitasks", options);
+          else { const notification = new Notification("Parsitasks", options); notification.onclick = openCenter; }
         } else {
-          new Notification("Parsitasks", options);
+          const notification = new Notification("Parsitasks", options); notification.onclick = openCenter;
         }
-        task.notified ||= {};
-        task.notified[dateKey] = true;
-        ctx.saveState();
+        markDelivered(task, dateKey, kind);
       } catch {
         // Keep the reminder pending in state so a later check can try again.
       } finally {
@@ -95,49 +220,24 @@
       ctx.els.notifyButton.replaceChildren(icon, document.createTextNode(label));
     }
     function syncDesktopReminders() {
-      if (!window.rhythmDesktop?.syncReminders) return;
+      if (!desktop()?.syncReminders) return;
 
-      const now = new Date();
+      const now = nowDate();
       if (ctx.getNotificationsEnabled && !ctx.getNotificationsEnabled()) {
-        window.rhythmDesktop.syncReminders({ generatedAt: now.toISOString(), reminders: [] });
+        desktop().syncReminders({ generatedAt: now.toISOString(), reminders: [] });
         return;
       }
-
-      const start = new Date(now);
-      start.setDate(now.getDate() - 1);
-      const reminders = [];
-
-      for (let i = 0; i < 62; i += 1) {
-        const current = new Date(start);
-        current.setDate(start.getDate() + i);
-        const dateKey = ctx.toDateKey(current);
-        ctx.tasksForDate(dateKey).forEach((task) => {
-          const reminderAt = getReminderDate(task, dateKey);
-          if (!reminderAt || ctx.isTaskDone(task, dateKey)) return;
-          const dueAt = getDueDate(task, dateKey);
-          reminders.push({
-            id: `${task.id}-${dateKey}`,
-            taskId: task.id,
-            title: task.title,
-            dateKey,
-            dueAt: dueAt.toISOString(),
-            reminderAt: reminderAt.toISOString(),
-            category: ctx.getCategory(task.categoryId)?.name || "",
-            priority: task.priority,
-          });
-        });
-        (ctx.getState().habits || []).forEach((habit) => {
-          if (dateKey < ctx.toDateKey(now)) return;
-          if (!global.RhythmHabitSchedule.shouldRemind(habit, dateKey)) return;
-          const at = habitReminderDate(habit, dateKey);
-          if (!at) return;
-          reminders.push({ id: `habit-${habit.id}-${dateKey}`, habitId: habit.id,
-            title: ctx.habitTitleOnDate?.(habit, dateKey) || habit.title, dateKey,
-            dueAt: at.toISOString(), reminderAt: at.toISOString(), category: "Привычка" });
-        });
-      }
-
-      window.rhythmDesktop.syncReminders({ generatedAt: now.toISOString(), reminders });
+      const reminders = collectReminders(60).filter((item) => (!item.entity.notified?.[item.dateKey] || item.snooze)
+        && (item.kind !== "habit" || item.dateKey >= ctx.toDateKey(now) || item.snooze || ctx.toDateKey(item.at) >= ctx.toDateKey(now))).map(({ entity, dateKey, kind, at, snooze }) => ({
+        id: `${kind}-${entity.id}-${dateKey}:${at.toISOString()}`,
+        [kind === "habit" ? "habitId" : "taskId"]: entity.id,
+        title: kind === "habit" ? ctx.habitTitleOnDate?.(entity, dateKey) || entity.title : entity.title,
+        dateKey, reminderAt: at.toISOString(),
+        dueAt: kind === "habit" || snooze ? at.toISOString() : getDueDate(entity, dateKey).toISOString(),
+        category: kind === "habit" ? "Привычка" : ctx.getCategory(entity.categoryId)?.name || "",
+        priority: entity.priority,
+      }));
+      desktop().syncReminders({ generatedAt: now.toISOString(), reminders, quietHours: ctx.getQuietHours?.() });
     }
 
     function candidateReminderDates(task, now) {
@@ -193,6 +293,11 @@
     }
 
     return {
+      bindEvents,
+      collectReminders,
+      openCenter,
+      renderCenter,
+      snoozeReminder,
       candidateReminderDates,
       checkDueNotifications,
       deliverNotification,

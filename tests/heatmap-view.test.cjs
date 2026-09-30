@@ -10,7 +10,7 @@ module.exports = [
         activeDate: "2026-06-30",
         formatLongDate: (dateKey) => `date ${dateKey}`,
         parseDate: parseDateKey,
-        statsForDate: () => ({ taskPercent: 25, habitPercent: 50 }),
+        statsForDate: () => ({ taskPercent: 50, taskDone: 4, taskTotal: 8, habitPercent: 50, habitDone: 1, habitTotal: 2 }),
         toDateKey,
       });
 
@@ -22,7 +22,9 @@ module.exports = [
       assert.equal(model.monthSpans.length, 12);
       assert.equal(model.monthSpans[0].label, "июль");
       assert.ok(model.monthSpans.every((item) => item.span >= 1));
-      assert.equal(model.days[0].tooltip, "date 2025-07-01 (2025-07-01): задачи 25%, привычки 50%");
+      assert.equal(model.days[0].tooltip, "date 2025-07-01 (2025-07-01): задачи 4 из 8, привычки 1 из 2");
+      assert.equal(model.days[0].taskPercent, 50);
+      assert.equal(model.days[0].habitPercent, 50);
     },
   },
   {
@@ -36,6 +38,8 @@ module.exports = [
         toDateKey,
       });
       assert.match(model.days.at(-1).tooltip, /привычки 0 из 0, заморожено 2/);
+      assert.match(model.days.at(-1).tooltip, /задачи 0 из 0/);
+      assert.equal(model.days.at(-1).tooltip.includes("%"), false);
       assert.equal(model.days.at(-1).habitFrozen, 2);
     },
   },

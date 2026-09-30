@@ -211,6 +211,9 @@
           </div>
 
           <div class="date-control" aria-label="Дата">
+            <button class="icon-button reminder-center-button" id="openReminderCenter" type="button" aria-label="Напоминания" title="Напоминания">
+              <svg class="ui-icon"><use href="#icon-bell"></use></svg>
+            </button>
             <button class="icon-button global-search-button" id="globalSearchButton" type="button" aria-label="Поиск по приложению">
               <svg class="ui-icon"><use href="#icon-search"></use></svg>
             </button>
@@ -934,6 +937,10 @@
                 <svg class="ui-icon"><use href="#icon-plus"></use></svg>
                 Блюдо
               </button>
+              <button class="ghost-button compact-button icon-text-button" id="nutritionOpenLibrary" type="button">
+                <svg class="ui-icon"><use href="#icon-journal"></use></svg>
+                Мои блюда
+              </button>
             </div>
           </div>
 
@@ -1014,6 +1021,7 @@
               </button>
             </div>
             <input id="nutritionMealId" type="hidden">
+            <label id="nutritionTemplatePickerLabel">Из библиотеки<select id="nutritionTemplatePicker"><option value="">Выбрать блюдо</option></select></label>
             <label>Название<input id="nutritionMealTitle" type="text" maxlength="160" required></label>
             <div class="form-grid">
               <label>Дата<input id="nutritionMealDate" type="date" required></label>
@@ -1043,12 +1051,19 @@
             </fieldset>
             <label>Заметка<textarea id="nutritionMealNotes" rows="2" maxlength="1000"></textarea></label>
             <p id="nutritionMealDraftStatus" class="muted" role="status"></p>
+            <label class="meal-library-toggle"><input id="nutritionMealSaveToLibrary" type="checkbox">Сохранить в «Мои блюда»</label>
             <div class="dialog-actions">
               <button class="ghost-button" id="nutritionMealDiscardDraft" type="button" hidden>Удалить черновик</button>
               <button class="ghost-button" id="nutritionMealCancel" type="button">Отмена</button>
               <button class="primary-button" type="submit">Сохранить блюдо</button>
             </div>
           </form>
+        </dialog>
+
+        <dialog class="nutrition-meal-dialog feature-dialog" id="nutritionLibraryDialog" aria-labelledby="nutritionLibraryHeading">
+          <div class="dialog-header"><h2 id="nutritionLibraryHeading">Мои блюда</h2><button class="icon-button" id="nutritionLibraryClose" type="button" aria-label="Закрыть библиотеку"><svg class="ui-icon"><use href="#icon-close"></use></svg></button></div>
+          <div class="library-toolbar"><input id="nutritionLibrarySearch" type="search" aria-label="Поиск в библиотеке блюд" placeholder="Название или продукт"><button class="primary-button compact-button" id="nutritionLibraryCreate" type="button">Новый рецепт</button></div>
+          <div id="nutritionLibraryList" class="meal-library-list"></div>
         </dialog>
 
         <section class="view" id="journalView" aria-labelledby="journalHeading">
@@ -1769,6 +1784,10 @@
               <p class="settings-status">Здесь видны изменения, сделанные через MCP. Последнее действие можно безопасно отменить.</p>
               <div class="mcp-activity-list" id="mcpActivityList" aria-live="polite"></div>
             </details>
+            <details class="panel settings-panel settings-accordion" aria-labelledby="navigationSettingsHeading">
+              <summary class="panel-heading compact settings-summary"><div><span class="metric-label">Интерфейс</span><h2 id="navigationSettingsHeading">Навигация</h2></div></summary>
+              <div id="navigationPreferences" class="navigation-preferences"></div>
+            </details>
             <details class="panel settings-panel settings-accordion" aria-labelledby="notificationsSettingsHeading">
               <summary class="panel-heading compact settings-summary">
                 <div>
@@ -1786,6 +1805,9 @@
                   <option value="off">На паузе</option>
                 </select>
               </label>
+              <label class="quiet-hours-toggle"><input id="quietHoursEnabled" type="checkbox">Тихие часы</label>
+              <div class="quiet-hours-fields"><label>С<input id="quietHoursStart" type="time" value="22:00"></label><label>До<input id="quietHoursEnd" type="time" value="08:00"></label></div>
+              <button class="ghost-button compact-button" id="settingsReminderCenter" type="button">Мои напоминания</button>
               <p class="settings-status">В браузере напоминания приходят, пока вкладка открыта. Desktop-версия продолжает напоминать в фоне после закрытия окна.</p>
               <button class="ghost-button compact-button icon-text-button" id="settingsNotifyButton" type="button">
                 <svg class="ui-icon"><use href="#icon-bell"></use></svg>
@@ -1799,6 +1821,12 @@
 
     <div class="form-backdrop" id="formBackdrop" hidden></div>
     <div class="toast" id="appToast" role="status" aria-live="polite"></div>
+    <dialog class="nutrition-meal-dialog feature-dialog" id="reminderDialog" aria-labelledby="reminderHeading">
+      <div class="dialog-header"><h2 id="reminderHeading">Напоминания</h2><button class="icon-button" id="reminderClose" type="button" aria-label="Закрыть напоминания"><svg class="ui-icon"><use href="#icon-close"></use></svg></button></div>
+      <p id="reminderStatus" class="muted" role="status"></p>
+      <button class="ghost-button compact-button" id="reminderPermissionButton" type="button" hidden>Разрешить уведомления</button>
+      <div id="reminderList" class="reminder-list"></div>
+    </dialog>
 
     <div class="confirm-modal" id="confirmModal" hidden>
       <div class="confirm-backdrop" data-confirm-cancel></div>
@@ -1981,7 +2009,9 @@
     <script src="src/habits/habits-view.js?v=6" defer></script>
     <script src="src/habits/habit-freeze-dialog.js?v=1" defer></script>
     <script src="src/settings/import-export.js?v=6" defer></script>
-    <script src="src/platform/notifications.js?v=2" defer></script>
+    <script src="src/platform/reminder-policy.js?v=1" defer></script>
+    <script src="src/settings/navigation-preferences.js?v=1" defer></script>
+    <script src="src/platform/notifications.js?v=3" defer></script>
     <script src="src/tasks/overdue-controller.js?v=4" defer></script>
     <script src="src/tasks/task-schedule.js?v=1" defer></script>
     <script src="src/tasks/task-form.js?v=12" defer></script>

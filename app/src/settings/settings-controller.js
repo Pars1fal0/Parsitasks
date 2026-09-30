@@ -21,6 +21,17 @@
       });
       ctx.els.themePreference?.addEventListener("change", () => ctx.updateSetting("themePreference", ctx.els.themePreference.value));
       ctx.els.notificationSetting?.addEventListener("change", () => ctx.updateSetting("notificationSetting", ctx.els.notificationSetting.value));
+      const quietEnabled = document.querySelector("#quietHoursEnabled");
+      const quietStart = document.querySelector("#quietHoursStart");
+      const quietEnd = document.querySelector("#quietHoursEnd");
+      [quietEnabled, quietStart, quietEnd].forEach((field) => field?.addEventListener("change", () => {
+        if (quietEnabled.checked && quietStart.value === quietEnd.value) {
+          ctx.showToast?.("Начало и конец тихих часов должны отличаться");
+          syncControls();
+          return;
+        }
+        ctx.updateSetting("quietHours", { enabled: quietEnabled.checked, start: quietStart.value, end: quietEnd.value });
+      }));
       ctx.els.backupSchedule?.addEventListener("change", () => ctx.updateSetting("backupSchedule", ctx.els.backupSchedule.value));
       ctx.els.firstDayOfWeek?.addEventListener("change", () => ctx.updateSetting("firstDayOfWeek", ctx.els.firstDayOfWeek.value));
       ctx.els.densityPreference?.addEventListener("change", () => ctx.updateSetting("densityPreference", ctx.els.densityPreference.value));
@@ -36,6 +47,13 @@
       });
       setValue(ctx.els.themePreference, settings.themePreference);
       setValue(ctx.els.notificationSetting, settings.notificationSetting);
+      const quiet = settings.quietHours || { enabled: false, start: "22:00", end: "08:00" };
+      const enabled = document.querySelector("#quietHoursEnabled");
+      if (enabled) enabled.checked = quiet.enabled;
+      ["Start", "End"].forEach((part) => {
+        const field = document.querySelector(`#quietHours${part}`);
+        if (field) { field.value = quiet[part.toLowerCase()]; field.disabled = !quiet.enabled; }
+      });
       setValue(ctx.els.backupSchedule, settings.backupSchedule);
       setValue(ctx.els.firstDayOfWeek, settings.firstDayOfWeek);
       setValue(ctx.els.densityPreference, settings.densityPreference);

@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",
@@ -10,16 +10,18 @@
   "scripts": {
     "desktop": "electron .",
     "desktop:smoke": "electron . --smoke-test",
-    "test:e2e": "node tests/electron-e2e.cjs && node tests/timeline-journal-interactions-e2e.cjs && node tests/menu-popovers-e2e.cjs && node tests/accessibility-e2e.cjs && node tests/study-e2e.cjs && node tests/notes-e2e.cjs && node tests/goals-activity-e2e.cjs && node tests/board-workspace-e2e.cjs && node tests/ux-reliability-e2e.cjs && node tests/weekly-habits-checklists-e2e.cjs && node tests/ux-streamlining-e2e.cjs",
+    "test:e2e": "node tests/electron-e2e.cjs && node tests/timeline-journal-interactions-e2e.cjs && node tests/menu-popovers-e2e.cjs && node tests/accessibility-e2e.cjs && node tests/study-e2e.cjs && node tests/notes-e2e.cjs && node tests/goals-activity-e2e.cjs && node tests/board-workspace-e2e.cjs && node tests/ux-reliability-e2e.cjs && node tests/weekly-habits-checklists-e2e.cjs && node tests/ux-streamlining-e2e.cjs && node tests/personal-workspace-e2e.cjs",
     "lint": "node tests/lint.cjs",
     "test": "node tests/run-tests.cjs",
+    "test:dependencies": "npm audit --audit-level=high",
+    "verify:production": "node scripts/check-production.cjs",
     "test:security-live": "node tests/security-live.cjs",
     "test:sync-live": "node tests/remote-sync-live.cjs",
     "capture:landing": "node scripts/capture-landing-product.cjs",
     "generate:icons": "node scripts/generate-icons.cjs",
     "build:web": "node scripts/build-web.cjs",
     "build:worker": "wrangler deploy --dry-run --outdir .wrangler-build",
-    "build:cloudflare": "npm test && npm run lint && npm run build:web && npm run build:worker",
+    "build:cloudflare": "npm run test:dependencies && npm test && npm run lint && npm run build:web && npm run build:worker",
     "mcp:dev": "npm run build:web && wrangler dev",
     "build:win": "electron-builder --win portable nsis --publish never",
     "pack:win": "electron-builder --win portable --publish never",
@@ -88,7 +90,7 @@
   },
   "overrides": {
     "@hono/node-server": "2.0.11",
-    "brace-expansion": "5.0.9"
+    "brace-expansion": "5.0.12"
   },
   "dependencies": {
     "electron-updater": "^6.8.9"

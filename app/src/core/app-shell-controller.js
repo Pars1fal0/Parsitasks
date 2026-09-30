@@ -31,7 +31,7 @@
         if (isActive) button.setAttribute("aria-current", "page");
       });
 
-      const isMoreView = ["goals", "nutrition", "journal", "board", "archive", "settings", "study"].includes(activeView);
+      const isMoreView = ctx.isMobilePinned ? !ctx.isMobilePinned(activeView) : ["goals", "nutrition", "journal", "board", "archive", "settings", "study"].includes(activeView);
       ctx.els.navMoreSummary?.classList.toggle("is-active", isMoreView);
       if (isMoreView) ctx.els.navMoreSummary?.setAttribute("aria-current", "page");
       else ctx.els.navMoreSummary?.removeAttribute("aria-current");

@@ -1,7 +1,23 @@
 const assert = require("node:assert/strict");
-const { createSyncMetadataTracker, normalizeSyncMeta } = require("../app/src/sync/sync-metadata.js");
+const { createSyncMetadataTracker, normalizeSyncMeta, pruneSyncMeta } = require("../app/src/sync/sync-metadata.js");
 
 module.exports = [
+  {
+    name: "preserves nutrition field timestamps when pruning live entities",
+    fn() {
+      const at = "2026-09-30T10:00:00.000Z";
+      const state = { nutritionFoods: [{ id: "food" }], nutritionMeals: [{ id: "meal" }], nutritionTemplates: [{ id: "recipe" }] };
+      const meta = pruneSyncMeta({ entityFields: {
+        nutritionFoods: { food: { calories: at }, deleted: { name: at } },
+        nutritionMeals: { meal: { ingredients: at } },
+        nutritionTemplates: { recipe: { title: at } },
+      } }, state);
+      assert.equal(meta.entityFields.nutritionFoods.food.calories, at);
+      assert.equal(meta.entityFields.nutritionMeals.meal.ingredients, at);
+      assert.equal(meta.entityFields.nutritionTemplates.recipe.title, at);
+      assert.equal(meta.entityFields.nutritionFoods.deleted, undefined);
+    },
+  },
   {
     name: "records explicit task flag and habit log removals",
     fn() {

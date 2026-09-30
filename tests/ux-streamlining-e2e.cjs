@@ -48,6 +48,20 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#taskTitle").fill("Простая задача");
     await page.locator("#taskForm button[type=submit]").click();
     assert.equal((await state()).tasks.find((task) => task.title === "Простая задача").repeat, "none");
+    await navigate("overview");
+    for (const mode of ["week", "month", "year"]) {
+      await page.locator(`[data-overview-mode="${mode}"]`).click();
+      assert.equal(await page.locator("#weeklyTaskMetric").innerText(), "0%");
+      assert.equal(await page.locator("#weeklyHabitMetric").innerText(), "—");
+      assert.match(await page.locator("#weeklyTaskText").innerText(), /Выполнено 0 из 13/);
+    }
+    const calendarDay = page.locator('.heatmap-cell[data-date="2026-09-30"]');
+    assert.match(await calendarDay.getAttribute("aria-label"), /задачи 0 из 13, привычки 0 из 0/);
+    await calendarDay.hover();
+    assert.match(await page.locator("[data-heatmap-tooltip]").innerText(), /задачи 0 из 13/);
+    assert.equal((await page.locator("[data-heatmap-tooltip]").innerText()).includes("%"), false);
+    await capture("calendar-year-dark-390");
+    await navigate("tasks");
     await page.locator("#globalSearchButton").click();
     await page.locator("#globalSearchInput").fill("собрать данные");
     assert.match(await page.locator("#globalSearchResults").innerText(), /Презентац|презентац/);
