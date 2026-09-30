@@ -153,7 +153,7 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 #nutritionIngredientsError { color: var(--coral); white-space: normal; overflow-wrap: anywhere; }
 
 @media (max-width: 680px) {
-  body[data-view="tasks"] .workspace { padding-top: 12px; }
+  body[data-view="tasks"] .workspace { padding-top: 8px; }
   body[data-view="tasks"] .topbar { gap: 6px; margin-bottom: 8px; }
   body[data-view="tasks"] #todayLabel { display: none; }
   body[data-view="tasks"] #pageTitle { font-size: 22px; line-height: 1.3; }
