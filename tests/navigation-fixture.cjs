@@ -1,4 +1,5 @@
 async function enableAllSections(page) {
+  await page.setViewportSize({ width: 1366, height: 900 });
   // Full-workspace scenarios explicitly opt into optional sections on every load.
   const configure = (force = false) => {
     const key = "rhythm-day-ui-v1";
@@ -21,9 +22,11 @@ async function enableAllSections(page) {
   };
   await page.addInitScript(configure);
   await page.waitForSelector("#pageTitle");
+  await page.waitForSelector(".nav-tabs > button.is-mobile-pin");
   await page.evaluate(configure, true);
   await page.reload();
   await page.waitForSelector("#pageTitle");
+  await page.waitForSelector('.nav-tabs > button[data-view="study"]:visible');
 }
 
 module.exports = { enableAllSections };
