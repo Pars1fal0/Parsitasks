@@ -227,6 +227,7 @@ function installDom() {
     createElementNS: (_namespace, tagName) => createElement(tagName),
     createTextNode: (text) => new FakeText(text),
     querySelectorAll: (...args) => document.body.querySelectorAll(...args),
+    querySelector: (...args) => document.body.querySelector(...args),
   };
   global.document = document;
   global.window = global;

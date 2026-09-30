@@ -158,6 +158,7 @@
       pendingNotifications.add(tag);
       try {
         const options = { body: kind === "habit" ? ctx.habitTitleOnDate?.(task, dateKey) || task.title : task.title,
+          icon: "assets/icons/icon-192.png",
           data: { dateKey, [kind === "habit" ? "habitId" : "taskId"]: task.id, url: kind === "habit" ? "/app#habits" : "/app#tasks" }, tag };
         if (!desktop() && global.navigator?.serviceWorker) {
           const registration = await global.navigator.serviceWorker.getRegistration?.();

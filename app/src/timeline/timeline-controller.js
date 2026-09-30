@@ -36,8 +36,8 @@
       const scope = await ctx.confirmAction({
         title: "Удалить повторяющуюся задачу?",
         message: `Выбери, убрать только ${ctx.formatLongDate(dateKey)} или завершить серию с этого дня. Прошлая история сохранится.`,
-        secondaryLabel: "Только этот день",
-        confirmLabel: "Этот и будущие",
+        secondaryLabel: "Пропустить этот день",
+        confirmLabel: "Прекратить повторение с этой даты",
         tone: "danger",
       });
       if (scope === "secondary") {
@@ -75,8 +75,8 @@
       const choice = await ctx.confirmAction({
         title: "Дублировать повторяющуюся задачу?",
         message: "Создать разовую копию выбранного дня или вторую повторяющуюся серию?",
-        secondaryLabel: "Только этот день",
-        confirmLabel: "Всю серию",
+        secondaryLabel: "Создать разовую копию",
+        confirmLabel: "Дублировать всю серию",
       });
       if (!choice) return null;
       return createDuplicate(task, { wholeSeries: choice === true });

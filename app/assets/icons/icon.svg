@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
-  <title>Parsitasks</title>
-  <rect x="0.5" y="0.5" width="63" height="63" rx="15.5" fill="#102420" stroke="#31534a"/>
-  <path d="M19 46V18h15c8 0 13 4.5 13 11.5S42 41 34 41H19" fill="none" stroke="#f5faf7" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="m29 29 4 4 8-8" fill="none" stroke="#4be0b5" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="47" cy="47" r="3.5" fill="#ffb86f"/>
-</svg>

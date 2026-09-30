@@ -1,6 +1,11 @@
 (function (global) {
   function createTaskForm(ctx) {
     let editingOccurrenceDate = "";
+    const deferredControl = ctx.els.taskForm.querySelector("#taskDeferred");
+    const scopePanel = ctx.els.taskRepeatEditScope;
+    const extraPanel = ctx.els.taskForm.querySelector("#taskExtraFields");
+    if (scopePanel && extraPanel) extraPanel.before(scopePanel);
+    deferredControl?.addEventListener("change", () => setDeferred(deferredControl.checked));
     const checklistEditor = global.RhythmGoalCheckpointEditor?.createGoalCheckpointEditor({
       createId: ctx.createId, itemLabel: "Пункт", itemsLabel: "Пункты", maxItems: 50, showToast: ctx.showToast,
       els: {
@@ -16,11 +21,13 @@
       const undo = ctx.createUndoSnapshot();
       const id = ctx.els.taskId.value || ctx.createId();
       const existing = ctx.findTask(id);
-      const scheduleMode = ctx.getTaskScheduleMode();
+      const previousDate = existing?.date || existing?.deferredFromDate || "";
+      const deferred = deferredControl?.checked === true;
+      const scheduleMode = deferred ? "none" : ctx.getTaskScheduleMode();
       const startTime = scheduleMode === "block" ? ctx.cleanTimeValue(ctx.els.taskStartTime.value) : "";
       const endTime = scheduleMode === "block" ? ctx.cleanTimeValue(ctx.els.taskEndTime.value) : "";
       const deadlineTime = ctx.cleanTimeValue(ctx.els.taskTime.value);
-      const repeatUntil = ctx.els.taskRepeat.value === "none" ? "" : ctx.normalizeDateKey(ctx.els.taskRepeatUntil.value, "");
+      const repeatUntil = deferred || ctx.els.taskRepeat.value === "none" ? "" : ctx.normalizeDateKey(ctx.els.taskRepeatUntil.value, "");
       if (scheduleMode === "block" && !ctx.isValidTimeBlock(startTime, endTime)) {
         ctx.showToast("Укажи корректный временной блок");
         return;
@@ -38,16 +45,19 @@
       const task = {
         id,
         title: ctx.cleanText(ctx.els.taskTitle.value),
-        date: ctx.els.taskDate.value || ctx.getActiveDate(),
+        date: deferred ? null : ctx.els.taskDate.value || ctx.getActiveDate(),
+        deferredFromDate: deferred ? existing?.date || existing?.deferredFromDate || "" : "",
         scheduleMode,
         startTime,
         endTime,
         time: scheduleMode === "block" ? endTime : scheduleMode === "none" ? "" : deadlineTime,
         categoryId: ctx.els.taskCategoryId.value,
         priority: ctx.els.taskPriority.value,
-        repeat: ctx.els.taskRepeat.value,
+        repeat: deferred ? "none" : ctx.els.taskRepeat.value,
         repeatUntil,
-        customRepeat: ctx.els.taskRepeat.value === "custom" ? ctx.getCustomRepeatFromForm() : {},
+        sourceTaskId: existing?.sourceTaskId || "",
+        movedFromDate: existing?.movedFromDate || "",
+        customRepeat: !deferred && ctx.els.taskRepeat.value === "custom" ? ctx.getCustomRepeatFromForm() : {},
         reminderOffset: scheduleMode === "none" ? "none" : ctx.els.taskReminder.value,
         completed: existing?.completed || {},
         acknowledgedOverdue: existing?.acknowledgedOverdue || {},
@@ -64,7 +74,14 @@
       };
 
       const isRecurringEdit = Boolean(existing && existing.repeat !== "none" && !existing.sourceTaskId);
-      if (existing && !isRecurringEdit && existing.date !== task.date) global.RhythmTaskChecklist.moveDate(task, existing.date, task.date);
+      if (existing && !isRecurringEdit && task.date && existing.date !== task.date) {
+        global.RhythmTaskChecklist.moveDate(task, existing.date || existing.deferredFromDate, task.date);
+        const previousDate = existing.date || existing.deferredFromDate;
+        if (previousDate && task.completed[previousDate] === true) {
+          delete task.completed[previousDate];
+          task.completed[task.date] = true;
+        }
+      }
       const repeatEditScope = getRepeatEditScope();
       const notificationChanged = Boolean(existing && notificationScheduleChanged(existing, task));
       const savedTask = isRecurringEdit
@@ -73,14 +90,21 @@
       if (notificationChanged) {
         clearStaleNotificationFlags(savedTask, {
           currentDate: editingOccurrenceDate || task.date,
-          previousDate: existing.date,
+          previousDate,
           scope: isRecurringEdit ? repeatEditScope : "occurrence",
         });
       }
-      ctx.setActiveDate(isRecurringEdit ? editingOccurrenceDate || ctx.getActiveDate() : savedTask.date);
+      if (ctx.saveState() === false) {
+        ctx.restoreState?.(undo);
+        return;
+      }
+      if (savedTask.date) ctx.setActiveDate(isRecurringEdit ? editingOccurrenceDate || ctx.getActiveDate() : savedTask.date);
       resetTaskForm({ open: false });
-      ctx.saveState();
       ctx.render();
+      if (!savedTask.date) {
+        const later = document.querySelector("#laterTaskPanel");
+        if (later) later.open = true;
+      }
       ctx.showToast(existing ? "Задача обновлена" : "Задача создана", { undo });
       ctx.afterSave?.(savedTask, existing);
     }
@@ -98,6 +122,10 @@
       editingOccurrenceDate = isRecurringSeries ? ctx.getActiveDate() : task.date;
       ctx.els.taskDate.value = editingOccurrenceDate;
       ctx.els.taskDate.disabled = isRecurringSeries;
+      if (deferredControl) {
+        deferredControl.disabled = isRecurringSeries || Boolean(task.studySubjectId);
+        deferredControl.checked = task.date === null;
+      }
       ctx.els.taskTime.value = ctx.cleanTimeValue(task.time);
       ctx.setTaskScheduleMode(ctx.isTimeBlock(task) ? "block" : ctx.cleanTimeValue(task.time) ? "deadline" : "none");
       ctx.els.taskStartTime.value = ctx.cleanTimeValue(task.startTime);
@@ -112,6 +140,7 @@
       ctx.syncCustomRepeatPanel();
       ctx.syncTaskTimePresets();
       syncRepeatEditScope(isRecurringSeries, editingOccurrenceDate);
+      setDeferred(task.date === null);
       const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
       if (extra) extra.open = Boolean(task.categoryId || task.priority === "high" || task.priority === "low"
         || task.repeat !== "none" || task.time || task.checklist?.length);
@@ -131,6 +160,7 @@
       editingOccurrenceDate = "";
       ctx.els.taskDate.value = ctx.getActiveDate();
       ctx.els.taskDate.disabled = false;
+      if (deferredControl) { deferredControl.checked = false; deferredControl.disabled = false; }
       ctx.els.taskTime.value = "";
       ctx.setTaskScheduleMode("none");
       ctx.els.taskStartTime.value = "";
@@ -147,7 +177,25 @@
       syncRepeatEditScope(false);
       const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
       if (extra) extra.open = false;
+      setDeferred(false);
       ctx.markFormPristine?.(ctx.els.taskForm);
+    }
+
+    function setDeferred(value) {
+      if (!deferredControl) return;
+      deferredControl.checked = value;
+      ctx.els.taskDate.required = !value;
+      const editingTask = ctx.els.taskId.value ? ctx.findTask(ctx.els.taskId.value) : null;
+      ctx.els.taskDate.disabled = value || Boolean(editingTask && editingTask.repeat !== "none" && !editingTask.sourceTaskId);
+      ctx.els.taskForm.classList.toggle("is-deferred", value);
+      if (value) {
+        ctx.setTaskScheduleMode("none");
+        ctx.els.taskRepeat.value = "none";
+        ctx.els.taskReminder.value = "none";
+        ctx.syncTaskScheduleMode();
+        ctx.syncCustomRepeatPanel();
+      }
+      ctx.els.taskRepeat.disabled = value;
     }
 
     function resetInlineCategory() {
@@ -214,7 +262,7 @@
       if (event.target?.name === "taskRepeatEditScope") updateRepeatEditHint(event.target.value);
     });
 
-    return { fillTaskForm, resetTaskForm, saveTaskFromForm };
+    return { fillTaskForm, resetTaskForm, saveTaskFromForm, setDeferred };
   }
 
   const api = { createTaskForm };

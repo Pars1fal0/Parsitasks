@@ -336,8 +336,8 @@ module.exports = [
 
       view.renderOverdueTasks();
       const deleteButton = els.overdueList.querySelector(".overdue-delete");
-      assert.equal(deleteButton.textContent, "Только этот день");
-      assert.equal(els.overdueList.querySelector(".overdue-delete-future").textContent, "Этот и последующие");
+      assert.equal(deleteButton.textContent, "Пропустить этот день");
+      assert.equal(els.overdueList.querySelector(".overdue-delete-future").textContent, "Прекратить повторение с этой даты");
       deleteButton.dispatchEvent({ type: "click" });
 
       assert.deepEqual(excluded, { dateKey: "2026-07-01", taskId: "repeat-1" });

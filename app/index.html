@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0b100f">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://parsitasks.ru https://*.supabase.co; font-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
     <title>Parsitasks</title>
-    <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="assets/icons/icon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
     <link rel="manifest" href="manifest.webmanifest">
     <script src="src/auth/auth-gate.js?v=1"></script>
@@ -75,7 +75,7 @@
     <div class="app-shell">
       <aside class="sidebar" aria-label="Навигация">
         <div class="brand">
-          <img class="brand-mark" src="assets/icons/icon.svg" alt="" aria-hidden="true" width="42" height="42">
+          <img class="brand-mark" src="assets/icons/logo.png" alt="" aria-hidden="true" width="42" height="42">
           <div>
             <div class="brand-title">Parsitasks</div>
             <div class="brand-subtitle">Личный планировщик</div>
@@ -207,7 +207,7 @@
           <div class="title-block">
             <p class="eyebrow" id="todayLabel"></p>
             <h1 id="pageTitle">Задачи на день</h1>
-            <p class="save-status" id="saveStatus" aria-live="polite" aria-atomic="true">Сохранено локально</p>
+            <p class="save-status" id="saveStatus" aria-live="polite" aria-atomic="true">Сохранено на устройстве</p>
           </div>
 
           <div class="date-control" aria-label="Дата">
@@ -364,12 +364,28 @@
                   <span class="metric-label">Просроченные</span>
                   <p id="overdueCounter"></p>
                 </div>
-                <button class="ghost-button compact-button" id="overdueAcknowledgeAll" type="button" aria-label="Убрать все просроченные задачи из этого блока">Убрать все</button>
+                <button class="ghost-button compact-button" id="overdueAcknowledgeAll" type="button">Скрыть все из просроченных</button>
               </div>
                 <div class="overdue-list" id="overdueList"></div>
               </div>
+              <div class="task-selection-tools">
+                <button class="ghost-button compact-button icon-text-button" id="taskSelectMode" type="button" aria-pressed="false"><svg class="ui-icon"><use href="#icon-check"></use></svg><span>Выбрать задачи</span></button>
+              </div>
+              <form class="task-bulk-actions" id="taskBulkForm" hidden>
+                <span id="taskBulkCount" aria-live="polite"></span>
+                <button class="ghost-button compact-button" id="taskSelectAll" type="button">Выбрать все</button>
+                <label>Перенести на<input id="taskBulkDate" type="date" required></label>
+                <button class="primary-button compact-button" type="submit">Перенести</button>
+                <button class="icon-button" id="taskBulkCancel" type="button" title="Отменить выбор" aria-label="Отменить выбор"><svg class="ui-icon"><use href="#icon-close"></use></svg></button>
+              </form>
               <div class="task-list" id="taskList"></div>
               <div class="empty-state" id="taskEmpty">На выбранный день задач нет.</div>
+              <button class="ghost-button compact-button" id="taskEmptyReset" type="button" hidden>Сбросить фильтры</button>
+              <details class="later-task-panel" id="laterTaskPanel">
+                <summary><span>Позже</span><span id="laterTaskCount">0</span></summary>
+                <div id="laterTaskList" class="later-task-list"></div>
+                <button class="ghost-button compact-button icon-text-button" id="addLaterTask" type="button"><svg class="ui-icon"><use href="#icon-plus"></use></svg><span>Добавить без даты</span></button>
+              </details>
               <details class="historical-task-panel" id="historicalTaskPanel" hidden>
                 <summary><span>Незавершенные прошлых дней</span><span id="historicalTaskCount"></span></summary>
                 <div class="historical-task-list" id="historicalTaskList"></div>
@@ -398,6 +414,7 @@
                     <input id="taskTitle" type="text" maxlength="80" required placeholder="Например: закрыть отчет">
                   </label>
                   <label>Дата<input id="taskDate" type="date" required></label>
+                  <label class="task-defer-toggle"><input id="taskDeferred" type="checkbox">Без даты · в список «Позже»</label>
                   <details class="task-extra-fields" id="taskExtraFields">
                     <summary>Дополнительные настройки</summary>
                     <div class="stack-form">
@@ -542,20 +559,20 @@
                     </div>
                   </div>
                   <fieldset class="repeat-edit-scope" id="taskRepeatEditScope" hidden>
-                    <legend>Область изменений</legend>
+                    <legend>Что изменить?</legend>
                     <p class="field-hint" id="taskRepeatEditHint"></p>
                     <div class="repeat-edit-options">
                       <label>
                         <input type="radio" name="taskRepeatEditScope" value="occurrence" checked>
-                        <span>Только этот день</span>
+                        <span>Только выполнение на эту дату</span>
                       </label>
                       <label>
                         <input type="radio" name="taskRepeatEditScope" value="following">
-                        <span>Этот и последующие</span>
+                        <span>Это и будущие выполнения</span>
                       </label>
                       <label>
                         <input type="radio" name="taskRepeatEditScope" value="series">
-                        <span>Вся серия</span>
+                        <span>Всю серию</span>
                       </label>
                     </div>
                   </fieldset>
@@ -660,10 +677,10 @@
                   </label>
                   <div class="form-grid">
                     <label>
-                      Тип
+                      Как отмечать
                       <select id="habitType">
-                        <option value="check">Галочка</option>
-                        <option value="number">Число и цель</option>
+                        <option value="check">Выполнено</option>
+                        <option value="number">Количество</option>
                       </select>
                     </label>
                     <label>
@@ -720,7 +737,6 @@
                     Цель на неделю (ПН–ВС)
                     <input id="habitWeeklyTarget" type="number" min="1" max="7" step="1" value="3">
                   </label>
-                  <label>Напоминание<input id="habitReminderTime" type="time"></label>
                   <div class="form-grid" id="habitNumericFields" hidden>
                     <label>
                       Единица
@@ -731,8 +747,12 @@
                       <input id="habitGoal" type="number" min="1" step="1" placeholder="2000">
                     </label>
                   </div>
+                  <details class="task-extra-fields" id="habitExtraFields">
+                    <summary>Дополнительные настройки</summary>
+                    <label>Напоминание<input id="habitReminderTime" type="time"></label>
+                  </details>
                   <div class="form-actions">
-                    <button class="primary-button" type="submit">Сохранить</button>
+                    <button class="primary-button" type="submit">Создать</button>
                     <button class="ghost-button" id="resetHabitForm" type="button">Очистить</button>
                   </div>
                 </form>
@@ -1871,7 +1891,7 @@
             <button class="ghost-button compact-button restore-overdue-task" type="button" hidden>Вернуть в просроченные</button>
             <button class="ghost-button compact-button edit-task" type="button">Изменить</button>
             <button class="ghost-button compact-button duplicate-task" type="button">Дублировать</button>
-            <button class="ghost-button compact-button exclude-task" type="button">Убрать только этот день</button>
+            <button class="ghost-button compact-button exclude-task" type="button">Пропустить этот день</button>
             <button class="ghost-button compact-button danger-button delete-task" type="button">Удалить</button>
           </div>
         </details>

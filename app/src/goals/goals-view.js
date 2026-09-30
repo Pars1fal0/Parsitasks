@@ -196,7 +196,7 @@
       const byId = new Map(tasks.map((task) => [task.id, task]));
       const visible = [...selectedTaskIds].map((id) => byId.get(id) || { id, title: "Удалённая задача", date: "" });
       tasks.filter((task) => !selectedTaskIds.has(task.id) && (!query || task.title.toLocaleLowerCase("ru-RU").includes(query)))
-        .sort((left, right) => right.date.localeCompare(left.date))
+        .sort((left, right) => (right.date || "").localeCompare(left.date || ""))
         .slice(0, 40)
         .forEach((task) => visible.push(task));
       ctx.els.goalTaskOptions.replaceChildren(...visible.map((task) => {
@@ -210,7 +210,7 @@
         input.dataset.goalTaskLink = task.id;
         input.checked = selectedTaskIds.has(task.id);
         text.textContent = task.title;
-        meta.textContent = task.date ? formatShortDate(task.date) : "Связь недоступна";
+        meta.textContent = task.date ? formatShortDate(task.date) : "Позже · без даты";
         label.append(input, text, meta);
         return label;
       }));
@@ -424,7 +424,7 @@
       marker.className = "goal-activity-marker";
       marker.append(createIcon(result.done ? "check" : "tasks"));
       title.textContent = result.task?.title || "Удалённая задача";
-      meta.textContent = result.done ? "Выполнена" : result.task?.date ? formatShortDate(result.task.date) : "Связь недоступна";
+      meta.textContent = result.done ? "Выполнена" : result.task?.date ? formatShortDate(result.task.date) : result.task ? "Позже · без даты" : "Связь недоступна";
       button.append(marker, title, meta);
       button.addEventListener("click", () => ctx.openTask?.(result.task));
       return button;

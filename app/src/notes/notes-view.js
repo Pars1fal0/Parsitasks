@@ -158,11 +158,11 @@
       const query = els.noteTaskSearch.value.trim().toLocaleLowerCase("ru-RU");
       const matches = [...(state.tasks || [])]
         .filter((task) => !query || `${task.title} ${task.date}`.toLocaleLowerCase("ru-RU").includes(query))
-        .sort((left, right) => right.date.localeCompare(left.date))
+        .sort((left, right) => (right.date || "").localeCompare(left.date || ""))
         .slice(0, 60);
       const selected = (state.tasks || []).find((task) => task.id === preferredId);
       if (selected && !matches.some((task) => task.id === preferredId)) matches.unshift(selected);
-      els.noteTaskId.replaceChildren(option("", "Без задачи"), ...matches.map((task) => option(task.id, `${task.title} · ${task.date}`)));
+      els.noteTaskId.replaceChildren(option("", "Без задачи"), ...matches.map((task) => option(task.id, `${task.title} · ${task.date || "Позже"}`)));
       els.noteTaskId.value = selected ? preferredId : "";
       updateOpenTask();
     }

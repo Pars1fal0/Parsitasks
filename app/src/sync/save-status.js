@@ -10,27 +10,31 @@
 
     function getMessage(state = {}) {
       if (state.localStorageError) return state.localStorageError;
-      if (state.remoteEnabled && state.syncStatus?.lastError) return "Ошибка синхронизации";
-      if (state.remoteEnabled && state.syncStatus?.inFlight) return "Синхронизация...";
-      if (state.online === false) return "Офлайн · сохранено локально";
-      if (state.remoteEnabled && state.syncStatus?.pending) return "Ожидает синхронизации";
+      if (state.online === false) return state.remoteEnabled
+        ? "Нет связи · сохранено на устройстве, синхронизируем позже"
+        : "Нет связи · сохранено на устройстве";
+      if (state.remoteEnabled && state.syncStatus?.lastError) return "Сохранено на устройстве · не удалось синхронизировать";
+      if (state.remoteEnabled && state.syncStatus?.inFlight) return "Сохранено на устройстве · синхронизация…";
+      if (state.remoteEnabled && state.syncStatus?.pending) {
+        return "Сохранено на устройстве · ожидает синхронизации";
+      }
       if (state.remoteEnabled && state.remoteLastPushedAt) {
         const syncedAt = new Date(state.remoteLastPushedAt);
         if (!Number.isNaN(syncedAt.getTime())) {
           return `Синхронизировано ${options.formatTime(options.toTimeValue(syncedAt))}`;
         }
       }
-      if (!state.localUpdatedAt) return "Сохранено локально";
+      if (!state.localUpdatedAt) return "Сохранено на устройстве";
       const savedAt = new Date(state.localUpdatedAt);
-      if (Number.isNaN(savedAt.getTime())) return "Сохранено локально";
-      return `Сохранено ${options.formatTime(options.toTimeValue(savedAt))}`;
+      if (Number.isNaN(savedAt.getTime())) return "Сохранено на устройстве";
+      return `Сохранено на устройстве ${options.formatTime(options.toTimeValue(savedAt))}`;
     }
 
     function getStateCode(state = {}) {
       if (state.localStorageError) return "error";
+      if (state.online === false) return "offline";
       if (state.remoteEnabled && state.syncStatus?.lastError) return "error";
       if (state.remoteEnabled && state.syncStatus?.inFlight) return "syncing";
-      if (state.online === false) return "offline";
       if (state.remoteEnabled && state.syncStatus?.pending) return "pending";
       if (state.remoteEnabled && state.remoteLastPushedAt) return "synced";
       return "local";

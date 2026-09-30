@@ -12,10 +12,12 @@
   }
 
   function moveSingleTask(state, task, sourceDateKey, targetDateKey, options = {}) {
+    sourceDateKey ||= task.deferredFromDate || "";
     const wasDone = task.completed?.[sourceDateKey] === true;
     task.completed = task.completed || {};
     task.notified = task.notified || {};
     task.date = targetDateKey;
+    task.deferredFromDate = "";
     global.RhythmTaskChecklist?.moveDate(task, sourceDateKey, targetDateKey);
     if (options.clearTime) {
       task.time = "";
@@ -32,6 +34,7 @@
   }
 
   function moveRecurringOccurrence(state, task, sourceDateKey, targetDateKey, options = {}, helpers = {}) {
+    const wasDone = task.completed?.[sourceDateKey] === true;
     task.excludedDates = task.excludedDates || {};
     task.excludedDates[sourceDateKey] = true;
     delete task.completed?.[sourceDateKey];
@@ -43,6 +46,7 @@
     const targetHasNaturalOccurrence = targetDateKey !== sourceDateKey && helpers.taskScheduledOn?.(task, targetDateKey);
     if (targetHasNaturalOccurrence && !options.clearTime) {
       delete task.excludedDates[targetDateKey];
+      if (wasDone) (task.completed ||= {})[targetDateKey] = true;
       global.RhythmTaskChecklist?.moveDate(task, sourceDateKey, targetDateKey);
       return;
     }
@@ -65,7 +69,7 @@
       reminderOffset: task.reminderOffset,
       checklist: clone(task.checklist || []),
       checklistLogs: { [targetDateKey]: clone(task.checklistLogs?.[sourceDateKey] || {}) },
-      completed: {},
+      completed: wasDone ? { [targetDateKey]: true } : {},
       acknowledgedOverdue: {},
       excludedDates: {},
       notified: {},
@@ -78,6 +82,29 @@
     if (!options.clearPastTimeToday) return false;
     if (targetDateKey !== helpers.toDateKey?.(new Date())) return false;
     return Boolean(helpers.cleanTimeValue?.(task.time));
+  }
+
+  function moveTasksToDate({ state, entries = [], targetDateKey, helpers = {} }) {
+    const date = new Date(`${targetDateKey}T12:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateKey || "") || !Number.isFinite(date.getTime())
+      || date.toISOString().slice(0, 10) !== targetDateKey) return { moved: 0, skipped: entries.length };
+    const seen = new Set();
+    let moved = 0;
+    let skipped = 0;
+    entries.forEach(({ taskId, dateKey }) => {
+      const key = `${taskId}:${dateKey || "later"}`;
+      const task = state.tasks.find((item) => item.id === taskId);
+      if (seen.has(key) || !task || dateKey === targetDateKey
+        || (task.date && (!helpers.taskScheduledOn?.(task, dateKey) || task.excludedDates?.[dateKey] === true))) {
+        skipped += 1;
+        return;
+      }
+      seen.add(key);
+      postponeTask({ state, task, sourceDateKey: dateKey, targetDateKey,
+        options: { clearPastTimeToday: true }, helpers });
+      moved += 1;
+    });
+    return { moved, skipped };
   }
 
   function removeTaskFromOrder(state, taskId, dateKey) {
@@ -324,6 +351,7 @@
   }
 
   const api = {
+    moveTasksToDate,
     moveRecurringSeriesFollowing,
     moveRecurringOccurrence,
     moveSingleTask,

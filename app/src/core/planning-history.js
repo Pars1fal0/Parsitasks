@@ -13,6 +13,7 @@
     const entries = [];
 
     tasks.forEach((task) => {
+      if (!task.date) return;
       if (task.repeat === "none") {
         if (task.date < yesterdayKey && !isTaskDone(task, task.date) && task.acknowledgedOverdue?.[task.date] !== true) {
           entries.push({ dateKey: task.date, recurring: false, task });

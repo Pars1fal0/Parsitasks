@@ -17,6 +17,7 @@
   const weekdayOrder = [1, 2, 3, 4, 5, 6, 0];
 
   function taskScheduledOn(task, dateKey) {
+    if (!task?.date || !dateKey) return false;
     if (task.repeat === "none") return task.date === dateKey;
     if (task.repeatUntil && dateKey > task.repeatUntil) return false;
     const date = parseDate(dateKey);

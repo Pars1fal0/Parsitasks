@@ -86,9 +86,10 @@
 
       normalized.tasks = Array.isArray(raw.tasks)
         ? raw.tasks.map((task) => {
-            const time = config.cleanTimeValue(task.time);
-            const startTime = config.cleanTimeValue(task.startTime);
-            const endTime = config.cleanTimeValue(task.endTime);
+            const deferred = task.date === null;
+            const time = deferred ? "" : config.cleanTimeValue(task.time);
+            const startTime = deferred ? "" : config.cleanTimeValue(task.startTime);
+            const endTime = deferred ? "" : config.cleanTimeValue(task.endTime);
             const hasBlock = isValidTimeBlock(startTime, endTime);
             const normalizedTime = hasBlock ? endTime : time;
             const aliasedCategoryId = categoryAliases.get(task.categoryId) || task.categoryId;
@@ -99,19 +100,20 @@
             return {
               id: task.id || config.createId(),
               title: config.cleanText(task.title) || "Задача",
-              date: config.normalizeDateKey(task.date),
+              date: deferred ? null : config.normalizeDateKey(task.date),
+              deferredFromDate: config.normalizeDateKey(task.deferredFromDate, ""),
               time: normalizedTime,
               scheduleMode: hasBlock ? "block" : normalizedTime ? "deadline" : "none",
               startTime: hasBlock ? startTime : "",
               endTime: hasBlock ? endTime : "",
               categoryId,
               priority: config.validPriorities.includes(task.priority) ? task.priority : "medium",
-              repeat: config.recurrence.normalizeRepeat(task.repeat),
-              repeatUntil: config.normalizeDateKey(task.repeatUntil, ""),
+              repeat: deferred ? "none" : config.recurrence.normalizeRepeat(task.repeat),
+              repeatUntil: deferred ? "" : config.normalizeDateKey(task.repeatUntil, ""),
               sourceTaskId: config.cleanText(task.sourceTaskId),
               movedFromDate: config.normalizeDateKey(task.movedFromDate, ""),
               customRepeat: config.recurrence.normalizeCustomRepeat(task.customRepeat),
-              reminderOffset: config.normalizeReminderOffset(task.reminderOffset, Boolean(normalizedTime)),
+              reminderOffset: deferred ? "none" : config.normalizeReminderOffset(task.reminderOffset, Boolean(normalizedTime)),
               completed: config.normalizeTaskFlags(task.completed),
               acknowledgedOverdue: config.normalizeTaskFlags(task.acknowledgedOverdue),
               excludedDates: config.normalizeTaskFlags(task.excludedDates),

@@ -28,7 +28,7 @@
         : Object.entries(source.completed || {}).some(([day, value]) => value === true && (!todayKey || day <= todayKey));
       return {
         type, id, typeLabel: TYPE_LABELS[type], title: source.title || "Задача",
-        detail: [subjectName, recurring ? "Повторяющаяся задача" : source.date ? formatDate(source.date) : ""].filter(Boolean).join(" · "),
+        detail: [subjectName, recurring ? "Повторяющаяся задача" : source.date ? formatDate(source.date) : "Позже · без даты"].filter(Boolean).join(" · "),
         status: done ? recurring ? "Сегодня выполнена" : "Выполнена"
           : recurring ? "Повторяется" : source.date && source.date < todayKey ? "Просрочена" : "В работе",
         tone: done ? "done" : !recurring && source.date && source.date < todayKey ? "overdue" : "active",

@@ -2,6 +2,7 @@ import { recordMcpActivity, undoMcpActivity } from "./activity-service.mjs";
 import { getTodayOverview, normalizeCustomRepeat, taskScheduledOn } from "./task-service.mjs";
 import goalActivity from "../app/src/goals/goal-activity.js";
 import habitSchedule from "../app/src/habits/habit-schedule.js";
+import taskChecklist from "../app/src/tasks/task-checklist.js";
 
 const PRIORITIES = new Set(["low", "medium", "high"]);
 const SCOPES = new Set(["occurrence", "following", "series"]);
@@ -26,7 +27,8 @@ export function updateTaskCommand(state, input, options = {}) {
     };
   }
   const task = findTask(nextState, input.taskId);
-  const occurrenceDate = normalizeDate(input.occurrenceDate || task.date);
+  const occurrenceDate = task.repeat === "none" && task.date === null
+    ? input.date ? normalizeDate(input.date) : null : normalizeDate(input.occurrenceDate || task.date);
   const scope = resolveScope(task, input.scope);
   const now = options.now || new Date().toISOString();
   let target = task;
@@ -80,7 +82,8 @@ export function deleteTaskCommand(state, input, options = {}) {
     };
   }
   const task = findTask(nextState, input.taskId);
-  const occurrenceDate = normalizeDate(input.occurrenceDate || task.date);
+  const occurrenceDate = task.repeat === "none" && task.date === null
+    ? null : normalizeDate(input.occurrenceDate || task.date);
   const scope = resolveScope(task, input.scope);
   const now = options.now || new Date().toISOString();
 
@@ -331,6 +334,16 @@ function applyTaskChanges(state, task, input, options, now) {
   if (input.date !== undefined) {
     task.date = normalizeDate(input.date);
     changed.push("date");
+    if (task.deferredFromDate) {
+      const sourceDate = task.deferredFromDate;
+      taskChecklist.moveDate(task, sourceDate, task.date);
+      if (task.completed?.[sourceDate] === true) {
+        delete task.completed[sourceDate];
+        task.completed[task.date] = true;
+      }
+      task.deferredFromDate = "";
+      changed.push("deferredFromDate", "completed", "checklistLogs");
+    }
   }
   if (input.priority !== undefined) {
     if (!PRIORITIES.has(input.priority)) throw new Error("Неизвестный приоритет");
@@ -364,6 +377,9 @@ function applyTaskChanges(state, task, input, options, now) {
   if (input.repeatUntil !== undefined) {
     task.repeatUntil = input.repeatUntil ? normalizeDate(input.repeatUntil) : "";
     changed.push("repeatUntil");
+  }
+  if (task.date === null && (task.repeat !== "none" || task.time || task.startTime || task.endTime || (task.reminderOffset || "none") !== "none")) {
+    throw new Error("Сначала назначь дату задаче из списка «Позже», затем настрой время, повтор или напоминание");
   }
   return [...new Set(changed)];
 }
@@ -475,6 +491,7 @@ function findActivity(state, requestId) {
 }
 
 function addTaskToOrder(state, date, taskId, now) {
+  if (!date) return;
   const order = new Set(state.taskOrder[date] || []);
   order.add(taskId);
   state.taskOrder[date] = [...order];

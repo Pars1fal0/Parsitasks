@@ -57,6 +57,12 @@ function toDateKey(date) {
     await page.locator("#activeDate").dispatchEvent("change");
     await page.waitForSelector(".timeline-task.is-scheduled");
     await page.waitForFunction(() => document.querySelectorAll(".timeline-task.is-scheduled").length === 4);
+    await page.waitForFunction(() => [...document.querySelectorAll(".brand-mark")].every((img) => img.complete && img.naturalWidth > 0));
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(async () => {
+      await Promise.all([...document.querySelectorAll(".brand-mark")].map((img) => img.decode()));
+      await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    });
     await page.evaluate(() => document.activeElement?.blur());
     await page.screenshot({ path: path.join(root, "app", "assets", "images", "landing-product.png") });
     console.log("landing product screenshot updated");

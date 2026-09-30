@@ -2,7 +2,7 @@
   const TASK_DATE_FIELDS = ["completed", "acknowledgedOverdue", "excludedDates", "notified"];
   const ENTITY_FIELDS = {
     tasks: [
-      "title", "date", "time", "scheduleMode", "startTime", "endTime", "categoryId", "priority",
+      "title", "date", "deferredFromDate", "time", "scheduleMode", "startTime", "endTime", "categoryId", "priority",
       "repeat", "repeatUntil", "sourceTaskId", "movedFromDate", "customRepeat", "reminderOffset",
       "studySubjectId", "studyDetails", "studyAssignedDate", "studyFileIds",
       "checklist",

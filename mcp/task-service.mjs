@@ -295,7 +295,7 @@ export function tasksForDate(state, dateKey) {
 }
 
 export function taskScheduledOn(task, dateKey) {
-  if (!task || !dateKey) return false;
+  if (!task?.date || !dateKey) return false;
   const repeat = REPEATS.has(task.repeat) ? task.repeat : "none";
   if (repeat === "none") return task.date === dateKey;
   if (task.repeatUntil && dateKey > task.repeatUntil) return false;
@@ -361,6 +361,7 @@ function serializeTask(task, dateKey, categories) {
     id: task.id,
     title: task.title,
     date: dateKey,
+    deferred: task.date === null,
     scheduleMode: task.scheduleMode || (task.time ? "deadline" : "none"),
     time: task.time || "",
     startTime: task.startTime || "",

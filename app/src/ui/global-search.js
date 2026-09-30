@@ -30,7 +30,7 @@
           id: task.id,
           type: "task",
           title: task.title,
-          detail: [task.date, subject, category, task.repeat !== "none" ? "Повтор" : "", checklistDetail].filter(Boolean).join(" · "),
+          detail: [task.date || "Позже · без даты", subject, category, task.repeat !== "none" ? "Повтор" : "", checklistDetail].filter(Boolean).join(" · "),
           ...(checklistMatch ? { checklistMatch: true } : {}),
           date: task.date,
           view: "tasks",

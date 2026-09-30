@@ -61,6 +61,7 @@
       const effectiveConfig = ctx.habitConfigOnDate?.(habit, ctx.getActiveDate()) || habit;
       ctx.els.habitFormPanel.classList.remove("is-collapsed");
       if (ctx.els.habitFormHeading) ctx.els.habitFormHeading.textContent = "Редактировать привычку";
+      ctx.els.habitForm.querySelector('button[type="submit"]').textContent = "Сохранить";
       if (ctx.els.resetHabitForm) ctx.els.resetHabitForm.textContent = "Отмена";
       ctx.els.habitId.value = habit.id;
       ctx.els.habitTitle.value = ctx.habitTitleOnDate?.(habit, ctx.getActiveDate()) || habit.title;
@@ -69,6 +70,7 @@
       ctx.els.habitRepeat.value = ctx.normalizeHabitRepeat(effectiveConfig.repeat);
       ctx.els.habitForm.querySelector("#habitWeeklyTarget").value = effectiveConfig.weeklyTarget || 3;
       ctx.els.habitForm.querySelector("#habitReminderTime").value = habit.reminderTime || "";
+      ctx.els.habitForm.querySelector("#habitExtraFields").open = Boolean(habit.reminderTime);
       ctx.setHabitCustomRepeatForm(effectiveConfig.customRepeat);
       ctx.syncHabitCustomRepeatPanel();
       ctx.els.habitUnit.value = effectiveConfig.unit || "";
@@ -80,6 +82,8 @@
     function resetHabitForm(options = {}) {
       ctx.els.habitFormPanel.classList.toggle("is-collapsed", options.open === false);
       if (ctx.els.habitFormHeading) ctx.els.habitFormHeading.textContent = "Новая привычка";
+      ctx.els.habitForm.querySelector('button[type="submit"]').textContent = "Создать";
+      ctx.els.habitForm.querySelector("#habitExtraFields").open = false;
       if (ctx.els.resetHabitForm) ctx.els.resetHabitForm.textContent = "Очистить";
       ctx.els.habitForm.reset();
       ctx.els.habitId.value = "";

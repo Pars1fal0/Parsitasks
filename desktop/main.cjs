@@ -48,7 +48,7 @@ function createWindow() {
     show: !isSmokeTest,
     title: "Parsitasks",
     backgroundColor: "#090d10",
-    icon: path.join(appRoot, "assets", "icons", "icon.svg"),
+    icon: path.join(appRoot, "assets", "icons", "icon-256.png"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -1004,7 +1004,7 @@ function isInternalAppNavigation(url) {
 function createTray() {
   if (isAutomationTest || tray) return;
 
-  const image = nativeImage.createFromPath(path.join(appRoot, "assets", "icons", "icon.svg"));
+  const image = nativeImage.createFromPath(path.join(appRoot, "assets", "icons", "icon-256.png"));
   tray = new Tray(image.resize({ width: 16, height: 16 }));
   tray.setToolTip("Parsitasks");
   tray.setContextMenu(
@@ -1315,7 +1315,7 @@ function reminderBody(reminder) {
 }
 
 function showNotification({ title, body, reminder }) {
-  const notification = new Notification({ title, body });
+  const notification = new Notification({ title, body, icon: path.join(appRoot, "assets", "icons", "icon-256.png") });
   notification.on("click", () => {
     showMainWindow();
     if (reminder) mainWindow?.webContents.send("reminders:clicked", reminder);
