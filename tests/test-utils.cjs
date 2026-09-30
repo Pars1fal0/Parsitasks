@@ -77,10 +77,12 @@ function createStateNormalizer() {
       return logs;
     },
     normalizeHabitFreezeDays: require("../app/src/habits/habit-freeze.js").normalizeFreezeDays,
+    normalizeTaskChecklist: require("../app/src/tasks/task-checklist.js").normalizeItems,
+    normalizeTaskChecklistLogs: require("../app/src/tasks/task-checklist.js").normalizeLogs,
     normalizeHabitConfigHistory: habitConfigHistory.normalizeHabitConfigHistory,
     normalizeHabitAvailabilityHistory: habitConfigHistory.normalizeHabitAvailabilityHistory,
     normalizeHabitRepeat: (value) =>
-      ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"].includes(value)
+      ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"].includes(value)
         ? value
         : "daily",
     normalizeHabitTitleHistory: habitTitleHistory.normalizeHabitTitleHistory,

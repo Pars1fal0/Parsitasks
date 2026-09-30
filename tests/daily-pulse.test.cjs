@@ -22,7 +22,9 @@ module.exports = [
       assert.equal(result.habitPercent, 100);
       assert.equal(result.pulse, 75);
       assert.equal(els.focusTitle.textContent, "Следующая");
-      assert.equal(els.sideProgressSummary.textContent, "Задачи 50% · привычки 100%");
+      assert.equal(els.sideProgressSummary.textContent, "Задачи: 1 из 2 · Привычки: 1 из 1");
+      assert.equal(els.sideProgressValue.textContent, "75%");
+      assert.equal(els.focusPercent.textContent, "1 из 2 задач");
     },
   },
   {
@@ -66,7 +68,8 @@ module.exports = [
         isTaskDone: () => false,
         isHabitComplete: () => true,
       }).render("2026-09-26");
-      assert.equal(els.sideProgressSummary.textContent, "Привычки 100%");
+      assert.equal(els.sideProgressSummary.textContent, "Привычки: 1 из 1");
+      assert.equal(els.sideProgressValue.textContent, "100%");
       assert.equal(els.focusPercent.textContent, "—");
     },
   },
@@ -86,6 +89,7 @@ module.exports = [
         taskDetails: () => [],
       }).render("2026-09-25");
       assert.equal(pulse.pulse, 100);
+      assert.equal(els.sideProgressValue.textContent, "100%");
       assert.equal(pulse.frozenHabits, 1);
       assert.equal(els.habitDoneMetric.textContent, "—");
       assert.equal(els.habitFrozenMetric.textContent, "Заморожено 1");

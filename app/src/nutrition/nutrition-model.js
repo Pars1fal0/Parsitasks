@@ -12,6 +12,8 @@
       name,
       unit: cleanText(value?.unit || "г", 20) || "г",
       calories: number(value?.calories, 0, 5000),
+      nutritionKnown: typeof value?.nutritionKnown === "boolean" ? value.nutritionKnown
+        : value?.calories !== undefined && value.calories !== null && value.calories !== "" && Number.isFinite(Number(value.calories)),
       protein: number(value?.protein, 0, 1000),
       fat: number(value?.fat, 0, 1000),
       carbs: number(value?.carbs, 0, 1000),
@@ -54,6 +56,8 @@
       servings: number(value?.servings, 0.1, 100, 1),
       ingredients,
       nutrition,
+      manualNutrition: value?.manualNutrition === true,
+      manualCaloriesKnown: value?.manualCaloriesKnown !== false,
       status: MEAL_STATUSES.includes(value?.status) ? value.status : "planned",
       notes: cleanText(value?.notes, 1000),
       createdAt: validTimestamp(value?.createdAt) || now,
@@ -76,6 +80,8 @@
         .filter(Boolean)
         .slice(0, 80),
       nutrition: normalizeNutrition(value?.nutrition),
+      manualNutrition: value?.manualNutrition === true,
+      manualCaloriesKnown: value?.manualCaloriesKnown !== false,
       notes: cleanText(value?.notes, 1000),
       createdAt: validTimestamp(value?.createdAt) || now,
       updatedAt: validTimestamp(value?.updatedAt) || now,
@@ -100,22 +106,44 @@
   }
 
   function calculateMealNutrition(meal, foods = []) {
+    return mealNutritionInfo(meal, foods).values;
+  }
+
+  function mealNutritionInfo(meal, foods = []) {
     const manual = normalizeNutrition(meal?.nutrition);
-    if (Object.values(manual).some((value) => value > 0)) return manual;
+    if (meal?.manualNutrition === true || Object.values(manual).some((value) => value > 0)) return {
+      values: manual, status: meal?.manualCaloriesKnown === false ? "unknown" : "complete",
+      missing: meal?.manualCaloriesKnown === false ? 1 : 0,
+    };
     const foodById = new Map(foods.map((food) => [food.id, food]));
     const calculated = { calories: 0, protein: 0, fat: 0, carbs: 0 };
-    let hasKnownFood = false;
+    let known = 0;
+    let missing = 0;
     (meal?.ingredients || []).forEach((ingredient) => {
       const food = foodById.get(ingredient.foodId);
-      if (!food || ingredient.unit !== food.unit || !ingredient.quantity) return;
-      hasKnownFood = true;
+      if (!food || food.nutritionKnown === false || ingredient.unit !== food.unit || !(ingredient.quantity > 0)) { missing += 1; return; }
+      known += 1;
       const ratio = ingredient.quantity / 100;
       Object.keys(calculated).forEach((key) => {
         calculated[key] += food[key] * ratio;
       });
     });
-    if (!hasKnownFood) return manual;
-    return Object.fromEntries(Object.entries(calculated).map(([key, value]) => [key, round(value)]));
+    return {
+      values: Object.fromEntries(Object.entries(calculated).map(([key, value]) => [key, round(value)])),
+      status: !known ? "unknown" : missing ? "partial" : "complete",
+      missing,
+    };
+  }
+
+  function mealsNutritionInfo(meals, foods = [], status = "") {
+    const included = (meals || []).filter((meal) => meal.status !== "skipped" && (!status || meal.status === status));
+    const infos = included.map((meal) => mealNutritionInfo(meal, foods));
+    const incomplete = infos.filter((info) => info.status !== "complete").length;
+    return {
+      values: summarizeMeals(included, foods),
+      status: !included.length || infos.every((info) => info.status === "unknown") ? "unknown" : incomplete ? "partial" : "complete",
+      incomplete,
+    };
   }
 
   function nutritionWeek(meals, anchorDate, firstDay = "monday") {
@@ -166,20 +194,30 @@
   }
 
   function parseIngredientsText(value, options = {}) {
-    return String(value || "")
-      .split(/\r?\n/)
-      .map((line) => {
-        const [name, quantity, unit] = line.split("|").map((part) => part.trim());
-        if (!name) return null;
-        const food = (options.foods || []).find((item) => item.name.toLocaleLowerCase("ru-RU") === name.toLocaleLowerCase("ru-RU"));
-        return normalizeIngredient({
-          foodId: food?.id || "",
-          name,
-          quantity: Number(quantity) || 0,
-          unit: unit || food?.unit || "г",
-        }, options);
-      })
-      .filter(Boolean);
+    const result = parseIngredientsInput(value, options);
+    if (result.errors.length) throw new Error(result.errors.join("\n"));
+    return result.ingredients;
+  }
+
+  function parseIngredientsInput(value, options = {}) {
+    const ingredients = [];
+    const errors = [];
+    String(value || "").split(/\r?\n/).forEach((raw, index) => {
+      const line = raw.trim();
+      if (!line) return;
+      const parts = line.includes("|") ? line.split("|").map((part) => part.trim())
+        : line.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)\s*([^\d\s|]+)$/)?.slice(1);
+      const [name, amount, unit] = parts || [];
+      const quantity = Number(String(amount || "").replace(",", "."));
+      if (!name || !parts || parts.length > 3 || !(quantity > 0) || quantity > 100000 || (unit || "").length > 20) {
+        errors.push(`Строка ${index + 1}: укажи продукт и количество больше 0, например «Рис 100 г».`);
+        return;
+      }
+      const food = (options.foods || []).find((item) => item.name.toLocaleLowerCase("ru-RU") === name.toLocaleLowerCase("ru-RU"));
+      ingredients.push(normalizeIngredient({ foodId: food?.id || "", name, quantity, unit: unit || food?.unit || "г" }, options));
+    });
+    if (ingredients.length > 80) errors.push("В одном блюде можно указать не больше 80 продуктов.");
+    return { ingredients, errors };
   }
 
   function formatIngredientsText(ingredients) {
@@ -248,6 +286,8 @@
     addDays,
     buildShoppingList,
     calculateMealNutrition,
+    mealNutritionInfo,
+    mealsNutritionInfo,
     formatIngredientsText,
     normalizeFood,
     normalizeIngredient,
@@ -257,6 +297,7 @@
     normalizeTemplate,
     nutritionWeek,
     parseIngredientsText,
+    parseIngredientsInput,
     startOfWeek,
     summarizeMeals,
   };

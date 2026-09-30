@@ -1,5 +1,6 @@
 ﻿(function (global) {
   function createCalendarView(ctx) {
+    let centeredWeek = "";
     const heatmapView = global.RhythmHeatmapView.createHeatmapView(ctx);
     ctx.els.openGoalsFromCalendar?.addEventListener("click", () => ctx.openGoals());
 
@@ -18,20 +19,28 @@
         const stats = ctx.statsForDate(dateKey);
         taskDone += stats.taskDone;
         taskTotal += stats.taskTotal;
-        habitDone += stats.habitDone;
-        habitTotal += stats.habitTotal;
+        habitDone += stats.habitDone - (stats.habitFlexibleDone || 0);
+        habitTotal += stats.habitTotal - (stats.habitFlexibleDone || 0);
         habitFrozen += stats.habitFrozen || 0;
       });
 
-      const taskMetric = taskTotal ? Math.round((taskDone / taskTotal) * 100) : 0;
-      const habitMetric = habitTotal ? Math.round((habitDone / habitTotal) * 100) : 0;
+      const weeklyGoals = new Set();
+      period.dates.forEach((day) => ctx.getState().habits.forEach((habit) => {
+        const key = `${habit.id}:${global.RhythmHabitSchedule?.weekStart(day)}`;
+        if (weeklyGoals.has(key)) return;
+        const progress = global.RhythmHabitSchedule?.weekProgress(habit, day, period.dates.at(-1));
+        if (!progress) return;
+        weeklyGoals.add(key);
+        habitDone += Math.min(progress.completed, progress.target);
+        habitTotal += progress.target;
+      }));
 
-      ctx.els.weeklyTaskMetric.textContent = taskTotal ? `${taskMetric}%` : "—";
-      ctx.els.weeklyHabitMetric.textContent = habitTotal ? `${habitMetric}%` : "—";
+      ctx.els.weeklyTaskMetric.textContent = taskTotal ? `${taskDone} из ${taskTotal}` : "—";
+      ctx.els.weeklyHabitMetric.textContent = habitTotal ? `${habitDone} из ${habitTotal}` : "—";
       if (ctx.els.overviewHeading) ctx.els.overviewHeading.textContent = period.heading;
-      ctx.els.weeklyTaskText.textContent = taskTotal ? `${taskDone} из ${taskTotal} задач ${period.suffix}` : `Нет задач ${period.suffix}`;
+      ctx.els.weeklyTaskText.textContent = taskTotal ? `Выполнено из плана ${period.suffix}` : `Нет задач ${period.suffix}`;
       ctx.els.weeklyHabitText.textContent = `${habitTotal
-        ? `${habitDone} из ${habitTotal} отметок привычек ${period.suffix}`
+        ? `Выполнено из плана ${period.suffix}${weeklyGoals.size ? ", включая недельные цели" : ""}`
         : `Нет обязательных привычек ${period.suffix}`}${habitFrozen ? ` · заморожено ${habitFrozen}` : ""}`;
       if (mode === "week") {
         renderGoalWeek(week);
@@ -71,6 +80,8 @@
         weekActivity: global.RhythmGoalActivity.goalWeekActivity(goal, state, week, { todayKey, habitStatusOnDate: ctx.habitStatusOnDate }),
         activity: global.RhythmGoalActivity.goalActivity(goal, state, { todayKey, habitStatusOnDate: ctx.habitStatusOnDate }),
       }));
+      const goalSection = ctx.els.goalWeekList.closest?.(".goal-week-review");
+      if (goalSection) goalSection.hidden = entries.length === 0;
       const tracked = entries.filter(({ weekActivity }) => weekActivity.hasLinks);
       const moved = tracked.filter(({ weekActivity }) => weekActivity.taskCount + weekActivity.habitCount > 0).length;
       ctx.els.goalWeekHeading.textContent = `Цели · ${ctx.formatShortDate(week[0])} — ${ctx.formatShortDate(week[6])}`;
@@ -127,6 +138,7 @@
 
     function renderWeekBoard(week) {
       const activeDate = ctx.getActiveDate();
+      const previousScroll = ctx.els.weekBoardGrid.scrollLeft;
       ctx.els.weekBoardLabel.textContent = `${ctx.formatShortDate(week[0])} — ${ctx.formatShortDate(week[6])}`;
       ctx.els.weekBoardGrid.replaceChildren();
 
@@ -170,6 +182,15 @@
         ctx.attachTaskDropZone(column, dateKey);
         column.querySelectorAll(".month-task-chip").forEach((chip) => ctx.attachTaskChipDrag(chip));
         ctx.els.weekBoardGrid.appendChild(column);
+      });
+      global.requestAnimationFrame?.(() => {
+        const grid = ctx.els.weekBoardGrid;
+        const active = grid.querySelector(".week-board-day.is-active");
+        if (!active || !grid.clientWidth) return;
+        const context = `${activeDate}:${grid.clientWidth}`;
+        grid.scrollLeft = context === centeredWeek ? previousScroll
+          : Math.max(0, active.offsetLeft - grid.firstElementChild.offsetLeft - (grid.clientWidth - active.clientWidth) / 2);
+        centeredWeek = context;
       });
     }
 

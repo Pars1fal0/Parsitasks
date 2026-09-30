@@ -5,7 +5,7 @@
       const compactQuery = global.matchMedia?.("(max-width: 680px)");
       const syncCompactDisclosures = (event = compactQuery) => {
         document.querySelector(".task-filter-disclosure")?.removeAttribute("open");
-        document.querySelector(".quick-task-disclosure")?.toggleAttribute("open", !event?.matches);
+        document.querySelector(".quick-task-disclosure")?.setAttribute("open", "");
         document.querySelector(".timeline-unscheduled-panel")?.toggleAttribute("open", !event?.matches);
       };
       syncCompactDisclosures();

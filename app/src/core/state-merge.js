@@ -4,6 +4,7 @@
   const habitTitleHistory = global.RhythmHabitTitleHistory || require("../habits/habit-title-history.js");
   const habitConfigHistory = global.RhythmHabitConfigHistory || require("../habits/habit-config-history.js");
   const habitFreeze = global.RhythmHabitFreeze || require("../habits/habit-freeze.js");
+  const taskChecklist = global.RhythmTaskChecklist || require("../tasks/task-checklist.js");
   const TASK_DATE_FIELDS = syncMetadata.TASK_DATE_FIELDS;
   const ENTITY_FIELDS = syncMetadata.ENTITY_FIELDS;
 
@@ -187,6 +188,7 @@
         timestampOf(remote),
       );
     });
+    result.checklistLogs = taskChecklist.mergeLogs(local.checklistLogs, remote.checklistLogs);
     return result;
   }
 
@@ -211,6 +213,7 @@
       titleHistory,
       type: latestConfig.type,
       repeat: latestConfig.repeat,
+      weeklyTarget: latestConfig.weeklyTarget,
       customRepeat: clone(latestConfig.customRepeat),
       unit: latestConfig.unit,
       goal: latestConfig.goal,

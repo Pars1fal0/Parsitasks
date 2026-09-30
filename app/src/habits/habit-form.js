@@ -13,6 +13,9 @@
         titleHistory: existing?.titleHistory || [],
         type,
         repeat: ctx.normalizeHabitRepeat(ctx.els.habitRepeat.value),
+        weeklyTarget: Number(ctx.els.habitForm.querySelector("#habitWeeklyTarget").value) || 3,
+        reminderTime: ctx.cleanTimeValue(ctx.els.habitForm.querySelector("#habitReminderTime").value),
+        notified: { ...(existing?.notified || {}) },
         customRepeat: ctx.els.habitRepeat.value === "custom" ? ctx.getHabitCustomRepeatFromForm() : {},
         startDate: existing?.startDate || ctx.getActiveDate(),
         unit: ctx.cleanText(ctx.els.habitUnit.value),
@@ -20,6 +23,7 @@
         logs: existing?.logs || {},
         freezeDays: existing?.freezeDays || {},
         availabilityHistory: existing?.availabilityHistory || [],
+        configHistory: existing?.configHistory || [],
         archived: existing?.archived === true,
         archivedAt: existing?.archivedAt || "",
         archivedFromDate: existing?.archivedFromDate || "",
@@ -32,6 +36,7 @@
             {
               type,
               repeat: ctx.normalizeHabitRepeat(ctx.els.habitRepeat.value),
+              weeklyTarget: habit.weeklyTarget,
               customRepeat: ctx.els.habitRepeat.value === "custom" ? ctx.getHabitCustomRepeatFromForm() : {},
               unit: ctx.cleanText(ctx.els.habitUnit.value),
               goal: type === "number" ? Math.max(1, Number(ctx.els.habitGoal.value || 1)) : 1,
@@ -44,6 +49,7 @@
         ? ctx.applyHabitTitleChange(habit, ctx.els.habitTitle.value, ctx.getActiveDate(), { cleanText: ctx.cleanText, updatedAt: now })
         : { ...habit, title: ctx.cleanText(ctx.els.habitTitle.value) };
 
+      if (existing && existing.reminderTime !== habit.reminderTime) habit.notified = {};
       ctx.upsertHabit(habit);
       ctx.saveState();
       resetHabitForm({ open: false });
@@ -61,6 +67,8 @@
       ctx.els.habitType.value = effectiveConfig.type;
       ctx.syncHabitTypeFields();
       ctx.els.habitRepeat.value = ctx.normalizeHabitRepeat(effectiveConfig.repeat);
+      ctx.els.habitForm.querySelector("#habitWeeklyTarget").value = effectiveConfig.weeklyTarget || 3;
+      ctx.els.habitForm.querySelector("#habitReminderTime").value = habit.reminderTime || "";
       ctx.setHabitCustomRepeatForm(effectiveConfig.customRepeat);
       ctx.syncHabitCustomRepeatPanel();
       ctx.els.habitUnit.value = effectiveConfig.unit || "";

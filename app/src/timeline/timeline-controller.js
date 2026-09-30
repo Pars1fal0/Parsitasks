@@ -97,6 +97,7 @@
         sourceTaskId: "",
         movedFromDate: "",
         completed: {},
+        checklistLogs: {},
         acknowledgedOverdue: {},
         excludedDates: {},
         notified: {},

@@ -3,6 +3,23 @@ const { excerptAround, searchWorkspace } = require("../app/src/ui/global-search.
 
 module.exports = [
   {
+    name: "finds checklist text with task context and distinguishes unknown food calories",
+    fn() {
+      const state = {
+        tasks: [{ id: "task", title: "Презентация", date: "2026-09-30", repeat: "none", checklist: [{ id: "a", title: "Собрать данные" }] }],
+        nutritionFoods: [{ id: "unknown", name: "Неизвестный", calories: 0, nutritionKnown: false }, { id: "zero", name: "Вода", calories: 0, nutritionKnown: true }],
+      };
+      const result = searchWorkspace(state, "собрать данные")[0];
+      assert.equal(result.title, "Презентация");
+      assert.equal(result.checklistMatch, true);
+      assert.match(result.detail, /Чек-лист: Собрать данные/);
+      assert.equal(searchWorkspace(state, "неизвестный")[0].detail, "Нет данных о калориях");
+      assert.match(searchWorkspace(state, "вода")[0].detail, /^0 ккал/);
+      state.tasks[0].completed = { "2026-09-30": true };
+      assert.equal(searchWorkspace(state, "собрать данные")[0].type, "archive");
+    },
+  },
+  {
     name: "searches tasks, habits, goals, and journal entries together",
     fn() {
       const state = {

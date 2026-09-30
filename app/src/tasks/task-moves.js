@@ -16,6 +16,7 @@
     task.completed = task.completed || {};
     task.notified = task.notified || {};
     task.date = targetDateKey;
+    global.RhythmTaskChecklist?.moveDate(task, sourceDateKey, targetDateKey);
     if (options.clearTime) {
       task.time = "";
       task.scheduleMode = "none";
@@ -42,6 +43,7 @@
     const targetHasNaturalOccurrence = targetDateKey !== sourceDateKey && helpers.taskScheduledOn?.(task, targetDateKey);
     if (targetHasNaturalOccurrence && !options.clearTime) {
       delete task.excludedDates[targetDateKey];
+      global.RhythmTaskChecklist?.moveDate(task, sourceDateKey, targetDateKey);
       return;
     }
     if (targetHasNaturalOccurrence) task.excludedDates[targetDateKey] = true;
@@ -61,6 +63,8 @@
       movedFromDate: sourceDateKey,
       customRepeat: {},
       reminderOffset: task.reminderOffset,
+      checklist: clone(task.checklist || []),
+      checklistLogs: { [targetDateKey]: clone(task.checklistLogs?.[sourceDateKey] || {}) },
       completed: {},
       acknowledgedOverdue: {},
       excludedDates: {},
@@ -116,6 +120,7 @@
     nextSeries.acknowledgedOverdue = {};
     nextSeries.excludedDates = {};
     nextSeries.notified = {};
+    nextSeries.checklistLogs = {};
     nextSeries.updatedAt = new Date().toISOString();
     return nextSeries;
   }
@@ -140,6 +145,7 @@
       sourceTaskId: task.id,
       movedFromDate: dateKey,
       completed,
+      checklistLogs: { [dateKey]: clone(task.checklistLogs?.[dateKey] || {}) },
       acknowledgedOverdue: {},
       excludedDates: {},
       notified: {},
@@ -166,6 +172,7 @@
       sourceTaskId: "",
       movedFromDate: "",
       completed: takeFlagsFrom(task, "completed", dateKey),
+      checklistLogs: takeFlagsFrom(task, "checklistLogs", dateKey),
       acknowledgedOverdue: takeFlagsFrom(task, "acknowledgedOverdue", dateKey),
       excludedDates: takeFlagsFrom(task, "excludedDates", dateKey),
       notified: takeFlagsFrom(task, "notified", dateKey),
@@ -202,6 +209,7 @@
       sourceTaskId: task.id,
       movedFromDate: dateKey,
       completed,
+      checklistLogs: { [dateKey]: clone(task.checklistLogs?.[dateKey] || {}) },
       acknowledgedOverdue: {},
       excludedDates: {},
       notified: {},
@@ -233,6 +241,7 @@
       sourceTaskId: "",
       movedFromDate: "",
       completed: takeFlagsFrom(task, "completed", dateKey),
+      checklistLogs: takeFlagsFrom(task, "checklistLogs", dateKey),
       acknowledgedOverdue: takeFlagsFrom(task, "acknowledgedOverdue", dateKey),
       excludedDates: takeFlagsFrom(task, "excludedDates", dateKey),
       notified: takeFlagsFrom(task, "notified", dateKey),
@@ -260,6 +269,7 @@
       categoryId: task.categoryId || "",
       priority: task.priority || "medium",
       reminderOffset: task.reminderOffset || "none",
+      checklist: clone(task.checklist || []),
     };
   }
 

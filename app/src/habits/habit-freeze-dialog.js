@@ -102,7 +102,9 @@
         dates.forEach((dateKey) => {
           if (dateKey < habit.startDate) return;
           const status = ctx.habitStatusOnDate(habit, dateKey);
-          if (status === "not-due") return;
+          if (status === "not-due" && !(global.RhythmHabitSchedule?.configOnDate(habit, dateKey).repeat === "weeklyGoal"
+            && global.RhythmHabitSchedule.occursOn(habit, dateKey)
+            && !global.RhythmHabitConfigHistory.habitIsArchivedOnDate(habit, dateKey))) return;
           if (operation === "freeze") {
             if (status === "complete") { skippedCompleted += 1; return; }
             if (status === "frozen" && (habit.freezeDays[dateKey].reason || "") === chosenReason) return;

@@ -1,0 +1,103 @@
+.task-extra-fields > summary,
+.study-cycle-details > summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 600;
+}
+.task-extra-fields > .stack-form { margin-top: 8px; }
+.task-extra-fields:not([open]) > .stack-form { display: none; }
+.task-extra-fields { border-top: 1px solid var(--line); }
+.study-subject-setup { margin-bottom: 20px; }
+.study-subject-setup .study-form { max-width: 520px; }
+.study-form[hidden], .time-presets[hidden] { display: none; }
+#studySubjectFormHome:empty { display: none; }
+.study-side-stack #studySubjectFormHome { order: -1; }
+.study-cycle-details { border-top: 1px solid var(--line); }
+
+body[data-view="tasks"] .topbar { margin-bottom: 12px; }
+body[data-view="tasks"] #pageTitle { font-size: 28px; }
+#tasksView > .toolbar { gap: 10px; margin-bottom: 8px; }
+#tasksView .task-filter-disclosure { flex: 1; min-width: 0; }
+#tasksView > .toolbar { flex-wrap: wrap; }
+#tasksView .task-filter-disclosure[open] { flex: 1 1 100%; }
+#tasksView #openTaskForm { width: auto; min-height: 44px; padding: 10px 12px; white-space: nowrap; }
+#tasksView #openTaskForm > span { display: inline; }
+#tasksView .quick-task-disclosure { margin: 0 0 12px; }
+#tasksView .quick-task-disclosure > summary { display: none; }
+#tasksView .quick-task-form { padding: 0; margin: 0; gap: 8px; }
+#tasksView .quick-task-form > .primary-button { width: 44px; min-width: 44px; height: 44px; padding: 10px; }
+#tasksView .quick-input-hints { display: none; }
+#tasksView .quick-task-form:focus-within .quick-input-hints { display: flex; }
+#tasksView .main-panel { padding: 0; border: 0; background: transparent; box-shadow: none; }
+#tasksView .main-panel > .panel-heading { margin: 0 0 8px; }
+#tasksHeading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#taskProgressRing { display: none; }
+#taskCounter { margin: 0; }
+#tasksView .task-list { gap: 0; }
+#tasksView .task-item { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; padding-block: 10px; }
+#tasksView .task-item h3 { overflow: visible; display: block; white-space: normal; text-overflow: clip; overflow-wrap: anywhere; -webkit-line-clamp: unset; }
+#tasksView .task-item .postpone-actions { display: none; }
+#tasksView .postpone-tomorrow-menu { display: block; }
+#tasksView .task-more > summary { min-width: 44px; min-height: 44px; }
+.focus-progress .focus-bar { display: none; }
+.sidebar-pulse strong { font-size: 24px; }
+.sidebar-pulse-summary { white-space: pre-line; }
+.focus-progress { width: auto; min-width: 140px; }
+.focus-progress span { font-size: 18px; }
+.goal-week-review[hidden] { display: none !important; }
+.metric-panel > strong { overflow-wrap: anywhere; }
+
+.nutrition-status-modes { margin-bottom: 12px; }
+.nutrition-calculation-note { margin: 0 0 12px; font-size: 13px; line-height: 1.5; }
+.nutrition-metrics { margin-bottom: 12px; }
+.nutrition-week-board.is-day { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+.nutrition-week-board.is-day .nutrition-day-column { min-height: 0; }
+.nutrition-week-board.is-day .nutrition-meal-group { max-width: 760px; }
+.nutrition-week-board.is-day .nutrition-meal-card { font-size: 15px; }
+.nutrition-meal-status { color: var(--text-soft); font-weight: 600; }
+#nutritionIngredientsError { color: var(--coral); white-space: normal; overflow-wrap: anywhere; }
+
+@media (max-width: 680px) {
+  body[data-view="tasks"] .workspace { padding-top: 12px; }
+  body[data-view="tasks"] .topbar { gap: 6px; margin-bottom: 8px; }
+  body[data-view="tasks"] #todayLabel { display: none; }
+  body[data-view="tasks"] #pageTitle { font-size: 22px; line-height: 1.3; }
+  body[data-view="tasks"] .title-block { min-height: 44px; }
+  body[data-view="tasks"] .save-status { margin-top: 2px; font-size: 11px; }
+  #tasksView > .toolbar { flex-direction: row; align-items: start; }
+  #tasksView .task-filter-disclosure { width: auto; }
+  #tasksView .task-filter-disclosure > summary { min-height: 44px; padding: 10px 12px; }
+  #tasksView .quick-task-form { grid-template-columns: minmax(0, 1fr) 44px; }
+  #tasksView .quick-task-form > .primary-button { grid-column: 2; grid-row: 1; }
+  #tasksView .quick-task-preview, #tasksView .quick-input-hints { grid-column: 1 / -1; }
+  #tasksView .task-item { grid-template-columns: 4px 44px minmax(0, 1fr) 44px; gap: 6px; padding-right: 0; }
+  #tasksView .task-item > .check-button { width: 44px; height: 44px; }
+  #tasksView .task-item > .task-actions { grid-column: 4; grid-row: 1; align-self: start; padding-right: 0; }
+  #tasksView .task-item > .drag-handle { position: static; grid-column: 4; grid-row: 2; width: 44px; height: 44px; }
+  #tasksView .task-item > .task-content { grid-column: 3; grid-row: 1 / 3; }
+  #tasksView .task-item .task-meta-chip, #tasksView .task-item .priority-pill { padding: 2px 5px; }
+  #tasksView .task-item .task-row h3 { display: block; overflow: visible; -webkit-line-clamp: unset; }
+  #nutritionView > .toolbar { gap: 8px; margin-bottom: 10px; }
+  body[data-view="nutrition"] .topbar { gap: 6px; margin-bottom: 8px; }
+  body[data-view="nutrition"] #todayLabel { display: none; }
+  body[data-view="nutrition"] #pageTitle { font-size: 22px; line-height: 1.3; }
+  body[data-view="nutrition"] .title-block { min-height: 44px; }
+  body[data-view="nutrition"] .save-status { margin-top: 2px; font-size: 11px; }
+  #nutritionHeading { display: none; }
+  #nutritionView > .toolbar > div:has(#nutritionWeekLabel[hidden]) { display: none; }
+  #nutritionWeekLabel { margin: 0; }
+  #nutritionView .nutrition-toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  #nutritionView .nutrition-toolbar-actions > .segmented-control:first-child { flex: 1 1 130px; }
+  #nutritionView .nutrition-toolbar-actions > .segmented-control:first-child > button { flex: 1; }
+  #nutritionView .nutrition-toolbar-actions .primary-button { margin-left: auto; min-height: 44px; }
+  #nutritionView .nutrition-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  #nutritionView .nutrition-metrics > div { padding: 8px 6px; min-width: 0; }
+  #nutritionView .nutrition-metrics span, #nutritionView .nutrition-metrics small { font-size: 11px; overflow-wrap: anywhere; }
+  #nutritionView .nutrition-metrics strong { font-size: 20px; }
+  #nutritionView .nutrition-week-panel { padding: 12px; }
+  #nutritionView .nutrition-week-board.is-day .nutrition-day-column { padding: 0; border: 0; }
+  #nutritionView .nutrition-week-board.is-day .nutrition-day-heading { display: none; }
+}

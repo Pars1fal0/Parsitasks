@@ -76,3 +76,10 @@
 @media (max-width: 900px) { .nav-tabs > .nav-tab[data-view="study"] { display: none; } }
 @media (max-width: 1100px) { .study-layout { grid-template-columns: 1fr; gap: 24px; } .study-form { max-width: none; } }
 @media (max-width: 600px) { .study-tabs { gap: 16px; overflow-x: auto; } .study-section-heading { flex-wrap: wrap; } .study-section-heading select { width: 100%; } .study-form-jump { display: inline-flex; } .study-field-row { grid-template-columns: 1fr 1fr; } .study-form { padding: 16px; } .study-item { gap: 10px; } }
+body[data-view="study"]:not(.study-schedule-mode) #prevDay,
+body[data-view="study"]:not(.study-schedule-mode) #nextDay,
+body[data-view="study"]:not(.study-schedule-mode) #todayButton,
+body[data-view="study"]:not(.study-schedule-mode) #activeDate,
+body[data-view="study"]:not(.study-schedule-mode) #todayLabel {
+  display: none;
+}

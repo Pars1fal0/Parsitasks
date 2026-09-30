@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v94-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v97-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -14,6 +14,7 @@ const APP_SHELL = [
   "src/auth/auth-gate.js",
   "src/platform/shell-version.js",
   "assets/styles/styles.css",
+  "assets/styles/workspace-ux.css",
   "assets/styles/disclosure-menus.css",
   "assets/styles/study.css",
   "assets/styles/notes.css",
@@ -42,6 +43,8 @@ const APP_SHELL = [
   "src/habits/habit-title-history.js",
   "src/habits/habit-config-history.js",
   "src/habits/habit-freeze.js",
+  "src/habits/habit-schedule.js",
+  "src/tasks/task-checklist.js",
   "src/habits/habit-freeze-dialog.js",
   "src/integrations/mcp-activity.js",
   "src/integrations/mcp-activity-controller.js",
@@ -69,6 +72,7 @@ const APP_SHELL = [
   "src/nutrition/nutrition-view.js",
   "src/ui/global-search.js",
   "src/core/storage.js",
+  "src/core/workspace-local.js",
   "src/core/navigation-state.js",
   "src/tasks/archive-view.js",
   "src/ui/disclosure-menus.js",

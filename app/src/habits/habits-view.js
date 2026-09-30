@@ -162,7 +162,8 @@
         button.setAttribute("aria-label", `Отметить ${habitTitle}`);
 
         const label = document.createElement("span");
-        label.textContent = done ? "Выполнено" : "Не отмечено";
+        const weekly = habitConfig.repeat === "weeklyGoal" ? global.RhythmHabitSchedule.weekProgress(habit, activeDate, activeDate) : null;
+        label.textContent = done ? "Выполнено" : weekly ? weekly.achieved ? "Цель недели достигнута" : "Можно выполнить сегодня" : "Не отмечено";
 
         button.addEventListener("click", () => {
           const undo = ctx.createUndoSnapshot();
@@ -384,7 +385,9 @@
       const effective = ctx.habitConfigOnDate?.(habit, ctx.getActiveDate()) || habit;
       const repeat = ctx.formatHabitRepeat({ ...habit, ...effective });
       const saved = ctx.habitStatusOnDate?.(habit, ctx.getActiveDate()) === "frozen" ? " · сохранена" : "";
-      return `Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} дн.${saved} · ${repeat}`;
+      const weekly = effective.repeat === "weeklyGoal" ? global.RhythmHabitSchedule.weekProgress(habit, ctx.getActiveDate(), ctx.getActiveDate()) : null;
+      const progress = weekly ? `За неделю: ${weekly.completed} из ${weekly.target}${weekly.achieved ? " · цель достигнута" : weekly.target === 0 ? " · на паузе" : ""} · ` : "";
+      return `${progress}Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} ${weekly ? "нед." : "дн."}${saved} · ${repeat}${habit.reminderTime ? ` · Напоминание ${habit.reminderTime}` : ""}`;
     }
 
     return {

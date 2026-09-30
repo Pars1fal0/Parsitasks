@@ -20,13 +20,18 @@
     (state.tasks || []).forEach((task) => {
       const category = categoryById.get(task.categoryId) || "";
       const subject = subjectById.get(task.studySubjectId) || "";
-      if (!matches(`${task.title} ${category} ${subject} ${task.studyDetails || ""}`, search)) return;
+      const base = `${task.title} ${category} ${subject} ${task.studyDetails || ""}`;
+      const checklistText = (task.checklist || []).map((item) => item.title).join(" · ");
+      if (!matches(`${base} ${checklistText}`, search)) return;
+      const checklistMatch = checklistText && (!matches(base, search) || (task.checklist || []).some((item) => matches(item.title, search)));
+      const checklistDetail = checklistMatch ? `Чек-лист: ${excerptAround(checklistText, search)}` : "";
       if (task.completed?.[task.date] !== true) {
         results.push({
           id: task.id,
           type: "task",
           title: task.title,
-          detail: [task.date, subject, category, task.repeat !== "none" ? "Повтор" : ""].filter(Boolean).join(" · "),
+          detail: [task.date, subject, category, task.repeat !== "none" ? "Повтор" : "", checklistDetail].filter(Boolean).join(" · "),
+          ...(checklistMatch ? { checklistMatch: true } : {}),
           date: task.date,
           view: "tasks",
         });
@@ -37,7 +42,7 @@
           id: `${task.id}:${date}`,
           type: "archive",
           title: task.title,
-          detail: [date, subject, category, "Выполнено"].filter(Boolean).join(" · "),
+          detail: [date, subject, category, "Выполнено", checklistDetail].filter(Boolean).join(" · "),
           date,
           view: "archive",
         });
@@ -112,7 +117,7 @@
         id: food.id,
         type: "nutrition",
         title: food.name,
-        detail: `${food.calories || 0} ккал на 100 ${food.unit || "г"}`,
+        detail: food.nutritionKnown === false ? "Нет данных о калориях" : `${food.calories || 0} ккал на 100 ${food.unit || "г"}`,
         view: "nutrition",
       });
     });

@@ -151,6 +151,7 @@
       type: latest.type,
       repeat: latest.repeat,
       customRepeat: clone(latest.customRepeat),
+      weeklyTarget: latest.weeklyTarget,
       unit: latest.unit,
       goal: latest.goal,
       configHistory: history,
@@ -189,13 +190,14 @@
       type,
       repeat,
       customRepeat,
+      weeklyTarget: Math.max(1, Math.min(7, Math.round(Number(value.weeklyTarget) || 3))),
       unit: cleanText(value.unit),
       goal: type === "number" ? Math.max(1, Number(value.goal || 1)) : 1,
     };
   }
 
   function normalizeRepeat(value) {
-    return ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"].includes(value)
+    return ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"].includes(value)
       ? value
       : "daily";
   }

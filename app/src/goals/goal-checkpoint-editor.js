@@ -2,6 +2,8 @@
   function createGoalCheckpointEditor(ctx) {
     let steps = [];
     let draggedId = "";
+    const itemLabel = ctx.itemLabel || "Чекпоинт";
+    const itemsLabel = ctx.itemsLabel || "Чекпоинты";
 
     function setSteps(value = []) {
       steps = value.map((step) => ({ id: step.id || ctx.createId(), title: clean(step.title), done: step.done === true })).filter((step) => step.title);
@@ -28,6 +30,7 @@
         if (shouldFocus) focus();
         return false;
       }
+      if (ctx.maxItems && steps.length >= ctx.maxItems) { ctx.showToast?.(`Не больше ${ctx.maxItems} пунктов`); return false; }
       const step = { id: ctx.createId(), title, done: false };
       steps.push(step);
       ctx.els.goalCheckpointInput.value = "";
@@ -66,7 +69,7 @@
       ctx.els.goalCheckpointList.replaceChildren();
       steps.forEach((step, index) => ctx.els.goalCheckpointList.appendChild(createRow(step, index)));
       ctx.els.goalCheckpointEmpty.hidden = steps.length > 0;
-      ctx.els.goalCheckpointList.setAttribute("aria-label", steps.length ? `Чекпоинты: ${steps.length}` : "Чекпоинты не добавлены");
+      ctx.els.goalCheckpointList.setAttribute("aria-label", steps.length ? `${itemsLabel}: ${steps.length}` : `${itemsLabel} не добавлены`);
     }
 
     function createRow(step, index) {
@@ -81,7 +84,7 @@
       grip.type = "button";
       grip.draggable = true;
       grip.title = "Перетащить или переместить стрелками";
-      grip.setAttribute("aria-label", `Изменить порядок чекпоинта ${step.title}`);
+      grip.setAttribute("aria-label", ctx.itemLabel ? `Изменить порядок: ${step.title}` : `Изменить порядок чекпоинта ${step.title}`);
       grip.appendChild(createIcon("grip"));
       grip.addEventListener("keydown", (event) => {
         if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
@@ -128,7 +131,7 @@
       input.type = "text";
       input.maxLength = 120;
       input.value = step.title;
-      input.setAttribute("aria-label", `Чекпоинт ${index + 1}`);
+      input.setAttribute("aria-label", `${itemLabel} ${index + 1}`);
       input.addEventListener("input", () => renameStep(step.id, input.value));
       input.addEventListener("blur", () => {
         if (clean(input.value)) return;
@@ -137,8 +140,8 @@
 
       remove.className = "icon-button subtle goal-checkpoint-remove";
       remove.type = "button";
-      remove.title = "Удалить чекпоинт";
-      remove.setAttribute("aria-label", `Удалить чекпоинт ${step.title}`);
+      remove.title = `Удалить ${itemLabel.toLocaleLowerCase("ru-RU")}`;
+      remove.setAttribute("aria-label", `Удалить ${itemLabel.toLocaleLowerCase("ru-RU")} ${step.title}`);
       remove.appendChild(createIcon("trash"));
       remove.addEventListener("click", () => removeStep(step.id));
 

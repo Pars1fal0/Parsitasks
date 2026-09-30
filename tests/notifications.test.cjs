@@ -14,6 +14,51 @@ function createController() {
 }
 
 module.exports = [
+  { name: "habit reminders link to habits, retain failure retries and use their selected time", async fn() {
+    const originalNavigator = Object.getOwnPropertyDescriptor(global, "navigator");
+    const calls = [];
+    let fails = true;
+    Object.defineProperty(global, "navigator", { configurable: true, value: { serviceWorker: { getRegistration: async () => ({
+      showNotification: async (...args) => { if (fails) throw new Error("offline"); calls.push(args); },
+    }) } } });
+    try {
+      const controller = createNotifications({ saveState() {}, habitTitleOnDate: () => "Historical title" });
+      const h = { id: "h", title: "Habit", reminderTime: "08:35" };
+      await controller.deliverNotification(h, "2026-09-30", "habit");
+      assert.equal(h.notified, undefined);
+      fails = false;
+      await controller.deliverNotification(h, "2026-09-30", "habit");
+      assert.equal(calls[0][1].data.url, "/app#habits");
+      assert.equal(calls[0][1].data.habitId, "h");
+      assert.equal(calls[0][1].body, "Historical title");
+      assert.equal(h.notified["2026-09-30"], true);
+      const time = createController().habitReminderDate(h, "2026-09-30");
+      assert.equal(time.getHours(), 8); assert.equal(time.getMinutes(), 35);
+    } finally {
+      if (originalNavigator) Object.defineProperty(global, "navigator", originalNavigator);
+      else delete global.navigator;
+    }
+  } },
+  { name: "desktop snapshots exclude completed, frozen and past habit reminders", fn() {
+    require("../app/src/habits/habit-schedule.js");
+    const previousWindow = global.window;
+    let snapshot;
+    global.window = { rhythmDesktop: { syncReminders: (value) => { snapshot = value; } } };
+    const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const today = dateKey(new Date());
+    const base = { repeat: "daily", type: "check", startDate: today, reminderTime: "08:00", logs: {} };
+    try {
+      createNotifications({ getState: () => ({ habits: [
+        { ...base, id: "open", title: "Open" },
+        { ...base, id: "done", title: "Done", logs: { [today]: true } },
+        { ...base, id: "frozen", title: "Frozen", freezeDays: { [today]: { active: true } } },
+      ] }), getNotificationsEnabled: () => true, tasksForDate: () => [], toDateKey: dateKey,
+        cleanTimeValue: (value) => value, parseDate: (key) => new Date(`${key}T12:00:00`) }).syncDesktopReminders();
+      assert.equal(snapshot.reminders.filter((item) => item.dateKey === today).length, 1);
+      assert.equal(snapshot.reminders.find((item) => item.dateKey === today).habitId, "open");
+      assert.ok(snapshot.reminders.every((item) => item.dateKey >= today));
+    } finally { if (previousWindow === undefined) delete global.window; else global.window = previousWindow; }
+  } },
   {
     name: "delivers PWA reminders through the service worker and marks them sent",
     async fn() {

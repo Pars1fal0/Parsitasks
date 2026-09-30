@@ -15,14 +15,23 @@
           deliverNotification(task, dateKey);
         });
       });
+      if (!global.rhythmDesktop) {
+        const dateKey = ctx.toDateKey(now);
+        (ctx.getState().habits || []).forEach((habit) => {
+          if (!global.RhythmHabitSchedule.shouldRemind(habit, dateKey) || habit.notified?.[dateKey]) return;
+          const reminderAt = habitReminderDate(habit, dateKey);
+          if (reminderAt && reminderAt <= now) deliverNotification(habit, dateKey, "habit");
+        });
+      }
     }
 
-    async function deliverNotification(task, dateKey) {
-      const tag = `${task.id}-${dateKey}`;
+    async function deliverNotification(task, dateKey, kind = "task") {
+      const tag = `${kind === "habit" ? "habit-" : ""}${task.id}-${dateKey}`;
       if (pendingNotifications.has(tag)) return;
       pendingNotifications.add(tag);
       try {
-        const options = { body: task.title, data: { dateKey, taskId: task.id, url: "/app#tasks" }, tag };
+        const options = { body: kind === "habit" ? ctx.habitTitleOnDate?.(task, dateKey) || task.title : task.title,
+          data: { dateKey, [kind === "habit" ? "habitId" : "taskId"]: task.id, url: kind === "habit" ? "/app#habits" : "/app#tasks" }, tag };
         if (!global.rhythmDesktop && global.navigator?.serviceWorker) {
           const registration = await global.navigator.serviceWorker.getRegistration?.();
           if (registration?.showNotification) await registration.showNotification("Parsitasks", options);
@@ -117,6 +126,15 @@
             priority: task.priority,
           });
         });
+        (ctx.getState().habits || []).forEach((habit) => {
+          if (dateKey < ctx.toDateKey(now)) return;
+          if (!global.RhythmHabitSchedule.shouldRemind(habit, dateKey)) return;
+          const at = habitReminderDate(habit, dateKey);
+          if (!at) return;
+          reminders.push({ id: `habit-${habit.id}-${dateKey}`, habitId: habit.id,
+            title: ctx.habitTitleOnDate?.(habit, dateKey) || habit.title, dateKey,
+            dueAt: at.toISOString(), reminderAt: at.toISOString(), category: "Привычка" });
+        });
       }
 
       window.rhythmDesktop.syncReminders({ generatedAt: now.toISOString(), reminders });
@@ -131,6 +149,15 @@
         if (ctx.taskOccursOn(task, dateKey)) dates.push(dateKey);
       }
       return dates;
+    }
+
+    function habitReminderDate(habit, dateKey) {
+      const time = ctx.cleanTimeValue(habit.reminderTime);
+      if (!time) return null;
+      const date = ctx.parseDate(dateKey);
+      const [hours, minutes] = time.split(":").map(Number);
+      date.setHours(hours, minutes, 0, 0);
+      return date;
     }
 
     function getDueDate(task, dateKey) {
@@ -171,6 +198,7 @@
       deliverNotification,
       getDueDate,
       getReminderDate,
+      habitReminderDate,
       getTaskDeadlineDate,
       requestNotifications,
       syncDesktopReminders,

@@ -2,6 +2,33 @@ const assert = require("node:assert/strict");
 
 module.exports = [
   {
+    name: "nutrition summaries distinguish missing calories from explicit zero across MCP writes",
+    async fn() {
+      const service = await import("../mcp/nutrition-service.mjs");
+      const unknown = service.createMealCommand(state(), {
+        requestId: "unknown-calories-001", date: "2026-07-27", title: "Unknown",
+      });
+      assert.equal(service.getNutritionDay(unknown.state, "2026-07-27").calculation.status, "unknown");
+      const macrosOnly = service.createMealCommand(state(), {
+        requestId: "protein-only-001", date: "2026-07-27", title: "Protein only", nutrition: { protein: 15 },
+      });
+      assert.equal(service.getNutritionDay(macrosOnly.state, "2026-07-27").calculation.status, "unknown");
+      const zero = service.createMealCommand(state(), {
+        requestId: "zero-calories-001", date: "2026-07-27", title: "Zero", nutrition: { calories: 0 },
+      });
+      assert.equal(service.getNutritionDay(zero.state, "2026-07-27").calculation.status, "complete");
+      assert.equal(service.getNutritionDay(zero.state, "2026-07-27").totals.calories, 0);
+      const input = { from: "2026-07-27", to: "2026-07-27", meals: [
+        { date: "2026-07-27", title: "Zero", nutrition: { calories: 0 } },
+      ] };
+      const preview = service.previewNutritionPlan(state(), input);
+      const applied = service.applyNutritionPlanCommand(state(), {
+        ...input, requestId: "zero-plan-001", previewToken: preview.previewToken,
+      });
+      assert.equal(service.getNutritionWeek(applied.state, "2026-07-27").calculation.status, "complete");
+    },
+  },
+  {
     name: "previews and atomically applies an idempotent weekly plan",
     async fn() {
       const service = await import("../mcp/nutrition-service.mjs");

@@ -8,7 +8,7 @@
       const habits = ctx.getHabits(dateKey);
       const statusOnDate = ctx.habitStatusOnDate || ((habit, date) => ctx.isHabitComplete(habit, date) ? "complete" : "missed");
       const frozenHabits = habits.filter((habit) => statusOnDate(habit, dateKey) === "frozen").length;
-      const habitTotal = habits.length - frozenHabits;
+      const habitTotal = habits.filter((habit) => ["complete", "missed"].includes(statusOnDate(habit, dateKey))).length;
       const doneHabits = habits.filter((habit) => statusOnDate(habit, dateKey) === "complete").length;
       const habitPercent = percent(doneHabits, habitTotal);
       const values = [];
@@ -23,7 +23,7 @@
         : tasks.length
           ? "Все задачи на выбранный день выполнены"
           : "Можно добавить задачу или оставить день без перегруза";
-      ctx.els.focusPercent.textContent = tasks.length ? `${taskPercent}%` : "—";
+      ctx.els.focusPercent.textContent = tasks.length ? `${doneTasks.length} из ${tasks.length} задач` : "—";
       ctx.els.focusBar.style.width = `${taskPercent}%`;
       ctx.els.todayOpenMetric.textContent = openTasks.length;
       ctx.els.todayDoneMetric.textContent = doneTasks.length;
@@ -35,8 +35,8 @@
       ctx.els.sideProgressValue.textContent = values.length ? `${pulse}%` : "—";
       ctx.els.sideProgressBar.style.width = `${pulse}%`;
       const summary = [];
-      if (tasks.length) summary.push(`Задачи ${taskPercent}%`);
-      if (habitTotal) summary.push(`${tasks.length ? "привычки" : "Привычки"} ${habitPercent}%`);
+      if (tasks.length) summary.push(`Задачи: ${doneTasks.length} из ${tasks.length}`);
+      if (habitTotal) summary.push(`Привычки: ${doneHabits} из ${habitTotal}`);
       if (!summary.length) summary.push("Нет обязательных дел");
       if (frozenHabits) summary.push(`Заморожено ${frozenHabits}`);
       ctx.els.sideProgressSummary.textContent = summary.join(" · ");

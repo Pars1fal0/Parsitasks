@@ -1,6 +1,6 @@
-﻿const SCHEMA_VERSION = 22;
+﻿const SCHEMA_VERSION = 23;
 const VALID_PRIORITIES = ["high", "medium", "low"];
-const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"];
+const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
 const VALID_BACKUP_SCHEDULES = ["0", "5", "15", "30", "60"];
 const VALID_VIEWS = ["tasks", "timeline", "habits", "goals", "overview", "study", "nutrition", "journal", "board", "archive", "settings"];
@@ -56,6 +56,8 @@ const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
   createId,
   normalizeDateKey,
   normalizeHabitLogs,
+  normalizeTaskChecklist: window.RhythmTaskChecklist.normalizeItems,
+  normalizeTaskChecklistLogs: window.RhythmTaskChecklist.normalizeLogs,
   normalizeHabitFreezeDays: window.RhythmHabitFreeze.normalizeFreezeDays,
   normalizeHabitRepeat,
   normalizeHabitConfigHistory: window.RhythmHabitConfigHistory.normalizeHabitConfigHistory,
@@ -992,6 +994,7 @@ const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
       requestAnimationFrame(() => {
         const row = [...els.taskList.children].find((item) => item.dataset.taskId === result.id);
         if (!row) return;
+        if (result.checklistMatch) row.querySelector(".task-checklist")?.setAttribute("open", "");
         row.scrollIntoView({ block: "center" });
         row.querySelector(".check-button")?.focus({ preventScroll: true });
       });
@@ -1033,6 +1036,8 @@ const nutritionView = window.RhythmNutritionView.createNutritionView({
   getActiveDate: () => activeDate,
   getFirstDayOfWeek: () => firstDayOfWeek,
   getState: () => state,
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
+  confirmAction,
   model: window.RhythmNutritionModel,
   setActiveDate: (dateKey) => {
     activeDate = dateKey;
@@ -1110,6 +1115,7 @@ const habitFormController = window.RhythmHabitForm.createHabitForm({
   applyHabitTitleChange: window.RhythmHabitTitleHistory.applyHabitTitleChange,
   els,
   cleanText,
+  cleanTimeValue,
   createId,
   createUndoSnapshot,
   findHabit: (id) => state.habits.find((habit) => habit.id === id),
@@ -1352,6 +1358,7 @@ const notificationsController = window.RhythmNotifications.createNotifications({
   getCategory,
   getNotificationsEnabled: () => notificationSetting === "on",
   getState: () => state,
+  habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
   isTaskDone,
   parseDate,
   saveState,
@@ -1377,6 +1384,12 @@ const studyController = window.RhythmStudyController.createStudyController({
   deleteTask: (id) => taskState.deleteTask(id),
   getAccessToken: async () => (await remoteAuth.ensureFreshSession().catch(() => null))?.access_token || "",
   getState: () => state,
+  getActiveDate: () => activeDate,
+  setActiveDate: (dateKey) => {
+    activeDate = dateKey;
+    saveUiState();
+    render();
+  },
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   openNote: openLinkedNote,
   openNotesForSubject,
@@ -1414,7 +1427,6 @@ const appShellController = window.RhythmAppShellController.createAppShellControl
   renderSaveStatus,
   restoreTaskFormPanel,
   saveUiState,
-  scrollActiveViewStart: (view) => view === "timeline" && timelineView.scrollToRelevantTime(),
   setActiveView: (value) => { activeView = value; },
   setOverviewMode: (value) => { overviewMode = value; },
   syncTaskTimePresets,
@@ -2113,7 +2125,6 @@ async function saveQuickTask(event) {
   };
 
   state.tasks.push(task);
-  activeDate = task.date;
   activeView = "tasks";
   if (taskFilter === "done" || !matchesCategoryFilter(task, taskCategoryFilter) ||
     !taskMatchesSearch(task, taskSearchQuery, activeDate)) clearTaskFilters();
@@ -2124,7 +2135,10 @@ async function saveQuickTask(event) {
   saveState();
   resetTaskForm({ open: false });
   render();
-  showToast(`Добавлено: ${task.title}`, { undo });
+  showToast(`Добавлено на ${formatLongDate(task.date)}: ${task.title}`, {
+    undo,
+    ...(task.date !== activeDate ? { action: { label: "Открыть день", onClick: () => openDateTasks(task.date) } } : {}),
+  });
 }
 
 function updateQuickTaskPreview() {
@@ -2289,6 +2303,8 @@ function setHabitCustomRepeatForm(value = {}) {
 function syncHabitCustomRepeatPanel() {
   const isCustom = els.habitRepeat.value === "custom";
   els.habitCustomRepeatPanel.hidden = !isCustom;
+  document.querySelector("#habitWeeklyTargetField").hidden = els.habitRepeat.value !== "weeklyGoal";
+  document.querySelector("#habitGoalLabel").textContent = els.habitRepeat.value === "weeklyGoal" ? "Цель за выполнение" : "Цель в день";
   if (isCustom) updateHabitCustomRepeatSummary();
 }
 
@@ -2507,16 +2523,7 @@ function habitsForDate(dateKey) {
 }
 
 function habitOccursOn(habit, dateKey) {
-  const effective = habitConfigOnDate(habit, dateKey);
-  const repeat = normalizeHabitRepeat(effective.repeat);
-  return window.RhythmRecurrence.taskScheduledOn(
-    {
-      date: habit.startDate || activeDate,
-      repeat: repeat === "weekly" ? "weekly" : repeat,
-      customRepeat: effective.customRepeat,
-    },
-    dateKey,
-  );
+  return window.RhythmHabitSchedule.occursOn(habit, dateKey);
 }
 
 function isTaskDone(task, dateKey) {
@@ -2529,10 +2536,7 @@ function isHabitComplete(habit, dateKey) {
 }
 
 function habitStatusOnDate(habit, dateKey) {
-  return window.RhythmHabitFreeze.statusOnDate(habit, dateKey, {
-    scheduled: habitOccursOn(habit, dateKey),
-    config: habitConfigOnDate(habit, dateKey),
-  });
+  return window.RhythmHabitSchedule.statusOnDate(habit, dateKey);
 }
 
 function habitConfigOnDate(habit, dateKey) {
@@ -2543,7 +2547,7 @@ function habitConfigOnDate(habit, dateKey) {
 }
 
 function habitStreak(habit, dateKey = toDateKey(new Date())) {
-  return window.RhythmHabitFreeze.streak(habit, dateKey, habitStatusOnDate);
+  return window.RhythmHabitSchedule.streak(habit, dateKey, toDateKey(new Date()));
 }
 
 function sortTasks(a, b, orderMap = new Map()) {
@@ -2591,6 +2595,7 @@ function taskMatchesSearch(task, query, dateKey = "") {
     category?.name,
     subject?.name,
     task.studyDetails,
+    ...(task.checklist || []).map((item) => item.title),
     priorityLabels[task.priority],
     formatTaskRepeat(task),
     task.time,
@@ -2658,6 +2663,10 @@ function normalizeHabitRepeat(value) {
 }
 
 function formatHabitRepeat(habit) {
+  if (habit.repeat === "weeklyGoal") {
+    const count = habit.weeklyTarget || 3;
+    return `${count} ${count === 1 ? "раз" : count < 5 ? "раза" : "раз"} в неделю`;
+  }
   return window.RhythmRecurrence.repeatLabel({
     repeat: normalizeHabitRepeat(habit.repeat),
     customRepeat: habit.customRepeat,
@@ -2683,12 +2692,14 @@ function statsForDate(dateKey) {
   const habitDone = habits.filter((habit) => habitStatusOnDate(habit, dateKey) === "complete").length;
   const habitFrozen = habits.filter((habit) => habitStatusOnDate(habit, dateKey) === "frozen").length;
   const taskTotal = tasks.length;
-  const habitTotal = habits.length - habitFrozen;
+  const habitTotal = habits.filter((habit) => ["complete", "missed"].includes(habitStatusOnDate(habit, dateKey))).length;
+  const habitFlexibleDone = habits.filter((habit) => habitConfigOnDate(habit, dateKey).repeat === "weeklyGoal" && isHabitComplete(habit, dateKey)).length;
   return {
     habitDone,
     habitFrozen,
     habitPercent: habitTotal ? Math.round((habitDone / habitTotal) * 100) : 0,
     habitTotal,
+    habitFlexibleDone,
     taskDone,
     taskPercent: taskTotal ? Math.round((taskDone / taskTotal) * 100) : 0,
     taskTotal,

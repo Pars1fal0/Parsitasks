@@ -20,6 +20,10 @@
       if (ctx.els.taskDeadlineTimeField) ctx.els.taskDeadlineTimeField.hidden = isBlock || isNone;
       if (ctx.els.taskBlockTimeFields) ctx.els.taskBlockTimeFields.hidden = !isBlock;
       if (ctx.els.taskReminderField) ctx.els.taskReminderField.hidden = isNone;
+      const presets = ctx.els.taskTime.closest?.(".deadline-card")?.querySelector(".time-presets");
+      if (presets) presets.hidden = isNone;
+      const extra = ctx.els.taskTime.closest?.("#taskExtraFields");
+      if (extra && !isNone) extra.open = true;
       ctx.els.taskTime.disabled = isBlock || isNone;
       ctx.els.taskTime.required = !isBlock && !isNone;
       ctx.els.taskStartTime.disabled = !isBlock;

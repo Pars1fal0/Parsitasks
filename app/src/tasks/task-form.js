@@ -1,6 +1,15 @@
 (function (global) {
   function createTaskForm(ctx) {
     let editingOccurrenceDate = "";
+    const checklistEditor = global.RhythmGoalCheckpointEditor?.createGoalCheckpointEditor({
+      createId: ctx.createId, itemLabel: "Пункт", itemsLabel: "Пункты", maxItems: 50, showToast: ctx.showToast,
+      els: {
+        goalCheckpointInput: ctx.els.taskForm.querySelector("#taskChecklistInput"),
+        goalCheckpointList: ctx.els.taskForm.querySelector("#taskChecklistEditorList"),
+        goalCheckpointEmpty: ctx.els.taskForm.querySelector("#taskChecklistEmpty"),
+        addGoalCheckpoint: ctx.els.taskForm.querySelector("#addTaskChecklistItem"),
+      },
+    });
 
     function saveTaskFromForm(event) {
       event.preventDefault();
@@ -44,6 +53,8 @@
         acknowledgedOverdue: existing?.acknowledgedOverdue || {},
         excludedDates: existing?.excludedDates || {},
         notified: { ...(existing?.notified || {}) },
+        checklist: global.RhythmTaskChecklist.normalizeItems(checklistEditor.getSteps(), ctx.createId),
+        checklistLogs: existing?.checklistLogs || {},
         createdAt: existing?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         studySubjectId: existing?.studySubjectId || "",
@@ -53,6 +64,7 @@
       };
 
       const isRecurringEdit = Boolean(existing && existing.repeat !== "none" && !existing.sourceTaskId);
+      if (existing && !isRecurringEdit && existing.date !== task.date) global.RhythmTaskChecklist.moveDate(task, existing.date, task.date);
       const repeatEditScope = getRepeatEditScope();
       const notificationChanged = Boolean(existing && notificationScheduleChanged(existing, task));
       const savedTask = isRecurringEdit
@@ -80,6 +92,7 @@
       if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Отмена";
       ctx.els.taskId.value = task.id;
       ctx.els.taskTitle.value = task.title;
+      checklistEditor.setSteps(task.checklist || []);
       const isRecurringSeries = task.repeat !== "none" && !task.sourceTaskId;
       editingOccurrenceDate = isRecurringSeries ? ctx.getActiveDate() : task.date;
       ctx.els.taskDate.value = editingOccurrenceDate;
@@ -98,6 +111,9 @@
       ctx.syncCustomRepeatPanel();
       ctx.syncTaskTimePresets();
       syncRepeatEditScope(isRecurringSeries, editingOccurrenceDate);
+      const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
+      if (extra) extra.open = Boolean(task.categoryId || task.priority === "high" || task.priority === "low"
+        || task.repeat !== "none" || task.time || task.checklist?.length);
       ctx.markFormPristine?.(ctx.els.taskForm);
       ctx.els.taskTitle.focus();
     }
@@ -107,6 +123,7 @@
       if (ctx.els.taskFormHeading) ctx.els.taskFormHeading.textContent = "Новая задача";
       if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Очистить";
       ctx.els.taskForm.reset();
+      checklistEditor.setSteps();
       resetInlineCategory();
       ctx.els.taskId.value = "";
       editingOccurrenceDate = "";
@@ -126,6 +143,8 @@
       ctx.els.taskReminder.value = "none";
       ctx.syncTaskTimePresets();
       syncRepeatEditScope(false);
+      const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
+      if (extra) extra.open = Boolean(ctx.els.taskCategoryId.value);
       ctx.markFormPristine?.(ctx.els.taskForm);
     }
 

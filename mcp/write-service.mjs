@@ -1,7 +1,7 @@
 import { recordMcpActivity, undoMcpActivity } from "./activity-service.mjs";
 import { getTodayOverview, normalizeCustomRepeat, taskScheduledOn } from "./task-service.mjs";
 import goalActivity from "../app/src/goals/goal-activity.js";
-import habitFreeze from "../app/src/habits/habit-freeze.js";
+import habitSchedule from "../app/src/habits/habit-schedule.js";
 
 const PRIORITIES = new Set(["low", "medium", "high"]);
 const SCOPES = new Set(["occurrence", "following", "series"]);
@@ -315,6 +315,7 @@ export function getDayBrief(state, date, mode = "plan") {
       totalHabits: overview.summary.habitsTotal,
       completedHabits: overview.summary.habitsCompleted,
       frozenHabits: overview.summary.habitsFrozen,
+      flexibleHabits: overview.summary.habitsFlexible,
     },
   };
 }
@@ -533,13 +534,7 @@ function effectiveEntry(history, date) {
 }
 
 function linkedHabitStatusOnDate(habit, date) {
-  const config = effectiveEntry(habit.configHistory, date) || habit;
-  const scheduled = taskScheduledOn({
-    date: habit.startDate || date,
-    repeat: config.repeat || habit.repeat || "daily",
-    customRepeat: config.customRepeat || habit.customRepeat,
-  }, date);
-  return habitFreeze.statusOnDate(habit, date, { scheduled, config });
+  return habitSchedule.statusOnDate(habit, date);
 }
 
 function reconcileLinkedGoals(state, now, todayKey) {

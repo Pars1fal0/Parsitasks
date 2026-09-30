@@ -368,11 +368,10 @@ const { _electron: electron } = require("playwright-core");
     await page.setViewportSize({ height: 780, width: 390 });
     await page.waitForFunction(() => [
       ".task-filter-disclosure",
-      ".quick-task-disclosure",
       ".timeline-unscheduled-panel",
     ].every((selector) => !document.querySelector(selector)?.hasAttribute("open")));
     assert.equal(await page.locator(".task-filter-disclosure").getAttribute("open"), null);
-    assert.equal(await page.locator(".quick-task-disclosure").getAttribute("open"), null);
+    assert.notEqual(await page.locator(".quick-task-disclosure").getAttribute("open"), null);
     assert.equal(await page.locator(".timeline-unscheduled-panel").getAttribute("open"), null);
 
     await page.locator(".nav-more-summary").click();

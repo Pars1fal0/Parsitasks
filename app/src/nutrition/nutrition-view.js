@@ -8,15 +8,58 @@
   };
 
   function createNutritionView(ctx) {
+    const local = global.RhythmWorkspaceLocal.createWorkspaceLocal({ getUserId: ctx.getUserId,
+      onError: () => ctx.showToast("Не удалось сохранить изменения на этом устройстве") });
+    const draftStatus = document.querySelector("#nutritionMealDraftStatus");
+    const discardDraftButton = document.querySelector("#nutritionMealDiscardDraft");
+    let owner = local.owner();
+    const compactQuery = global.matchMedia("(max-width: 820px)");
+    const period = () => local.read("nutrition-period", compactQuery.matches ? "day" : "week");
+    const mealStatus = () => local.read("nutrition-status", "");
+    const mealDraft = local.formDraft(ctx.els.nutritionMealForm,
+      () => `meal-draft:${ctx.els.nutritionMealId.value || "new"}`, (saved) => {
+        draftStatus.textContent = saved ? "Черновик сохранён на этом устройстве" : "Черновик не сохранён";
+        discardDraftButton.hidden = !saved;
+      });
+
     function bindEvents() {
-      ctx.els.nutritionPrevWeek?.addEventListener("click", () => shiftWeek(-7));
-      ctx.els.nutritionNextWeek?.addEventListener("click", () => shiftWeek(7));
+      mealDraft.bind();
+      discardDraftButton.addEventListener("click", async () => {
+        closeMealForm();
+        const confirmed = await ctx.confirmAction({ title: "Удалить черновик блюда?", confirmLabel: "Удалить", tone: "danger" });
+        if (!confirmed || !mealDraft.clear()) {
+          ctx.els.nutritionMealDialog.showModal();
+          discardDraftButton.focus();
+        }
+      });
+      ctx.els.nutritionMealDialog.addEventListener("cancel", (event) => { event.preventDefault(); closeMealForm(); });
+      ctx.els.nutritionMealDialog.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeMealForm();
+      });
+      compactQuery.addEventListener("change", render);
+      document.querySelectorAll("[data-nutrition-period]").forEach((button) => button.addEventListener("click", () => {
+        local.write("nutrition-period", button.dataset.nutritionPeriod);
+        render();
+      }));
+      document.querySelectorAll("[data-nutrition-status]").forEach((button) => button.addEventListener("click", () => {
+        local.write("nutrition-status", button.dataset.nutritionStatus);
+        render();
+      }));
+      ctx.els.nutritionPrevWeek?.addEventListener("click", () => shiftWeek(period() === "day" ? -1 : -7));
+      ctx.els.nutritionNextWeek?.addEventListener("click", () => shiftWeek(period() === "day" ? 1 : 7));
       ctx.els.nutritionCurrentWeek?.addEventListener("click", () => ctx.setActiveDate(ctx.today()));
       ctx.els.nutritionAddMeal?.addEventListener("click", () => openMealForm());
       ctx.els.nutritionEmptyAction?.addEventListener("click", () => openMealForm());
       ctx.els.nutritionMealClose?.addEventListener("click", closeMealForm);
       ctx.els.nutritionMealCancel?.addEventListener("click", closeMealForm);
       ctx.els.nutritionMealForm?.addEventListener("submit", saveMeal);
+      ctx.els.nutritionMealIngredients.addEventListener("input", () => {
+        ctx.els.nutritionMealIngredients.setCustomValidity("");
+        document.querySelector("#nutritionIngredientsError").textContent = "";
+      });
       ctx.els.nutritionFoodForm?.addEventListener("submit", saveFood);
       ctx.els.nutritionTargetsForm?.addEventListener("submit", saveTargets);
       ctx.els.nutritionMealDialog?.addEventListener("click", (event) => {
@@ -35,26 +78,60 @@
     }
 
     function render() {
+      if (owner !== local.owner()) {
+        ctx.els.nutritionMealDialog.close();
+        ctx.els.nutritionMealForm.reset();
+        ctx.els.nutritionMealId.value = "";
+        owner = local.owner();
+      }
       const state = ctx.getState();
       const week = ctx.model.nutritionWeek(state.nutritionMeals, ctx.getActiveDate(), ctx.getFirstDayOfWeek());
-      ctx.els.nutritionWeekLabel.textContent = `${ctx.formatDate(week.start)} — ${ctx.formatDate(week.end)}`;
-      const meals = week.days.flatMap((date) => week.byDate[date]);
-      const summary = ctx.model.summarizeMeals(meals, state.nutritionFoods);
+      const dayMode = period() === "day";
+      const dates = dayMode ? [ctx.getActiveDate()] : week.days;
+      const status = mealStatus();
+      document.querySelectorAll("[data-nutrition-period]").forEach((button) => {
+        const active = button.dataset.nutritionPeriod === period();
+        button.setAttribute("aria-pressed", String(active)); button.classList.toggle("is-active", active);
+      });
+      document.querySelectorAll("[data-nutrition-status]").forEach((button) => {
+        const active = button.dataset.nutritionStatus === status;
+        button.setAttribute("aria-pressed", String(active)); button.classList.toggle("is-active", active);
+      });
+      ctx.els.nutritionWeekLabel.textContent = dayMode ? ctx.formatDate(ctx.getActiveDate()) : `${ctx.formatDate(week.start)} — ${ctx.formatDate(week.end)}`;
+      ctx.els.nutritionWeekLabel.hidden = dayMode;
+      ctx.els.nutritionPrevWeek.setAttribute("aria-label", dayMode ? "Предыдущий день" : "Предыдущая неделя");
+      ctx.els.nutritionNextWeek.setAttribute("aria-label", dayMode ? "Следующий день" : "Следующая неделя");
+      ctx.els.nutritionCurrentWeek.textContent = dayMode ? "Сегодня" : "Эта неделя";
+      ctx.els.nutritionCurrentWeek.closest(".segmented-control").hidden = dayMode;
+      const weekMeals = week.days.flatMap((date) => week.byDate[date]);
+      const meals = dates.flatMap((date) => week.byDate[date]).filter((meal) => !status || meal.status === status);
+      const info = ctx.model.mealsNutritionInfo(meals, state.nutritionFoods);
+      const summary = info.values;
       const targets = state.nutritionSettings?.targets || {};
-      setMetric("nutritionCaloriesMetric", summary.calories, Number(targets.calories) * 7, "ккал");
-      setMetric("nutritionProteinMetric", summary.protein, Number(targets.protein) * 7, "г");
-      setMetric("nutritionFatMetric", summary.fat, Number(targets.fat) * 7, "г");
-      setMetric("nutritionCarbsMetric", summary.carbs, Number(targets.carbs) * 7, "г");
+      const multiplier = dates.length;
+      setMetric("nutritionCaloriesMetric", summary.calories, Number(targets.calories) * multiplier, "ккал", info);
+      setMetric("nutritionProteinMetric", summary.protein, Number(targets.protein) * multiplier, "г", info);
+      setMetric("nutritionFatMetric", summary.fat, Number(targets.fat) * multiplier, "г", info);
+      setMetric("nutritionCarbsMetric", summary.carbs, Number(targets.carbs) * multiplier, "г", info);
+      const metrics = document.querySelector(".nutrition-metrics");
+      metrics.setAttribute("aria-label", `${status ? "Съедено" : "План и съедено"} ${dayMode ? "за выбранный день" : "за выбранную неделю"}`);
+      const note = document.querySelector("#nutritionCalculationNote");
+      note.hidden = info.status === "complete" || !meals.some((meal) => meal.status !== "skipped");
+      note.textContent = info.status === "unknown" ? "Нет данных для расчёта калорий и БЖУ."
+        : `Неполный расчёт: блюд без полных данных ${info.incomplete}.`;
       ctx.els.nutritionEmpty.hidden = meals.length > 0;
+      document.querySelector("#nutritionEmptyTitle").textContent = status ? "Съеденных блюд пока нет"
+        : dayMode ? "На этот день пока нет блюд" : "На этой неделе пока нет блюд";
       ctx.els.nutritionWeekBoard.classList.toggle("is-empty", meals.length === 0);
-      renderWeek(week, state);
-      renderShopping(meals);
+      ctx.els.nutritionWeekBoard.classList.toggle("is-day", dayMode);
+      renderWeek(week, state, dates, status);
+      renderShopping(weekMeals, week.start);
       renderTargets(state.nutritionSettings);
       renderFoods(state.nutritionFoods);
     }
 
-    function renderWeek(week, state) {
-      replaceChildren(ctx.els.nutritionWeekBoard, week.days.map((date) => {
+    function renderWeek(week, state, dates, status) {
+      replaceChildren(ctx.els.nutritionWeekBoard, dates.map((date) => {
         const column = element("section", "nutrition-day-column");
         column.dataset.date = date;
         column.addEventListener("dragover", (event) => {
@@ -75,7 +152,8 @@
         heading.append(addButton);
         column.append(heading);
         const grouped = new Map();
-        (week.byDate[date] || []).forEach((meal) => {
+        const visibleMeals = (week.byDate[date] || []).filter((meal) => !status || meal.status === status);
+        visibleMeals.forEach((meal) => {
           const list = grouped.get(meal.type) || [];
           list.push(meal);
           grouped.set(meal.type, list);
@@ -88,7 +166,7 @@
           meals.forEach((meal) => group.append(renderMeal(meal, state)));
           column.append(group);
         });
-        if (!(week.byDate[date] || []).length) column.append(text("p", "Нет блюд", "nutrition-day-empty"));
+        if (!visibleMeals.length) column.append(text("p", status ? "Нет съеденных блюд" : "Нет блюд", "nutrition-day-empty"));
         return column;
       }));
     }
@@ -109,10 +187,13 @@
       menu.addEventListener("click", () => card.classList.toggle("is-menu-open"));
       top.append(menu);
       card.append(top, text("strong", meal.title));
-      const values = ctx.model.calculateMealNutrition(meal, state.nutritionFoods);
+      if (meal.status !== "planned") card.append(text("small", meal.status === "eaten" ? "Съедено" : "Пропущено", "nutrition-meal-status"));
+      const info = ctx.model.mealNutritionInfo(meal, state.nutritionFoods);
+      const values = info.values;
       card.append(text(
         "small",
-        `${Math.round(values.calories)} ккал · Б ${round(values.protein)} · Ж ${round(values.fat)} · У ${round(values.carbs)}`,
+        info.status === "unknown" ? "Калории и БЖУ не рассчитаны"
+          : `${Math.round(values.calories)} ккал · Б ${round(values.protein)} · Ж ${round(values.fat)} · У ${round(values.carbs)}${info.status === "partial" ? ` · Неполный расчёт: без данных ${info.missing}` : ""}`,
       ));
       const actions = element("div", "nutrition-meal-actions");
       const eaten = actionButton(meal.status === "eaten" ? "Вернуть в план" : "Съедено");
@@ -130,8 +211,9 @@
       return card;
     }
 
-    function renderShopping(meals) {
+    function renderShopping(meals, weekStart) {
       const items = ctx.model.buildShoppingList(meals);
+      const purchases = local.read(`shopping:${weekStart}`, {});
       ctx.els.nutritionShoppingCount.textContent = String(items.length);
       if (!items.length) {
         replaceChildren(ctx.els.nutritionShoppingList, [text("p", "Список пуст", "muted")]);
@@ -141,6 +223,14 @@
         const label = element("label", "nutrition-shopping-item");
         const checkbox = document.createElement("input");
         checkbox.type = "checkbox";
+        const key = JSON.stringify([item.foodId || item.name.toLocaleLowerCase("ru-RU"), item.unit]);
+        checkbox.checked = Number(purchases[key]) >= item.quantity && Object.hasOwn(purchases, key);
+        checkbox.addEventListener("change", () => {
+          const latest = local.read(`shopping:${weekStart}`, {});
+          if (checkbox.checked) latest[key] = item.quantity;
+          else delete latest[key];
+          if (!local.write(`shopping:${weekStart}`, latest)) checkbox.checked = !checkbox.checked;
+        });
         label.append(checkbox, text("span", item.name), text("strong", `${round(item.quantity)} ${item.unit}`));
         return label;
       }));
@@ -168,7 +258,8 @@
         .map((food) => {
           const row = element("div", "nutrition-food-item");
           const body = element("span");
-          body.append(text("strong", food.name), text("small", `${food.calories} ккал · Б ${food.protein} · Ж ${food.fat} · У ${food.carbs}`));
+          body.append(text("strong", food.name), text("small", food.nutritionKnown === false ? "Нет данных о калориях"
+            : `${food.calories} ккал · Б ${food.protein} · Ж ${food.fat} · У ${food.carbs}`));
           const edit = iconButton("icon-edit", `Изменить ${food.name}`);
           edit.addEventListener("click", () => fillFoodForm(food));
           const remove = iconButton("icon-trash", `Удалить ${food.name}`);
@@ -188,11 +279,17 @@
       ctx.els.nutritionMealTime.value = target.time || "";
       ctx.els.nutritionMealServings.value = target.servings || 1;
       ctx.els.nutritionMealIngredients.value = ctx.model.formatIngredientsText(target.ingredients);
-      ctx.els.nutritionMealCalories.value = target.nutrition?.calories || "";
-      ctx.els.nutritionMealProtein.value = target.nutrition?.protein || "";
-      ctx.els.nutritionMealFat.value = target.nutrition?.fat || "";
-      ctx.els.nutritionMealCarbs.value = target.nutrition?.carbs || "";
+      ctx.els.nutritionMealIngredients.setCustomValidity("");
+      document.querySelector("#nutritionIngredientsError").textContent = "";
+      ctx.els.nutritionMealCalories.value = target.manualCaloriesKnown === false ? ""
+        : target.manualNutrition ? target.nutrition?.calories ?? "" : target.nutrition?.calories || "";
+      ctx.els.nutritionMealProtein.value = target.manualNutrition ? target.nutrition?.protein ?? "" : target.nutrition?.protein || "";
+      ctx.els.nutritionMealFat.value = target.manualNutrition ? target.nutrition?.fat ?? "" : target.nutrition?.fat || "";
+      ctx.els.nutritionMealCarbs.value = target.manualNutrition ? target.nutrition?.carbs ?? "" : target.nutrition?.carbs || "";
       ctx.els.nutritionMealNotes.value = target.notes || "";
+      const restored = mealDraft.restore();
+      draftStatus.textContent = restored ? "Восстановлен черновик на этом устройстве" : "";
+      discardDraftButton.hidden = !restored;
       ctx.els.nutritionMealDialog.showModal();
       global.setTimeout(() => ctx.els.nutritionMealTitle.focus(), 0);
     }
@@ -204,6 +301,14 @@
     function saveMeal(event) {
       event.preventDefault();
       const state = ctx.getState();
+      const parsed = ctx.model.parseIngredientsInput(ctx.els.nutritionMealIngredients.value, { foods: state.nutritionFoods, createId: ctx.createId });
+      if (parsed.errors.length) {
+        document.querySelector("#nutritionIngredientsError").textContent = parsed.errors.join(" ");
+        ctx.els.nutritionMealIngredients.setCustomValidity(parsed.errors[0]);
+        ctx.els.nutritionMealIngredients.reportValidity();
+        ctx.els.nutritionMealIngredients.focus();
+        return;
+      }
       const existing = state.nutritionMeals.find((meal) => meal.id === ctx.els.nutritionMealId.value);
       const result = ctx.saveMeal({
         id: ctx.els.nutritionMealId.value,
@@ -212,21 +317,26 @@
         type: ctx.els.nutritionMealType.value,
         time: ctx.els.nutritionMealTime.value,
         servings: ctx.els.nutritionMealServings.value,
-        ingredients: ctx.model.parseIngredientsText(ctx.els.nutritionMealIngredients.value, {
-          foods: state.nutritionFoods,
-          createId: ctx.createId,
-        }),
+        ingredients: parsed.ingredients,
         nutrition: {
           calories: ctx.els.nutritionMealCalories.value,
           protein: ctx.els.nutritionMealProtein.value,
           fat: ctx.els.nutritionMealFat.value,
           carbs: ctx.els.nutritionMealCarbs.value,
         },
+        manualNutrition: [ctx.els.nutritionMealCalories, ctx.els.nutritionMealProtein, ctx.els.nutritionMealFat, ctx.els.nutritionMealCarbs]
+          .some((field) => field.value !== ""),
+        manualCaloriesKnown: ctx.els.nutritionMealCalories.value !== "",
         notes: ctx.els.nutritionMealNotes.value,
         status: existing?.status || "planned",
         createdAt: existing?.createdAt,
       });
-      if (result !== false) closeMealForm();
+      if (result !== false) {
+        mealDraft.clear();
+        draftStatus.textContent = "";
+        discardDraftButton.hidden = true;
+        closeMealForm();
+      }
     }
 
     function saveFood(event) {
@@ -249,7 +359,7 @@
       ctx.els.nutritionFoodId.value = food.id;
       ctx.els.nutritionFoodName.value = food.name;
       ctx.els.nutritionFoodUnit.value = food.unit;
-      ctx.els.nutritionFoodCalories.value = food.calories;
+      ctx.els.nutritionFoodCalories.value = food.nutritionKnown === false ? "" : food.calories;
       ctx.els.nutritionFoodProtein.value = food.protein;
       ctx.els.nutritionFoodFat.value = food.fat;
       ctx.els.nutritionFoodCarbs.value = food.carbs;
@@ -273,12 +383,17 @@
       ctx.setActiveDate(ctx.model.addDays(ctx.getActiveDate(), days));
     }
 
-    function setMetric(id, value, target, unit) {
+    function setMetric(id, value, target, unit, info) {
       const current = Number(value) || 0;
       const metric = ctx.els[id];
-      metric.textContent = round(current);
+      metric.textContent = info.status === "unknown" ? "—" : `${round(current)}${info.status === "partial" ? "+" : ""}`;
       const detail = metric.parentElement?.querySelector("small");
       if (!detail) return;
+      if (info.status !== "complete") {
+        detail.textContent = unit;
+        metric.parentElement.removeAttribute("data-progress");
+        return;
+      }
       if (!(target > 0)) {
         detail.textContent = unit;
         metric.parentElement.removeAttribute("data-progress");

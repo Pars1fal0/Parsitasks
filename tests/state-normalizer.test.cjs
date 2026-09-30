@@ -2,6 +2,19 @@ const assert = require("node:assert/strict");
 const { createStateNormalizer } = require("./test-utils.cjs");
 
 module.exports = [
+  { name: "imports and round trips flexible targets, habit reminders and checklist history", fn() {
+    const normalizer = createStateNormalizer();
+    const raw = { habits: [{ id: "h", title: "Gym", repeat: "weeklyGoal", weeklyTarget: 3, startDate: "2026-09-14", reminderTime: "08:30", logs: {} }],
+      tasks: [{ id: "t", title: "Prepare", date: "2026-09-30", checklist: [{ id: "a", title: "First" }],
+        checklistLogs: { "2026-09-30": { a: { done: true, updatedAt: "2026-09-30T10:00:00Z" } } } }] };
+    const normalized = normalizer.normalizeState(normalizer.normalizeState(raw));
+    assert.equal(normalized.habits[0].repeat, "weeklyGoal");
+    assert.equal(normalized.habits[0].configHistory[0].weeklyTarget, 3);
+    assert.equal(normalized.habits[0].reminderTime, "08:30");
+    assert.equal(normalized.tasks[0].checklist[0].id, "a");
+    assert.equal(normalized.tasks[0].checklistLogs["2026-09-30"].a.done, true);
+    assert.deepEqual(normalizer.normalizeState({ tasks: [{ title: "Old" }] }).tasks[0].checklist, []);
+  } },
   {
     name: "preserves valid Google Calendar task links and drops malformed entries",
     fn() {

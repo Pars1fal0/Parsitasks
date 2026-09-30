@@ -194,3 +194,11 @@
     grid-column: 2;
   }
 }
+/* Task checklists share the existing checkpoint editor. */
+.task-checklist { margin-top: 8px; font-size: 13px; }
+.task-checklist summary { cursor: pointer; width: fit-content; color: var(--muted); }
+.task-checklist > div { display: grid; gap: 8px; margin-top: 10px; }
+.task-checklist label { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.task-checklist input { flex: 0 0 auto; width: 18px; height: 18px; margin: 0; accent-color: var(--teal); }
+.task-checklist span { min-width: 0; overflow-wrap: anywhere; }
+.task-checklist input:checked + span { text-decoration: line-through; color: var(--muted); }

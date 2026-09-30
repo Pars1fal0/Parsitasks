@@ -1,5 +1,6 @@
 import recurrence from "../app/src/tasks/recurrence.js";
-import habitFreeze from "../app/src/habits/habit-freeze.js";
+import habitSchedule from "../app/src/habits/habit-schedule.js";
+import taskChecklist from "../app/src/tasks/task-checklist.js";
 import goalActivity from "../app/src/goals/goal-activity.js";
 
 export const normalizeCustomRepeat = recurrence.normalizeCustomRepeat;
@@ -53,7 +54,8 @@ export function getTodayOverview(state, dateKey) {
     summary: {
       tasksTotal: tasks.length,
       tasksCompleted: tasks.filter((task) => task.completed).length,
-      habitsTotal: habits.filter((habit) => !habit.frozen).length,
+      habitsTotal: habits.filter((habit) => ["complete", "missed"].includes(habit.status)).length,
+      habitsFlexible: habits.filter((habit) => habit.weeklyProgress).length,
       habitsCompleted: habits.filter((habit) => habit.completed).length,
       habitsFrozen: habits.filter((habit) => habit.frozen).length,
       goalsTotal: goals.length,
@@ -343,13 +345,7 @@ function habitsForDate(state, dateKey) {
   return (Array.isArray(state?.habits) ? state.habits : []).filter((habit) => {
     const availability = effectiveHistoryEntry(habit.availabilityHistory, dateKey);
     if (availability ? availability.active === false : habit.archived === true) return false;
-    const config = effectiveHistoryEntry(habit.configHistory, dateKey) || habit;
-    return taskScheduledOn({
-      date: habit.startDate || dateKey,
-      repeat: config.repeat || habit.repeat || "daily",
-      repeatUntil: "",
-      customRepeat: config.customRepeat || habit.customRepeat,
-    }, dateKey);
+    return habitSchedule.occursOn(habit, dateKey);
   });
 }
 
@@ -373,6 +369,8 @@ function serializeTask(task, dateKey, categories) {
     category: categories.get(task.categoryId)?.name || "",
     completed: task.completed?.[dateKey] === true,
     repeat: task.repeat || "none",
+    checklist: (task.checklist || []).map((item) => ({ ...item, done: task.checklistLogs?.[dateKey]?.[item.id]?.done === true })),
+    checklistProgress: taskChecklist.progress(task, dateKey),
   };
 }
 
@@ -382,7 +380,7 @@ function serializeHabit(habit, dateKey) {
   const completed = config.type === "number"
     ? Number(value || 0) >= Number(config.goal || 1)
     : value === true;
-  const status = habitFreeze.statusOnDate(habit, dateKey, { scheduled: true, active: true, config });
+  const status = habitSchedule.statusOnDate(habit, dateKey);
   return {
     id: habit.id,
     title: effectiveHistoryEntry(habit.titleHistory, dateKey)?.title || habit.title,
@@ -393,6 +391,8 @@ function serializeHabit(habit, dateKey) {
     completed,
     frozen: status === "frozen",
     status,
+    reminderTime: habit.reminderTime || "",
+    weeklyProgress: habitSchedule.weekProgress(habit, dateKey, dateKey),
   };
 }
 

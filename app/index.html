@@ -11,13 +11,14 @@
     <link rel="manifest" href="manifest.webmanifest">
     <script src="src/auth/auth-gate.js?v=1"></script>
     <script src="src/platform/shell-version.js?v=2"></script>
-    <link rel="stylesheet" href="assets/styles/styles.css?v=41">
+    <link rel="stylesheet" href="assets/styles/styles.css?v=42">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
     <link rel="stylesheet" href="assets/styles/study.css?v=6">
     <link rel="stylesheet" href="assets/styles/notes.css?v=1">
     <link rel="stylesheet" href="assets/styles/goals.css?v=1">
     <link rel="stylesheet" href="assets/styles/calendar-goals.css?v=1">
     <link rel="stylesheet" href="assets/styles/board.css?v=1">
+    <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -165,7 +166,7 @@
         </nav>
 
         <div class="sidebar-pulse">
-          <span class="metric-label" title="Среднее выполнения задач и привычек за выбранный день">Прогресс за день</span>
+          <span class="metric-label">Прогресс за день</span>
           <strong id="sideProgressValue">—</strong>
           <div class="mini-meter" aria-hidden="true">
             <span id="sideProgressBar"></span>
@@ -307,9 +308,9 @@
             </details>
             <div class="toolbar-actions">
               <button class="ghost-button compact-button" id="overdueToggle" type="button" aria-expanded="true" hidden>Скрыть просрочки</button>
-              <button class="primary-button icon-text-button" id="openTaskForm" type="button">
+              <button class="primary-button icon-text-button" id="openTaskForm" type="button" aria-label="Новая задача" title="Новая задача">
                 <svg class="ui-icon"><use href="#icon-plus"></use></svg>
-                Новая задача
+                <span>Новая задача</span>
               </button>
             </div>
           </div>
@@ -324,9 +325,9 @@
           <form class="quick-task-form" id="quickTaskForm">
             <label class="quick-task-input">
               <span class="sr-only">Быстрый ввод</span>
-              <input id="quickTaskInput" type="text" maxlength="200" autocomplete="off" placeholder="Созвон завтра 14:00-15:30 #работа !high">
+              <input id="quickTaskInput" type="text" maxlength="200" autocomplete="off" placeholder="Например, купить хлеб">
             </label>
-            <button class="primary-button compact-button" type="submit">Добавить</button>
+            <button class="primary-button compact-button" type="submit" aria-label="Добавить задачу" title="Добавить задачу"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button>
             <div class="quick-input-hints" id="quickInputHints" aria-label="Подсказки быстрого ввода">
               <button type="button" data-quick-hint="завтра 10:00">завтра 10:00</button>
               <button type="button" data-quick-hint="14:00-15:30">14:00-15:30</button>
@@ -388,6 +389,10 @@
                     Название
                     <input id="taskTitle" type="text" maxlength="80" required placeholder="Например: закрыть отчет">
                   </label>
+                  <label>Дата<input id="taskDate" type="date" required></label>
+                  <details class="task-extra-fields" id="taskExtraFields">
+                    <summary>Дополнительно</summary>
+                    <div class="stack-form">
                   <div class="deadline-card">
                     <div class="deadline-title">
                       <svg class="ui-icon"><use href="#icon-clock"></use></svg>
@@ -408,10 +413,6 @@
                       </label>
                     </div>
                     <div class="form-grid">
-                      <label>
-                        Дата
-                        <input id="taskDate" type="date" required>
-                      </label>
                       <label id="taskDeadlineTimeField">
                         Время
                         <input id="taskTime" type="time" step="300">
@@ -550,6 +551,17 @@
                       </label>
                     </div>
                   </fieldset>
+                  <div class="goal-checkpoint-editor">
+                    <div class="goal-checkpoint-heading"><strong>Чек-лист</strong></div>
+                    <div class="goal-checkpoint-list" id="taskChecklistEditorList"></div>
+                    <small id="taskChecklistEmpty" class="muted">Пунктов пока нет</small>
+                    <div class="goal-checkpoint-add">
+                      <input id="taskChecklistInput" type="text" maxlength="120" placeholder="Новый пункт" aria-label="Новый пункт чек-листа">
+                      <button class="icon-button" id="addTaskChecklistItem" type="button" title="Добавить пункт" aria-label="Добавить пункт"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button>
+                    </div>
+                  </div>
+                    </div>
+                  </details>
                   <div class="form-actions">
                     <button class="primary-button" type="submit">Сохранить</button>
                     <button class="ghost-button" id="resetTaskForm" type="button">Очистить</button>
@@ -601,7 +613,6 @@
           <div class="toolbar">
             <div>
               <h2 id="habitsHeading">Привычки на выбранный день</h2>
-              <p class="muted">Серии считаются по выполненным дням.</p>
             </div>
             <div class="habit-toolbar-actions">
               <button class="icon-button subtle" id="openHabitFreeze" type="button" title="Заморозить привычки" aria-label="Заморозить привычки">
@@ -656,6 +667,7 @@
                         <option value="weekdays">По будням</option>
                         <option value="weekends">По выходным</option>
                         <option value="weekly">Раз в неделю</option>
+                        <option value="weeklyGoal">Несколько раз в неделю</option>
                         <option value="custom">Настроить...</option>
                       </select>
                     </label>
@@ -696,13 +708,18 @@
                       </label>
                     </div>
                   </div>
+                  <label id="habitWeeklyTargetField" hidden>
+                    Цель на неделю (ПН–ВС)
+                    <input id="habitWeeklyTarget" type="number" min="1" max="7" step="1" value="3">
+                  </label>
+                  <label>Напоминание<input id="habitReminderTime" type="time"></label>
                   <div class="form-grid" id="habitNumericFields" hidden>
                     <label>
                       Единица
                       <input id="habitUnit" type="text" maxlength="12" placeholder="мл">
                     </label>
                     <label>
-                      Цель в день
+                      <span id="habitGoalLabel">Цель в день</span>
                       <input id="habitGoal" type="number" min="1" step="1" placeholder="2000">
                     </label>
                   </div>
@@ -896,16 +913,20 @@
         <section class="view" id="nutritionView" aria-labelledby="nutritionHeading">
           <div class="toolbar nutrition-toolbar">
             <div>
-              <h2 id="nutritionHeading">План питания</h2>
+              <h2 id="nutritionHeading">Питание</h2>
               <p class="muted" id="nutritionWeekLabel">Неделя</p>
             </div>
             <div class="nutrition-toolbar-actions">
+              <div class="segmented-control" aria-label="Период питания">
+                <button type="button" data-nutrition-period="day" aria-pressed="true">День</button>
+                <button type="button" data-nutrition-period="week" aria-pressed="false">Неделя</button>
+              </div>
               <div class="segmented-control" aria-label="Переключение недели">
-                <button class="icon-button" id="nutritionPrevWeek" type="button" aria-label="Предыдущая неделя">
+                <button class="icon-button" id="nutritionPrevWeek" type="button" aria-label="Предыдущий день">
                   <svg class="ui-icon"><use href="#icon-chevron-left"></use></svg>
                 </button>
-                <button class="ghost-button compact-button" id="nutritionCurrentWeek" type="button">Эта неделя</button>
-                <button class="icon-button" id="nutritionNextWeek" type="button" aria-label="Следующая неделя">
+                <button class="ghost-button compact-button" id="nutritionCurrentWeek" type="button">Сегодня</button>
+                <button class="icon-button" id="nutritionNextWeek" type="button" aria-label="Следующий день">
                   <svg class="ui-icon"><use href="#icon-chevron-right"></use></svg>
                 </button>
               </div>
@@ -916,18 +937,23 @@
             </div>
           </div>
 
-          <div class="nutrition-metrics" aria-label="Итог выбранной недели">
+          <div class="nutrition-status-modes segmented-control" aria-label="Расчёт питания">
+            <button type="button" data-nutrition-status="" aria-pressed="true">План и съедено</button>
+            <button type="button" data-nutrition-status="eaten" aria-pressed="false">Съедено</button>
+          </div>
+          <div class="nutrition-metrics" aria-label="Итог выбранного дня">
             <div><span>Калории</span><strong id="nutritionCaloriesMetric">0</strong><small>ккал</small></div>
             <div><span>Белки</span><strong id="nutritionProteinMetric">0</strong><small>г</small></div>
             <div><span>Жиры</span><strong id="nutritionFatMetric">0</strong><small>г</small></div>
             <div><span>Углеводы</span><strong id="nutritionCarbsMetric">0</strong><small>г</small></div>
           </div>
+          <p class="nutrition-calculation-note muted" id="nutritionCalculationNote" role="status" hidden></p>
 
           <div class="nutrition-content">
             <section class="panel nutrition-week-panel">
               <div class="nutrition-week-board" id="nutritionWeekBoard"></div>
               <div class="empty-state" id="nutritionEmpty">
-                <strong>На этой неделе пока нет блюд</strong>
+                <strong id="nutritionEmptyTitle">На этот день пока нет блюд</strong>
                 <span>Добавь первое блюдо или попроси ChatGPT составить план.</span>
                 <button class="primary-button compact-button" id="nutritionEmptyAction" type="button">Добавить первое блюдо</button>
               </div>
@@ -1005,8 +1031,8 @@
             </div>
             <label>
               Продукты
-              <textarea id="nutritionMealIngredients" rows="5" placeholder="Куриная грудка | 180 | г&#10;Рис | 90 | г"></textarea>
-              <small class="field-hint">Один продукт на строку: название | количество | единица.</small>
+              <textarea id="nutritionMealIngredients" rows="5" aria-describedby="nutritionIngredientsError" placeholder="Куриная грудка 180 г&#10;Рис 90 г"></textarea>
+              <small class="field-hint" id="nutritionIngredientsError" role="status"></small>
             </label>
             <fieldset class="nutrition-manual-values">
               <legend>Итого на всё блюдо</legend>
@@ -1016,7 +1042,9 @@
               <label>Углеводы<input id="nutritionMealCarbs" type="number" min="0" max="10000" step="0.1"></label>
             </fieldset>
             <label>Заметка<textarea id="nutritionMealNotes" rows="2" maxlength="1000"></textarea></label>
+            <p id="nutritionMealDraftStatus" class="muted" role="status"></p>
             <div class="dialog-actions">
+              <button class="ghost-button" id="nutritionMealDiscardDraft" type="button" hidden>Удалить черновик</button>
               <button class="ghost-button" id="nutritionMealCancel" type="button">Отмена</button>
               <button class="primary-button" type="submit">Сохранить блюдо</button>
             </div>
@@ -1279,6 +1307,8 @@
             <button type="button" role="tab" data-study-tab="schedule" aria-selected="false">Расписание</button>
             <button type="button" role="tab" data-study-tab="materials" aria-selected="false">Материалы</button>
           </div>
+          <div id="studySubjectSetup" class="study-subject-setup" hidden>
+          </div>
           <div class="study-pane is-active" data-study-pane="homework" role="tabpanel">
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyHomeworkHeading">
@@ -1289,10 +1319,13 @@
                 <h3 id="studyHomeworkFormTitle">Новое задание</h3>
                 <input type="hidden" name="id">
                 <label>Предмет<select name="subjectId" required></select></label>
+                <button class="ghost-button compact-button" data-study-add-subject="homework" type="button">Добавить предмет</button>
                 <label>Что сделать<input name="title" maxlength="240" required placeholder="Например, решить задачи 4–6"></label>
                 <label>Подробности<textarea name="details" rows="3" maxlength="4000" placeholder="Страницы, условия, примечания"></textarea></label>
                 <div class="study-field-row"><label>Сдать до<input name="date" type="date" required></label><label>Время, если есть<input name="time" type="time"></label></div>
                 <fieldset class="study-file-picker"><legend>Материалы</legend><div id="studyHomeworkFiles"></div></fieldset>
+                <small id="studyHomeworkDraftStatus" role="status"></small>
+                <button class="ghost-button" id="studyHomeworkDiscardDraft" type="button" hidden>Удалить черновик</button>
                 <div class="study-form-actions"><button class="primary-button" type="submit">Сохранить задание</button><button class="ghost-button" id="studyHomeworkCancel" type="button" hidden>Отмена</button></div>
               </form>
             </div>
@@ -1317,6 +1350,7 @@
                 <div id="studyScheduleList" class="study-schedule"></div>
               </section>
               <div class="study-side-stack">
+                <div id="studySubjectFormHome"></div>
                 <form id="studyLessonForm" class="study-form" aria-label="Добавить занятие">
                   <h3 id="studyLessonFormTitle">Добавить занятие</h3>
                   <input name="id" type="hidden">
@@ -1329,12 +1363,14 @@
                   <label>Аудитория<input name="room" maxlength="80" placeholder="Необязательно"></label>
                   <div class="study-form-actions"><button class="primary-button" type="submit">Добавить в расписание</button><button class="ghost-button" id="studyLessonCancel" type="button" hidden>Отмена</button></div>
                 </form>
+                <details class="study-cycle-details"><summary>Чередование недель</summary>
                 <form id="studyWeekCycleForm" class="study-form" aria-label="Чередование недель">
                   <h3>Чередование недель</h3>
                   <label>Понедельник известной недели<input name="anchorMonday" type="date" required></label>
                   <label>Эта неделя<select name="anchorParity"><option value="even">Чётная</option><option value="odd">Нечётная</option></select></label>
                   <button class="ghost-button" type="submit">Сохранить цикл</button>
                 </form>
+                </details>
                 <form id="studySubjectForm" class="study-form" aria-label="Добавить предмет">
                   <h3 id="studySubjectFormTitle">Предметы</h3>
                   <input name="id" type="hidden">
@@ -1909,6 +1945,8 @@
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
     <script src="src/habits/habit-config-history.js?v=1" defer></script>
     <script src="src/habits/habit-freeze.js?v=1" defer></script>
+    <script src="src/habits/habit-schedule.js?v=1" defer></script>
+    <script src="src/tasks/task-checklist.js?v=1" defer></script>
     <script src="src/integrations/mcp-activity.js?v=2" defer></script>
     <script src="src/integrations/mcp-activity-controller.js?v=1" defer></script>
     <script src="src/platform/pwa-controller.js?v=1" defer></script>
@@ -1924,6 +1962,7 @@
     <script src="src/board/board-view.js?v=8" defer></script>
     <script src="src/nutrition/nutrition-controller.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-view.js?v=1" defer></script>
+    <script src="src/core/workspace-local.js?v=1" defer></script>
     <script src="src/core/storage.js?v=1" defer></script>
     <script src="src/core/navigation-state.js?v=2" defer></script>
     <script src="src/tasks/archive-view.js?v=4" defer></script>

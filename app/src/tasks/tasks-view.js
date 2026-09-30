@@ -51,7 +51,7 @@
       ctx.els.taskEmpty.classList.toggle("is-visible", visibleTasks.length === 0);
       ctx.els.taskCounter.textContent = hasActiveFilters
         ? `${visibleTasks.length} из ${tasks.length} найдено · ${doneCount} выполнено`
-        : tasks.length ? `${doneCount} из ${tasks.length} выполнено` : "Пока нет задач";
+        : tasks.length ? `Выполнено ${doneCount} из ${tasks.length}` : "Пока нет задач";
       ctx.els.taskProgress.textContent = tasks.length ? `${percent}%` : "—";
       ctx.els.taskProgressRing.setAttribute("aria-label", tasks.length ? `Выполнение задач: ${percent}%` : "Задач на выбранный день нет");
       ctx.els.taskProgressRing.style.setProperty("--progress", `${percent * 3.6}deg`);
@@ -133,6 +133,36 @@
       priority.textContent = ctx.priorityLabels[task.priority] || "Средний";
       priority.classList.add(`priority-${task.priority || "medium"}`);
       renderTaskMeta(meta, task);
+      priority.hidden = (task.priority || "medium") === "medium";
+      meta.append(priority);
+      if (task.checklist?.length) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        const list = document.createElement("div");
+        details.className = "task-checklist";
+        const update = () => { const progress = global.RhythmTaskChecklist.progress(task, activeDate); summary.textContent = `Чек-лист: ${progress.done} из ${progress.total}`; };
+        update();
+        task.checklist.forEach((item) => {
+          const label = document.createElement("label");
+          const checkbox = document.createElement("input");
+          const text = document.createElement("span");
+          checkbox.type = "checkbox";
+          checkbox.checked = task.checklistLogs?.[activeDate]?.[item.id]?.done === true;
+          text.textContent = item.title;
+          checkbox.addEventListener("change", () => {
+            const undo = ctx.createUndoSnapshot();
+            const previous = global.RhythmTaskChecklist.normalizeLogs(task.checklistLogs);
+            global.RhythmTaskChecklist.setDone(task, activeDate, item.id, checkbox.checked);
+            if (ctx.saveState() === false) { task.checklistLogs = previous; checkbox.checked = !checkbox.checked; }
+            else ctx.showToast(checkbox.checked ? "Пункт выполнен" : "Отметка пункта снята", { undo });
+            update();
+          });
+          label.append(checkbox, text);
+          list.append(label);
+        });
+        details.append(summary, list);
+        node.querySelector(".task-content").append(details);
+      }
       const linkedNotes = ctx.getNotesForTask?.(task.id) || [];
       if (linkedNotes.length) {
         const openNotes = document.createElement("button");

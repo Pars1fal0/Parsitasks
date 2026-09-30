@@ -1,0 +1,112 @@
+{
+  "tasks-390": {
+    "height": 2543,
+    "overflow": -15,
+    "firstTaskTop": 531.8854370117188
+  },
+  "habits-390": {
+    "height": 1078,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "overview-390": {
+    "height": 1381,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "nutrition-390": {
+    "height": 2099,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "study-390": {
+    "height": 1281,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "journal-390": {
+    "height": 963,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "goals-390": {
+    "height": 844,
+    "overflow": 0,
+    "firstTaskTop": 0
+  },
+  "board-390": {
+    "height": 849,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "settings-390": {
+    "height": 1139,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "tasks-1440": {
+    "height": 2327,
+    "overflow": -15,
+    "firstTaskTop": 477.875
+  },
+  "habits-1440": {
+    "height": 844,
+    "overflow": 0,
+    "firstTaskTop": 0
+  },
+  "overview-1440": {
+    "height": 1396,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "nutrition-1440": {
+    "height": 985,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "study-1440": {
+    "height": 952,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "journal-1440": {
+    "height": 905,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "goals-1440": {
+    "height": 844,
+    "overflow": 0,
+    "firstTaskTop": 0
+  },
+  "board-1440": {
+    "height": 875,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "settings-1440": {
+    "height": 959,
+    "overflow": -15,
+    "firstTaskTop": 0
+  },
+  "checklistSearch": "Ничего не найдено",
+  "unknownFoodSearch": "Питание\nПродукт без калорий\n0 ккал на 100 г",
+  "studySubject": {
+    "top": 1651.84375
+  },
+  "taskForm": {
+    "fields": 11,
+    "height": 815
+  },
+  "nutritionBefore": "750+",
+  "naturalIngredient": [
+    {
+      "id": "aee9d996-1025-4587-be07-d979bbf686ad",
+      "foodId": "",
+      "name": "Рис 100 г",
+      "quantity": 0,
+      "unit": "г"
+    }
+  ],
+  "errors": []
+}

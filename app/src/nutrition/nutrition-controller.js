@@ -66,6 +66,7 @@
       const food = ctx.model.normalizeFood({
         ...existing,
         ...input,
+        nutritionKnown: input.calories !== undefined && input.calories !== null && input.calories !== "" && Number.isFinite(Number(input.calories)),
         id: existing?.id || input.id || ctx.createId(),
         createdAt: existing?.createdAt,
         updatedAt: now,
@@ -85,6 +86,7 @@
       const state = ctx.getState();
       const now = ctx.now();
       const existing = state.nutritionMeals.find((item) => item.id === input.id);
+      const previous = existing ? { ...existing } : null;
       const meal = ctx.model.normalizeMeal({
         ...existing,
         ...input,
@@ -99,8 +101,13 @@
       if (existing) Object.assign(existing, meal);
       else state.nutritionMeals.push(meal);
       delete state.tombstones.nutritionMeals[meal.id];
-      persist("Блюдо сохранено");
-      return true;
+      const saved = persist("Блюдо сохранено");
+      if (!saved) {
+        if (existing) Object.assign(existing, previous);
+        else state.nutritionMeals = state.nutritionMeals.filter((item) => item.id !== meal.id);
+        ctx.render();
+      }
+      return saved;
     }
 
     function saveSettings(input) {
@@ -122,9 +129,10 @@
     }
 
     function persist(message = "", toastOptions) {
-      ctx.saveState();
+      const saved = ctx.saveState() !== false;
       ctx.render();
-      if (message) ctx.showToast(message, toastOptions);
+      if (message && saved) ctx.showToast(message, toastOptions);
+      return saved;
     }
 
     function modelOptions(state, now) {

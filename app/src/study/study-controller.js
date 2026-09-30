@@ -18,23 +18,49 @@
     let statusUserId = "";
     let busy = false;
     let scheduleMode = "week";
-    let viewedDateKey = localDateKey(new Date());
+    let viewedDateKey = ctx.getActiveDate();
     let viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
     let displayedCycleKey = "";
+    let draftOwner = null;
+    let addingSubject = false;
+    let subjectReturnTab = "";
+    const local = global.RhythmWorkspaceLocal.createWorkspaceLocal({ getUserId: ctx.getUserId,
+      onError: () => ctx.showToast("Не удалось сохранить черновик. Не закрывай приложение до сохранения задания.") });
+    const draftStatus = root.querySelector("#studyHomeworkDraftStatus");
+    const discardDraftButton = root.querySelector("#studyHomeworkDiscardDraft");
+    const homeworkDraft = local.formDraft(homeworkForm, "study-homework-draft", (saved) => {
+      draftStatus.textContent = saved ? "Черновик сохранён на этом устройстве" : "Черновик не сохранён";
+      discardDraftButton.hidden = !saved;
+    });
 
     function bindEvents() {
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.studyTab)));
       root.querySelector("#studyHomeworkFilter").addEventListener("change", render);
-      root.querySelector("#studyJumpToHomeworkForm").addEventListener("click", () => homeworkForm.scrollIntoView({ block: "start", behavior: "smooth" }));
+      root.querySelector("#studyJumpToHomeworkForm").addEventListener("click", () => {
+        const target = ctx.getState().studySubjects.length ? homeworkForm : subjectForm;
+        target.scrollIntoView({ block: "start", behavior: "smooth" });
+        target.querySelector('input:not([type="hidden"]), select')?.focus({ preventScroll: true });
+      });
+      root.querySelectorAll("[data-study-add-subject]").forEach((button) => button.addEventListener("click", () => {
+        addingSubject = true;
+        subjectReturnTab = button.dataset.studyAddSubject;
+        render();
+        subjectForm.scrollIntoView({ block: "center" });
+        subjectForm.elements.name.focus({ preventScroll: true });
+      }));
       root.querySelector("#studyOpenNotes").addEventListener("click", () => ctx.openNotesForSubject?.(root.querySelector("#studyHomeworkFilter").value));
       root.querySelector("#studyMaterialFilter").addEventListener("change", render);
       root.querySelector("#studyDriveConnect").addEventListener("click", connect);
       root.querySelector("#studyDriveDisconnect").addEventListener("click", disconnect);
       root.querySelector("#studyHomeworkCancel").addEventListener("click", resetHomeworkForm);
       root.querySelector("#studyLessonCancel").addEventListener("click", resetLessonForm);
-      root.querySelector("#studySubjectCancel").addEventListener("click", resetSubjectForm);
+      root.querySelector("#studySubjectCancel").addEventListener("click", () => { resetSubjectForm(); render(); });
       homeworkForm.addEventListener("submit", saveHomework);
       homeworkForm.elements.subjectId.addEventListener("change", suggestDeadline);
+      homeworkDraft.bind();
+      discardDraftButton.addEventListener("click", async () => {
+        if (await ctx.confirmAction({ title: "Удалить черновик задания?", confirmLabel: "Удалить", tone: "danger" })) resetHomeworkForm();
+      });
       lessonForm.addEventListener("submit", saveLesson);
       weekCycleForm.addEventListener("submit", saveWeekCycle);
       root.querySelectorAll("[data-study-schedule-mode]").forEach((button) => button.addEventListener("click", () => setScheduleMode(button.dataset.studyScheduleMode)));
@@ -132,20 +158,45 @@
     function setTab(next) {
       if (!["homework", "schedule", "materials"].includes(next)) return;
       tab = next;
+      document.body.classList.toggle("study-schedule-mode", tab === "schedule");
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.setAttribute("aria-selected", String(button.dataset.studyTab === tab)));
       root.querySelectorAll("[data-study-pane]").forEach((pane) => { pane.hidden = pane.dataset.studyPane !== tab; pane.classList.toggle("is-active", !pane.hidden); });
       if (ctx.getUserId() !== statusUserId) refreshStatus();
     }
 
     function render() {
+      document.body.classList.toggle("study-schedule-mode", tab === "schedule");
       const state = ctx.getState();
       const subjects = state.studySubjects || [];
       const files = state.studyFiles || [];
       const choices = subjects.map((subject) => [subject.id, subject.name]);
+      const setup = root.querySelector("#studySubjectSetup");
+      setup.hidden = subjects.length > 0 && !addingSubject;
+      (setup.hidden ? root.querySelector("#studySubjectFormHome") : setup).append(subjectForm);
+      homeworkForm.hidden = subjects.length === 0;
+      lessonForm.hidden = subjects.length === 0;
+      root.querySelector("#studySubjectCancel").hidden = !addingSubject && !subjectForm.elements.id.value;
       [homeworkForm.elements.subjectId, lessonForm.elements.subjectId].forEach((select) => updateOptions(select, [["", "Выберите предмет"], ...choices]));
       updateOptions(materialForm.elements.subjectId, [["", "Без предмета"], ...choices]);
       [root.querySelector("#studyHomeworkFilter"), root.querySelector("#studyMaterialFilter")].forEach((select) => updateOptions(select, [["all", "Все предметы"], ...choices]));
       renderFileChoices(files);
+      if (draftOwner !== local.owner()) {
+        homeworkForm.reset();
+        homeworkForm.elements.id.value = "";
+        homeworkForm.elements.date.value = ctx.getActiveDate();
+        draftOwner = local.owner();
+        const restored = homeworkDraft.restore();
+        const editing = Boolean(homeworkForm.elements.id.value);
+        root.querySelector("#studyHomeworkFormTitle").textContent = editing ? "Изменить задание" : "Новое задание";
+        root.querySelector("#studyHomeworkCancel").hidden = !editing;
+        draftStatus.textContent = restored ? "Восстановлен черновик на этом устройстве" : "";
+        discardDraftButton.hidden = !restored;
+      }
+      viewedDateKey = ctx.getActiveDate();
+      viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
+      if (!local.read("study-homework-draft") && !homeworkForm.elements.id.value && !homeworkForm.elements.title.value) {
+        homeworkForm.elements.date.value = ctx.getActiveDate();
+      }
       renderHomework(state);
       syncWeekCycleForm(state.studyWeekCycle);
       renderSchedule(state);
@@ -153,8 +204,9 @@
       renderSubjects(state);
       renderDrive();
       const open = (state.tasks || []).filter((task) => task.studySubjectId && task.completed?.[task.date] !== true).length;
-      root.querySelector("#studySummary").textContent = open ? `${open} ${plural(open, "задание", "задания", "заданий")} ${open === 1 ? "ждёт" : "ждут"} выполнения` : "Все домашние задания выполнены";
-      if (!homeworkForm.elements.id.value && !homeworkForm.elements.date.value) homeworkForm.elements.date.value = localDateKey(new Date());
+      root.querySelector("#studySummary").textContent = open ? `${open} ${plural(open, "задание", "задания", "заданий")} ${open === 1 ? "ждёт" : "ждут"} выполнения`
+        : state.tasks.some((task) => task.studySubjectId) ? "Все домашние задания выполнены" : "Домашних заданий пока нет";
+      if (!homeworkForm.elements.id.value && !homeworkForm.elements.date.value) homeworkForm.elements.date.value = ctx.getActiveDate();
       if (ctx.getUserId() && ctx.getUserId() !== statusUserId && !busy) refreshStatus();
     }
 
@@ -271,14 +323,9 @@
     }
 
     function changePeriod(direction) {
-      if (scheduleMode === "day") {
-        viewedDateKey = direction === 0 ? localDateKey(new Date()) : addDaysKey(viewedDateKey, direction);
-        viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
-      } else {
-        viewedWeekMonday = direction === 0 ? studyModel.mondayKey(localDateKey(new Date())) : addDaysKey(viewedWeekMonday, direction * 7);
-        viewedDateKey = direction === 0 ? localDateKey(new Date()) : viewedWeekMonday;
-      }
-      renderSchedule(ctx.getState());
+      const dateKey = direction === 0 ? localDateKey(new Date())
+        : addDaysKey(ctx.getActiveDate(), direction * (scheduleMode === "day" ? 1 : 7));
+      ctx.setActiveDate(dateKey);
     }
 
     function saveWeekCycle(event) {
@@ -338,7 +385,13 @@
       const next = { id: existing?.id || ctx.createId(), name, color: subjectForm.elements.color.value, teacher: subjectForm.elements.teacher.value.trim(), createdAt: existing?.createdAt || now, updatedAt: now };
       if (existing) Object.assign(existing, next);
       else state.studySubjects.push(next);
+      const returnTab = subjectReturnTab;
       resetSubjectForm(); ctx.saveState(); ctx.render(); ctx.showToast(existing ? "Предмет обновлён" : "Предмет добавлен");
+      if (returnTab === "homework") {
+        homeworkForm.elements.subjectId.value = next.id;
+        homeworkForm.elements.subjectId.dispatchEvent(new Event("change", { bubbles: true }));
+        homeworkForm.elements.title.focus();
+      }
     }
 
     function saveLesson(event) {
@@ -362,6 +415,8 @@
     }
 
     function resetSubjectForm() {
+      addingSubject = false;
+      subjectReturnTab = "";
       subjectForm.reset(); subjectForm.elements.id.value = "";
       root.querySelector("#studySubjectFormTitle").textContent = "Предметы";
       subjectForm.querySelector('button[type="submit"]').textContent = "Добавить предмет";
@@ -373,6 +428,7 @@
       const form = homeworkForm.elements;
       const state = ctx.getState();
       const existing = state.tasks.find((task) => task.id === form.id.value);
+      const previous = existing ? { ...existing } : null;
       const now = new Date().toISOString();
       const time = form.time.value;
       const next = {
@@ -388,12 +444,21 @@
       if (!next.title || !next.studySubjectId || !next.date) return;
       if (existing) Object.assign(existing, next);
       else state.tasks.push(next);
-      resetHomeworkForm(); ctx.saveState(); ctx.render(); ctx.showToast(existing ? "Задание обновлено" : "Задание добавлено");
+      if (ctx.saveState() === false) {
+        if (existing) Object.assign(existing, previous);
+        else state.tasks = state.tasks.filter((task) => task.id !== next.id);
+        homeworkDraft.save();
+        return;
+      }
+      resetHomeworkForm(); ctx.render(); ctx.showToast(existing ? "Задание обновлено" : "Задание добавлено");
     }
 
     function resetHomeworkForm() {
+      homeworkDraft.clear();
       homeworkForm.reset(); homeworkForm.elements.id.value = "";
-      homeworkForm.elements.date.value = localDateKey(new Date());
+      homeworkForm.elements.date.value = ctx.getActiveDate();
+      draftStatus.textContent = "";
+      discardDraftButton.hidden = true;
       root.querySelector("#studyHomeworkFormTitle").textContent = "Новое задание";
       root.querySelector("#studyHomeworkCancel").hidden = true;
     }
@@ -402,7 +467,7 @@
       if (homeworkForm.elements.id.value) return;
       const subjectId = homeworkForm.elements.subjectId.value;
       const state = ctx.getState();
-      const nextDate = studyModel.nextLessonDate(state.studyLessons, subjectId, localDateKey(new Date()), state.studyWeekCycle);
+      const nextDate = studyModel.nextLessonDate(state.studyLessons, subjectId, ctx.getActiveDate(), state.studyWeekCycle);
       if (nextDate) homeworkForm.elements.date.value = nextDate;
     }
 
@@ -461,6 +526,12 @@
       if (button.dataset.studyEdit) {
         const task = state.tasks.find((item) => item.id === button.dataset.studyEdit);
         if (!task) return;
+        if (local.read("study-homework-draft") && homeworkForm.elements.id.value !== task.id) {
+          if (!await ctx.confirmAction({ title: "Заменить черновик задания?", message: "Несохранённый черновик будет удалён.", confirmLabel: "Заменить", tone: "danger" })) return;
+          homeworkDraft.clear();
+          draftStatus.textContent = "";
+          discardDraftButton.hidden = true;
+        }
         const form = homeworkForm.elements;
         form.id.value = task.id; form.subjectId.value = task.studySubjectId; form.title.value = task.title;
         form.details.value = task.studyDetails || ""; form.date.value = task.date; form.time.value = task.time || "";

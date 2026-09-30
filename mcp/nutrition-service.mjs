@@ -2,9 +2,9 @@ import nutritionModel from "../app/src/nutrition/nutrition-model.js";
 import { recordMcpActivity } from "./activity-service.mjs";
 
 const ENTITY_FIELDS = {
-  nutritionFoods: ["name", "unit", "calories", "protein", "fat", "carbs", "source", "approximate"],
-  nutritionMeals: ["date", "type", "time", "title", "servings", "ingredients", "nutrition", "status", "notes"],
-  nutritionTemplates: ["title", "type", "time", "servings", "ingredients", "nutrition", "notes"],
+  nutritionFoods: ["name", "unit", "calories", "nutritionKnown", "protein", "fat", "carbs", "source", "approximate"],
+  nutritionMeals: ["date", "type", "time", "title", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "status", "notes"],
+  nutritionTemplates: ["title", "type", "time", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "notes"],
 };
 
 export function getNutritionWeek(state, anchorDate, firstDay = "monday") {
@@ -15,6 +15,7 @@ export function getNutritionWeek(state, anchorDate, firstDay = "monday") {
     ...week,
     meals,
     totals: nutritionModel.summarizeMeals(meals, state.nutritionFoods),
+    calculation: nutritionModel.mealsNutritionInfo(meals, state.nutritionFoods),
     targets: state.nutritionSettings.targets,
     paused: state.nutritionSettings.paused,
   };
@@ -24,11 +25,13 @@ export function getNutritionDay(state, date) {
   ensureShape(state);
   const meals = state.nutritionMeals
     .filter((meal) => meal.date === date)
-    .map((meal) => ({ ...meal, calculatedNutrition: nutritionModel.calculateMealNutrition(meal, state.nutritionFoods) }));
+    .map((meal) => ({ ...meal, calculatedNutrition: nutritionModel.calculateMealNutrition(meal, state.nutritionFoods),
+      calculation: nutritionModel.mealNutritionInfo(meal, state.nutritionFoods) }));
   return {
     date,
     meals,
     totals: nutritionModel.summarizeMeals(meals, state.nutritionFoods),
+    calculation: nutritionModel.mealsNutritionInfo(meals, state.nutritionFoods),
     targets: state.nutritionSettings.targets,
     paused: state.nutritionSettings.paused,
   };
@@ -46,7 +49,9 @@ export function createMealCommand(state, input, options = {}) {
     type: "create_nutrition_meal",
     title: "Добавление блюда",
     apply(next, now) {
-      const meal = nutritionModel.normalizeMeal(input, modelOptions(next, now, `mcp-meal-${input.requestId}`));
+      const meal = nutritionModel.normalizeMeal({ ...input,
+        manualNutrition: Object.values(input.nutrition || {}).some(Number.isFinite),
+        manualCaloriesKnown: Number.isFinite(input.nutrition?.calories) }, modelOptions(next, now, `mcp-meal-${input.requestId}`));
       if (!meal) throw new Error("Укажи название и корректную дату блюда");
       next.nutritionMeals.push(meal);
       delete next.tombstones.nutritionMeals[meal.id];
@@ -68,7 +73,9 @@ export function updateMealCommand(state, input, options = {}) {
       const meal = nutritionModel.normalizeMeal(
         { ...current, ...definedFields(input, [
           "date", "type", "time", "title", "servings", "ingredients", "nutrition", "status", "notes",
-        ]), id, createdAt: current.createdAt, updatedAt: now },
+        ]), ...(input.nutrition !== undefined ? { manualNutrition: Object.values(input.nutrition).some(Number.isFinite),
+          manualCaloriesKnown: Number.isFinite(input.nutrition.calories) } : {}),
+        id, createdAt: current.createdAt, updatedAt: now },
         modelOptions(next, now),
       );
       if (!meal) throw new Error("После изменения у блюда должны остаться название и дата");
@@ -116,6 +123,7 @@ export function upsertFoodCommand(state, input, options = {}) {
       const food = nutritionModel.normalizeFood({
         ...current,
         ...definedFields(input, ["name", "unit", "calories", "protein", "fat", "carbs", "source", "approximate"]),
+        ...(input.calories !== undefined ? { nutritionKnown: true } : {}),
         id: current.id || requestedId || `mcp-food-${input.requestId}`,
         createdAt: current.createdAt,
         updatedAt: now,
@@ -160,6 +168,8 @@ export function upsertTemplateCommand(state, input, options = {}) {
       const template = nutritionModel.normalizeTemplate({
         ...current,
         ...definedFields(input, ["title", "type", "time", "servings", "ingredients", "nutrition", "notes"]),
+        ...(input.nutrition !== undefined ? { manualNutrition: Object.values(input.nutrition).some(Number.isFinite),
+          manualCaloriesKnown: Number.isFinite(input.nutrition.calories) } : {}),
         id: current.id || requestedId || `mcp-template-${input.requestId}`,
         createdAt: current.createdAt,
         updatedAt: now,
@@ -334,6 +344,8 @@ function normalizePlan(input, state) {
   const meals = (Array.isArray(input.meals) ? input.meals : [])
     .map((meal, index) => nutritionModel.normalizeMeal({
       ...meal,
+      manualNutrition: Object.values(meal.nutrition || {}).some(Number.isFinite),
+      manualCaloriesKnown: Number.isFinite(meal.nutrition?.calories),
       id: `preview-meal-${index}`,
       status: "planned",
       ingredients: (meal.ingredients || []).map((ingredient, ingredientIndex) => ({
