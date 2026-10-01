@@ -29,6 +29,12 @@ class FakeNode {
     this.parentNode = null;
   }
 
+  after(...nodes) {
+    if (!this.parentNode) return;
+    const index = this.parentNode.childNodes.indexOf(this);
+    nodes.forEach((node, offset) => { node.parentNode = this.parentNode; this.parentNode.childNodes.splice(index + offset + 1, 0, node); });
+  }
+
   contains(node) {
     if (node === this) return true;
     return this.childNodes.some((child) => child === node || child.contains?.(node));

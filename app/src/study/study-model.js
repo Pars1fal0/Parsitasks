@@ -5,6 +5,8 @@
       name: config.cleanText(subject.name).slice(0, 80) || "Предмет",
       color: config.sanitizeColor(subject.color) || "#56c8a6",
       teacher: config.cleanText(subject.teacher).slice(0, 120),
+      semester: config.cleanText(subject.semester).slice(0, 80),
+      archived: subject.archived === true,
       createdAt: timestamp(subject.createdAt),
       updatedAt: timestamp(subject.updatedAt || subject.createdAt),
     }));
@@ -23,6 +25,7 @@
         lessonType: ["lecture", "practice"].includes(lesson.lessonType) ? lesson.lessonType : "",
         teacher: config.cleanText(lesson.teacher).slice(0, 120),
         startTime, endTime, room: config.cleanText(lesson.room).slice(0, 80),
+        exceptions: normalizeExceptions(lesson.exceptions, config),
         createdAt: timestamp(lesson.createdAt), updatedAt: timestamp(lesson.updatedAt || lesson.createdAt),
       };
     });
@@ -55,6 +58,8 @@
   }
 
   function lessonOccursOnDate(lesson, dateKey, cycle) {
+    if (lesson.exceptions?.[dateKey]) return lesson.exceptions[dateKey].cancelled !== true && (!lesson.exceptions[dateKey].date || lesson.exceptions[dateKey].date === dateKey);
+    if (Object.values(lesson.exceptions || {}).some((entry) => !entry.cancelled && entry.date === dateKey)) return true;
     const date = parseDateKey(dateKey);
     if (!date || lesson.weekday !== date.getUTCDay()) return false;
     const weekType = lesson.weekType || "all";
@@ -67,7 +72,7 @@
     const relevant = lessons.filter((lesson) => lesson.subjectId === subjectId && (cycle?.anchorMonday || !lesson.weekType || lesson.weekType === "all"));
     if (!relevant.length) return "";
     for (const preferredType of ["practice", "other"]) {
-      for (let offset = 1; offset <= 14; offset++) {
+      for (let offset = 1; offset <= 366; offset++) {
         const candidate = new Date(after);
         candidate.setUTCDate(candidate.getUTCDate() + offset);
         const key = candidate.toISOString().slice(0, 10);
@@ -81,15 +86,28 @@
     return task.completed?.[task.date || task.dueDate] !== true || (task.dueDate || task.date) >= todayKey;
   }
 
-  function eventsForDate(state = {}, dateKey) {
+  function eventsForDate(state = {}, dateKey, options = {}) {
     const subjects = new Map((state.studySubjects || []).map((subject) => [subject.id, subject]));
-    return (state.studyLessons || []).filter((lesson) => subjects.has(lesson.subjectId)
+    return (state.studyLessons || []).filter((lesson) => subjects.has(lesson.subjectId) && (options.includeArchived || !subjects.get(lesson.subjectId).archived)
       && lessonOccursOnDate(lesson, dateKey, state.studyWeekCycle)).map((lesson) => {
       const subject = subjects.get(lesson.subjectId);
-      return { ...lesson, date: dateKey, title: subject.name, color: subject.color,
+      const overrides = lesson.exceptions?.[dateKey] || Object.values(lesson.exceptions || {}).find((entry) => !entry.cancelled && entry.date === dateKey) || {};
+      return { ...lesson, ...overrides, date: dateKey, title: subject.name, color: subject.color,
         teacher: lesson.teacher || subject.teacher || "",
         typeLabel: lesson.lessonType === "practice" ? "Практика" : lesson.lessonType === "lecture" ? "Лекция" : "Занятие" };
     }).sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }
+
+  function normalizeExceptions(value, config) {
+    const result = {};
+    for (const [day, entry] of Object.entries(value || {})) {
+      if (!parseDateKey(day) || !entry || typeof entry !== "object") continue;
+      const date = parseDateKey(entry.date) ? entry.date : day;
+      const startTime = config.cleanTimeValue(entry.startTime); const endTime = config.cleanTimeValue(entry.endTime);
+      if (!entry.cancelled && (!startTime || !endTime || endTime <= startTime)) continue;
+      result[day] = { date, cancelled: entry.cancelled === true, ...(startTime && endTime ? {startTime, endTime} : {}), room: config.cleanText(entry.room).slice(0,80) };
+    }
+    return result;
   }
 
   function parseDateKey(value) {

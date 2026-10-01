@@ -27,7 +27,7 @@
       if (!matches(`${base} ${checklistText}`, search)) return;
       const checklistMatch = checklistText && (!matches(base, search) || (task.checklist || []).some((item) => matches(item.title, search)));
       const checklistDetail = checklistMatch ? `Шаги задачи: ${excerptAround(checklistText, search)}` : "";
-      if (task.completed?.[task.date || task.dueDate] !== true) {
+      if ((task.repeat && task.repeat !== "none") || task.completed?.[task.date || task.dueDate] !== true) {
         results.push({
           id: task.id,
           type: "task",
@@ -38,17 +38,18 @@
           view: "tasks",
         });
       }
-      Object.entries(task.completed || {}).forEach(([date, completed]) => {
-        if (completed !== true) return;
+      const completedDates = Object.entries(task.completed || {}).filter(([, completed]) => completed === true).map(([day]) => day).sort().reverse();
+      if (completedDates.length) {
+        const date = completedDates[0];
         results.push({
           id: `${task.id}:${date}`,
           type: "archive",
           title: task.title,
-          detail: [date, subject, category, "Выполнено", checklistDetail].filter(Boolean).join(" · "),
+          detail: [date, subject, category, completedDates.length > 1 ? `Выполнено: ${completedDates.length} раз` : "Выполнено", checklistDetail].filter(Boolean).join(" · "),
           date,
           view: "archive",
         });
-      });
+      }
     });
     (state.studyFiles || []).forEach((file) => {
       const subject = subjectById.get(file.subjectId) || "";
@@ -61,9 +62,9 @@
       results.push({ id: subject.id, type: "subject", title: subject.name, detail: teachers || "Расписание и материалы", view: "study" });
     });
     (state.boardItems || []).forEach((item) => {
-      if (!["text", "frame"].includes(item.type) || !matches(item.text, search)) return;
+      if (!["text", "frame", "board"].includes(item.type) || !matches(item.text, search)) return;
       results.push({ id: item.id, type: "board", title: excerpt(item.text) || "Область доски",
-        detail: item.type === "frame" ? "Область доски" : excerptAround(item.text, search), view: "board" });
+        detail: item.type === "board" ? "Именованная доска" : item.type === "frame" ? "Область доски" : excerptAround(item.text, search), view: "board" });
     });
     (state.habits || []).forEach((habit) => {
       if (!matches(`${habit.title} ${habit.unit || ""}`, search)) return;
@@ -133,18 +134,24 @@
         view: "nutrition",
       });
     });
-    return results.slice(0, options.limit || 40);
+    const rank = (result) => { const title = normalizeQuery(result.title); return (result.type === "archive" ? -100 : 0) + (title === search ? 30 : title.startsWith(search) ? 20 : title.includes(search) ? 10 : 0); };
+    return results.filter((result) => !options.type || options.type === "all" || result.type === options.type)
+      .sort((a, b) => rank(b) - rank(a)).slice(0, options.limit || 40);
   }
 
   function createGlobalSearch(ctx) {
     let results = [];
     let activeIndex = -1;
+    let pageLimit = 20;
+    const filter = document.querySelector("#globalSearchType");
+    filter?.addEventListener("change", () => { pageLimit = 20; activeIndex = -1; render(); });
 
     function bindEvents() {
       ctx.els.globalSearchButton?.addEventListener("click", open);
       ctx.els.globalSearchClose?.addEventListener("click", close);
       ctx.els.globalSearchInput?.addEventListener("input", () => {
         activeIndex = -1;
+        pageLimit = 20;
         render();
       });
       ctx.els.globalSearchInput?.addEventListener("keydown", handleInputKeydown);
@@ -164,6 +171,8 @@
       ctx.els.globalSearchInput.value = "";
       results = [];
       activeIndex = -1;
+      pageLimit = 20;
+      if (filter) filter.value = "all";
       render();
       global.setTimeout(() => ctx.els.globalSearchInput.focus(), 0);
     }
@@ -176,8 +185,11 @@
       const query = ctx.els.globalSearchInput.value;
       results = ctx.search(ctx.getState(), query, {
         formatDate: ctx.formatDate,
-        limit: 40,
+        limit: pageLimit + 1,
+        type: filter?.value || "all",
       });
+      const hasMore = results.length > pageLimit;
+      results = results.slice(0, pageLimit);
       activeIndex = results.length ? Math.min(Math.max(activeIndex, 0), results.length - 1) : -1;
       if (!query.trim()) {
         replaceChildren(ctx.els.globalSearchResults, [message("Начни вводить название или текст")]);
@@ -206,6 +218,7 @@
         });
         return button;
       }));
+      if (hasMore) { const more = textNode("button", "Показать ещё"); more.type = "button"; more.className = "ghost-button"; more.addEventListener("click", () => { pageLimit += 20; render(); }); ctx.els.globalSearchResults.append(more); }
     }
 
     function handleInputKeydown(event) {

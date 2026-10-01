@@ -162,7 +162,7 @@ module.exports = [
       assert.equal(normalized.goals[0].measure, "3 шага");
       assert.equal(normalized.goals[0].reality, "есть время");
       assert.equal(normalized.goals[0].why, "важно для роста");
-      assert.equal(normalized.goals[0].dueDate, "2026-06-26");
+      assert.equal(normalized.goals[0].dueDate, "", "goals without a deadline must not gain an invented deadline");
       assert.equal(normalized.goals[0].taskIds, undefined);
       assert.equal(normalized.journalEntries[0].text, "Первый абзац\n\nВторой абзац");
       assert.equal(normalized.boardItems.length, 3);

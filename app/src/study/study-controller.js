@@ -24,6 +24,42 @@
     let draftOwner = null;
     let addingSubject = false;
     let subjectReturnTab = "";
+    let archivedView = false;
+    let semester = "all";
+    let homeworkHistory = false;
+    let focusedMaterialId = "";
+    const periodControls = element("div", "study-period-controls");
+    const periodSelect = element("select");
+    periodSelect.setAttribute("aria-label", "Учебный период");
+    const archiveToggle = element("button", "ghost-button compact-button", "Архив семестров");
+    archiveToggle.type = "button";
+    archiveToggle.setAttribute("aria-pressed", "false");
+    const archivePeriod = element("button", "ghost-button compact-button", "Завершить семестр");
+    archivePeriod.type = "button";
+    periodControls.append(periodSelect, archiveToggle, archivePeriod);
+    root.querySelector(".study-tabs").after(periodControls);
+    const historyToggle = element("button", "ghost-button compact-button", "История ДЗ");
+    historyToggle.type = "button";
+    historyToggle.setAttribute("aria-pressed", "false");
+    root.querySelector(".study-homework-tools").append(historyToggle);
+    const materialSearch = element("input");
+    materialSearch.type = "search";
+    materialSearch.placeholder = "Найти материал";
+    materialSearch.setAttribute("aria-label", "Поиск материалов");
+    root.querySelector("#studyMaterialList").before(materialSearch);
+
+    function includesSubject(subject) {
+      return Boolean(subject) && Boolean(subject.archived) === archivedView && (semester === "all" || (subject.semester || "") === semester);
+    }
+
+    async function setArchived(subjects, archived) {
+      if (!subjects.length) return;
+      if (!await ctx.confirmAction({ title: archived ? "Завершить учебный период?" : "Вернуть предметы из архива?", message: "Занятия, задания, заметки и файлы сохранятся. Архив доступен в разделе учёбы.", confirmLabel: archived ? "В архив" : "Восстановить" })) return;
+      const previous = subjects.map((subject) => ({ subject, archived: subject.archived, updatedAt: subject.updatedAt }));
+      subjects.forEach((subject) => { subject.archived = archived; subject.updatedAt = new Date().toISOString(); });
+      if (ctx.saveState() === false) previous.forEach(({ subject, ...fields }) => Object.assign(subject, fields));
+      ctx.render();
+    }
     const local = global.RhythmWorkspaceLocal.createWorkspaceLocal({ getUserId: ctx.getUserId,
       onError: () => ctx.showToast("Не удалось сохранить черновик. Не закрывай приложение до сохранения задания.") });
     const draftStatus = root.querySelector("#studyHomeworkDraftStatus");
@@ -34,6 +70,11 @@
     });
 
     function bindEvents() {
+      periodSelect.addEventListener("change", () => { semester = periodSelect.value; render(); });
+      archiveToggle.addEventListener("click", () => { archivedView = !archivedView; render(); });
+      archivePeriod.addEventListener("click", () => setArchived(ctx.getState().studySubjects.filter(includesSubject), true));
+      historyToggle.addEventListener("click", () => { homeworkHistory = !homeworkHistory; historyToggle.setAttribute("aria-pressed", String(homeworkHistory)); renderHomework(ctx.getState()); });
+      materialSearch.addEventListener("input", () => { focusedMaterialId = ""; renderMaterials(ctx.getState()); });
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.studyTab)));
       root.querySelector("#studyHomeworkFilter").addEventListener("change", render);
       root.querySelector("#studyJumpToHomeworkForm").addEventListener("click", () => {
@@ -167,17 +208,24 @@
     function render() {
       document.body.classList.toggle("study-schedule-mode", tab === "schedule");
       const state = ctx.getState();
-      const subjects = state.studySubjects || [];
+      const allSubjects = state.studySubjects || [];
+      if (draftOwner !== local.owner()) { semester = "all"; archivedView = false; homeworkHistory = false; focusedMaterialId = ""; historyToggle.setAttribute("aria-pressed", "false"); }
+      updateOptions(periodSelect, [["all", "Все семестры"], ...[...new Set(allSubjects.map((subject) => subject.semester || ""))].map((value) => [value, value || "Без семестра"])]);
+      periodSelect.value = semester;
+      archiveToggle.setAttribute("aria-pressed", String(archivedView));
+      archivePeriod.hidden = archivedView;
+      const subjects = allSubjects.filter(includesSubject);
       const files = state.studyFiles || [];
       const choices = subjects.map((subject) => [subject.id, subject.name]);
+      const formChoices = allSubjects.filter((subject) => !subject.archived || [homeworkForm.elements.subjectId.value, lessonForm.elements.subjectId.value, materialForm.elements.subjectId.value].includes(subject.id)).map((subject) => [subject.id, subject.name]);
       const setup = root.querySelector("#studySubjectSetup");
       setup.hidden = subjects.length > 0 && !addingSubject;
       (setup.hidden ? root.querySelector("#studySubjectFormHome") : setup).append(subjectForm);
       homeworkForm.hidden = subjects.length === 0;
       lessonForm.hidden = subjects.length === 0;
       root.querySelector("#studySubjectCancel").hidden = !addingSubject && !subjectForm.elements.id.value;
-      [homeworkForm.elements.subjectId, lessonForm.elements.subjectId].forEach((select) => updateOptions(select, [["", "Выберите предмет"], ...choices]));
-      updateOptions(materialForm.elements.subjectId, [["", "Без предмета"], ...choices]);
+      [homeworkForm.elements.subjectId, lessonForm.elements.subjectId].forEach((select) => updateOptions(select, [["", "Выберите предмет"], ...formChoices]));
+      updateOptions(materialForm.elements.subjectId, [["", "Без предмета"], ...formChoices]);
       [root.querySelector("#studyHomeworkFilter"), root.querySelector("#studyMaterialFilter")].forEach((select) => updateOptions(select, [["all", "Все предметы"], ...choices]));
       renderFileChoices(files);
       if (draftOwner !== local.owner()) {
@@ -215,7 +263,7 @@
       const subjects = new Map(state.studySubjects.map((item) => [item.id, item]));
       const files = new Map(state.studyFiles.map((item) => [item.id, item]));
       const todayKey = localDateKey(new Date());
-      const tasks = state.tasks.filter((task) => task.studySubjectId && studyModel.isHomeworkVisible(task, todayKey) && (filter === "all" || task.studySubjectId === filter))
+      const tasks = state.tasks.filter((task) => task.studySubjectId && includesSubject(subjects.get(task.studySubjectId)) && (homeworkHistory ? !studyModel.isHomeworkVisible(task, todayKey) : studyModel.isHomeworkVisible(task, todayKey)) && (filter === "all" || task.studySubjectId === filter))
         .sort((a, b) => Number(a.completed?.[a.date || a.dueDate] === true) - Number(b.completed?.[b.date || b.dueDate] === true)
           || String(a.dueDate || a.date).localeCompare(String(b.dueDate || b.date)) || String(a.dueTime || a.time).localeCompare(String(b.dueTime || b.time)));
       const list = root.querySelector("#studyHomeworkList");
@@ -244,7 +292,7 @@
         }
         const actions = element("div", "study-item-actions");
         const linkedNotes = (state.notes || []).filter((note) => note.taskId === task.id);
-        if (linkedNotes.length) actions.append(actionButton("studyNote", linkedNotes[0].id, `Открыть заметки к заданию «${task.title}»`, "icon-journal"));
+        if (linkedNotes.length) actions.append(actionButton("studyNote", task.id, `Открыть заметки к заданию «${task.title}»`, "icon-journal"));
         actions.append(actionButton("studyEdit", task.id, "Изменить задание", "icon-edit"), actionButton("studyDelete", task.id, "Удалить задание", "icon-trash"));
         row.append(check, body, actions);
         return row;
@@ -282,17 +330,20 @@
         button.setAttribute("aria-label", label);
         button.title = label;
       }
-      const viewedWeekday = new Date(`${viewedDateKey}T00:00:00Z`).getUTCDay();
-      const lessons = [...state.studyLessons]
-        .filter((lesson) => (scheduleMode === "week" || lesson.weekday === viewedWeekday) && (!parity || lesson.weekType === "all" || !lesson.weekType || lesson.weekType === parity))
-        .sort((a, b) => ((a.weekday + 6) % 7) - ((b.weekday + 6) % 7) || a.startTime.localeCompare(b.startTime));
+      const dates = scheduleMode === "day" ? [viewedDateKey] : Array.from({ length: 7 }, (_, index) => addDaysKey(viewedWeekMonday, index));
+      const lessons = dates.flatMap((date) => {
+        const events = studyModel.eventsForDate(state, date, { includeArchived: archivedView });
+        const cancelled = state.studyLessons.flatMap((lesson) => Object.entries(lesson.exceptions || {}).filter(([source, entry]) => entry.cancelled && (entry.date || source) === date).map(([, entry]) => ({ ...lesson, ...entry, date, cancelled: true })));
+        return [...events, ...cancelled].filter((lesson) => includesSubject(subjects.get(lesson.subjectId))).map((lesson) => ({ ...lesson, weekday: new Date(`${date}T00:00:00Z`).getUTCDay() }));
+      }).sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
       let lastDay = -1;
       const nodes = [];
       lessons.forEach((lesson) => {
-        if (scheduleMode === "week" && lesson.weekday !== lastDay) nodes.push(element("h4", "study-day-heading", `${WEEKDAYS[lesson.weekday]}, ${shortDate(addDaysKey(viewedWeekMonday, (lesson.weekday + 6) % 7))}`));
+        if (scheduleMode === "week" && lesson.weekday !== lastDay) nodes.push(element("h4", "study-day-heading", `${WEEKDAYS[lesson.weekday]}, ${shortDate(lesson.date)}`));
         lastDay = lesson.weekday;
         const subject = subjects.get(lesson.subjectId);
         const row = element("article", "study-item");
+        row.classList.toggle("is-cancelled", Boolean(lesson.cancelled));
         const body = element("div");
         const headline = element("div", "study-item-headline");
         headline.append(element("p", "study-item-title", subject?.name || "Предмет"));
@@ -300,11 +351,15 @@
         body.append(headline);
         const meta = element("div", "study-item-meta");
         meta.append(element("span", "", `${lesson.startTime}–${lesson.endTime}`));
+        if (lesson.cancelled) meta.append(element("span", "", "Отменено"));
         if (lesson.room) meta.append(element("span", "", lesson.room));
         if (lesson.teacher || subject?.teacher) meta.append(element("span", "", lesson.teacher || subject.teacher));
         body.append(meta);
         const actions = element("div", "study-item-actions");
         actions.append(actionButton("studyLessonEdit", lesson.id, "Изменить занятие", "icon-edit"), actionButton("studyLessonDelete", lesson.id, "Удалить занятие", "icon-trash"));
+        const occurrence = actionButton("studyOccurrence", lesson.id, lesson.cancelled ? "Восстановить эту пару" : "Перенести или отменить эту пару", "icon-calendar");
+        occurrence.dataset.date = lesson.date;
+        actions.prepend(occurrence);
         row.append(subjectDot(subject?.color), body, actions);
         nodes.push(row);
       });
@@ -345,13 +400,15 @@
     }
 
     function renderSubjects(state) {
-      root.querySelector("#studySubjectList").replaceChildren(...state.studySubjects.map((subject) => {
+      root.querySelector("#studySubjectList").replaceChildren(...state.studySubjects.filter(includesSubject).map((subject) => {
         const row = element("div", "study-subject-row");
         row.dataset.studySubjectId = subject.id;
         const label = element("span");
         label.append(element("span", "", subject.name));
         if (subject.teacher) label.append(element("small", "", subject.teacher));
+        if (subject.semester) label.append(element("small", "", subject.semester));
         row.append(subjectDot(subject.color), label, actionButton("studySubjectEdit", subject.id, `Изменить предмет ${subject.name}`, "icon-edit"), actionButton("studySubjectDelete", subject.id, `Удалить предмет ${subject.name}`, "icon-trash"));
+        row.append(actionButton("studySubjectArchive", subject.id, subject.archived ? "Вернуть из архива" : "Архивировать предмет", "icon-archive"));
         return row;
       }));
     }
@@ -359,10 +416,13 @@
     function renderMaterials(state) {
       const filter = root.querySelector("#studyMaterialFilter").value;
       const subjects = new Map(state.studySubjects.map((item) => [item.id, item]));
-      const files = state.studyFiles.filter((file) => filter === "all" || file.subjectId === filter).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      const query = materialSearch.value.trim().toLocaleLowerCase("ru");
+      const files = state.studyFiles.filter((file) => (!file.subjectId ? !archivedView : includesSubject(subjects.get(file.subjectId))) && (filter === "all" || file.subjectId === filter) && (!query || `${file.name} ${subjects.get(file.subjectId)?.name || ""}`.toLocaleLowerCase("ru").includes(query))).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
       root.querySelector("#studyMaterialList").replaceChildren(...(files.length ? files.map((file) => {
         const row = element("article", "study-item");
         row.dataset.studyFileId = file.id;
+        row.classList.toggle("is-search-highlight", file.id === focusedMaterialId);
+        row.tabIndex = -1;
         const body = element("div");
         const title = element("p", "study-item-title");
         const link = element("a", "", file.name);
@@ -373,6 +433,7 @@
         body.append(meta);
         const actions = element("div", "study-item-actions");
         actions.append(actionButton("studyFileDelete", file.id, "Убрать материал из Parsitasks", "icon-trash"));
+        actions.prepend(actionButton("studyFileEdit", file.id, "Изменить название и предмет материала", "icon-edit"));
         row.append(subjectDot(subjects.get(file.subjectId)?.color), body, actions);
         return row;
       }) : [element("div", "study-empty", "Материалов пока нет. Подключите Google Drive и загрузите файл.")]));
@@ -384,9 +445,9 @@
       if (!name) return;
       const state = ctx.getState();
       const existing = state.studySubjects.find((subject) => subject.id === subjectForm.elements.id.value);
-      if (state.studySubjects.some((subject) => subject.id !== existing?.id && subject.name.toLocaleLowerCase("ru") === name.toLocaleLowerCase("ru"))) { ctx.showToast("Такой предмет уже есть"); return; }
+      if (state.studySubjects.some((subject) => subject.id !== existing?.id && (subject.semester || "") === subjectForm.elements.semester.value.trim() && subject.name.toLocaleLowerCase("ru") === name.toLocaleLowerCase("ru"))) { ctx.showToast("Такой предмет уже есть в этом семестре"); return; }
       const now = new Date().toISOString();
-      const next = { id: existing?.id || ctx.createId(), name, color: subjectForm.elements.color.value, teacher: subjectForm.elements.teacher.value.trim(), createdAt: existing?.createdAt || now, updatedAt: now };
+      const next = { id: existing?.id || ctx.createId(), name, semester: subjectForm.elements.semester.value.trim(), archived: existing?.archived || false, color: subjectForm.elements.color.value, teacher: subjectForm.elements.teacher.value.trim(), createdAt: existing?.createdAt || now, updatedAt: now };
       if (existing) Object.assign(existing, next);
       else state.studySubjects.push(next);
       const returnTab = subjectReturnTab;
@@ -539,10 +600,13 @@
     }
 
     async function handleAction(event) {
-      const button = event.target.closest("button[data-study-note],button[data-study-edit],button[data-study-delete],button[data-study-lesson-edit],button[data-study-lesson-delete],button[data-study-subject-edit],button[data-study-subject-delete],button[data-study-file-delete]");
+      const button = event.target.closest("button[data-study-note],button[data-study-edit],button[data-study-delete],button[data-study-lesson-edit],button[data-study-lesson-delete],button[data-study-subject-edit],button[data-study-subject-delete],button[data-study-file-delete],button[data-study-subject-archive],button[data-study-occurrence],button[data-study-file-edit]");
       if (!button) return;
       const state = ctx.getState();
-      if (button.dataset.studyNote) return ctx.openNote?.(button.dataset.studyNote);
+      if (button.dataset.studySubjectArchive) { const subject = state.studySubjects.find((item) => item.id === button.dataset.studySubjectArchive); return subject && setArchived([subject], !subject.archived); }
+      if (button.dataset.studyOccurrence) return editOccurrence(button.dataset.studyOccurrence, button.dataset.date);
+      if (button.dataset.studyFileEdit) return editMaterial(button.dataset.studyFileEdit);
+      if (button.dataset.studyNote) return ctx.openNotesForTask?.(button.dataset.studyNote);
       if (button.dataset.studyEdit) {
         const task = state.tasks.find((item) => item.id === button.dataset.studyEdit);
         if (!task) return;
@@ -553,6 +617,7 @@
           discardDraftButton.hidden = true;
         }
         const form = homeworkForm.elements;
+        updateOptions(form.subjectId, [["", "Выберите предмет"], ...state.studySubjects.map((item) => [item.id, item.name])]);
         form.id.value = task.id; form.subjectId.value = task.studySubjectId; form.title.value = task.title;
         form.details.value = task.studyDetails || ""; form.date.value = task.dueDate || task.date; form.time.value = task.dueTime ?? task.time ?? "";
         form.planDate.value = task.date !== (task.dueDate || task.date) ? task.date || "" : "";
@@ -572,6 +637,7 @@
         const lesson = state.studyLessons.find((item) => item.id === button.dataset.studyLessonEdit);
         if (!lesson) return;
         const form = lessonForm.elements;
+        updateOptions(form.subjectId, [["", "Выберите предмет"], ...state.studySubjects.map((item) => [item.id, item.name])]);
         form.id.value = lesson.id; form.subjectId.value = lesson.subjectId; form.weekday.value = String(lesson.weekday);
         form.weekType.value = lesson.weekType || "all";
         form.startTime.value = lesson.startTime; form.endTime.value = lesson.endTime;
@@ -593,6 +659,7 @@
         if (!subject) return;
         const form = subjectForm.elements;
         form.id.value = subject.id; form.name.value = subject.name; form.color.value = subject.color; form.teacher.value = subject.teacher || "";
+        form.semester.value = subject.semester || "";
         root.querySelector("#studySubjectFormTitle").textContent = "Изменить предмет";
         subjectForm.querySelector('button[type="submit"]').textContent = "Сохранить предмет";
         root.querySelector("#studySubjectCancel").hidden = false;
@@ -640,7 +707,91 @@
     }
 
     function confirmDelete(title, message = "") { return ctx.confirmAction({ title, message, confirmText: "Удалить", danger: true }); }
-    return { bindEvents, initialize, refreshStatus, render, setTab };
+    function openMaterial(id) {
+      const file = ctx.getState().studyFiles.find((item) => item.id === id);
+      if (!file) return;
+      render();
+      archivedView = Boolean(ctx.getState().studySubjects.find((item) => item.id === file.subjectId)?.archived);
+      semester = "all"; materialSearch.value = ""; focusedMaterialId = id;
+      root.querySelector("#studyMaterialFilter").value = "all";
+      setTab("materials"); render();
+      requestAnimationFrame(() => { const row = [...root.querySelectorAll("[data-study-file-id]")].find((node) => node.dataset.studyFileId === id); row?.scrollIntoView({ block: "center" }); row?.focus({ preventScroll: true }); });
+    }
+
+    function openSubject(id) {
+      const subject = ctx.getState().studySubjects.find((item) => item.id === id);
+      if (!subject) return;
+      // Initialize drafts before setting the navigation filters for a found subject.
+      render();
+      archivedView = Boolean(subject.archived); semester = subject.semester || "";
+      setTab("schedule"); render();
+    }
+
+    function editingDialog(title, fields, onSave, extra) {
+      const dialog = element("dialog", "workspace-edit-dialog");
+      const form = element("form", "study-form");
+      form.append(element("h3", "", title));
+      fields.forEach(([label, control]) => { const row = element("label", "", label); row.append(control); form.append(row); });
+      const actions = element("div", "study-form-actions");
+      const save = element("button", "primary-button", "Сохранить"); save.type = "submit";
+      const cancel = element("button", "ghost-button", "Отмена"); cancel.type = "button"; cancel.onclick = () => dialog.close();
+      actions.append(save, cancel);
+      if (extra) actions.append(extra);
+      form.append(actions); dialog.append(form); document.body.append(dialog);
+      const owner = ctx.getUserId();
+      form.addEventListener("submit", (event) => { event.preventDefault(); if (owner !== ctx.getUserId()) { dialog.close(); return; } if (onSave() !== false) dialog.close(); });
+      dialog.addEventListener("close", () => dialog.remove(), { once: true }); dialog.showModal();
+      return dialog;
+    }
+
+    function editMaterial(id) {
+      const file = ctx.getState().studyFiles.find((item) => item.id === id);
+      if (!file) return;
+      const name = element("input"); name.value = file.name; name.required = true; name.maxLength = 240;
+      const subject = element("select"); updateOptions(subject, [["", "Без предмета"], ...ctx.getState().studySubjects.map((item) => [item.id, `${item.name}${item.archived ? " · архив" : ""}`])]); subject.value = file.subjectId;
+      editingDialog("Изменить материал", [["Название", name], ["Предмет", subject]], () => {
+        const current = ctx.getState().studyFiles.find((item) => item.id === id);
+        if (!current) { ctx.showToast("Материал больше не существует"); return; }
+        const title = name.value.trim(); if (!title) return false;
+        if (subject.value && !ctx.getState().studySubjects.some((item) => item.id === subject.value)) { ctx.showToast("Предмет больше не существует"); return false; }
+        const previous = { ...current }; current.name = title;
+        current.subjectId = subject.value; current.updatedAt = new Date().toISOString();
+        if (ctx.saveState() === false) { Object.assign(current, previous); return false; } ctx.render();
+      });
+    }
+
+    function editOccurrence(id, date) {
+      const lesson = ctx.getState().studyLessons.find((item) => item.id === id);
+      if (!lesson) return;
+      const sourceDate = Object.keys(lesson.exceptions || {}).find((key) => lesson.exceptions[key].date === date) || date;
+      const existing = lesson.exceptions?.[sourceDate];
+      const target = element("input"); target.type = "date"; target.required = true; target.value = existing?.date || date;
+      const start = element("input"); start.type = "time"; start.required = true; start.value = existing?.startTime || lesson.startTime;
+      const end = element("input"); end.type = "time"; end.required = true; end.value = existing?.endTime || lesson.endTime;
+      const room = element("input"); room.value = existing?.room ?? lesson.room ?? ""; room.maxLength = 80;
+      const cancelled = element("input"); cancelled.type = "checkbox"; cancelled.checked = existing?.cancelled === true;
+      const restore = element("button", "ghost-button", "По исходному расписанию"); restore.type = "button"; restore.hidden = !existing;
+      function commit(value) {
+        const current = ctx.getState().studyLessons.find((item) => item.id === id);
+        if (!current) { ctx.showToast("Занятие больше не существует"); return; }
+        const previous = JSON.parse(JSON.stringify(current)); current.exceptions ||= {};
+        if (value) current.exceptions[sourceDate] = value; else delete current.exceptions[sourceDate];
+        current.updatedAt = new Date().toISOString();
+        if (ctx.saveState() === false) { Object.assign(current, previous); return false; } ctx.render();
+      }
+      const dialog = editingDialog(`Пара · ${shortDate(sourceDate)}`, [["Дата", target], ["Начало", start], ["Конец", end], ["Аудитория", room], ["Отменить только эту пару", cancelled]], () => {
+        if (!cancelled.checked && end.value <= start.value) { ctx.showToast("Окончание должно быть позже начала"); return false; }
+        const current = ctx.getState().studyLessons.find((item) => item.id === id);
+        if (!current) { ctx.showToast("Занятие больше не существует"); return; }
+        const natural = { ...current, exceptions: {} };
+        if (!cancelled.checked && Object.entries(current.exceptions || {}).some(([source, entry]) => source !== sourceDate && !entry.cancelled && entry.date === target.value)) { ctx.showToast("На эту дату уже перенесено другое выполнение этой пары"); return false; }
+        if (!cancelled.checked && target.value !== sourceDate && studyModel.lessonOccursOnDate(natural, target.value, ctx.getState().studyWeekCycle)) { ctx.showToast("В этот день эта пара уже есть в расписании"); return false; }
+        return commit({ date: target.value, startTime: start.value, endTime: end.value, room: room.value.trim(), cancelled: cancelled.checked });
+      }, restore);
+      const owner = ctx.getUserId();
+      restore.onclick = () => { if (owner === ctx.getUserId() && commit(null) !== false) dialog.close(); };
+    }
+    return { bindEvents, initialize, openMaterial, openSubject, refreshStatus, render, setTab };
   }
 
   function updateOptions(select, choices) {

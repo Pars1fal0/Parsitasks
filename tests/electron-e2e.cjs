@@ -141,6 +141,7 @@ const { _electron: electron } = require("playwright-core");
     await waitForBoardEditor(page);
     await page.locator(".board-text-content").last().fill("Второй объект");
     await page.keyboard.press("Escape");
+    await page.locator("#boardFocus").click();
     const boardBox = await page.locator("#boardViewport").boundingBox();
     const itemBoxes = await page.locator(".board-item").evaluateAll((items) =>
       items.map((item) => {

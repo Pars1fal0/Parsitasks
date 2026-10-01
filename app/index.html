@@ -242,6 +242,7 @@
             </button>
           </div>
           <h2 class="sr-only" id="globalSearchHeading">Поиск по приложению</h2>
+          <label class="search-type-control">Раздел<select id="globalSearchType"><option value="all">Все разделы</option><option value="task">Задачи</option><option value="habit">Привычки</option><option value="subject">Предметы</option><option value="material">Материалы</option><option value="note">Заметки</option><option value="goal">Цели</option><option value="board">Доска</option><option value="archive">История задач</option><option value="journal">Дневник</option></select></label>
           <div class="global-search-results" id="globalSearchResults" aria-live="polite"></div>
         </dialog>
 
@@ -825,7 +826,7 @@
                   </label>
                   <label>
                     Срок
-                    <input id="goalDueDate" type="date" required>
+                    <input id="goalDueDate" type="date">
                   </label>
                   <div class="goal-checkpoint-editor">
                     <div class="goal-checkpoint-heading">
@@ -1144,7 +1145,14 @@
                     <button class="icon-button notes-delete" id="noteDelete" type="button" aria-label="Удалить заметку" title="Удалить заметку" hidden><svg class="ui-icon"><use href="#icon-trash"></use></svg></button>
                   </div>
                   <input id="noteTitle" class="notes-title-input" type="text" maxlength="120" required placeholder="Название заметки" aria-label="Название заметки" autocomplete="off">
+                  <div class="note-reading-controls" role="group" aria-label="Режим заметки">
+                    <button class="ghost-button compact-button" type="button" data-note-mode="edit" aria-pressed="true">Редактор</button>
+                    <button class="ghost-button compact-button" type="button" data-note-mode="read" aria-pressed="false">Чтение</button>
+                    <button class="ghost-button compact-button" type="button" id="noteCreateTask" disabled><svg class="ui-icon"><use href="#icon-plus"></use></svg>Задача из выделения</button>
+                  </div>
+                  <div id="noteReadView" class="note-read-view" hidden></div>
                   <textarea id="noteBody" class="notes-body-input" maxlength="20000" placeholder="Содержание заметки" aria-label="Содержание заметки"></textarea>
+                  <div id="noteGeneratedTasks" class="note-generated-tasks"></div>
                   <details class="notes-relations-disclosure"><summary>Связи с предметом и задачей</summary><div class="notes-relations">
                     <label>Предмет<select id="noteSubjectId"><option value="">Без предмета</option></select></label>
                     <div class="notes-task-picker">
@@ -1433,6 +1441,7 @@
                   <input name="id" type="hidden">
                   <div id="studySubjectList" class="study-subject-list"></div>
                   <label>Название<input name="name" maxlength="80" required placeholder="Название предмета"></label>
+                  <label>Семестр<input name="semester" maxlength="80" placeholder="Например, 2026 · осень"></label>
                   <div class="study-field-row"><label>Цвет<input name="color" type="color" value="#56c8a6"></label><label>Преподаватель<input name="teacher" maxlength="120" placeholder="Необязательно"></label></div>
                   <div class="study-form-actions"><button class="primary-button" type="submit">Добавить предмет</button><button class="ghost-button" id="studySubjectCancel" type="button" hidden>Отмена</button></div>
                 </form>

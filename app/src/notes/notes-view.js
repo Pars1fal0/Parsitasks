@@ -11,11 +11,45 @@
     let loadedUpdatedAt = "";
     let draftOwner = null;
     let restorePending = true;
+    let reading = false;
+    let selectedText = "";
+    const readView = document.querySelector("#noteReadView");
+    const createTaskButton = document.querySelector("#noteCreateTask");
+
+    function setReading(next) {
+      reading = next;
+      readView.textContent = els.noteBody.value || "Без текста";
+      readView.hidden = !reading;
+      els.noteBody.hidden = reading;
+      document.querySelectorAll("[data-note-mode]").forEach((button) => button.setAttribute("aria-pressed", String((button.dataset.noteMode === "read") === reading)));
+      selectedText = ""; createTaskButton.disabled = true;
+    }
+
+    function captureSelection() {
+      if (els.noteForm.hidden) return;
+      const selection = global.getSelection();
+      selectedText = reading
+        ? selection?.rangeCount && readView.contains(selection.anchorNode) && readView.contains(selection.focusNode) ? selection.toString().trim() : ""
+        : els.noteBody.value.slice(els.noteBody.selectionStart, els.noteBody.selectionEnd).trim();
+      createTaskButton.disabled = !selectedText;
+    }
     const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId,
       onError: () => { els.noteStatus.textContent = "Черновик не сохранён. Сохрани заметку перед закрытием."; } });
     const draftKey = (id = selectedId) => `note-draft:${id || "new"}`;
 
     function bindEvents() {
+      document.querySelectorAll("[data-note-mode]").forEach((button) => button.addEventListener("click", () => setReading(button.dataset.noteMode === "read")));
+      document.addEventListener("selectionchange", captureSelection);
+      els.noteBody.addEventListener("select", captureSelection);
+      createTaskButton.addEventListener("pointerdown", (event) => event.preventDefault());
+      createTaskButton.addEventListener("click", async () => {
+        const text = selectedText;
+        if (!text || !await ctx.confirmAction({ title: "Создать задачу из выделения?", message: text.slice(0, 240), confirmLabel: "Создать в «Позже»" })) return;
+        if (isDirty() || !currentNote()) saveNote({ preventDefault() {} });
+        if (isDirty() || !currentNote()) return;
+        ctx.createTaskFromNote?.(currentNote(), text);
+        updateOpenTask();
+      });
       els.notesTabs.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.notesTab)));
       els.noteNew.addEventListener("click", newNote);
       els.noteSearch.addEventListener("input", renderList);
@@ -156,11 +190,13 @@
     }
 
     function fillEditor(note) {
+      if (local) draftOwner = local.owner();
       els.noteForm.hidden = false;
       els.notePlaceholder.hidden = true;
       els.noteId.value = note?.id || "";
       els.noteTitle.value = note?.title || "";
       els.noteBody.value = note?.body || "";
+      setReading(false);
       els.notePinned.checked = note?.pinned === true;
       renderSubjectOptions();
       els.noteSubjectId.value = note?.subjectId || "";
@@ -386,6 +422,11 @@
 
     function updateOpenTask() {
       els.noteOpenTask.hidden = !(ctx.getState().tasks || []).some((task) => task.id === els.noteTaskId.value);
+      const related = (ctx.getState().tasks || []).filter((task) => task.sourceNoteId === selectedId && selectedId);
+      document.querySelector("#noteGeneratedTasks").replaceChildren(...related.map((task) => {
+        const button = document.createElement("button"); button.type = "button"; button.className = "ghost-button compact-button"; button.textContent = task.title;
+        button.addEventListener("click", async () => { if (await confirmDiscard()) ctx.openTask(task); }); return button;
+      }));
     }
 
     return { bindEvents, confirmDiscard, discardDraft, hasUnpersistedChanges, isDirty, newNote, openNote, render, resetForState, setMode, setSubjectFilter };

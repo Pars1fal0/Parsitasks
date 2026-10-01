@@ -89,6 +89,7 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator('[data-task-pane="backlog"]').click();
     const overdue = page.locator(".historical-task-item").filter({ hasText: "Старая задача" });
+    await overdue.locator(".task-more > summary").click();
     await overdue.getByRole("button", { name: "Не выполнять", exact: true }).click();
     const hidden = (await state()).tasks.find((task) => task.id === "overdue");
     assert.equal(hidden.acknowledgedOverdue[dates.yesterday], true);

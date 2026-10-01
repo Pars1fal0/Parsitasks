@@ -107,6 +107,7 @@
     const now = options.now || new Date().toISOString();
     let changed = false;
     (state.goals || []).forEach((goal) => {
+      if (goal.paused || goal.archived) return;
       if (!goal.linkedTaskIds?.length && !goal.habitTargets?.length) return;
       const achieved = goalActivity(goal, state, options).achieved;
       const status = achieved ? "done" : "active";

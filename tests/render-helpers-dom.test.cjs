@@ -369,6 +369,7 @@ module.exports = [
         getActiveDate: () => "2026-07-02",
         getCategory: () => ({ color: "#34d399", name: "Work" }),
         getMonthCalendarDates: () => ["2026-07-02"],
+        getState: () => ({ tasks: [] }),
         getOrderedTasksForDate: () => [task, { ...task, id: "task-2" }, { ...task, id: "task-3" }, { ...task, id: "task-4" }],
         habitsForDate: () => [],
         isTaskDone: () => false,

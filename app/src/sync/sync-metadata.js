@@ -3,16 +3,16 @@
   const ENTITY_FIELDS = {
     tasks: [
       "title", "date", "deferredFromDate", "time", "scheduleMode", "startTime", "endTime", "categoryId", "priority",
-      "dueDate", "dueTime", "dueReminderOffset",
+      "dueDate", "dueTime", "dueReminderOffset", "sourceNoteId",
       "repeat", "repeatUntil", "sourceTaskId", "movedFromDate", "customRepeat", "reminderOffset",
       "studySubjectId", "studyDetails", "studyAssignedDate", "studyFileIds",
       "checklist",
     ],
     habits: ["startDate", "archived", "archivedAt", "archivedFromDate", "reminderTime", "notified"],
-    goals: ["title", "dueDate", "why", "linkedTaskIds", "taskTargets", "habitTargets"],
+    goals: ["title", "dueDate", "why", "linkedTaskIds", "taskTargets", "habitTargets", "paused", "archived"],
     boardItems: [
       "type", "x", "y", "width", "height", "z", "text", "fontSize", "fontWeight", "color",
-      "groupId", "locked",
+      "groupId", "locked", "boardId",
       "assetId", "remotePath", "mime", "name", "sourceType", "sourceId", "backgroundColor",
     ],
     journalEntries: ["date", "text", "revisions"],
@@ -21,8 +21,8 @@
     nutritionMeals: ["date", "type", "time", "title", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "status", "notes"],
     nutritionTemplates: ["title", "type", "time", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "notes"],
     categories: ["name", "color"],
-    studySubjects: ["name", "color", "teacher"],
-    studyLessons: ["subjectId", "weekday", "weekType", "startTime", "endTime", "lessonType", "teacher", "room"],
+    studySubjects: ["name", "color", "teacher", "semester", "archived"],
+    studyLessons: ["subjectId", "weekday", "weekType", "startTime", "endTime", "lessonType", "teacher", "room", "exceptions"],
     studyFiles: ["googleId", "name", "mime", "size", "subjectId", "url"],
   };
 

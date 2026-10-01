@@ -174,6 +174,19 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
 .metric-panel > strong { overflow-wrap: anywhere; }
 
 /* Planning views share one compact hierarchy; nutrition is intentionally unchanged. */
+.confirm-modal { z-index: 200; }
+body[data-view="tasks"][data-task-pane-mode="later"] .date-control > :not(.global-search-button),
+body[data-view="tasks"][data-task-pane-mode="backlog"] .date-control > :not(.global-search-button),
+body[data-view="tasks"]:not([data-task-pane-mode="day"]) .day-progress { display: none; }
+body[data-view="tasks"]:not([data-task-pane-mode="day"]) .date-control { border: 0; background: transparent; }
+.later-task-identity { min-width: 0; display: grid; gap: 8px; }
+.later-task-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.is-due-soon .later-task-meta { color: var(--teal); }
+.is-due-overdue .later-task-meta { color: var(--coral, #f58d85); }
+.backlog-group > summary { cursor: pointer; padding: 16px 0; font-weight: 650; }
+.backlog-group-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.historical-task-actions { display: flex; gap: 8px; align-items: start; }
+.historical-task-actions .task-more-menu { display: grid; }
 .task-pane-tabs { display: grid; grid-template-columns: 1fr 1fr 1.7fr; width: min(100%, 590px); margin-bottom: 16px; }
 .task-pane-tabs > button { min-height: 44px; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 10px; font-size: 14px; }
 .task-pane-tabs > button > span { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
@@ -322,4 +335,63 @@ body:is([data-view="goals"], [data-view="board"], [data-view="archive"], [data-v
   #nutritionView .nutrition-week-panel { padding: 0; }
   #nutritionView .nutrition-week-board.is-day .nutrition-day-column { padding: 0; border: 0; }
   #nutritionView .nutrition-week-board.is-day .nutrition-day-heading { display: none; }
+}
+
+.workspace-edit-dialog { width: min(520px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); overflow: auto; padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
+.workspace-edit-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.workspace-edit-dialog .study-form { border: 0; padding: 0; background: transparent; }
+.workspace-edit-dialog > .notes-list-item { display: block; width: 100%; margin-bottom: 8px; }
+.search-type-control { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; font-size: 13px; }
+.search-type-control select { min-width: 0; flex: 1; }
+.study-period-controls, .board-space-controls, .note-reading-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.study-period-controls select, .board-space-controls select { max-width: 280px; min-width: 0; flex: 1 1 160px; }
+.study-period-controls [aria-pressed="true"], .note-reading-controls [aria-pressed="true"], #goalFilter { border-color: var(--teal); }
+.study-item.is-cancelled .study-item-title { text-decoration: line-through; color: var(--muted); }
+.study-item.is-search-highlight { outline: 2px solid var(--teal); outline-offset: -2px; background: var(--surface-elevated); }
+#studyMaterialList { margin-top: 12px; }
+.calendar-deadline { display: block; width: 100%; min-height: 36px; border: 1px solid color-mix(in srgb, var(--coral) 45%, transparent); border-left: 3px solid var(--coral); border-radius: 4px; background: color-mix(in srgb, var(--coral) 9%, var(--surface)); color: var(--text); padding: 8px; text-align: left; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+.calendar-deadline.is-done { border-color: var(--teal); opacity: .75; }
+.calendar-day-agenda { display: none; }
+.calendar-month-legend { display: none; }
+body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; background: var(--bg); padding-bottom: 8px; }
+.month-day { position: relative; }
+.month-due-badge { position: absolute; top: 5px; right: 5px; z-index: 1; min-width: 16px; padding: 1px 4px; border-radius: 4px; color: var(--coral); background: var(--surface-elevated); font-size: 10px; pointer-events: none; }
+.note-read-view { max-width: 760px; width: 100%; min-height: 240px; padding: 16px 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 15px; line-height: 1.8; color: var(--text); user-select: text; }
+.note-reading-controls { margin: 8px 0; }
+.note-generated-tasks { display: flex; flex-wrap: wrap; gap: 8px; }
+#goalFilter { margin-bottom: 16px; max-width: 280px; }
+.goal-item.is-paused, .goal-item.is-archived { border-left-color: var(--muted); }
+.board-space-controls { margin-top: 8px; }
+#boardViewport { height: max(300px, calc(100dvh - 285px)); min-height: 300px; }
+.board-card-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 12px; }
+.board-list-card { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.board-list-card h3 { margin: 0 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: 1.5; font-weight: 650; }
+.board-list-card p { color: var(--muted); overflow-wrap: anywhere; }
+.board-list-card .board-list-text { color: var(--text); white-space: pre-wrap; font-size: 15px; line-height: 1.6; margin-top: 0; }
+.board-list-image { display: block; width: 100%; max-height: 360px; object-fit: contain; margin-bottom: 12px; }
+#boardView.is-list-mode #boardViewport { display: none; }
+.historical-task-actions { display: flex; align-items: center; gap: 8px; }
+.backlog-group { margin: 8px 0; border-bottom: 1px solid var(--line); }
+.backlog-group-tools { padding: 0 12px 12px; }
+@media (max-width: 680px) {
+  #overviewView[data-mode="month"] .calendar-day-agenda { display: grid; gap: 8px; margin-top: 20px; }
+  .calendar-month-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .calendar-month-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+  .calendar-month-legend > span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--teal); }
+  .calendar-month-legend > .is-deadlines::before { background: var(--coral); }
+  .calendar-day-agenda h3 { margin: 0 0 4px; font-size: 18px; }
+  .calendar-agenda-task { min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); text-align: left; overflow-wrap: anywhere; }
+  #monthGrid { gap: 4px; }
+  #monthGrid .month-day { min-height: 56px; height: 56px; padding: 0; overflow: hidden; }
+  #monthGrid .month-day-head { height: 100%; width: 100%; min-height: 44px; display: grid; place-content: center; padding: 4px; }
+  #monthGrid .month-day-head strong { font-size: 14px; }
+  #monthGrid .month-day-head > span, #monthGrid .month-day-items { display: none; }
+  #monthGrid .month-day.has-events::after { content: ""; position: absolute; width: 4px; height: 4px; border-radius: 50%; bottom: 6px; left: calc(50% - 2px); background: var(--teal); pointer-events: none; }
+  #monthGrid .month-due-badge { top: 5px; right: 5px; min-width: 0; width: 5px; height: 5px; padding: 0; border-radius: 50%; font-size: 0; background: var(--coral); }
+  .study-period-controls { gap: 6px; }
+  .study-homework-tools { flex-wrap: wrap; }
+  .note-reading-controls > button { min-height: 44px; }
+  .workspace-edit-dialog { padding: 16px; }
+  .board-card-list { grid-template-columns: minmax(0, 1fr); }
+  .historical-task-actions { flex-wrap: wrap; }
 }

@@ -40,13 +40,13 @@ const { _electron: electron } = require("playwright-core");
 
     await navigate("timeline");
     await page.waitForTimeout(50);
-    assert.equal(await page.evaluate(() => scrollY), 0);
+    assert.ok(await page.evaluate(() => scrollY > 0), "timeline opens at useful time rather than midnight");
     await page.locator("#activeDate").fill("2027-01-15");
     await page.locator("#activeDate").dispatchEvent("change");
     await navigate("tasks");
     await navigate("timeline");
     await page.waitForTimeout(50);
-    assert.equal(await page.evaluate(() => scrollY), 0);
+    assert.ok(await page.evaluate(() => scrollY > 0), "an empty future timeline opens around the start of the day");
 
     await navigate("study");
     assert.equal(await page.locator("#activeDate").isVisible(), false);
@@ -164,7 +164,7 @@ const { _electron: electron } = require("playwright-core");
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
           if (view === "timeline") {
             await page.waitForTimeout(30);
-            assert.equal(await page.evaluate(() => scrollY), 0);
+            assert.ok(await page.evaluate(() => scrollY > 0));
             const date = await page.locator("#activeDate").boundingBox();
             assert.ok(date && date.y >= 0 && date.y + date.height < 844);
           }

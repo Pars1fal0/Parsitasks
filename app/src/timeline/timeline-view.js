@@ -644,9 +644,13 @@
         const nowLine = ctx.els.timelineGrid?.querySelector(".timeline-now-line");
         const firstTask = ctx.els.timelineGrid?.querySelector(".timeline-task.is-scheduled");
         const morning = ctx.els.timelineGrid?.querySelector('.timeline-hour-slot[data-hour="8"]');
-        const target = nowLine || firstTask || morning;
+        const tasks = [...ctx.els.timelineGrid.querySelectorAll(".timeline-task.is-scheduled")];
+        const now = ctx.getNow?.() || new Date();
+        const minutes = now.getHours() * 60 + now.getMinutes();
+        const upcoming = ctx.getActiveDate() === ctx.toDateKey(now) ? tasks.find((task) => Number(task.dataset.startMinutes) >= minutes && !task.classList.contains("is-done")) : null;
+        const target = upcoming || firstTask || nowLine || morning;
         if (!target) return;
-        const offset = Math.min(180, Math.max(112, (global.innerHeight || 800) * 0.18));
+        const offset = Math.max((document.querySelector(".topbar")?.getBoundingClientRect().height || 0) + 16, Math.min(180, Math.max(112, (global.innerHeight || 800) * 0.18)));
         const top = target.getBoundingClientRect().top + (Number(global.scrollY) || 0) - offset;
         global.scrollTo?.({ left: 0, top: Math.max(0, top), behavior: "auto" });
       });

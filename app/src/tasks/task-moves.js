@@ -348,6 +348,7 @@
       studyDetails: task.studyDetails || "",
       studyAssignedDate: task.studyAssignedDate || "",
       studyFileIds: clone(task.studyFileIds || []),
+      sourceNoteId: task.sourceNoteId || "",
       checklist: clone(task.checklist || []),
     };
   }

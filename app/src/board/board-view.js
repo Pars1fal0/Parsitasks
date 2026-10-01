@@ -7,7 +7,28 @@
   const RESIZE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
   function createBoardView(ctx) {
-    let camera = cameraApi.loadCamera(global.localStorage, CAMERA_KEY, MIN_ZOOM, MAX_ZOOM);
+    const getAllItems = ctx.getItems;
+    const commitAllItems = ctx.commitItems;
+    const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => "") });
+    let activeBoardId = local?.read("active-board") || "";
+    let boardOwner = local?.owner();
+    let listMode = local?.read("board-list-mode") ?? (global.innerWidth <= 600);
+    ctx = { ...ctx, getItems: () => getAllItems().filter((item) => item.type !== "board" && (item.boardId || "") === activeBoardId),
+      commitItems: (items, options) => commitAllItems([...getAllItems().filter((item) => item.type === "board" || (item.boardId || "") !== activeBoardId), ...items.map((item) => ({ ...item, boardId: activeBoardId }))], options) };
+    const boardControls = document.createElement("div"); boardControls.className = "board-space-controls";
+    const boardSelect = document.createElement("select"); boardSelect.id = "boardSpaceSelect"; boardSelect.setAttribute("aria-label", "Выбрать доску");
+    const newBoard = document.createElement("button"); newBoard.type = "button"; newBoard.className = "icon-button"; newBoard.setAttribute("aria-label", "Создать доску"); newBoard.title = "Создать доску";
+    const renameBoard = document.createElement("button"); renameBoard.type = "button"; renameBoard.className = "icon-button"; renameBoard.setAttribute("aria-label", "Переименовать доску"); renameBoard.title = "Переименовать доску";
+    const listToggle = document.createElement("button"); listToggle.type = "button"; listToggle.className = "ghost-button compact-button";
+    const cardList = document.createElement("div"); cardList.id = "boardCardList"; cardList.className = "board-card-list";
+    const makeIcon = (name) => { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.classList.add("ui-icon"); const use = document.createElementNS(svg.namespaceURI, "use"); use.setAttribute("href", `#icon-${name}`); svg.append(use); return svg; };
+    newBoard.append(makeIcon("plus")); renameBoard.append(makeIcon("edit"));
+    boardControls.append(boardSelect, newBoard, renameBoard, listToggle);
+    ctx.els.boardViewport.before(boardControls, cardList);
+    const cameraStorage = { getItem: (key) => JSON.stringify(local?.read(key)), setItem: (key, value) => local?.write(key, JSON.parse(value)) };
+    const loadBoardCamera = () => cameraApi.loadCamera(cameraStorage, `board-camera:${activeBoardId}`, MIN_ZOOM, MAX_ZOOM)
+      || (!activeBoardId ? cameraApi.loadCamera(global.localStorage, CAMERA_KEY, MIN_ZOOM, MAX_ZOOM) : null);
+    let camera = loadBoardCamera();
     let cameraReady = false;
     let selectedId = "";
     let selectedIds = new Set();
@@ -29,6 +50,10 @@
     const pendingUploadAttempts = new Map();
 
     function bindEvents() {
+      boardSelect.addEventListener("change", () => switchBoard(boardSelect.value));
+      newBoard.addEventListener("click", () => editBoardName());
+      renameBoard.addEventListener("click", () => editBoardName(activeBoardId));
+      listToggle.addEventListener("click", () => { finishActiveTextEdit(); listMode = !listMode; local?.write("board-list-mode", listMode); render(); });
       ctx.els.boardAddText?.addEventListener("click", () => { closeAddMenu(); addTextAtCenter(); });
       ctx.els.boardAddFrame?.addEventListener("click", () => { closeAddMenu(); addFrameAtCenter(); });
       ctx.els.boardAddImage?.addEventListener("click", () => {
@@ -120,6 +145,21 @@
 
     function render() {
       if (!ctx.els.boardWorld || !ctx.els.boardViewport) return;
+      if (boardOwner !== local?.owner()) {
+        boardOwner = local?.owner(); activeBoardId = local?.read("active-board") || "";
+        listMode = local?.read("board-list-mode") ?? (global.innerWidth <= 600);
+        selectedIds.clear(); selectedId = ""; editingId = ""; undoStack = []; redoStack = []; camera = loadBoardCamera(); cameraReady = false;
+      }
+      const boards = getAllItems().filter((item) => item.type === "board");
+      if (activeBoardId && !boards.some((item) => item.id === activeBoardId)) activeBoardId = "";
+      boardSelect.replaceChildren(new Option("Основная доска", ""), ...boards.map((item) => new Option(item.text, item.id)));
+      boardSelect.value = activeBoardId; renameBoard.disabled = !activeBoardId;
+      listToggle.setAttribute("aria-pressed", String(listMode));
+      listToggle.textContent = listMode ? "Полотно" : "Список карточек";
+      cardList.hidden = !listMode;
+      document.querySelector("#boardView").classList.toggle("is-list-mode", listMode);
+      renderCardList();
+      if (listMode) return;
       initializeCamera();
       const items = ctx.getItems();
       const liveIds = new Set(items.map((item) => item.id));
@@ -829,14 +869,76 @@
     }
 
     function focusItem(id) {
-      const item = ctx.getItems().find((item) => item.id === id);
+      const item = getAllItems().find((item) => item.id === id);
       if (!item) return false;
+      if (item.type === "board") { switchBoard(item.id); return true; }
+      if ((item.boardId || "") !== activeBoardId) switchBoard(item.boardId || "");
+      listMode = false; render();
       const rect = ctx.els.boardViewport.getBoundingClientRect();
       camera = cameraApi.fitCamera(ctx.model.bounds([item]), rect, MIN_ZOOM, Math.min(MAX_ZOOM, 1.5));
       applyCamera(); saveCamera();
       selectItem(id);
       findItemNode(id)?.focus({ preventScroll: true });
       return true;
+    }
+
+    function switchBoard(id) {
+      if (imageUploadBusy) { ctx.showToast("Дождись завершения загрузки изображения"); boardSelect.value = activeBoardId; return; }
+      finishActiveTextEdit();
+      activeBoardId = id; local?.write("active-board", id);
+      selectedIds.clear(); selectedId = ""; activeAreaId = ""; editingId = "";
+      undoStack = []; redoStack = []; cameraReady = false; cameraVisibilityChecked = false;
+      camera = loadBoardCamera(); render();
+    }
+
+    function editBoardName(id) {
+      const board = getAllItems().find((item) => item.id === id && item.type === "board");
+      const dialog = document.createElement("dialog"); dialog.className = "workspace-edit-dialog";
+      const form = document.createElement("form"); form.className = "study-form";
+      const heading = document.createElement("h3"); heading.textContent = board ? "Название доски" : "Новая доска";
+      const label = document.createElement("label"); label.textContent = "Название";
+      const name = document.createElement("input"); name.required = true; name.maxLength = 80; name.value = board?.text || ""; label.append(name);
+      const save = document.createElement("button"); save.type = "submit"; save.className = "primary-button"; save.textContent = "Сохранить";
+      const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "ghost-button"; cancel.textContent = "Отмена"; cancel.onclick = () => dialog.close();
+      form.append(heading, label, save, cancel); dialog.append(form); document.body.append(dialog);
+      const owner = local?.owner();
+      form.onsubmit = (event) => { event.preventDefault(); if (owner !== local?.owner()) { dialog.close(); return; }
+        const text = name.value.trim(); if (!text) return;
+        const next = ctx.model.normalizeItem({ ...board, id: board?.id || ctx.createId(), type: "board", text, updatedAt: new Date().toISOString() });
+        commitAllItems([...getAllItems().filter((item) => item.id !== next.id), next]); dialog.close(); switchBoard(next.id);
+      };
+      dialog.addEventListener("close", () => dialog.remove(), { once: true }); dialog.showModal();
+    }
+
+    function renderCardList() {
+      if (!listMode) return;
+      const items = ctx.getItems();
+      releaseUnusedObjectUrls(items);
+      cardList.replaceChildren(...items.map((item) => {
+        const row = document.createElement("article"); row.className = "board-list-card"; row.dataset.id = item.id;
+        const source = item.type === "link" ? ctx.links.resolve(item, ctx.getState()) : null;
+        const title = document.createElement("h3"); title.textContent = source?.title || item.text || item.name || "Изображение";
+        const open = document.createElement("button"); open.type = "button"; open.className = "ghost-button compact-button"; open.textContent = source ? "Открыть" : "На полотне";
+        open.onclick = () => source ? ctx.openSource(item.sourceType, item.sourceId) : focusItem(item.id);
+        if (item.type === "text") { const text = document.createElement("p"); text.className = "board-list-text"; text.textContent = item.text || "Без текста"; row.append(text); }
+        else row.append(title);
+        if (item.type === "image") {
+          const image = document.createElement("img"); image.className = "board-list-image"; image.alt = item.name || "Изображение"; image.loading = "lazy";
+          const placeholder = document.createElement("p"); placeholder.className = "muted"; placeholder.textContent = "Загрузка изображения…";
+          row.append(image, placeholder);
+          const owner = local?.owner();
+          ctx.assets.resolveBlob(item).then((blob) => {
+            if (!row.isConnected || owner !== local?.owner()) return;
+            if (!blob) { placeholder.textContent = "Изображение недоступно"; image.hidden = true; return; }
+            image.onload = () => { placeholder.hidden = true; };
+            image.onerror = () => { image.hidden = true; placeholder.textContent = "Не удалось открыть изображение"; };
+            image.src = objectUrls.get(item.assetId) || cacheImageUrl(item.assetId, blob);
+          }).catch(() => { if (row.isConnected) { image.hidden = true; placeholder.textContent = "Не удалось загрузить изображение"; } });
+        }
+        if (source?.detail) { const detail = document.createElement("p"); detail.textContent = source.detail; row.append(detail); }
+        row.append(open); return row;
+      }));
+      if (!items.length) { const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "На этой доске пока нет карточек."; cardList.append(empty); }
     }
 
     function handleCanvasDoubleClick(event) {
@@ -1074,6 +1176,9 @@
       content.contentEditable = "false";
       content.closest(".board-item")?.classList.remove("is-editing");
       updateSelection();
+      const rect = content.closest(".board-item")?.getBoundingClientRect();
+      const viewport = ctx.els.boardViewport.getBoundingClientRect();
+      if (rect && (rect.top < viewport.top || rect.bottom > viewport.bottom || rect.left < viewport.left || rect.right > viewport.right)) focusContent();
     }
 
     function saveText(id, value, minimumHeight = 0) {
@@ -1627,7 +1732,8 @@
     }
 
     function saveCamera() {
-      cameraApi.saveCamera(global.localStorage, CAMERA_KEY, camera);
+      cameraApi.saveCamera(cameraStorage, `board-camera:${activeBoardId}`, camera);
+      if (!activeBoardId) cameraApi.saveCamera(global.localStorage, CAMERA_KEY, camera);
     }
 
     function viewportCenter() {

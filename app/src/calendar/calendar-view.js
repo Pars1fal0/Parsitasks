@@ -15,6 +15,27 @@
       insights.append(summary, body); grid.appendChild(insights);
     }
     ctx.els.openGoalsFromCalendar?.addEventListener("click", () => ctx.openGoals());
+    const agenda = document.createElement("section"); agenda.className = "calendar-day-agenda"; agenda.id = "calendarDayAgenda";
+    const legend = document.createElement("div"); legend.className = "calendar-month-legend";
+    [["is-events", "Дела и занятия"], ["is-deadlines", "Сроки сдачи"]].forEach(([className, label]) => { const item = document.createElement("span"); item.className = className; item.textContent = label; legend.append(item); });
+    ctx.els.monthGrid?.after(legend, agenda);
+
+    function deadlines(dateKey) { return ctx.getState().tasks.filter((task) => task.dueDate === dateKey); }
+    function createDeadline(task) {
+      const button = document.createElement("button"); button.type = "button"; button.className = "calendar-deadline";
+      button.dataset.deadlineTaskId = task.id;
+      button.textContent = `Сдать${task.dueTime ? ` ${task.dueTime}` : ""} · ${task.title}`;
+      button.classList.toggle("is-done", ctx.isTaskDone(task, task.date || task.dueDate));
+      button.addEventListener("click", () => ctx.openDateTasks(task.date, task.id)); return button;
+    }
+    function renderAgenda(dateKey) {
+      const title = document.createElement("h3"); title.textContent = ctx.formatLongDate(dateKey);
+      const lessons = (ctx.getStudyEvents?.(dateKey) || []).map((lesson) => createStudyChip(lesson, dateKey));
+      const tasks = ctx.getOrderedTasksForDate(dateKey).map((task) => { const button = document.createElement("button"); button.type = "button"; button.className = "calendar-agenda-task"; button.textContent = `${task.startTime || task.time || "Без времени"} · ${task.title}`; button.addEventListener("click", () => ctx.openDateTasks(dateKey, task.id)); return button; });
+      const due = deadlines(dateKey).map(createDeadline);
+      const empty = document.createElement("p"); empty.textContent = "На этот день ничего не запланировано";
+      agenda.replaceChildren(title, ...lessons, ...tasks, ...due, ...(!lessons.length && !tasks.length && !due.length ? [empty] : []));
+    }
 
     function renderOverview() {
       const activeDate = ctx.getActiveDate();
@@ -85,8 +106,8 @@
       const state = ctx.getState();
       const todayKey = ctx.toDateKey(new Date());
       const isCurrentWeek = week.includes(todayKey);
-      const goals = (state.goals || []).filter((goal) => goal.status !== "done"
-        || (goal.completedAt && goal.completedAt.slice(0, 10) >= week[0] && goal.completedAt.slice(0, 10) <= week[6]));
+      const goals = (state.goals || []).filter((goal) => !goal.archived && !goal.paused && (goal.status !== "done"
+        || (goal.completedAt && goal.completedAt.slice(0, 10) >= week[0] && goal.completedAt.slice(0, 10) <= week[6])));
       const entries = goals.map((goal) => ({
         goal,
         weekActivity: global.RhythmGoalActivity.goalWeekActivity(goal, state, week, { todayKey, habitStatusOnDate: ctx.habitStatusOnDate }),
@@ -183,9 +204,10 @@
         header.append(weekday, day);
 
         lessons.forEach((lesson) => list.appendChild(createStudyChip(lesson, dateKey)));
+        deadlines(dateKey).forEach((task) => list.appendChild(createDeadline(task)));
         if (tasks.length) {
           tasks.forEach((task) => list.appendChild(createWeekTaskChip(task, dateKey)));
-        } else if (!lessons.length) {
+        } else if (!lessons.length && !deadlines(dateKey).length) {
           const empty = document.createElement("span");
           empty.className = "week-board-empty";
           empty.textContent = "Нет задач";
@@ -252,6 +274,7 @@
         if (doneCount) details.push(`${doneCount} готово`);
         if (habitCount) details.push(`${habitCount} привычек`);
         if (lessons.length) details.push(`${lessons.length} занятий`);
+        if (deadlines(dateKey).length) details.push(`${deadlines(dateKey).length} сроков сдачи`);
 
         dayCell.className = "month-day calendar-drop-zone";
         dayCell.dataset.date = dateKey;
@@ -259,6 +282,7 @@
         dayCell.classList.toggle("is-outside", date.getMonth() !== currentMonth);
         dayCell.classList.toggle("is-active", dateKey === activeDate);
         dayCell.classList.toggle("is-today", dateKey === ctx.toDateKey(new Date()));
+        dayCell.classList.toggle("has-events", Boolean(tasks.length || lessons.length || deadlines(dateKey).length));
         head.className = "month-day-head";
         head.type = "button";
         head.setAttribute("aria-label", `Открыть ${ctx.formatLongDate(dateKey)}`);
@@ -270,6 +294,9 @@
           head.appendChild(progress);
         }
         items.className = "month-day-items";
+        const due = deadlines(dateKey);
+        due.forEach((task) => items.appendChild(createDeadline(task)));
+        if (due.length) { const badge = document.createElement("span"); badge.className = "month-due-badge"; badge.textContent = String(due.length); badge.title = `Сроков сдачи: ${due.length}`; badge.setAttribute("aria-label", badge.title); dayCell.append(badge); }
         if (lessons.length) {
           const summary = document.createElement("details"); summary.className = "month-study-events";
           const label = document.createElement("summary"); label.textContent = `Занятия: ${lessons.length}`;
@@ -279,11 +306,12 @@
         if (hiddenCount > 0) appendHiddenMonthTasks(dayCell, items, hiddenTasks, dateKey, hiddenCount);
         dayCell.append(head, items);
 
-        head.addEventListener("click", () => ctx.openDateTasks(dateKey));
+        head.addEventListener("click", () => global.matchMedia?.("(max-width: 680px)")?.matches ? ctx.selectCalendarDate?.(dateKey) : ctx.openDateTasks(dateKey));
         ctx.attachTaskDropZone(dayCell, dateKey);
         dayCell.querySelectorAll(".month-task-chip").forEach((chip) => ctx.attachTaskChipDrag(chip));
         ctx.els.monthGrid.appendChild(dayCell);
       });
+      renderAgenda(activeDate);
     }
 
     function appendHiddenMonthTasks(dayCell, items, hiddenTasks, dateKey, hiddenCount) {

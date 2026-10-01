@@ -1,5 +1,5 @@
 (function (global) {
-  const ITEM_TYPES = new Set(["text", "image", "frame", "link"]);
+  const ITEM_TYPES = new Set(["text", "image", "frame", "link", "board"]);
   const LINK_TYPES = new Set(["task", "goal", "note", "subject", "material"]);
   const LINK_COLORS = new Set(["#ffffff", "#e8f5f0", "#efeaff", "#fff0e2", "#e8f2ff", "#fff6d9"]);
   const DEFAULT_LINK_COLORS = { task: "#e8f5f0", goal: "#efeaff", note: "#fff0e2", subject: "#e8f2ff", material: "#fff6d9" };
@@ -37,12 +37,13 @@
     return {
       id: cleanText(value.id, 160) || options.createId?.() || `board-${Date.now().toString(36)}`,
       type,
+      boardId: cleanText(value.boardId, 160),
       x: finiteNumber(value.x, -1000000000, 1000000000, 0),
       y: finiteNumber(value.y, -1000000000, 1000000000, 0),
       width: finiteNumber(value.width, minimumWidth, 10000, defaultWidth),
       height: finiteNumber(value.height, minimumHeight, 10000, defaultHeight),
       z: Math.round(finiteNumber(value.z, 0, 1000000000, options.index || 0)),
-      text: type === "text" || type === "frame"
+      text: type === "text" || type === "frame" || type === "board"
         ? cleanText(value.text || (type === "frame" ? "Новый фрейм" : ""), MAX_TEXT_LENGTH, true)
         : "",
       fontSize: type === "text" ? Math.round(finiteNumber(value.fontSize, MIN_FONT_SIZE, MAX_FONT_SIZE, 32)) : 0,

@@ -1,4 +1,4 @@
-﻿const SCHEMA_VERSION = 25;
+﻿const SCHEMA_VERSION = 26;
 const VALID_PRIORITIES = ["high", "medium", "low"];
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
@@ -618,7 +618,8 @@ const tasksView = window.RhythmTasksView.createTasksView({
   getCategory,
   getOrderedTasksForDate,
   getState: () => state,
-  getNotesForTask: (taskId) => (state.notes || []).filter((note) => note.taskId === taskId),
+  getNotesForTask: notesForTask,
+  openNotesForTask,
   getTaskCategoryFilter: () => taskCategoryFilter,
   getTaskFilter: () => taskFilter,
   getTaskSearchQuery: () => taskSearchQuery,
@@ -745,6 +746,7 @@ const goalsView = window.RhythmGoalsView.createGoalsView({
 });
 
 const calendarView = window.RhythmCalendarView.createCalendarView({
+  selectCalendarDate: (dateKey) => { activeDate = dateKey; saveUiState(); render(); },
   getStudyEvents,
   openStudyLesson,
   els,
@@ -767,6 +769,7 @@ const calendarView = window.RhythmCalendarView.createCalendarView({
   isTaskDone,
   openDateTasks,
   openGoals: (goalId) => {
+    if (goalId) goalsView.revealGoal(goalId);
     activeView = "goals";
     saveUiState();
     syncNavigationRoute();
@@ -939,6 +942,15 @@ const journalView = window.RhythmJournalView.createJournalView({
 });
 
 const notesView = window.RhythmNotesView.createNotesView({
+  createTaskFromNote: (note, text) => {
+    const undo = createUndoSnapshot();
+    const now = new Date().toISOString();
+    const task = normalizeState({ ...state, tasks: [{ id: createId(), title: cleanText(text).slice(0, 240), date: null, repeat: "none", sourceNoteId: note.id, priority: "medium", createdAt: now, updatedAt: now }] }).tasks[0];
+    if (!task) return;
+    state.tasks.push(task);
+    if (saveState() === false) { state.tasks = state.tasks.filter((item) => item.id !== task.id); return; }
+    showToast("Задача создана в «Позже»", { undo });
+  },
   restoreState: (snapshot) => replaceState(normalizeState(JSON.parse(snapshot.state))),
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   confirmAction,
@@ -965,6 +977,7 @@ const boardAssets = window.RhythmBoardAssets.createBoardAssetStore({
   },
 });
 const boardView = window.RhythmBoardView.createBoardView({
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
   assets: boardAssets,
   commitItems: (items, options = {}) => {
     const normalized = window.RhythmBoardModel.normalizeItems(items, { createId });
@@ -999,8 +1012,9 @@ const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
     resetHabitForm({ open: false });
     resetGoalForm({ open: false });
     if (result.view === "tasks") clearTaskFilters();
-    if (result.type === "material") studyController.setTab("materials");
-    if (result.type === "subject") studyController.setTab("schedule");
+    if (result.type === "material") studyController.openMaterial(result.id);
+    if (result.type === "subject") studyController.openSubject(result.id);
+    if (result.type === "goal") goalsView.revealGoal(result.id);
     if (result.view === "tasks") tasksView.setPane(result.date === null ? "later" : "day");
     if (result.type === "note") await notesView.openNote(result.id);
     if (result.type === "journal") await notesView.setMode("journal");
@@ -1444,6 +1458,7 @@ const studyController = window.RhythmStudyController.createStudyController({
   },
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   openNote: openLinkedNote,
+  openNotesForTask,
   openNotesForSubject,
   render,
   saveState,
@@ -1470,6 +1485,7 @@ const viewRenderer = window.RhythmViewRenderer.createViewRenderer({
 });
 
 const appShellController = window.RhythmAppShellController.createAppShellController({
+  scrollActiveViewStart: (view) => view === "timeline" ? timelineView.scrollToRelevantTime({ keepUnscheduledVisible: false }) : false,
   els,
   formatLongDate,
   getActiveDate: () => activeDate,
@@ -1604,6 +1620,7 @@ const appEvents = window.RhythmAppEvents.createAppEvents({
     if (taskPane === "later") {
       els.taskForm.querySelector("#taskDeferred").checked = true;
       els.taskForm.querySelector("#taskDeferred").dispatchEvent(new Event("change"));
+      markFormPristine(els.taskForm);
     }
     els.taskTitle.focus();
   },
@@ -1993,6 +2010,25 @@ async function openLinkedNote(noteId) {
   scrollWorkspaceTop();
 }
 
+function notesForTask(taskId) {
+  const sourceId = state.tasks.find((task) => task.id === taskId)?.sourceNoteId;
+  return (state.notes || []).filter((note) => note.taskId === taskId || note.id === sourceId);
+}
+
+async function openNotesForTask(taskId) {
+  const notes = notesForTask(taskId);
+  if (notes.length === 1) return openLinkedNote(notes[0].id);
+  if (!notes.length) return;
+  const dialog = document.createElement("dialog"); dialog.className = "workspace-edit-dialog";
+  const heading = document.createElement("h3"); heading.textContent = "Связанные заметки"; dialog.append(heading);
+  notes.forEach((note) => {
+    const button = document.createElement("button"); button.type = "button"; button.className = "notes-list-item"; button.textContent = note.title;
+    button.onclick = () => { dialog.close(); openLinkedNote(note.id); }; dialog.append(button);
+  });
+  const close = document.createElement("button"); close.type = "button"; close.className = "ghost-button"; close.textContent = "Закрыть"; close.onclick = () => dialog.close(); dialog.append(close);
+  dialog.addEventListener("close", () => dialog.remove(), { once: true }); document.body.append(dialog); dialog.showModal();
+}
+
 async function openBoardSource(type, id) {
   if (type === "task") {
     const task = state.tasks.find((item) => item.id === id);
@@ -2006,14 +2042,15 @@ async function openBoardSource(type, id) {
   if (!(await confirmDiscardOpenForms())) return;
   if (type === "material") {
     if (!state.studyFiles.some((item) => item.id === id)) return;
-    studyController.setTab("materials");
+    studyController.openMaterial(id);
     activeView = "study";
   } else if (type === "subject") {
     if (!state.studySubjects.some((item) => item.id === id)) return;
-    studyController.setTab("schedule");
+    studyController.openSubject(id);
     activeView = "study";
   } else if (type === "goal") {
     if (!state.goals.some((item) => item.id === id)) return;
+    goalsView.revealGoal(id);
     activeView = "goals";
   } else return;
   saveUiState();

@@ -4,6 +4,7 @@
     let draggedTaskDate = "";
     let overdueVisibleCount = 20;
     let historicalVisibleCount = 60;
+    const expandedBacklogGroups = new Set();
     const expandedChecklists = new Set();
     const selectedTasks = new Map();
     let selectionMode = false;
@@ -11,7 +12,7 @@
     let selectableEntries = [];
     let pane = ctx.getPane?.() || "day";
     const entryKey = (entry) => `${entry.taskId}:${entry.dateKey || "later"}`;
-    document.querySelectorAll("[data-task-pane]").forEach((button) => button.addEventListener("click", () => setPane(button.dataset.taskPane)));
+    document.querySelectorAll("button[data-task-pane]").forEach((button) => button.addEventListener("click", () => setPane(button.dataset.taskPane)));
     const selectionButton = document.querySelector("#taskSelectMode");
     const bulkForm = document.querySelector("#taskBulkForm");
     const bulkDate = document.querySelector("#taskBulkDate");
@@ -116,13 +117,15 @@
       visibleTasks.forEach((task) => ctx.els.taskList.appendChild(createTaskNode(task, canReorder)));
       renderLaterTasks(laterTasks);
       document.querySelector("#tasksView").dataset.pane = pane;
-      document.querySelectorAll("[data-task-pane]").forEach((button) => {
+      document.body.dataset.taskPaneMode = pane;
+      if (document.body.dataset.view === "tasks") ctx.els.pageTitle.textContent = { day: "Задачи на день", later: "Позже", backlog: "Незавершённые" }[pane];
+      document.querySelectorAll("button[data-task-pane]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.taskPane === pane));
         button.classList.toggle("is-active", button.dataset.taskPane === pane);
       });
       document.querySelector("#taskDayCount").textContent = String(tasks.length);
       document.querySelector("#taskLaterBadge").textContent = String(allLaterTasks.length);
-      document.querySelector("#taskBacklogBadge").textContent = String(allBacklog.length);
+      document.querySelector("#taskBacklogBadge").textContent = String(new Set(allBacklog.map((entry) => entry.task.id)).size);
       laterPanel.hidden = pane !== "later";
       laterPanel.open = true;
       ctx.els.taskList.hidden = pane !== "day";
@@ -198,6 +201,14 @@
         if (selectionMode) row.append(createSelection(task, null));
         const title = document.createElement("strong");
         title.textContent = task.title;
+        const identity = document.createElement("div"); identity.className = "later-task-identity";
+        const meta = document.createElement("div"); meta.className = "later-task-meta";
+        renderTaskMeta(meta, task);
+        const priority = document.createElement("span"); priority.className = `task-meta-chip priority-${task.priority}`; priority.textContent = ctx.priorityLabels[task.priority] || "Средний"; meta.append(priority);
+        identity.append(title, meta);
+        const today = ctx.toDateKey(new Date());
+        row.classList.toggle("is-due-overdue", Boolean(task.dueDate && task.dueDate < today));
+        row.classList.toggle("is-due-soon", Boolean(task.dueDate && task.dueDate >= today && task.dueDate <= ctx.addDays(today, 1)));
         const actions = document.createElement("div");
         actions.className = "later-task-actions";
         const date = document.createElement("input");
@@ -229,7 +240,7 @@
         content.append(edit, remove);
         menu.append(summary, content);
         actions.append(schedule, date, menu);
-        row.append(title, actions);
+        row.append(identity, actions);
         laterList.append(row);
       });
       if (selectionMode && tasks.length && laterPanel) laterPanel.open = true;
@@ -248,7 +259,24 @@
       ctx.els.historicalTaskPanel.open = true;
       ctx.els.historicalTaskCount.textContent = String(entries.length);
       ctx.els.historicalTaskList.replaceChildren();
-      entries.slice(0, historicalVisibleCount).forEach((entry) => {
+      const groups = new Map();
+      entries.forEach((entry) => { const key = entry.recurring ? entry.task.id : `${entry.task.id}:${entry.dateKey}`; if (!groups.has(key)) groups.set(key, []); groups.get(key).push(entry); });
+      [...groups.values()].slice(0, historicalVisibleCount).forEach((group) => {
+        let destination = ctx.els.historicalTaskList;
+        if (group[0].recurring) {
+          const details = document.createElement("details"); details.className = "backlog-group";
+          const groupId = group[0].task.id;
+          details.open = expandedBacklogGroups.has(groupId);
+          details.addEventListener("toggle", () => { if (details.open) expandedBacklogGroups.add(groupId); else if (details.isConnected) expandedBacklogGroups.delete(groupId); });
+          const summary = document.createElement("summary"); summary.textContent = `${group[0].task.title} · пропусков: ${group.length}`;
+          const tools = document.createElement("div"); tools.className = "backlog-group-tools";
+          const select = createButton("ghost-button compact-button", "Выбрать пропуски");
+          const dismiss = createButton("ghost-button compact-button", "Не выполнять эти дни");
+          select.addEventListener("click", () => { expandedBacklogGroups.add(groupId); selectionMode = true; group.forEach(({ task, dateKey }) => selectedTasks.set(entryKey({taskId:task.id,dateKey}), {taskId:task.id,dateKey})); renderTasks(); });
+          dismiss.addEventListener("click", () => ctx.dismissTasks?.(group.map(({task,dateKey})=>({taskId:task.id,dateKey}))));
+          tools.append(select, dismiss); details.append(summary, tools); destination.append(details); destination = details;
+        }
+        group.forEach((entry) => {
         const { task, dateKey } = entry;
         const row = document.createElement("article");
         const content = document.createElement("div");
@@ -265,21 +293,27 @@
         date.textContent = `${ctx.formatLongDate(dateKey)}${entry.recurring ? " · повтор" : ""}`;
         content.append(title, date);
         acknowledge.textContent = "Не выполнять";
-        actions.append(today, later, done, open, acknowledge);
+        actions.className = "historical-task-actions";
+        const more = document.createElement("details"); more.className = "task-more";
+        const trigger = document.createElement("summary"); trigger.className = "icon-button"; trigger.textContent = "…"; trigger.setAttribute("aria-label", `Действия с задачей «${task.title}»`);
+        const menu = document.createElement("div"); menu.className = "task-more-menu"; menu.append(later, done, open, acknowledge); more.append(trigger, menu);
+        actions.append(today, more);
         if (selectionMode) row.append(createSelection(task, dateKey));
         row.append(content, actions);
         later.addEventListener("click", () => ctx.deferTasks?.([{ taskId: task.id, dateKey }]));
         done.addEventListener("click", () => {
           const undo = ctx.createUndoSnapshot(); task.completed ||= {}; task.completed[dateKey] = true;
-          ctx.saveState(); ctx.render(); ctx.showToast("Задача выполнена", { undo });
+          if (ctx.saveState() === false) { delete task.completed[dateKey]; ctx.render(); return; }
+          ctx.render(); ctx.showToast("Задача выполнена", { undo });
         });
         open.addEventListener("click", () => ctx.openDate(dateKey));
         acknowledge.addEventListener("click", () => ctx.acknowledgeOverdueTask(task, dateKey));
         today.addEventListener("click", () => ctx.postponeTask(task, dateKey, ctx.toDateKey(new Date()), { clearPastTimeToday: true }));
-        ctx.els.historicalTaskList.appendChild(row);
+        destination.appendChild(row);
+        });
       });
-      if (entries.length > historicalVisibleCount) {
-        const more = createButton("ghost-button compact-button", `Показать ещё (${entries.length - historicalVisibleCount})`);
+      if (groups.size > historicalVisibleCount) {
+        const more = createButton("ghost-button compact-button", `Показать ещё (${groups.size - historicalVisibleCount})`);
         more.addEventListener("click", () => {
           historicalVisibleCount += 60;
           renderHistoricalTasks(entries);
@@ -362,7 +396,7 @@
         openNotes.className = "task-note-link";
         openNotes.append(createIcon("journal"), document.createTextNode(` Заметки · ${linkedNotes.length}`));
         openNotes.setAttribute("aria-label", `Открыть заметки к задаче «${task.title}»`);
-        openNotes.addEventListener("click", () => ctx.openNote?.(linkedNotes[0].id));
+        openNotes.addEventListener("click", () => ctx.openNotesForTask?.(task.id));
         meta.appendChild(openNotes);
       }
       if (restoreOverdue) {

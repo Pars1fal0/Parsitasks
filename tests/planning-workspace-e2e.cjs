@@ -44,7 +44,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator('#tasksView').getAttribute("data-pane"), "later");
     await page.locator('[data-task-pane="backlog"]').click();
     assert.equal(await page.locator(".historical-task-item").count(), 2);
-    await page.locator("#activeDate").fill(dates.old); await page.locator("#activeDate").dispatchEvent("change");
+    await page.locator("#activeDate").evaluate((input, date) => { input.value = date; input.dispatchEvent(new Event("change", { bubbles: true })); }, dates.old);
     assert.equal(await page.locator(".historical-task-item").count(), 2, "backlog always uses today, not browsed date");
     await page.locator("#taskSelectMode").click(); await page.locator("#taskSelectAll").click();
     await page.locator("#taskBulkLater").click();

@@ -7,8 +7,14 @@
     const selectedTaskIds = new Set();
     const selectedTaskTargets = new Map();
     const selectedHabits = new Map();
+    const goalFilter = document.createElement("select");
+    goalFilter.id = "goalFilter";
+    goalFilter.setAttribute("aria-label", "Состояние целей");
+    [["active", "В работе"], ["paused", "На паузе"], ["archived", "Архив"], ["all", "Все цели"]].forEach(([value, label]) => goalFilter.add(new Option(label, value)));
+    ctx.els.goalList.before(goalFilter);
 
     function bindEvents() {
+      goalFilter.addEventListener("change", renderGoals);
       ctx.els.goalTaskSearch.addEventListener("input", renderTaskOptions);
       ctx.els.goalHabitSearch.addEventListener("input", renderHabitOptions);
       ctx.els.goalTaskOptions.addEventListener("change", (event) => {
@@ -54,9 +60,10 @@
     }
 
     function renderGoals() {
-      const goals = [...(ctx.getState().goals || [])];
+      const allGoals = ctx.getState().goals || [];
+      const goals = allGoals.filter((goal) => goalFilter.value === "all" || (goalFilter.value === "archived" ? goal.archived : goalFilter.value === "paused" ? goal.paused && !goal.archived : !goal.paused && !goal.archived));
       const todayKey = ctx.toDateKey(new Date());
-      const stats = goalStats(goals, todayKey);
+      const stats = goalStats(allGoals, todayKey);
 
       ctx.els.goalActiveMetric.textContent = stats.active;
       ctx.els.goalOverdueMetric.textContent = stats.overdue;
@@ -67,6 +74,13 @@
       goals
         .sort((a, b) => goalSortRank(a, todayKey) - goalSortRank(b, todayKey) || a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title))
         .forEach((goal) => ctx.els.goalList.appendChild(createGoalNode(goal, todayKey)));
+    }
+
+    function revealGoal(id) {
+      const goal = ctx.getState().goals.find((item) => item.id === id);
+      if (!goal) return;
+      goalFilter.value = goal.archived ? "archived" : goal.paused ? "paused" : "active";
+      renderGoals();
     }
 
     function createGoalNode(goal, todayKey = ctx.toDateKey(new Date())) {
@@ -129,11 +143,6 @@
         ctx.els.goalTitle.focus();
         return;
       }
-      if (!dueDate) {
-        ctx.showToast("Выбери срок цели");
-        ctx.els.goalDueDate.focus();
-        return;
-      }
       if (!steps.length && !linkedTaskIds.length && !habitTargets.length) {
         ctx.showToast("Добавь этап, задачу или привычку");
         ctx.checkpointEditor.focus();
@@ -146,6 +155,8 @@
         id,
         title,
         dueDate,
+        paused: existing?.paused === true,
+        archived: existing?.archived === true,
         steps,
         linkedTaskIds,
         taskTargets,
@@ -167,7 +178,7 @@
       if (ctx.confirmDiscardOpenForms && !(await ctx.confirmDiscardOpenForms())) return;
       ctx.els.goalId.value = goal.id;
       ctx.els.goalTitle.value = goal.title || "";
-      ctx.els.goalDueDate.value = goal.dueDate || ctx.getActiveDate();
+      ctx.els.goalDueDate.value = goal.dueDate || "";
       ctx.checkpointEditor.setSteps(goal.steps || []);
       setLinks(goal);
       ctx.els.goalFormHeading.textContent = "Редактировать цель";
@@ -181,7 +192,7 @@
       ctx.els.goalFormPanel.classList.toggle("is-collapsed", options.open === false);
       ctx.els.goalId.value = "";
       ctx.els.goalTitle.value = "";
-      ctx.els.goalDueDate.value = ctx.getActiveDate();
+      ctx.els.goalDueDate.value = "";
       ctx.checkpointEditor.setSteps();
       setLinks();
       ctx.els.goalFormHeading.textContent = "Новая цель";
@@ -381,10 +392,22 @@
       popover.className = "goal-menu-popover";
       popover.append(
         createMenuAction("edit", "Редактировать", () => fillGoalForm(goal)),
+        createMenuAction("clock", goal.paused ? "Продолжить" : "Поставить на паузу", () => changeGoalState(goal, "paused")),
+        createMenuAction("archive", goal.archived ? "Вернуть из архива" : "В архив", () => changeGoalState(goal, "archived")),
         createMenuAction("trash", "Удалить", () => deleteGoal(goal.id), true),
       );
       menu.append(trigger, popover);
       return menu;
+    }
+
+    function changeGoalState(goal, field) {
+      const undo = ctx.createUndoSnapshot();
+      const previous = { ...goal };
+      goal[field] = !goal[field];
+      goal.updatedAt = new Date().toISOString();
+      if (ctx.saveState() === false) { Object.assign(goal, previous); return; }
+      renderGoals();
+      ctx.showToast(field === "archived" ? (goal.archived ? "Цель в архиве" : "Цель восстановлена") : (goal.paused ? "Цель на паузе" : "Цель снова в работе"), { undo });
     }
 
     function createMenuAction(iconName, label, handler, danger = false) {
@@ -538,12 +561,13 @@
       return celebration;
     }
 
-    return { bindEvents, createGoalNode, fillGoalForm, renderGoals, resetGoalForm, saveGoalFromForm };
+    return { bindEvents, createGoalNode, fillGoalForm, renderGoals, resetGoalForm, revealGoal, saveGoalFromForm };
   }
 
   function goalStats(goals, todayKey) {
     return goals.reduce(
       (stats, goal) => {
+        if (goal.paused || goal.archived) return stats;
         const state = goalState(goal, todayKey);
         if (state === "done") stats.done += 1;
         else if (state === "overdue") stats.overdue += 1;
@@ -562,8 +586,10 @@
   }
 
   function goalState(goal, todayKey) {
+    if (goal.archived) return "archived";
+    if (goal.paused) return "paused";
     if (goal.status === "done") return "done";
-    if (goal.dueDate < todayKey) return "overdue";
+    if (goal.dueDate && goal.dueDate < todayKey) return "overdue";
     return "active";
   }
 
@@ -573,6 +599,8 @@
 
   function goalStatusLabel(goal, todayKey) {
     const state = goalState(goal, todayKey);
+    if (state === "archived") return "В архиве";
+    if (state === "paused") return "На паузе";
     if (state === "done") return "Достигнута";
     if (state === "overdue") return "Просрочена";
     return "В работе";
@@ -580,6 +608,7 @@
 
   function goalDueLabel(goal, todayKey) {
     if (!goal.dueDate) return "Без срока";
+    if (goal.paused || goal.archived) return `Срок: ${formatGoalDate(goal.dueDate)}`;
     const diff = diffDays(todayKey, goal.dueDate);
     const formattedDate = formatGoalDate(goal.dueDate);
     if (goal.status === "done") return `достигнута · срок был до ${formattedDate}`;
