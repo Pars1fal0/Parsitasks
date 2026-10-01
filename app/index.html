@@ -19,6 +19,7 @@
     <link rel="stylesheet" href="assets/styles/calendar-goals.css?v=1">
     <link rel="stylesheet" href="assets/styles/board.css?v=1">
     <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=1">
+    <link rel="stylesheet" href="assets/styles/workspace-guide.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -235,7 +236,7 @@
           <div class="global-search-head">
             <label class="search-box global-search-box">
               <svg class="ui-icon"><use href="#icon-search"></use></svg>
-              <input id="globalSearchInput" type="search" placeholder="Задачи, привычки, цели и дневник" autocomplete="off">
+              <input id="globalSearchInput" type="search" placeholder="Задачи, заметки, предметы…" autocomplete="off">
             </label>
             <button class="icon-button" id="globalSearchClose" type="button" aria-label="Закрыть поиск">
               <svg class="ui-icon"><use href="#icon-close"></use></svg>
@@ -290,6 +291,13 @@
         </section>
 
         <section class="view is-active" id="tasksView" aria-labelledby="tasksHeading">
+          <section class="workspace-setup-banner" id="workspaceSetupBanner" aria-labelledby="workspaceSetupBannerHeading" hidden>
+            <div><h2 id="workspaceSetupBannerHeading">Твоё пространство</h2><p>Какие разделы оставить под рукой?</p></div>
+            <div class="workspace-setup-actions">
+              <button class="ghost-button compact-button" type="button" data-workspace-setup>Выбрать разделы</button>
+              <button class="icon-button" id="workspaceSetupDismiss" type="button" aria-label="Пропустить настройку пространства" title="Пропустить"><svg class="ui-icon"><use href="#icon-close"></use></svg></button>
+            </div>
+          </section>
           <div class="task-pane-tabs segmented-control" role="group" aria-label="Список задач">
             <button type="button" data-task-pane="day" aria-pressed="true">День <span id="taskDayCount"></span></button>
             <button type="button" data-task-pane="later" aria-pressed="false">Позже <span id="taskLaterBadge"></span></button>
@@ -1858,6 +1866,28 @@
                 Проверить уведомления
               </button>
             </details>
+            <details class="panel settings-panel settings-accordion" id="helpSettings" aria-labelledby="helpSettingsHeading">
+              <summary class="panel-heading compact settings-summary"><div><h2 id="helpSettingsHeading">Помощь</h2></div></summary>
+              <div class="settings-actions">
+                <button class="ghost-button compact-button" type="button" data-workspace-setup>Настроить пространство</button>
+                <button class="ghost-button compact-button" id="helpNavigationButton" type="button">Все разделы</button>
+                <button class="ghost-button compact-button" id="helpSyncButton" type="button">Проверить синхронизацию</button>
+              </div>
+              <details class="help-answer"><summary>Куда попадают незавершённые дела?</summary><p>В «Незавершённых» собраны невыполненные задачи прошлых дней. Сегодняшние остаются в «Дне», задачи без дня работы — в «Позже». Пропуски повторяющейся задачи объединены в одну группу.</p></details>
+              <details class="help-answer"><summary>Чем день работы отличается от срока сдачи?</summary><p>День работы — когда ты планируешь заниматься заданием. Срок сдачи — когда его нужно сдать. Перенос подготовки не меняет срок сдачи; обе даты видны в календаре.</p></details>
+              <details class="help-answer"><summary>На другом устройстве нет моих данных</summary><p>Войди в тот же аккаунт, проверь сеть и состояние синхронизации в «Аккаунт и данные». Не загружай старый JSON поверх текущего пространства, пока не проверишь облако.</p></details>
+              <details class="help-answer"><summary>Что делать перед импортом или восстановлением?</summary><p>Сначала скачай текущие данные в JSON. Импорт заменяет пространство, а не добавляет записи. Сам файл JSON не содержит файлы Google Drive и изображения доски: они хранятся отдельно.</p></details>
+              <details class="help-answer"><summary>Почему напоминания не приходят после закрытия браузера?</summary><p>В веб-версии вкладка должна оставаться открытой. Десктопное приложение напоминает в фоне после закрытия окна, пока процесс приложения работает. Проверь разрешение уведомлений, паузу и тихие часы в «Напоминаниях».</p></details>
+              <section class="support-report" aria-labelledby="supportReportHeading">
+                <h3 id="supportReportHeading">Диагностика для обращения</h3>
+                <p>Только версия и состояние сохранения. Без задач, заметок, почты и ключей. Ничего не отправляется автоматически.</p>
+                <div class="settings-actions">
+                  <button class="ghost-button compact-button" id="supportPreviewButton" type="button">Посмотреть диагностику</button>
+                  <button class="ghost-button compact-button icon-text-button" id="supportDownloadButton" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-download"></use></svg>Скачать диагностику</button>
+                </div>
+                <details id="supportReportDetails" hidden><summary>Содержимое файла</summary><label class="sr-only" for="supportReportPreview">Диагностика без личных данных</label><textarea id="supportReportPreview" readonly spellcheck="false"></textarea></details>
+              </section>
+            </details>
           </div>
         </section>
       </main>
@@ -1865,6 +1895,19 @@
 
     <div class="form-backdrop" id="formBackdrop" hidden></div>
     <div class="toast" id="appToast" role="status" aria-live="polite"></div>
+    <dialog class="workspace-setup-dialog" id="workspaceSetupDialog" aria-labelledby="workspaceSetupHeading" aria-describedby="workspaceSetupDescription">
+      <div class="dialog-header"><h2 id="workspaceSetupHeading">Твоё пространство</h2><button class="icon-button" id="workspaceSetupClose" type="button" aria-label="Закрыть настройку пространства"><svg class="ui-icon"><use href="#icon-close"></use></svg></button></div>
+      <p id="workspaceSetupDescription">Меняется только навигация. Записи и история сохраняются.</p>
+      <form id="workspaceSetupForm">
+        <fieldset class="workspace-preset-options"><legend>Набор разделов</legend>
+          <label><input type="radio" name="workspacePreset" value="basic"><span><strong>Задачи и привычки</strong><small>Задачи, привычки, календарь</small></span></label>
+          <label><input type="radio" name="workspacePreset" value="study"><span><strong>Учёба и дела</strong><small>Задачи, привычки, календарь, учёба</small></span></label>
+          <label><input type="radio" name="workspacePreset" value="current" checked><span><strong>Оставить текущие разделы</strong><small>Без изменений навигации</small></span></label>
+        </fieldset>
+        <p id="workspaceSetupError" role="status" aria-live="polite"></p>
+        <button class="primary-button" type="submit">Готово</button>
+      </form>
+    </dialog>
     <dialog class="nutrition-meal-dialog feature-dialog" id="reminderDialog" aria-labelledby="reminderHeading">
       <div class="dialog-header"><h2 id="reminderHeading">Напоминания</h2><button class="icon-button" id="reminderClose" type="button" aria-label="Закрыть напоминания"><svg class="ui-icon"><use href="#icon-close"></use></svg></button></div>
       <p id="reminderStatus" class="muted" role="status"></p>
@@ -2066,7 +2109,8 @@
     <script src="src/settings/settings-sync.js?v=1" defer></script>
     <script src="src/settings/settings-transfer.js?v=2" defer></script>
     <script src="src/sync/save-status.js?v=2" defer></script>
-    <script src="src/settings/settings-controller.js?v=7" defer></script>
+    <script src="src/settings/settings-controller.js?v=8" defer></script>
+    <script src="src/settings/workspace-guide.js?v=1" defer></script>
     <script src="src/timeline/timeline-layout.js?v=1" defer></script>
     <script src="src/timeline/timeline-menu.js?v=4" defer></script>
     <script src="src/timeline/timeline-drag.js?v=3" defer></script>
@@ -2076,6 +2120,6 @@
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=4" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=60" defer></script>
+    <script src="src/core/app.js?v=61" defer></script>
   </body>
 </html>

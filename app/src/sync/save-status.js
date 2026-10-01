@@ -42,7 +42,10 @@
 
     function describeRemoteError(error) {
       if (error?.code === "clock-skew") return "проверь дату и время на устройстве";
-      if (error?.status === 401 || error?.status === 403) return "неверный anon key или доступ запрещен";
+      if (error?.code === "request-timeout") return "сервер не ответил вовремя · повтори синхронизацию";
+      if (error?.code === "local-save-failed") return "нет места на устройстве · экспортируй данные и освободи хранилище";
+      if (error?.status === 401) return "сессия истекла · войди в аккаунт снова";
+      if (error?.status === 403) return "доступ к данным запрещён · проверь аккаунт";
       if (error?.status === 404) return "таблица rhythm_states не создана";
       const message = String(error?.message || "").trim();
       if (/failed to fetch|network|load failed/i.test(message)) return "нет сети или Supabase URL недоступен";

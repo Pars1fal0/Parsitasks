@@ -2,6 +2,7 @@ server*.log
 dist/
 web-dist/
 .wrangler-build/
+.release-candidate/
 .wrangler/
 .wrangler-*.log
 node_modules/

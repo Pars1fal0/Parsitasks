@@ -8,11 +8,16 @@
       if (busy) return;
       busy = true;
       render();
-      await ctx.auth.signOut();
-      busy = false;
-      render();
-      ctx.renderSyncStatus?.();
-      ctx.onSignedOut?.();
+      try {
+        await ctx.auth.signOut();
+        ctx.onSignedOut?.();
+      } catch {
+        ctx.showToast("Не удалось завершить выход. Повтори попытку");
+      } finally {
+        busy = false;
+        render();
+        ctx.renderSyncStatus?.();
+      }
     }
 
     function render() {

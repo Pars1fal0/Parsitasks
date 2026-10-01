@@ -1,5 +1,6 @@
 import { authenticateSupabaseRequest } from "./supabase-state.mjs";
 import { decryptJson, decryptText, encryptJson, encryptText, publicSupabaseKey } from "./google-calendar.mjs";
+import { reportRequestFailure } from "./request-error.mjs";
 
 const SCOPE = "https://www.googleapis.com/auth/drive.file";
 const TABLE = "google_drive_connections";
@@ -12,9 +13,11 @@ export async function handleGoogleDriveRequest(request, env, options = {}) {
   if (url.pathname === "/api/google-drive/callback") {
     if (request.method !== "GET") return json({ error: "method_not_allowed" }, 405);
     try { return await callback(request, env, fetchFn); }
-    catch (error) {
-      console.error("Google Drive callback error", error);
-      return redirect(env, request.url, "callback_failed");
+    catch {
+      const requestId = reportRequestFailure(request, { logger: options.logger, createId: options.createId });
+      const response = redirect(env, request.url, "callback_failed");
+      const headers = new Headers(response.headers); headers.set("X-Request-ID", requestId);
+      return new Response(null, { status: response.status, headers });
     }
   }
 

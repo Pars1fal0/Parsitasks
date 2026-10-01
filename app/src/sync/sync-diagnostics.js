@@ -24,7 +24,7 @@
         diagnosticRow("Проект", snapshot.projectConfigured ? "Настроен" : "Не настроен", snapshot.projectConfigured ? "ok" : "error"),
         diagnosticRow("Аккаунт", snapshot.authenticated ? snapshot.accountLabel || "Выполнен вход" : "Вход не выполнен", snapshot.authenticated ? "ok" : "error"),
         diagnosticRow("Автосинхронизация", snapshot.enabled ? "Включена" : "Выключена", snapshot.enabled ? "ok" : "muted"),
-        diagnosticRow("Локальные изменения", snapshot.pending ? "Ожидают отправки" : "Отправлены", snapshot.pending ? "warning" : "ok"),
+        diagnosticRow("Локальные изменения", snapshot.pending ? "Ожидают отправки" : "Нет ожидающих отправки изменений", snapshot.pending ? "warning" : "ok"),
       ];
 
       const latest = latestIsoDate(snapshot.lastPushedAt, snapshot.lastPulledAt);

@@ -2,6 +2,15 @@
   function createRemoteDataController(ctx) {
     let busy = false;
     let previewRequestId = 0;
+    const captureOwner = () => {
+      const config = ctx.getConfig();
+      return { userId: config.userId, supabaseUrl: config.supabaseUrl };
+    };
+    const isOwner = (owner) => {
+      const current = captureOwner();
+      return ctx.isReady() && current.userId === owner.userId && current.supabaseUrl === owner.supabaseUrl;
+    };
+    let displayedOwner = captureOwner();
 
     function bindEvents() {
       ctx.els.remoteSnapshotsLoadButton?.addEventListener("click", loadSnapshots);
@@ -18,13 +27,15 @@
     async function loadSnapshots() {
       if (!ctx.isReady()) return ctx.showToast("Сначала войди в аккаунт синхронизации");
       if (busy) return;
+      const owner = captureOwner();
       setBusy(true, "Загружаю версии...");
       try {
         const result = await ctx.remoteSync.listSnapshots(ctx.getConfig(), 30);
+        if (!isOwner(owner)) return;
         renderSnapshots(result.snapshots);
         setStatus(result.snapshots.length ? `Доступно версий: ${result.snapshots.length}` : "Предыдущих версий пока нет");
       } catch (error) {
-        setStatus(schemaHint(error));
+        if (isOwner(owner)) setStatus(schemaHint(error));
       } finally {
         setBusy(false);
       }
@@ -32,31 +43,50 @@
 
     async function restoreSelectedSnapshot() {
       const snapshotId = ctx.els.remoteSnapshotSelect?.value;
-      if (!snapshotId || busy) return ctx.showToast("Сначала выбери облачную версию");
+      if (!snapshotId || busy || !ctx.isReady()) return ctx.showToast("Сначала выбери облачную версию");
+      const owner = captureOwner();
       const confirmed = await ctx.confirmAction({
         confirmLabel: "Восстановить версию",
         message: "Текущее облачное состояние сохранится как отдельная версия. Локальный safety backup будет создан перед восстановлением.",
         tone: "danger",
         title: "Восстановить облачную версию?",
       });
-      if (!confirmed) return;
+      if (!confirmed || !isOwner(owner) || busy) return;
       setBusy(true, "Восстанавливаю версию...");
+      let cloudRestored = false;
+      let localRestored = false;
       try {
         const undo = ctx.createUndoSnapshot();
         const backup = ctx.createImportSafetyBackup({ state: JSON.stringify(ctx.getState()) });
         if (backup?.ok === false) throw new Error("Не удалось создать safety backup");
         const result = await ctx.remoteSync.restoreSnapshot(ctx.getConfig(), snapshotId);
+        if (!isOwner(owner)) return;
+        cloudRestored = true;
+        const previous = ctx.getState();
         ctx.replaceState(result.snapshot.state);
-        ctx.saveState({ skipBackup: true, skipRemote: true });
+        try {
+          if (ctx.saveState({ skipBackup: true, skipRemote: true }) === false) throw new Error("Не удалось сохранить восстановленную версию на устройстве");
+        } catch (error) {
+          ctx.replaceState(previous);
+          ctx.render();
+          throw error;
+        }
         await ctx.afterSnapshotRestored?.(result);
+        if (!isOwner(owner)) return;
+        localRestored = true;
         ctx.render();
         ctx.showToast("Облачная версия восстановлена", { undo });
         const versions = await ctx.remoteSync.listSnapshots(ctx.getConfig(), 30);
+        if (!isOwner(owner)) return;
         renderSnapshots(versions.snapshots);
         setStatus(`Версия восстановлена · доступно версий: ${versions.snapshots.length}`);
       } catch (error) {
-        setStatus(schemaHint(error));
-        ctx.showToast("Не удалось восстановить облачную версию");
+        if (!isOwner(owner)) return;
+        const message = localRestored ? "Версия восстановлена, но список облачных копий не обновился. Повтори загрузку списка"
+          : cloudRestored ? "Облако восстановлено, но локальную копию записать не удалось. Экспортируй текущие данные и повтори загрузку из облака"
+            : "Не удалось восстановить облачную версию";
+        setStatus(`${message} · ${schemaHint(error)}`);
+        ctx.showToast(message);
       } finally {
         setBusy(false);
       }
@@ -66,19 +96,21 @@
       const snapshotId = ctx.els.remoteSnapshotSelect?.value;
       const requestId = ++previewRequestId;
       if (!snapshotId || !ctx.isReady()) return renderSnapshotPreview();
+      const owner = captureOwner();
       renderSnapshotPreview({ loading: true });
       try {
         const result = await ctx.remoteSync.getSnapshot(ctx.getConfig(), snapshotId);
-        if (requestId !== previewRequestId) return;
+        if (requestId !== previewRequestId || !isOwner(owner)) return;
         renderSnapshotPreview({ snapshot: result.snapshot });
       } catch (error) {
-        if (requestId !== previewRequestId) return;
+        if (requestId !== previewRequestId || !isOwner(owner)) return;
         renderSnapshotPreview({ error: schemaHint(error) });
       }
     }
 
     async function deleteAccount() {
       if (!ctx.isReady() || busy) return ctx.showToast("Сначала войди в аккаунт синхронизации");
+      const owner = captureOwner();
       const verificationText = ctx.getUserEmail() || "УДАЛИТЬ";
       const confirmed = await ctx.confirmAction({
         confirmLabel: "Удалить аккаунт",
@@ -90,15 +122,17 @@
           : 'Введи "УДАЛИТЬ" для подтверждения',
         verificationText,
       });
-      if (!confirmed) return;
+      if (!confirmed || !isOwner(owner) || busy) return;
       setBusy(true, "Удаляю аккаунт...");
       try {
         await ctx.remoteSync.deleteAccount(ctx.getConfig());
+        if (!isOwner(owner)) return;
         await ctx.afterAccountDeleted();
         renderSnapshots([]);
         setStatus("Облачный аккаунт удалён. Локальные данные сохранены.");
         ctx.showToast("Аккаунт и облачные данные удалены");
       } catch (error) {
+        if (!isOwner(owner)) return;
         setStatus(schemaHint(error));
         ctx.showToast("Не удалось удалить облачный аккаунт");
       } finally {
@@ -121,7 +155,7 @@
         option.textContent = formatSnapshotLabel(snapshot);
         select.appendChild(option);
       });
-      ctx.els.remoteSnapshotRestoreButton.disabled = !snapshots.length;
+      if (ctx.els.remoteSnapshotRestoreButton) ctx.els.remoteSnapshotRestoreButton.disabled = true;
       renderSnapshotPreview();
     }
 
@@ -173,6 +207,14 @@
     }
 
     function syncControls() {
+      const owner = captureOwner();
+      if (owner.userId !== displayedOwner.userId || owner.supabaseUrl !== displayedOwner.supabaseUrl) {
+        displayedOwner = owner;
+        previewRequestId += 1;
+        renderSnapshots([]);
+        renderSnapshotPreview();
+        setStatus("История версий ещё не загружена");
+      }
       const unavailable = busy || !ctx.isReady();
       if (ctx.els.remoteSnapshotsLoadButton) ctx.els.remoteSnapshotsLoadButton.disabled = unavailable;
       if (ctx.els.remoteAccountDeleteButton) ctx.els.remoteAccountDeleteButton.disabled = unavailable;

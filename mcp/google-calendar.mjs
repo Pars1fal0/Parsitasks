@@ -1,4 +1,5 @@
 import { authenticateSupabaseRequest } from "./supabase-state.mjs";
+import { reportRequestFailure } from "./request-error.mjs";
 
 const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 const CONNECTION_TABLE = "google_calendar_connections";
@@ -14,9 +15,11 @@ export async function handleGoogleCalendarRequest(request, env, options = {}) {
     if (request.method !== "GET") return methodNotAllowed(["GET"]);
     try {
       return await handleCallback(request, env, fetchFn);
-    } catch (error) {
-      console.error("Google Calendar callback error", error);
-      return callbackRedirect(env, request.url, "callback_failed");
+    } catch {
+      const requestId = reportRequestFailure(request, { logger: options.logger, createId: options.createId });
+      const response = callbackRedirect(env, request.url, "callback_failed");
+      const headers = new Headers(response.headers); headers.set("X-Request-ID", requestId);
+      return new Response(null, { status: response.status, headers });
     }
   }
 

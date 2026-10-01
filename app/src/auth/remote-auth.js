@@ -9,6 +9,9 @@
     let recoveryMode = false;
     let callbackError = "";
     let refreshTimer = null;
+    let refreshInFlight = null;
+    let sessionVersion = 0;
+    const requestTimeoutMs = Math.max(100, Math.min(60_000, Number(options.requestTimeoutMs) || 30_000));
 
     function loadSession() {
       try {
@@ -20,6 +23,7 @@
     }
 
     function saveSession(nextSession) {
+      sessionVersion += 1;
       session = nextSession?.access_token && nextSession?.user?.id ? nextSession : null;
       try {
         if (session) storage?.setItem(SESSION_KEY, JSON.stringify(session));
@@ -52,11 +56,11 @@
     async function isGoogleSignInEnabled() {
       const config = requireConfig();
       try {
-        const response = await fetchFn(`${config.supabaseUrl}/auth/v1/settings`, {
+        const response = await request(`${config.supabaseUrl}/auth/v1/settings`, {
           headers: { apikey: config.anonKey },
         });
         if (!response.ok) return null;
-        const settings = await response.json();
+        const settings = await readResponse(response);
         return typeof settings?.external?.google === "boolean" ? settings.external.google : null;
       } catch {
         return null;
@@ -65,12 +69,14 @@
 
     async function authenticate(path, body) {
       const config = requireConfig();
-      const response = await fetchFn(`${config.supabaseUrl}/auth/v1/${path}`, {
+      const version = sessionVersion;
+      const response = await request(`${config.supabaseUrl}/auth/v1/${path}`, {
         method: "POST",
         headers: authHeaders(config),
         body: JSON.stringify(body),
       });
       const data = await readResponse(response);
+      if (version !== sessionVersion) throw new Error("Состояние входа изменилось. Повтори вход");
       if (!response.ok) throw createAuthError(response, data);
       if (data.access_token) saveSession(data);
       return data;
@@ -78,15 +84,28 @@
 
     async function refreshSession() {
       if (!session?.refresh_token) return null;
+      if (refreshInFlight?.session === session) return refreshInFlight.promise;
+      const current = session;
+      const promise = performRefresh(current);
+      refreshInFlight = { session: current, promise };
+      try {
+        return await promise;
+      } finally {
+        if (refreshInFlight?.promise === promise) refreshInFlight = null;
+      }
+    }
+
+    async function performRefresh(current) {
       const config = requireConfig();
-      const response = await fetchFn(`${config.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      const response = await request(`${config.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
         method: "POST",
         headers: authHeaders(config),
-        body: JSON.stringify({ refresh_token: session.refresh_token }),
+        body: JSON.stringify({ refresh_token: current.refresh_token }),
       });
       const data = await readResponse(response);
+      if (session !== current) return session;
       if (!response.ok) {
-        saveSession(null);
+        if ([400, 401, 403].includes(response.status)) saveSession(null);
         throw createAuthError(response, data);
       }
       return saveSession(data);
@@ -96,15 +115,16 @@
       const current = await ensureFreshSession();
       if (!current?.access_token) return null;
       const config = requireConfig();
-      const response = await fetchFn(`${config.supabaseUrl}/auth/v1/user`, {
+      const response = await request(`${config.supabaseUrl}/auth/v1/user`, {
         headers: { ...authHeaders(config), Authorization: `Bearer ${current.access_token}` },
       });
       const data = await readResponse(response);
+      if (session !== current) return session;
       if (!response.ok) {
         if ([401, 403].includes(response.status)) saveSession(null);
         throw createAuthError(response, data);
       }
-      if (!data?.id) {
+      if (!data?.id || String(data.id) !== current.user.id) {
         saveSession(null);
         throw new Error("Сессия аккаунта недействительна");
       }
@@ -124,7 +144,7 @@
       } catch {
         return;
       }
-      await fetchFn(`${config.supabaseUrl}/auth/v1/logout`, {
+      await request(`${config.supabaseUrl}/auth/v1/logout`, {
         method: "POST",
         headers: { ...authHeaders(config), Authorization: `Bearer ${current.access_token}` },
       }).catch(() => {});
@@ -133,7 +153,7 @@
     async function resetPassword(email) {
       const config = requireConfig();
       const redirectTo = getRecoveryRedirectUrl();
-      const response = await fetchFn(`${config.supabaseUrl}/auth/v1/recover`, {
+      const response = await request(`${config.supabaseUrl}/auth/v1/recover`, {
         method: "POST",
         headers: authHeaders(config),
         body: JSON.stringify({
@@ -150,7 +170,7 @@
       requireStrongPassword(password);
       if (!session?.access_token) throw new Error("Ссылка восстановления недействительна или устарела");
       const config = requireConfig();
-      const response = await fetchFn(`${config.supabaseUrl}/auth/v1/user`, {
+      const response = await request(`${config.supabaseUrl}/auth/v1/user`, {
         method: "PUT",
         headers: {
           ...authHeaders(config),
@@ -202,6 +222,28 @@
         throw new Error("Некорректный адрес проекта Supabase");
       }
       return config;
+    }
+
+    async function request(url, init) {
+      const controller = new AbortController();
+      let timer;
+      try {
+        const { response, body } = await Promise.race([
+          (async () => {
+            const response = await fetchFn(url, { ...init, signal: controller.signal });
+            return { response, body: response.text ? await response.text() : JSON.stringify(await response.json()) };
+          })(),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              reject(Object.assign(new Error("Сервер входа не ответил вовремя. Повтори попытку"), { code: "request-timeout" }));
+              controller.abort();
+            }, requestTimeoutMs);
+          }),
+        ]);
+        return { ok: response.ok, status: response.status, statusText: response.statusText, text: async () => body };
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     restoreCallbackSession();

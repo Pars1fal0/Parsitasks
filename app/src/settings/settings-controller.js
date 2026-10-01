@@ -8,15 +8,17 @@
       const appearance = section("appearanceHeading");
       const reminders = section("notificationsSettingsHeading");
       const account = section("dataSettingsHeading");
+      const help = document.querySelector("#helpSettingsHeading")?.closest("details");
+      const primary = [appearance, reminders, account, help].filter(Boolean);
       const children = [...grid.children];
       const identity = document.querySelector(".settings-account-card");
       identity.classList.remove("panel");
       account.querySelector(":scope > summary").after(identity);
-      [appearance, reminders, account].forEach((group) => {
+      primary.forEach((group) => {
         group.classList.remove("panel");
         group.classList.add("settings-primary-group");
       });
-      children.filter((node) => ![appearance, reminders, account].includes(node)).forEach((node) => {
+      children.filter((node) => !primary.includes(node)).forEach((node) => {
         node.classList.remove("panel", "settings-panel", "settings-accordion");
         node.classList.add("settings-subsection");
         const destination = node.contains(document.querySelector("#navigationPreferences")) || node.contains(ctx.els.categoryForm) ? appearance : account;
@@ -29,7 +31,7 @@
       danger.className = "settings-actions";
       danger.append(deleteAccount);
       account.append(danger);
-      grid.replaceChildren(appearance, reminders, account);
+      grid.replaceChildren(...primary);
     }
 
     function bindEvents() {

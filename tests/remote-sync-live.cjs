@@ -2,6 +2,11 @@ const assert = require("node:assert/strict");
 const { createRemoteAuth } = require("../app/src/auth/remote-auth.js");
 const { createRemoteSync } = require("../app/src/sync/remote-sync.js");
 
+if (process.env.PARSITASKS_LIVE_TEST_ACCOUNTS !== "1") {
+  console.error("Live checks require disposable test accounts. Set PARSITASKS_LIVE_TEST_ACCOUNTS=1 only after selecting them; personal accounts must not be used.");
+  process.exit(2);
+}
+
 const requiredVariables = [
   "RHYTHM_SUPABASE_URL",
   "RHYTHM_SUPABASE_ANON_KEY",

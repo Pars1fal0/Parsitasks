@@ -9,8 +9,13 @@
     async function syncNow(runOptions = {}) {
       if (!runOptions.force && documentRef?.visibilityState === "hidden") return { changed: false, skipped: "hidden" };
       if (host.navigator?.onLine === false) return { changed: false, skipped: "offline" };
-      await config.ensureFreshSession?.();
-      return config.syncLatest?.({ silent: runOptions.silent !== false }) || { changed: false };
+      try {
+        await config.ensureFreshSession?.();
+        return await config.syncLatest?.({ silent: runOptions.silent !== false }) || { changed: false };
+      } catch (error) {
+        config.onError?.(error);
+        return { changed: false, error };
+      }
     }
 
     function handleVisibilityChange() {

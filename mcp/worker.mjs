@@ -27,6 +27,7 @@ import {
 import { authenticateSupabaseRequest, createSupabaseStateStore } from "./supabase-state.mjs";
 import { handleGoogleCalendarRequest } from "./google-calendar.mjs";
 import { handleGoogleDriveRequest } from "./google-drive.mjs";
+import { reportRequestFailure } from "./request-error.mjs";
 
 const OAUTH_SCOPES = ["openid", "email"];
 const OAUTH_SECURITY = [{ type: "oauth2", scopes: OAUTH_SCOPES }];
@@ -82,11 +83,11 @@ export default {
         return handleMcp(request, env, ctx);
       }
       return env.ASSETS.fetch(request);
-    } catch (error) {
-      console.error("MCP worker error", error);
+    } catch {
+      const requestId = reportRequestFailure(request);
       return jsonResponse(
-        { error: "internal_error", message: "Внутренняя ошибка Parsitasks MCP" },
-        { status: 500, headers: url.pathname.startsWith("/api/google-drive/") ? { "Access-Control-Allow-Origin": "*" } : {} },
+        { error: "internal_error", message: "Внутренняя ошибка Parsitasks MCP", requestId },
+        { status: 500, headers: { "X-Request-ID": requestId, ...(url.pathname.startsWith("/api/google-drive/") ? { "Access-Control-Allow-Origin": "*" } : {}) } },
       );
     }
   },

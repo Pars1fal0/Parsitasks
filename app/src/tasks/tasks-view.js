@@ -140,7 +140,7 @@
         statusOnly: ctx.getTaskCategoryFilter() === "all" && !ctx.getTaskSearchQuery() });
       const nonDayEmpty = pane !== "day" && !selectableEntries.length;
       ctx.els.taskEmpty.textContent = pane === "day" ? empty.message : hasActiveFilters ? "По этим фильтрам ничего не найдено"
-        : pane === "later" ? "Отложенных задач пока нет" : "Незавершённых задач нет";
+        : pane === "later" ? "Отложенных задач пока нет" : "Нет незавершённых задач прошлых дней. Сегодняшние остаются во вкладке «День»";
       ctx.els.taskEmpty.classList.toggle("is-visible", pane === "day" ? empty.visible : nonDayEmpty);
       if (emptyReset) emptyReset.hidden = pane === "day" ? !empty.reset : !(nonDayEmpty && hasActiveFilters);
       ctx.els.taskCounter.textContent = hasActiveFilters

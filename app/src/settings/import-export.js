@@ -35,7 +35,7 @@
         const exported = Number.isFinite(Date.parse(parsed.exportedAt)) ? new Date(parsed.exportedAt).toLocaleString("ru-RU") : "не указана";
         if (ctx.getUserId?.() !== owner) return;
         const confirmed = await ctx.confirmAction?.({ title: "Заменить данные из файла?",
-          message: `Дата копии: ${exported}\n${counts}\n\nВсе текущие данные будут заменены. Перед заменой сохранится резервная копия. Файлы Google Drive не входят в JSON: здесь только ссылки.`,
+          message: `Дата копии: ${exported}\n${counts}\n\nВсе текущие данные будут заменены. Перед заменой сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.`,
           confirmLabel: "Заменить данные", tone: "danger" });
         if (confirmed !== true || ctx.getUserId?.() !== owner) return;
         const undo = ctx.createUndoSnapshot();
@@ -130,6 +130,7 @@
     }
 
     async function restoreBackup() {
+      const owner = ctx.getUserId?.();
       const backup = loadBackup();
       if (!backup) {
         ctx.showToast("Локальная резервная копия пока не найдена");
@@ -144,7 +145,7 @@
             tone: "danger",
             title: "Восстановить резервную копию?",
           });
-      if (!confirmed) return;
+      if (!confirmed || ctx.getUserId?.() !== owner) return;
 
       const undo = ctx.createUndoSnapshot();
       const safetyBackup = createImportSafetyBackup(undo);
@@ -153,7 +154,12 @@
         return;
       }
       ctx.replaceState(ctx.normalizeState(backup.state || backup));
-      ctx.saveState({ skipBackup: true });
+      if (ctx.saveState({ skipBackup: true }) === false) {
+        ctx.replaceState(ctx.normalizeState(JSON.parse(undo.state)));
+        ctx.render();
+        ctx.showToast("Не удалось записать восстановленные данные. Предыдущее состояние сохранено");
+        return;
+      }
       ctx.render();
       ctx.showToast("Данные восстановлены. Предыдущее состояние сохранено", { undo });
     }
@@ -204,6 +210,10 @@
         "syncMeta",
         "schemaVersion",
         "defaultsSeeded",
+        "studySubjects",
+        "studyLessons",
+        "studyFiles",
+        "studyWeekCycle",
       ];
       if (!recognizedKeys.some((key) => Object.hasOwn(candidate, key))) throw new Error("unrecognized-import");
       [
@@ -217,6 +227,9 @@
         "nutritionMeals",
         "nutritionTemplates",
         "categories",
+        "studySubjects",
+        "studyLessons",
+        "studyFiles",
       ].forEach((key) => {
         if (Object.hasOwn(candidate, key) && !Array.isArray(candidate[key])) throw new Error(`invalid-${key}`);
       });

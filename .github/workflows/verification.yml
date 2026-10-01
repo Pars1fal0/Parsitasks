@@ -11,12 +11,14 @@ permissions:
 
 concurrency:
   group: verification-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
   verify:
     runs-on: windows-latest
     timeout-minutes: 30
+    outputs:
+      candidate_seal: ${{ steps.seal.outputs.candidate_seal_sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -39,9 +41,79 @@ jobs:
         run: npm run test:e2e
       - name: Verify planning and recovery workflows
         run: npm run test:planning
+      - name: Verify storage failure and backup recovery
+        run: npm run test:reliability
+      - name: Verify setup and private support diagnostics
+        run: npm run test:onboarding
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website
         run: npm run build:web
       - name: Validate Worker bundle
         run: npm run build:worker
+      - name: Seal the verified release candidate
+        id: seal
+        run: npm run release:prepare -- --revision "${{ github.sha }}"
+      - name: Store verified release candidate
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verified-web-${{ github.sha }}
+          path: .release-candidate/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    name: Deploy verified website
+    needs: verify
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/master' &&
+      vars.PARSITASKS_GATED_DEPLOY_ENABLED == '1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://parsitasks.ru
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+    steps:
+      - name: Checkout the verified commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install deployment tools
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Download the candidate from this verification run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verified-web-${{ github.sha }}
+          path: .release-candidate/
+      - name: Recheck artifact fingerprints and source revision
+        run: npm run release:verify -- --revision "$GITHUB_SHA" --seal "$EXPECTED_CANDIDATE_SEAL"
+        env:
+          EXPECTED_CANDIDATE_SEAL: ${{ needs.verify.outputs.candidate_seal }}
+      - name: Refuse to deploy an outdated branch revision
+        run: |
+          node -e 'const r = await fetch(`https://api.github.com/repos/${process.env.GITHUB_REPOSITORY}/git/ref/heads/master`, {headers:{Authorization:`Bearer ${process.env.GITHUB_TOKEN}`, Accept:"application/vnd.github+json"}, signal:AbortSignal.timeout(15000)}); if (!r.ok || (await r.json()).object?.sha !== process.env.GITHUB_SHA) throw new Error("Master changed while this release was being verified; wait for the latest run");' --input-type=module
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy the prebuilt candidate
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --no-install wrangler deploy --config .release-candidate/wrangler.json --no-bundle
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Verify the published release
+        run: npm run verify:production -- --revision "$GITHUB_SHA" --wait 600

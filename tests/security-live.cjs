@@ -7,6 +7,11 @@ const APP_BASE_URL = "https://parsitasks.ru";
 const CANARY_TITLE = "PENTEST-CANARY-2026";
 const PROOF_TITLE = "SECURITY TEST: доступ получен";
 
+if (process.env.PARSITASKS_LIVE_TEST_ACCOUNTS !== "1") {
+  console.error("Live checks require two disposable test accounts. Set PARSITASKS_LIVE_TEST_ACCOUNTS=1 only after selecting them; personal accounts must not be used.");
+  process.exit(2);
+}
+
 loadEnvFile(ENV_FILE);
 
 const required = [

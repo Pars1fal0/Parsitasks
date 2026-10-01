@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v100-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v103-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -15,6 +15,7 @@ const APP_SHELL = [
   "src/platform/shell-version.js",
   "assets/styles/styles.css",
   "assets/styles/workspace-ux.css",
+  "assets/styles/workspace-guide.css",
   "assets/styles/disclosure-menus.css",
   "assets/styles/study.css",
   "assets/styles/notes.css",
@@ -34,6 +35,7 @@ const APP_SHELL = [
   "src/sync/sync-history.js",
   "src/sync/sync-diagnostics.js",
   "src/settings/settings-state.js",
+  "src/settings/workspace-guide.js",
   "src/settings/profile-settings.js",
   "src/core/data-normalizers.js",
   "src/study/study-model.js",

@@ -53,9 +53,9 @@ const { _electron: electron } = require("playwright-core");
     assert.ok(await page.locator("#appToast.is-visible.has-action").isVisible());
     await navigate("settings");
     const groups = page.locator("#settingsView .settings-grid > details");
-    assert.equal(await groups.count(), 3);
+    assert.equal(await groups.count(), 4);
     assert.equal(await page.locator("#settingsView .settings-grid > details[open]").count(), 0);
-    assert.deepEqual(await groups.locator(":scope > summary h2").allTextContents(), ["Внешний вид", "Напоминания", "Аккаунт и данные"]);
+    assert.deepEqual(await groups.locator(":scope > summary h2").allTextContents(), ["Внешний вид", "Напоминания", "Аккаунт и данные", "Помощь"]);
     assert.equal(await page.locator("#remoteSyncUrl").isVisible(), false);
     await page.locator('[aria-labelledby="appearanceHeading"] > summary').click();
     await page.locator('[aria-labelledby="navigationSettingsHeading"] > summary').click();
@@ -132,6 +132,6 @@ const { _electron: electron } = require("playwright-core");
       assert.ok(await page.locator("#remoteSyncUrl").isVisible());
     }
     assert.deepEqual(errors, []);
-    console.log("e2e ok - clear habit actions, one daily percentage, meals before summary, three settings groups and responsive themes");
+    console.log("e2e ok - clear habit actions, one daily percentage, meals before summary, four settings groups and responsive themes");
   } finally { await app.close(); }
 })().catch((error) => { console.error(error); process.exit(1); });

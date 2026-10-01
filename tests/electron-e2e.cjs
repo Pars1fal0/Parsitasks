@@ -323,7 +323,8 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator('.nav-tab[data-view="settings"]:visible').click();
     assert.equal(await page.evaluate(() => window.location.hash), "#settings");
-    assert.equal(await page.locator(".settings-primary-group").count(), 3);
+    assert.equal(await page.locator(".settings-primary-group").count(), 4);
+    assert.equal(await page.locator("#helpSettings.settings-primary-group").count(), 1);
     assert.equal(await page.locator("#remoteSyncPushButton").isDisabled(), true);
     assert.equal(await page.locator("#remoteSyncPullButton").isDisabled(), true);
     await page.locator("#themePreference").evaluate((field) => { field.closest("details").open = true; });

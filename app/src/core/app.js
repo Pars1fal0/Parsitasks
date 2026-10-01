@@ -140,6 +140,7 @@ let remoteSyncEnabled = normalizeRemoteSyncEnabled(initialUiState.remoteSyncEnab
 let remoteSyncUrl = cleanText(initialUiState.remoteSyncUrl || "");
 let remoteSyncAnonKey = cleanText(initialUiState.remoteSyncAnonKey || "");
 let remoteSyncAccountId = cleanText(initialUiState.remoteSyncAccountId || "");
+let authenticatedSyncGeneration = 0;
 let remoteSyncLastPushedAt = initialUiState.remoteSyncLastPushedAt || "";
 let remoteSyncLastPulledAt = initialUiState.remoteSyncLastPulledAt || "";
 let remoteSyncPending = initialUiState.remoteSyncPending === true;
@@ -1299,6 +1300,7 @@ const remoteSyncWorkflow = window.RhythmRemoteSyncController.createRemoteSyncWor
     lastPushedAt: remoteSyncLastPushedAt,
     pending: remoteSyncPending,
   }),
+  isWorkspaceReady: () => !remoteSyncAccountId || remoteSyncAccountId === remoteAuth.getSession()?.user?.id,
   isRemoteVersionNewer: settingsState.isRemoteVersionNewer,
   latestIsoDate,
   mergeStates: window.RhythmStateMerge.mergeStates,
@@ -1508,6 +1510,29 @@ const navigationController = window.RhythmNavigationPreferences.createNavigation
   updatePreferences: (value) => updateSetting("navigationPreferences", value),
 });
 
+const workspaceGuide = window.RhythmWorkspaceGuide.createWorkspaceGuide({
+  applyPreferences: (value) => updateSetting("navigationPreferences", value),
+  getPreferences: () => navigationPreferences,
+  getState: () => state,
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
+  getSupportSnapshot: () => ({
+    version: window.RhythmShellVersion,
+    schemaVersion: SCHEMA_VERSION,
+    desktop: Boolean(window.rhythmDesktop),
+    online: navigator.onLine !== false,
+    localSaveError: Boolean(localStorageError),
+    sync: {
+      ...remoteSyncWorkflow.getStatus(),
+      enabled: remoteSyncEnabled === "on",
+      authenticated: Boolean(remoteAuth.getSession()?.access_token),
+      projectConfigured: Boolean(remoteSyncUrl && remoteSyncAnonKey),
+      lastPulledAt: remoteSyncLastPulledAt,
+      lastPushedAt: remoteSyncLastPushedAt,
+    },
+  }),
+  showToast,
+});
+
 const appEvents = window.RhythmAppEvents.createAppEvents({
   confirmDiscardOpenForms,
   hasUnsavedForms: () => [
@@ -1688,6 +1713,7 @@ async function init() {
   globalSearch.bindEvents();
   notificationsController.bindEvents();
   appEvents.bind();
+  workspaceGuide.bindEvents();
   syncNavigationRoute({ replace: true });
   resetTaskForm({ open: false });
   resetHabitForm({ open: false });
@@ -1703,10 +1729,14 @@ async function init() {
   }
   render();
   scrollWorkspaceTop();
-  if (initialStateLoad.status === "recovered") showToast("Поврежденные локальные данные восстановлены из backup");
-  if (initialStateLoad.status === "recovered-memory") showToast("Backup восстановлен только в памяти. Экспортируй данные");
-  if (initialStateLoad.status === "corrupt") showToast("Локальные данные повреждены. Загрузи backup или данные из облака");
-  await initializeHostedConfig();
+  if (initialStateLoad.status === "recovered") showToast("Повреждённые локальные данные восстановлены из резервной копии");
+  if (initialStateLoad.status === "recovered-memory") showToast("Копия восстановлена только в памяти. Экспортируй данные");
+  if (initialStateLoad.status === "corrupt") showToast("Локальные данные повреждены. Восстанови копию или загрузи данные из облака");
+  try {
+    await initializeHostedConfig();
+  } catch {
+    showToast("Не удалось подключить облако. Локальные данные доступны; проверь подключение в настройках");
+  }
   deviceSyncController.start().then(() => remoteSyncWorkflow.resumePending());
   syncDesktopReminders();
   setInterval(checkDueNotifications, 30000);
@@ -1745,6 +1775,8 @@ async function synchronizeAuthenticatedAccount() {
   const session = remoteAuth.getSession();
   const userId = cleanText(session?.user?.id || "");
   if (!userId) return;
+  const generation = ++authenticatedSyncGeneration;
+  const isCurrent = () => generation === authenticatedSyncGeneration && remoteAuth.getSession()?.user?.id === userId;
   remoteSyncEnabled = "on";
   if (remoteSyncAccountId && remoteSyncAccountId !== userId) {
     remoteSyncWorkflow.resetQueue();
@@ -1758,12 +1790,18 @@ async function synchronizeAuthenticatedAccount() {
       supabaseUrl: remoteSyncUrl,
       userId,
     }));
+    if (!isCurrent()) return;
+    const previous = state;
     replaceState(pulled.found && pulled.state ? pulled.state : null);
+    if (saveState({ skipBackup: true, skipChangeTracking: true, skipRemote: true }) === false) {
+      replaceState(previous);
+      render();
+      throw new Error("Не удалось сохранить данные выбранного аккаунта");
+    }
     notesView.resetForState();
     remoteSyncLastPulledAt = pulled.updatedAt || pulled.clientUpdatedAt || "";
     remoteSyncLastPushedAt = "";
     remoteSyncPending = false;
-    saveState({ skipBackup: true, skipChangeTracking: true, skipRemote: true });
     render();
     showToast("Загружены данные выбранного аккаунта");
   }
@@ -1772,7 +1810,9 @@ async function synchronizeAuthenticatedAccount() {
   settingsController.syncControls();
   renderRemoteSyncStatus();
   await remoteSyncWorkflow.syncLatest({ silent: true });
+  if (!isCurrent()) return;
   await remoteSyncWorkflow.push({ silent: true });
+  if (!isCurrent()) return;
   await remoteSyncWorkflow.resumePending();
 }
 
@@ -1792,6 +1832,7 @@ function handleDateRollover() {
 
 function render() {
   appShellController.render();
+  workspaceGuide.render();
 }
 
 function scrollWorkspaceTop() {
@@ -1819,6 +1860,7 @@ function renderSaveStatus() {
 
 function renderTaskSurfaces() {
   viewRenderer.render(activeView);
+  workspaceGuide.render();
 }
 
 function renderHabitSurfaces() {
@@ -3140,13 +3182,20 @@ function getRemoteUiSettings(overrides = {}) {
 
 function updateSetting(name, value) {
   switch (name) {
-    case "navigationPreferences":
+    case "navigationPreferences": {
+      const previous = navigationPreferences;
       navigationPreferences = window.RhythmNavigationPreferences.normalize(value);
-      saveUiState();
+      if (!saveUiState()) {
+        navigationPreferences = previous;
+        navigationController.renderControls();
+        showToast("Не удалось сохранить настройки навигации");
+        return false;
+      }
       navigationController.apply();
       navigationController.renderControls();
       render();
-      break;
+      return true;
+    }
     case "quietHours":
       quietHours = window.RhythmReminderPolicy.normalizeQuietHours(value);
       saveUiState();

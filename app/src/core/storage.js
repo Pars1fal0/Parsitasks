@@ -15,7 +15,8 @@
     let lastBackupAt = 0;
 
     function loadState() {
-      return readJson(keys.state, null);
+      const state = readJson(keys.state, null);
+      return isState(state) ? state : null;
     }
 
     function loadStateWithRecovery() {
@@ -23,13 +24,15 @@
       try {
         raw = storage.getItem(keys.state);
         if (!raw) return { state: null, status: "empty" };
-        return { state: JSON.parse(raw), status: "ok" };
+        const state = JSON.parse(raw);
+        if (!isState(state)) throw new Error("Invalid stored state");
+        return { state, status: "ok" };
       } catch (error) {
         try {
           if (raw) storage.setItem(keys.corruptState, raw);
         } catch {}
         const backup = loadBackup();
-        const recoveredState = backup?.state && typeof backup.state === "object" ? backup.state : null;
+        const recoveredState = isState(backup?.state) ? backup.state : null;
         if (!recoveredState) return { error, state: null, status: "corrupt" };
         try {
           writeJson(keys.state, recoveredState);
@@ -41,11 +44,12 @@
     }
 
     function saveState(state, saveOptions = {}) {
+      if (!isState(state)) throw new Error("Invalid state");
       const nextState = {
         ...state,
         schemaVersion: saveOptions.schemaVersion || schemaVersion,
       };
-      const previousState = readJson(keys.state, null);
+      const previousState = loadState();
       writeJson(keys.state, nextState);
 
       if (!saveOptions.skipBackup && previousState && typeof previousState === "object") {
@@ -82,6 +86,8 @@
           state,
         };
 
+      if (!isState(backup.state)) return { ok: false, reason: "invalid-state" };
+
       try {
         writeJson(keys.backup, backup);
         lastBackupAt = now;
@@ -93,7 +99,7 @@
 
     function loadBackup() {
       const backup = readJson(keys.backup, null);
-      if (!backup || typeof backup !== "object") return null;
+      if (!backup || !isState(backup.state)) return null;
       return backup;
     }
 
@@ -108,6 +114,7 @@
           exportedAt: new Date().toISOString(),
           state: JSON.parse(snapshot.state),
         };
+        if (!isState(backup.state)) throw new Error("Invalid safety backup state");
         writeJson(keys.importSafetyBackup, backup);
         return { ok: true, backup };
       } catch (error) {
@@ -139,6 +146,12 @@
       saveState,
       saveUiState,
     };
+  }
+
+  function isState(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    return ["tasks", "habits", "goals", "categories", "notes", "boardItems", "journalEntries", "studySubjects", "studyLessons", "studyFiles"]
+      .every((key) => !Object.hasOwn(value, key) || Array.isArray(value[key]));
   }
 
   const api = { createLocalStorageAdapter, DEFAULT_KEYS };

@@ -4,6 +4,7 @@
     const tableName = options.tableName || "rhythm_states";
     const now = options.now || (() => Date.now());
     const maxClockSkewMs = Math.max(60_000, Number(options.maxClockSkewMs) || 10 * 60_000);
+    const requestTimeoutMs = Math.max(100, Math.min(60_000, Number(options.requestTimeoutMs) || 30_000));
 
     function normalizeConfig(config = {}) {
       return {
@@ -45,7 +46,7 @@
       const updateFilter = expectedUpdatedAt
         ? `${identityFilter(normalized)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}&select=updated_at,client_updated_at,state,ui_state,schema_version`
         : `on_conflict=${conflictColumn}`;
-      const response = await fetchFn(`${normalized.supabaseUrl}/rest/v1/${tableName}?${updateFilter}`, {
+      const response = await request(`${normalized.supabaseUrl}/rest/v1/${tableName}?${updateFilter}`, {
         method: expectedUpdatedAt ? "PATCH" : "POST",
         headers: supabaseHeaders(normalized, {
           Prefer: expectedUpdatedAt
@@ -73,7 +74,7 @@
       ensureConfigured(normalized);
       const filter = identityFilter(normalized);
       const select = "select=state,ui_state,schema_version,client_updated_at,updated_at";
-      const response = await fetchFn(`${normalized.supabaseUrl}/rest/v1/${tableName}?${select}&${filter}&limit=1`, {
+      const response = await request(`${normalized.supabaseUrl}/rest/v1/${tableName}?${select}&${filter}&limit=1`, {
         method: "GET",
         headers: supabaseHeaders(normalized),
       });
@@ -99,7 +100,7 @@
       const normalized = normalizeConfig(config);
       ensureConfigured(normalized);
       const filter = identityFilter(normalized);
-      const response = await fetchFn(`${normalized.supabaseUrl}/rest/v1/${tableName}?select=user_key,user_id,client_updated_at&${filter}&limit=1`, {
+      const response = await request(`${normalized.supabaseUrl}/rest/v1/${tableName}?select=user_key,user_id,client_updated_at&${filter}&limit=1`, {
         method: "GET",
         headers: supabaseHeaders(normalized),
       });
@@ -117,7 +118,7 @@
       ensureConfigured(normalized);
       const safeLimit = Math.max(1, Math.min(30, Number(limit) || 10));
       const query = `select=id,schema_version,summary,created_at&user_id=eq.${encodeURIComponent(normalized.userId)}&order=created_at.desc&limit=${safeLimit}`;
-      const response = await fetchFn(`${normalized.supabaseUrl}/rest/v1/rhythm_state_snapshots?${query}`, {
+      const response = await request(`${normalized.supabaseUrl}/rest/v1/rhythm_state_snapshots?${query}`, {
         headers: supabaseHeaders(normalized),
       });
       const data = await readResponse(response);
@@ -132,7 +133,7 @@
       const id = String(snapshotId || "").trim();
       if (!/^\d+$/.test(id)) throw new Error("Snapshot is not selected");
       const query = `select=state,schema_version,summary,created_at&id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(normalized.userId)}&limit=1`;
-      const response = await fetchFn(`${normalized.supabaseUrl}/rest/v1/rhythm_state_snapshots?${query}`, {
+      const response = await request(`${normalized.supabaseUrl}/rest/v1/rhythm_state_snapshots?${query}`, {
         headers: supabaseHeaders(normalized),
       });
       const data = await readResponse(response);
@@ -160,7 +161,7 @@
       ensureFetch();
       const normalized = normalizeConfig(config);
       ensureConfigured(normalized);
-      const response = await fetchFn(`${normalized.supabaseUrl}/rest/v1/rpc/delete_parsitasks_account`, {
+      const response = await request(`${normalized.supabaseUrl}/rest/v1/rpc/delete_parsitasks_account`, {
         method: "POST",
         headers: supabaseHeaders(normalized),
         body: "{}",
@@ -172,6 +173,33 @@
 
     function ensureFetch() {
       if (!fetchFn) throw new Error("Fetch API is not available for remote sync");
+    }
+
+    // Bound the whole request, including reading a response body that may stall.
+    async function request(url, init) {
+      const controller = new AbortController();
+      const text = await withTimeout(async () => {
+        const response = await fetchFn(url, { ...init, signal: controller.signal });
+        const body = await response.text();
+        return { response, body };
+      }, controller);
+      return { ok: text.response.ok, status: text.response.status, statusText: text.response.statusText,
+        headers: text.response.headers, text: async () => text.body };
+    }
+
+    async function withTimeout(run, controller) {
+      let timer;
+      try {
+        return await Promise.race([Promise.resolve().then(run), new Promise((_, reject) => {
+          timer = setTimeout(() => {
+            const error = Object.assign(new Error("Сервер не ответил вовремя"), { code: "request-timeout" });
+            reject(error);
+            controller.abort();
+          }, requestTimeoutMs);
+        })]);
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     function ensureConfigured(config) {
