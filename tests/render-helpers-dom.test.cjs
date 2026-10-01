@@ -134,7 +134,7 @@ module.exports = [
       assert.equal(node.querySelector("h3").textContent, "Water");
       assert.equal(node.querySelector("input").value, "4");
       assert.equal(node.querySelector(".progress-fill").style.values.width, "50%");
-      assert.equal(node.querySelector(".habit-number-row").textContent.includes("4 / 8 cups"), true);
+      assert.equal(node.querySelector(".habit-number-row").querySelector("span").textContent, "/ 8 cups");
     },
   },
   {
@@ -174,7 +174,8 @@ module.exports = [
 
       assert.equal(habit.logs["2026-07-02"], undefined);
       assert.equal(node.querySelector(".progress-fill").style.values.width, "0%");
-      assert.equal(node.querySelector(".habit-number-row").textContent.includes("0 / 8 cups"), true);
+      assert.equal(input.value, "0");
+      assert.equal(node.querySelector(".habit-number-row").querySelector("span").textContent, "/ 8 cups");
     },
   },
   {
