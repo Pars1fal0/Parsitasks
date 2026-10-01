@@ -429,29 +429,28 @@
                     Название
                     <input id="taskTitle" type="text" maxlength="80" required placeholder="Например: закрыть отчет">
                   </label>
-                  <label>Запланировано на<input id="taskDate" type="date" required></label>
+                  <label>День работы<input id="taskDate" type="date" required></label>
                   <label class="task-defer-toggle"><input id="taskDeferred" type="checkbox">Без даты · в список «Позже»</label>
+                  <div class="form-grid">
+                    <label>Категория<select id="taskCategoryId"></select></label>
+                    <label>Приоритет<select id="taskPriority"><option value="high">Высокий</option><option value="medium" selected>Средний</option><option value="low">Низкий</option></select></label>
+                  </div>
                   <details class="task-extra-fields" id="taskExtraFields">
                     <summary>Дополнительные настройки</summary>
                     <div class="stack-form">
-                  <fieldset class="task-due-fields">
-                    <legend>Отдельный срок выполнения</legend>
-                    <div class="study-field-row"><label>Сдать до<input id="taskDueDate" type="date"></label><label>Время сдачи<input id="taskDueTime" type="time"></label></div>
-                    <label>Напомнить о сроке<select id="taskDueReminder"><option value="none">Не напоминать</option><option value="0">В момент сдачи</option><option value="15">За 15 минут</option><option value="60">За час</option><option value="1440">За день</option></select></label>
-                  </fieldset>
                   <div class="deadline-card">
                     <div class="deadline-title">
                       <svg class="ui-icon"><use href="#icon-clock"></use></svg>
-                      Время
+                      Время работы
                     </div>
-                    <div class="schedule-mode-control" aria-label="Тип времени задачи">
+                    <div class="schedule-mode-control" aria-label="Время работы в запланированный день">
                       <label>
                         <input id="taskScheduleNone" type="radio" name="taskScheduleMode" value="none" checked>
                         <span data-mobile-label="Нет времени">Без времени</span>
                       </label>
                       <label>
                         <input id="taskScheduleDeadline" type="radio" name="taskScheduleMode" value="deadline">
-                        <span data-mobile-label="Дедлайн">Дедлайн</span>
+                        <span data-mobile-label="Выполнить к">Выполнить к</span>
                       </label>
                       <label>
                         <input id="taskScheduleBlock" type="radio" name="taskScheduleMode" value="block">
@@ -460,7 +459,7 @@
                     </div>
                     <div class="form-grid">
                       <label id="taskDeadlineTimeField">
-                        Время
+                        Выполнить к
                         <input id="taskTime" type="time" step="300">
                       </label>
                     </div>
@@ -485,10 +484,10 @@
                       <button class="time-preset time-preset-clear" data-time-preset="" type="button">Без времени</button>
                     </div>
                     <label id="taskReminderField">
-                      Напомнить
+                      Напомнить о работе
                       <select id="taskReminder">
                         <option value="none">Не напоминать</option>
-                        <option value="0">В момент дедлайна</option>
+                        <option value="0">В указанное время</option>
                         <option value="5">За 5 минут</option>
                       <option value="15">За 15 минут</option>
                         <option value="30">За 30 минут</option>
@@ -497,20 +496,11 @@
                       </select>
                     </label>
                   </div>
-                  <div class="form-grid">
-                    <label>
-                      Категория
-                      <select id="taskCategoryId"></select>
-                    </label>
-                    <label>
-                      Приоритет
-                      <select id="taskPriority">
-                        <option value="high">Высокий</option>
-                        <option value="medium" selected>Средний</option>
-                        <option value="low">Низкий</option>
-                      </select>
-                    </label>
-                  </div>
+                  <fieldset class="task-due-fields">
+                    <legend>Срок выполнения</legend>
+                    <div class="study-field-row"><label>Дата<input id="taskDueDate" type="date"></label><label>Время<input id="taskDueTime" type="time"></label></div>
+                    <label>Напомнить о сроке<select id="taskDueReminder"><option value="none">Не напоминать</option><option value="0">В момент срока</option><option value="15">За 15 минут</option><option value="60">За час</option><option value="1440">За день</option></select></label>
+                  </fieldset>
                   <details class="task-inline-category" id="taskInlineCategory">
                     <summary>Создать категорию</summary>
                     <div class="task-inline-category-fields">
@@ -1383,7 +1373,7 @@
           <div class="study-pane is-active" data-study-pane="homework" role="tabpanel">
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyHomeworkHeading">
-                <div class="study-section-heading"><h3 id="studyHomeworkHeading">Домашние задания</h3><div class="study-homework-tools"><button class="icon-button study-form-jump" id="studyJumpToHomeworkForm" type="button" aria-label="К форме домашнего задания" title="К форме домашнего задания"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button><button class="ghost-button compact-button" id="studyOpenNotes" type="button">Заметки</button><select id="studyHomeworkFilter" aria-label="Фильтр по предмету"><option value="all">Все предметы</option></select></div></div>
+                <div class="study-section-heading"><h3 class="sr-only" id="studyHomeworkHeading">Домашние задания</h3><div class="study-homework-tools"><button class="primary-button compact-button icon-text-button study-form-jump" id="studyJumpToHomeworkForm" type="button" aria-label="Новое домашнее задание" title="Новое домашнее задание"><svg class="ui-icon"><use href="#icon-plus"></use></svg><span>Новое ДЗ</span></button><button class="ghost-button compact-button" id="studyOpenNotes" type="button">Заметки</button><select id="studyHomeworkFilter" aria-label="Фильтр по предмету"><option value="all">Все предметы</option></select></div></div>
                 <div id="studyHomeworkList" class="study-list"></div>
               </section>
               <form id="studyHomeworkForm" class="study-form" aria-label="Добавить домашнее задание">

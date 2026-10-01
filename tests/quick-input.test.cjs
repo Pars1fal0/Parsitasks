@@ -3,6 +3,28 @@ const { cleanText, normalizeDateKey, quickInput, toDateKey, toTimeValue } = requ
 
 module.exports = [
   {
+    name: "preserves ordinary nouns instead of interpreting them as a time",
+    fn() {
+      for (const title of ["Спланировать день", "Подготовить вечер встречи", "Написать рассказ про ночь", "Встретить утро", "Повторить конспект через 1 день"]) {
+        const parsed = quickInput.parseQuickTaskInput(title, { activeDate: "2026-10-01", now: new Date(2026, 9, 1, 10), cleanText, normalizeDateKey, toDateKey });
+        assert.equal(parsed.title, title.includes("через") ? "Повторить конспект" : title);
+        assert.equal(parsed.time, "");
+        assert.equal(parsed.scheduleMode, "none");
+        if (title.includes("через")) assert.equal(parsed.date, "2026-10-02");
+      }
+    },
+  },
+  {
+    name: "still recognizes explicit adverbs of time",
+    fn() {
+      for (const [word, time] of [["утром", "09:00"], ["днём", "14:00"], ["вечером", "18:00"], ["ночью", "22:00"]]) {
+        const parsed = quickInput.parseQuickTaskInput(`Позвонить ${word}`, { activeDate: "2026-10-01" });
+        assert.equal(parsed.title, "Позвонить");
+        assert.equal(parsed.time, time);
+      }
+    },
+  },
+  {
     name: "parses date, time word, category, and priority",
     fn() {
       const parsed = quickInput.parseQuickTaskInput("Позвонить врачу 2026-07-15 вечером #здоровье !high", {

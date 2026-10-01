@@ -28,6 +28,8 @@
     let semester = "all";
     let homeworkHistory = false;
     let focusedMaterialId = "";
+    let suggestedTime = "";
+    let deadlineTimeEdited = false;
     const periodControls = element("div", "study-period-controls");
     const periodSelect = element("select");
     periodSelect.setAttribute("aria-label", "Учебный период");
@@ -36,8 +38,28 @@
     archiveToggle.setAttribute("aria-pressed", "false");
     const archivePeriod = element("button", "ghost-button compact-button", "Завершить семестр");
     archivePeriod.type = "button";
-    periodControls.append(periodSelect, archiveToggle, archivePeriod);
+    const periodMenu = element("details", "study-period-menu");
+    const periodMenuSummary = element("summary", "icon-button");
+    periodMenuSummary.setAttribute("aria-label", "Управление семестрами");
+    periodMenuSummary.title = "Управление семестрами";
+    const periodMenuIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    periodMenuIcon.classList.add("ui-icon");
+    periodMenuIcon.setAttribute("aria-hidden", "true");
+    const periodMenuUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    periodMenuUse.setAttribute("href", "#icon-more");
+    periodMenuIcon.append(periodMenuUse);
+    periodMenuSummary.append(periodMenuIcon);
+    const periodMenuActions = element("div", "study-period-menu-actions");
+    periodMenuActions.append(archiveToggle, archivePeriod);
+    periodMenu.append(periodMenuSummary, periodMenuActions);
+    periodControls.append(periodSelect, periodMenu);
     root.querySelector(".study-tabs").after(periodControls);
+    const archivedNotice = element("div", "study-archive-notice");
+    archivedNotice.hidden = true;
+    const returnToCurrent = element("button", "ghost-button compact-button", "К текущим предметам");
+    returnToCurrent.type = "button";
+    archivedNotice.append(element("span", "", "Архив семестров"), returnToCurrent);
+    periodControls.after(archivedNotice);
     const historyToggle = element("button", "ghost-button compact-button", "История ДЗ");
     historyToggle.type = "button";
     historyToggle.setAttribute("aria-pressed", "false");
@@ -71,8 +93,11 @@
 
     function bindEvents() {
       periodSelect.addEventListener("change", () => { semester = periodSelect.value; render(); });
-      archiveToggle.addEventListener("click", () => { archivedView = !archivedView; render(); });
-      archivePeriod.addEventListener("click", () => setArchived(ctx.getState().studySubjects.filter(includesSubject), true));
+      archiveToggle.addEventListener("click", () => { periodMenu.open = false; archivedView = !archivedView; render(); });
+      returnToCurrent.addEventListener("click", () => { archivedView = false; render(); });
+      archivePeriod.addEventListener("click", () => { periodMenu.open = false; setArchived(ctx.getState().studySubjects.filter(includesSubject), true); });
+      periodMenu.addEventListener("keydown", (event) => { if (event.key === "Escape") { periodMenu.open = false; periodMenuSummary.focus(); } });
+      document.addEventListener("click", (event) => { if (!periodMenu.contains(event.target)) periodMenu.open = false; });
       historyToggle.addEventListener("click", () => { homeworkHistory = !homeworkHistory; historyToggle.setAttribute("aria-pressed", String(homeworkHistory)); renderHomework(ctx.getState()); });
       materialSearch.addEventListener("input", () => { focusedMaterialId = ""; renderMaterials(ctx.getState()); });
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.studyTab)));
@@ -80,7 +105,7 @@
       root.querySelector("#studyJumpToHomeworkForm").addEventListener("click", () => {
         const target = ctx.getState().studySubjects.length ? homeworkForm : subjectForm;
         target.scrollIntoView({ block: "start", behavior: "smooth" });
-        target.querySelector('input:not([type="hidden"]), select')?.focus({ preventScroll: true });
+        (target === homeworkForm ? homeworkForm.elements.title : subjectForm.elements.name)?.focus({ preventScroll: true });
       });
       root.querySelectorAll("[data-study-add-subject]").forEach((button) => button.addEventListener("click", () => {
         addingSubject = true;
@@ -98,6 +123,7 @@
       root.querySelector("#studySubjectCancel").addEventListener("click", () => { resetSubjectForm(); render(); });
       homeworkForm.addEventListener("submit", saveHomework);
       homeworkForm.elements.subjectId.addEventListener("change", suggestDeadline);
+      homeworkForm.elements.time.addEventListener("input", () => { deadlineTimeEdited = true; });
       homeworkDraft.bind();
       discardDraftButton.addEventListener("click", async () => {
         if (await ctx.confirmAction({ title: "Удалить черновик задания?", confirmLabel: "Удалить", tone: "danger" })) resetHomeworkForm();
@@ -213,6 +239,7 @@
       updateOptions(periodSelect, [["all", "Все семестры"], ...[...new Set(allSubjects.map((subject) => subject.semester || ""))].map((value) => [value, value || "Без семестра"])]);
       periodSelect.value = semester;
       archiveToggle.setAttribute("aria-pressed", String(archivedView));
+      archivedNotice.hidden = !archivedView;
       archivePeriod.hidden = archivedView;
       const subjects = allSubjects.filter(includesSubject);
       const files = state.studyFiles || [];
@@ -230,10 +257,13 @@
       renderFileChoices(files);
       if (draftOwner !== local.owner()) {
         homeworkForm.reset();
+        suggestedTime = "";
+        deadlineTimeEdited = false;
         homeworkForm.elements.id.value = "";
         homeworkForm.elements.date.value = ctx.getActiveDate();
         draftOwner = local.owner();
         const restored = homeworkDraft.restore();
+        deadlineTimeEdited = Boolean(restored);
         const editing = Boolean(homeworkForm.elements.id.value);
         root.querySelector("#studyHomeworkFormTitle").textContent = editing ? "Изменить задание" : "Новое задание";
         root.querySelector("#studyHomeworkCancel").hidden = !editing;
@@ -530,6 +560,8 @@
     function resetHomeworkForm() {
       homeworkDraft.clear();
       homeworkForm.reset(); homeworkForm.elements.id.value = "";
+      suggestedTime = "";
+      deadlineTimeEdited = false;
       homeworkForm.elements.date.value = ctx.getActiveDate();
       root.querySelector("#studyDeadlineSuggestion").textContent = "";
       draftStatus.textContent = "";
@@ -548,8 +580,17 @@
         homeworkForm.elements.date.value = nextDate;
         const lesson = studyModel.eventsForDate(state, nextDate).find((item) => item.subjectId === subjectId && item.lessonType === "practice")
           || studyModel.eventsForDate(state, nextDate).find((item) => item.subjectId === subjectId);
-        hint.textContent = `Следующая ${lesson?.lessonType === "practice" ? "практика" : "лекция"}: ${shortDate(nextDate)} · отсчёт от ${shortDate(ctx.getActiveDate())}`;
-      } else hint.textContent = "Следующего занятия нет. Выберите срок сдачи.";
+        if (!deadlineTimeEdited && (!homeworkForm.elements.time.value || homeworkForm.elements.time.value === suggestedTime)) {
+          homeworkForm.elements.time.value = lesson?.startTime || "";
+          suggestedTime = homeworkForm.elements.time.value;
+        }
+        const kind = lesson?.lessonType === "practice" ? "практика" : lesson?.lessonType === "lecture" ? "лекция" : "пара";
+        hint.textContent = `Следующая ${kind}: ${shortDate(nextDate)}${lesson?.startTime ? ` в ${lesson.startTime}` : ""} · отсчёт от ${shortDate(ctx.getActiveDate())}`;
+      } else {
+        if (!deadlineTimeEdited && homeworkForm.elements.time.value === suggestedTime) homeworkForm.elements.time.value = "";
+        suggestedTime = "";
+        hint.textContent = "Следующего занятия нет. Выберите срок сдачи.";
+      }
     }
 
     async function uploadMaterial(event) {

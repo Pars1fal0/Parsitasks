@@ -91,13 +91,13 @@
         increment.className = "habit-stepper";
         increment.textContent = "+";
         increment.setAttribute("aria-label", `Увеличить ${habitTitle}`);
-        value.textContent = `${current} / ${goal} ${habitConfig.unit || ""}`;
+        value.textContent = `/ ${goal} ${habitConfig.unit || ""}`;
         track.className = "progress-track";
         track.setAttribute("aria-hidden", "true");
         fill.className = "progress-fill";
         fill.style.width = `${percent}%`;
         track.appendChild(fill);
-        row.append(decrement, input, increment, value);
+        row.append(decrement, input, value, increment);
         control.replaceChildren(row, track);
 
         const updateValue = (nextRawValue) => {
@@ -122,7 +122,6 @@
           const loggedValue = Number(habit.logs[activeDate] || 0);
           const nextPercent = Math.min(100, Math.round((loggedValue / goal) * 100));
           fill.style.width = `${nextPercent}%`;
-          value.textContent = `${loggedValue} / ${goal} ${habitConfig.unit || ""}`;
           input.value = String(loggedValue);
           ctx.showToast(`${habitTitle}: ${loggedValue} ${habitConfig.unit || ""}`.trim(), { undo });
         };
@@ -142,7 +141,7 @@
           : ["л", "l"].includes(unit) ? [0.25, 0.5]
           : ["мин", "мин.", "минут"].includes(unit) ? [5, 15]
           : [...new Set([step, Math.min(goal, step * 5)])].filter((amount) => amount > 0);
-        amounts.forEach((amount) => {
+        amounts.filter((amount) => amount !== step).forEach((amount) => {
           const button = document.createElement("button");
           button.type = "button";
           button.className = "ghost-button compact-button";
@@ -150,7 +149,7 @@
           button.addEventListener("click", () => updateValue(Number(habit.logs[activeDate] || 0) + amount));
           quickAdds.appendChild(button);
         });
-        control.appendChild(quickAdds);
+        if (quickAdds.childElementCount) row.appendChild(quickAdds);
       } else {
         const done = habit.logs[activeDate] === true;
         const row = document.createElement("div");

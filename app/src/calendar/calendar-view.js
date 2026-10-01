@@ -16,9 +16,12 @@
     }
     ctx.els.openGoalsFromCalendar?.addEventListener("click", () => ctx.openGoals());
     const agenda = document.createElement("section"); agenda.className = "calendar-day-agenda"; agenda.id = "calendarDayAgenda";
+    const weekAgenda = document.createElement("section"); weekAgenda.className = "calendar-day-agenda"; weekAgenda.id = "calendarWeekAgenda";
+    ctx.els.weekBoardGrid?.after(weekAgenda);
     const legend = document.createElement("div"); legend.className = "calendar-month-legend";
     [["is-events", "Дела и занятия"], ["is-deadlines", "Сроки сдачи"]].forEach(([className, label]) => { const item = document.createElement("span"); item.className = className; item.textContent = label; legend.append(item); });
     ctx.els.monthGrid?.after(legend, agenda);
+    ctx.els.weekBoardGrid?.after(legend.cloneNode(true));
 
     function deadlines(dateKey) { return ctx.getState().tasks.filter((task) => task.dueDate === dateKey); }
     function createDeadline(task) {
@@ -28,13 +31,19 @@
       button.classList.toggle("is-done", ctx.isTaskDone(task, task.date || task.dueDate));
       button.addEventListener("click", () => ctx.openDateTasks(task.date, task.id)); return button;
     }
-    function renderAgenda(dateKey) {
+    function renderAgenda(dateKey, target = agenda) {
       const title = document.createElement("h3"); title.textContent = ctx.formatLongDate(dateKey);
       const lessons = (ctx.getStudyEvents?.(dateKey) || []).map((lesson) => createStudyChip(lesson, dateKey));
-      const tasks = ctx.getOrderedTasksForDate(dateKey).map((task) => { const button = document.createElement("button"); button.type = "button"; button.className = "calendar-agenda-task"; button.textContent = `${task.startTime || task.time || "Без времени"} · ${task.title}`; button.addEventListener("click", () => ctx.openDateTasks(dateKey, task.id)); return button; });
+      const tasks = ctx.getOrderedTasksForDate(dateKey).map((task) => {
+        const button = document.createElement("button"); button.type = "button"; button.className = "calendar-agenda-task";
+        const time = task.scheduleMode === "block" ? `${task.startTime}–${task.endTime}` : task.time ? `До ${task.time}` : "Без времени";
+        button.textContent = `${time} · ${task.title}`;
+        button.classList.toggle("is-done", ctx.isTaskDone(task, dateKey));
+        button.addEventListener("click", () => ctx.openDateTasks(dateKey, task.id)); return button;
+      });
       const due = deadlines(dateKey).map(createDeadline);
       const empty = document.createElement("p"); empty.textContent = "На этот день ничего не запланировано";
-      agenda.replaceChildren(title, ...lessons, ...tasks, ...due, ...(!lessons.length && !tasks.length && !due.length ? [empty] : []));
+      target.replaceChildren(title, ...lessons, ...tasks, ...due, ...(!lessons.length && !tasks.length && !due.length ? [empty] : []));
     }
 
     function renderOverview() {
@@ -186,25 +195,33 @@
         const day = document.createElement("strong");
         const count = document.createElement("div");
         const list = document.createElement("div");
+        const load = document.createElement("span");
 
         column.className = "week-board-day calendar-drop-zone";
         column.dataset.date = dateKey;
-        column.setAttribute("aria-label", `${ctx.formatLongDate(dateKey)}: ${openTasks.length} открыто, ${doneCount} готово`);
+        const dueTasks = deadlines(dateKey);
+        const label = `${ctx.formatLongDate(dateKey)}: ${openTasks.length} открыто, ${doneCount} готово, ${lessons.length} занятий, ${dueTasks.length} сроков`;
+        column.setAttribute("aria-label", label);
         column.classList.toggle("is-active", dateKey === activeDate);
         column.classList.toggle("is-today", dateKey === ctx.toDateKey(new Date()));
         header.className = "week-board-header";
         header.type = "button";
-        header.setAttribute("aria-label", `Открыть ${ctx.formatLongDate(dateKey)}`);
-        weekday.textContent = ctx.formatWeekday(dateKey);
+        header.setAttribute("aria-label", label);
+        header.setAttribute("aria-pressed", String(dateKey === activeDate));
+        weekday.textContent = new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(ctx.parseDate(dateKey));
         day.textContent = String(ctx.parseDate(dateKey).getDate());
         count.className = "week-board-count";
         count.textContent = tasks.length ? `${doneCount}/${tasks.length} выполнено` : "Пока без задач";
         if (lessons.length) count.textContent += ` · ${lessons.length} занятий`;
         list.className = "week-board-list";
-        header.append(weekday, day);
+        load.className = "week-day-load";
+        load.textContent = String(tasks.length + lessons.length);
+        load.classList.toggle("has-deadlines", dueTasks.length > 0);
+        load.title = label;
+        header.append(weekday, day, load);
 
         lessons.forEach((lesson) => list.appendChild(createStudyChip(lesson, dateKey)));
-        deadlines(dateKey).forEach((task) => list.appendChild(createDeadline(task)));
+        dueTasks.forEach((task) => list.appendChild(createDeadline(task)));
         if (tasks.length) {
           tasks.forEach((task) => list.appendChild(createWeekTaskChip(task, dateKey)));
         } else if (!lessons.length && !deadlines(dateKey).length) {
@@ -215,11 +232,12 @@
         }
 
         column.append(header, count, list);
-        header.addEventListener("click", () => ctx.openDateTasks(dateKey));
+        header.addEventListener("click", () => global.matchMedia?.("(max-width: 680px)")?.matches ? ctx.selectCalendarDate?.(dateKey) : ctx.openDateTasks(dateKey));
         ctx.attachTaskDropZone(column, dateKey);
         column.querySelectorAll(".month-task-chip").forEach((chip) => ctx.attachTaskChipDrag(chip));
         ctx.els.weekBoardGrid.appendChild(column);
       });
+      renderAgenda(activeDate, weekAgenda);
       global.requestAnimationFrame?.(() => {
         const grid = ctx.els.weekBoardGrid;
         const active = grid.querySelector(".week-board-day.is-active");

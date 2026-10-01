@@ -1,14 +1,10 @@
 (function (global) {
   const TIME_WORDS = {
     утром: "09:00",
-    утро: "09:00",
     днем: "14:00",
     днём: "14:00",
-    день: "14:00",
     вечером: "18:00",
-    вечер: "18:00",
     ночью: "22:00",
-    ночь: "22:00",
   };
 
   const MONTHS = {
@@ -108,7 +104,7 @@
   function extractQuickTimeWord(text, parsed) {
     if (parsed.scheduleMode === "block") return text;
     return text.replace(
-      /(^|\s)(утром|утро|днем|днём|день|вечером|вечер|ночью|ночь)(?=\s|$)/i,
+      /(^|\s)(утром|днем|днём|вечером|ночью)(?=\s|$)/i,
       (_match, prefix, value) => {
         if (!parsed.time) parsed.time = TIME_WORDS[value.toLowerCase()] || "";
         return prefix;

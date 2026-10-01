@@ -344,6 +344,17 @@ body:is([data-view="goals"], [data-view="board"], [data-view="archive"], [data-v
 .search-type-control { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; font-size: 13px; }
 .search-type-control select { min-width: 0; flex: 1; }
 .study-period-controls, .board-space-controls, .note-reading-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.study-period-menu { position: relative; margin-left: auto; }
+.study-period-menu > summary { list-style: none; cursor: pointer; }
+.study-period-menu > summary::-webkit-details-marker { display: none; }
+.study-period-menu-actions { position: absolute; top: calc(100% + 6px); right: 0; z-index: 35; display: grid; gap: 4px; width: 230px; max-width: calc(100vw - 32px); padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-elevated); box-shadow: var(--shadow-lift); }
+.study-period-menu:not([open]) > .study-period-menu-actions { display: none; }
+.study-period-menu-actions button { text-align: left; min-height: 44px; }
+.study-archive-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--muted); font-size: 13px; }
+.study-archive-notice[hidden] { display: none; }
+#studyView .study-form-jump { display: inline-flex; flex: 0 0 auto; }
+#studyView .study-homework-tools { flex: 1; flex-wrap: wrap; width: 100%; min-width: 0; margin-bottom: 12px; }
+#studyView .study-homework-tools select { min-width: 140px; width: auto; }
 .study-period-controls select, .board-space-controls select { max-width: 280px; min-width: 0; flex: 1 1 160px; }
 .study-period-controls [aria-pressed="true"], .note-reading-controls [aria-pressed="true"], #goalFilter { border-color: var(--teal); }
 .study-item.is-cancelled .study-item-title { text-decoration: line-through; color: var(--muted); }
@@ -352,7 +363,28 @@ body:is([data-view="goals"], [data-view="board"], [data-view="archive"], [data-v
 .calendar-deadline { display: block; width: 100%; min-height: 36px; border: 1px solid color-mix(in srgb, var(--coral) 45%, transparent); border-left: 3px solid var(--coral); border-radius: 4px; background: color-mix(in srgb, var(--coral) 9%, var(--surface)); color: var(--text); padding: 8px; text-align: left; font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
 .calendar-deadline.is-done { border-color: var(--teal); opacity: .75; }
 .calendar-day-agenda { display: none; }
+.week-day-load { display: none; }
 .calendar-month-legend { display: none; }
+.toast[hidden] { display: none; }
+body:not([data-view="nutrition"]) .toast { flex-wrap: nowrap; gap: 8px; padding: 6px 8px 6px 12px; }
+body:not([data-view="nutrition"]) .toast-message { flex: 1 1 auto; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; line-height: 1.4; font-size: 13px; }
+.toast button.toast-close { display: grid; place-items: center; width: 44px; height: 44px; padding: 8px; background: transparent; color: var(--muted); }
+body:not([data-view="nutrition"]) .toast button { min-height: 44px; }
+#habitsView .habit-number-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#habitsView .habit-number-row input { width: 56px; min-height: 44px; }
+#habitsView .habit-stepper { width: 44px; height: 44px; min-width: 44px; font-weight: 600; }
+#habitsView .habit-number-row > span { grid-column: auto; flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 450; overflow-wrap: anywhere; }
+#habitsView .habit-quick-adds { margin: 0; gap: 6px; }
+#habitsView .habit-quick-adds > button { min-height: 44px; padding: 6px 8px; font-size: 12px; }
+#habitsView .habit-control { gap: 6px; }
+#habitsView .progress-track { height: 4px; }
+#goalsView .goal-metrics { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 16px; padding: 10px 0; border-block: 1px solid var(--line); }
+#goalsView .goal-metric { display: flex; align-items: baseline; gap: 8px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#goalsView .goal-metric strong { font-size: 18px; line-height: 1.4; font-weight: 650; }
+#goalsView .goal-metric .metric-label { font-size: 12px; font-weight: 450; }
+#tasksView .task-meta-chip:is([data-meta-type="repeat"], [data-meta-type="schedule"]) { border: 0; background: transparent; padding: 2px 0; color: var(--muted); }
+#tasksView .task-meta-chip[data-meta-type="due"] { border-color: color-mix(in srgb, var(--coral) 35%, transparent); }
+#studyView > .toolbar h2, #journalView > .toolbar h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; background: var(--bg); padding-bottom: 8px; }
 .month-day { position: relative; }
 .month-due-badge { position: absolute; top: 5px; right: 5px; z-index: 1; min-width: 16px; padding: 1px 4px; border-radius: 4px; color: var(--coral); background: var(--surface-elevated); font-size: 10px; pointer-events: none; }
@@ -374,13 +406,37 @@ body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; back
 .backlog-group { margin: 8px 0; border-bottom: 1px solid var(--line); }
 .backlog-group-tools { padding: 0 12px 12px; }
 @media (max-width: 680px) {
-  #overviewView[data-mode="month"] .calendar-day-agenda { display: grid; gap: 8px; margin-top: 20px; }
+  body:is([data-view="tasks"], [data-view="habits"]) .day-progress { display: none; }
+  body:is([data-view="tasks"], [data-view="habits"]) .topbar { gap: 4px; margin-bottom: 6px; }
+  body:is([data-view="tasks"], [data-view="habits"]) .title-block { min-height: 0; }
+  #tasksView .main-panel > .panel-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  #tasksView .task-pane-tabs { margin-bottom: 6px; }
+  #tasksView .quick-task-form { padding-block: 4px; }
+  #tasksView .task-meta { gap: 4px; }
+  #taskForm .schedule-mode-control span { min-height: 44px; white-space: normal; text-align: center; font-size: 11px; line-height: 1.35; font-weight: 600; }
+  #taskForm .schedule-mode-control span::after { content: none; }
+  #studyView .study-tabs { margin: 12px 0; }
+  #studyView .study-period-controls { margin-bottom: 8px; }
+  #goalsView .goal-metrics { gap: 6px 16px; }
+  body:not([data-view="nutrition"]) .toast { left: 12px; right: 12px; width: auto; max-width: none; }
+  #overviewView:is([data-mode="month"], [data-mode="week"]) .calendar-day-agenda { display: grid; gap: 8px; margin-top: 20px; }
   .calendar-month-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); margin-top: 12px; }
   .calendar-month-legend > span { display: inline-flex; align-items: center; gap: 6px; }
   .calendar-month-legend > span::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--teal); }
   .calendar-month-legend > .is-deadlines::before { background: var(--coral); }
   .calendar-day-agenda h3 { margin: 0 0 4px; font-size: 18px; }
   .calendar-agenda-task { min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--text); text-align: left; overflow-wrap: anywhere; }
+  .calendar-day-agenda :is(.calendar-agenda-task, .calendar-deadline) { font-size: 14px; line-height: 1.5; font-weight: 500; }
+  .calendar-day-agenda .calendar-study-event strong { white-space: normal; overflow-wrap: anywhere; font-size: 14px; font-weight: 600; }
+  .calendar-agenda-task.is-done { color: var(--muted); text-decoration: line-through; }
+  #weekBoardGrid { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; overflow: visible; padding: 0; }
+  #weekBoardGrid .week-board-day { min-width: 0; min-height: 0; padding: 0; gap: 0; }
+  #weekBoardGrid .week-board-list, #weekBoardGrid .week-board-count { display: none; }
+  #weekBoardGrid .week-board-header { display: grid; justify-items: center; justify-content: stretch; gap: 4px; min-height: 96px; padding: 8px 2px; font-size: 11px; text-align: center; }
+  #weekBoardGrid .week-day-load { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 450; }
+  #weekBoardGrid .week-day-load.has-deadlines::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--coral); }
+  #weekBoardGrid .week-board-header strong { font-size: 14px; }
+  #overviewView[data-mode="week"] .mobile-scroll-hint { display: none; }
   #monthGrid { gap: 4px; }
   #monthGrid .month-day { min-height: 56px; height: 56px; padding: 0; overflow: hidden; }
   #monthGrid .month-day-head { height: 100%; width: 100%; min-height: 44px; display: grid; place-content: center; padding: 4px; }

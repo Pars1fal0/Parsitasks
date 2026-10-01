@@ -36,7 +36,7 @@
         return;
       }
       if (scheduleMode === "deadline" && !deadlineTime) {
-        ctx.showToast("Укажи время дедлайна или выбери режим «Без времени»");
+        ctx.showToast("Укажи время «Выполнить к» или выбери режим «Без времени»");
         ctx.els.taskTime.focus();
         return;
       }

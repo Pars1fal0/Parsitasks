@@ -569,6 +569,7 @@
       ctx.taskMetaItems(task).filter((item) => !["empty", "reminder"].includes(item.type)).forEach((item) => {
         const chip = document.createElement("span");
         chip.className = ["category", "study"].includes(item.type) ? "task-meta-chip task-category-chip" : "task-meta-chip";
+        chip.dataset.metaType = item.type;
         if (item.type === "empty") chip.classList.add("is-empty");
         if (item.categoryColor) {
           const dot = document.createElement("span");
