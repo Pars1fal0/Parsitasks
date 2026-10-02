@@ -101,6 +101,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("#noteBody").inputValue(), "Продолжить после перехода"); await page.locator('.note-save').click();
     await page.locator("#globalSearchButton").click(); await page.locator("#globalSearchInput").fill("орбита");
     await page.locator("#globalSearchInput").press("Enter"); await page.locator("#boardView").waitFor({ state: "visible" });
+    await page.locator('.board-item.is-selected').waitFor({ state: "visible" });
     assert.equal(await page.locator('.board-item.is-selected').count(), 1);
     await page.locator("#globalSearchButton").click(); await page.locator("#globalSearchInput").fill("Математика");
     await page.locator('.global-search-result').filter({ has: page.locator('.is-subject') }).click();
