@@ -196,7 +196,7 @@ body[data-view="tasks"]:not([data-task-pane-mode="day"]) .date-control { border:
 #tasksView[data-pane="later"] #laterTaskPanel > summary,
 #tasksView[data-pane="backlog"] #historicalTaskPanel > summary { display: none; }
 #laterTaskPanel, #historicalTaskPanel { margin-top: 0; }
-.historical-task-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+.historical-task-item { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; border: 1px solid var(--line); }
 .historical-task-item > div:first-of-type { display: grid; gap: 4px; }
 .historical-task-item strong { font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
 .historical-task-item > div:first-of-type > span { color: var(--muted); font-size: 12px; }
@@ -371,9 +371,11 @@ body:not([data-view="nutrition"]) .toast-message { flex: 1 1 auto; display: -web
 .toast button.toast-close { display: grid; place-items: center; width: 44px; height: 44px; padding: 8px; background: transparent; color: var(--muted); }
 body:not([data-view="nutrition"]) .toast button { min-height: 44px; }
 #habitsView .habit-number-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-#habitsView .habit-number-row input { width: 56px; min-height: 44px; }
+#habitsView .habit-number-row input { flex: 0 0 96px; width: 96px; min-height: 44px; padding: 0 8px; appearance: textfield; font-variant-numeric: tabular-nums; }
+#habitsView .habit-number-row input::-webkit-inner-spin-button,
+#habitsView .habit-number-row input::-webkit-outer-spin-button { appearance: none; margin: 0; }
 #habitsView .habit-stepper { width: 44px; height: 44px; min-width: 44px; font-weight: 600; }
-#habitsView .habit-number-row > span { grid-column: auto; flex: 1 1 auto; min-width: 0; font-size: 12px; font-weight: 450; overflow-wrap: anywhere; }
+#habitsView .habit-number-row > span { grid-column: auto; flex: 0 1 auto; min-width: 0; font-size: 12px; font-weight: 450; overflow-wrap: anywhere; }
 #habitsView .habit-quick-adds { margin: 0; gap: 6px; }
 #habitsView .habit-quick-adds > button { min-height: 44px; padding: 6px 8px; font-size: 12px; }
 #habitsView .habit-control { gap: 6px; }

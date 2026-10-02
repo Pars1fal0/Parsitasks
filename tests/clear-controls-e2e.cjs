@@ -90,7 +90,7 @@ const { _electron: electron } = require("playwright-core");
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${view} fits ${width}`);
           if (view === "tasks") {
             assert.equal(await page.locator(".sidebar-pulse").isVisible(), width > 900);
-            assert.equal(await page.locator(".day-progress").isVisible(), width <= 900);
+            assert.equal(await page.locator(".day-progress").isVisible(), width > 680 && width <= 900);
             assert.equal(await page.locator("#sideProgressBar").evaluate((node) => node.style.width), "75%");
           }
           if (view === "settings") {

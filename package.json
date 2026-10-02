@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.33.2",
+  "version": "0.33.3",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",

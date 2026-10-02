@@ -22,11 +22,14 @@ const { chromium } = require("playwright-core");
     await page.waitForSelector("#pageTitle");
     const dates = await page.evaluate(() => {
       const day = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
-      const today = day(0), tomorrow = day(1);
+      const today = day(0), tomorrow = day(1), yesterday = day(-1);
       const state = JSON.parse(localStorage.getItem("rhythm-day-state-v1"));
       state.tasks = Array.from({ length: 11 }, (_, index) => ({ id: `t${index}`, title: `Длинное название учебной задачи номер ${index}`, date: today, dueDate: index === 0 ? tomorrow : "", dueTime: index === 0 ? "11:30" : "", repeat: "none", completed: {} }));
+      state.tasks.push({ id: "past-task", title: "Научиться решать примеры с неоднозначностью и определением по математике", date: yesterday, repeat: "none", completed: {} });
       state.categories = [{ id: "work", name: "Работа", color: "#7ca6ff" }];
       state.habits = [{ id: "water", title: "Вода", goal: 8, unit: "стаканов", type: "number", startDate: today, repeat: "daily", logs: { [today]: 2 } }];
+      state.habits.push({ id: "water-ml", title: "Вода (мл)", goal: 3000, unit: "мл", type: "number", startDate: today, repeat: "daily", logs: { [today]: 3000 } },
+        { id: "push-ups", title: "Отжимания 1 подход", goal: 4, unit: "", type: "number", startDate: today, repeat: "daily", logs: { [today]: 4 } });
       state.studySubjects = [{ id: "math", name: "Математика", semester: "Осень", color: "#7ca6ff" }, { id: "language", name: "Язык", semester: "Осень", color: "#ffc47b" }];
       const weekday = new Date(`${tomorrow}T12:00:00`).getDay();
       state.studyLessons = [{ id: "practice", subjectId: "math", weekday, weekType: "all", lessonType: "practice", startTime: "11:30", endTime: "13:00" }, { id: "lecture", subjectId: "language", weekday, weekType: "all", lessonType: "lecture", startTime: "08:00", endTime: "09:30" }];
@@ -75,13 +78,14 @@ const { chromium } = require("playwright-core");
     assert.equal(await page.locator("#appToast").isVisible(), false);
 
     await go("habits", "#habitsView");
-    assert.equal(await page.locator(".habit-quick-adds button").count(), 1);
-    assert.match(await page.locator(".habit-quick-adds button").innerText(), /\+5/);
+    const waterQuickAdd = page.locator('[data-habit-id="water"] .habit-quick-adds button');
+    assert.equal(await waterQuickAdd.count(), 1);
+    assert.match(await waterQuickAdd.innerText(), /\+5/);
     await page.getByRole("button", { name: "Увеличить Вода", exact: true }).click();
     assert.equal((await stored()).habits[0].logs[dates.today], 3);
     await page.locator("#appToast").getByRole("button", { name: "Отменить", exact: true }).click();
     assert.equal((await stored()).habits[0].logs[dates.today], 2);
-    await page.locator(".habit-quick-adds button").click();
+    await waterQuickAdd.click();
     assert.equal((await stored()).habits[0].logs[dates.today], 7);
     await page.locator("#appToast .toast-close").click();
 
@@ -121,11 +125,31 @@ const { chromium } = require("playwright-core");
       assert.equal(await page.locator("#calendarWeekAgenda .calendar-deadline").count(), 2);
       assert.match(await page.locator("#calendarWeekAgenda").innerText(), /11:30/);
     }
+    await page.locator("#activeDate").fill(dates.today);
+    await page.locator("#activeDate").press("Tab");
     for (const width of [320, 390, 599, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       for (const [route, selector] of [["tasks", "#tasksView"], ["habits", "#habitsView"], ["study", "#studyView"], ["calendar/week", "#weekBoardGrid"], ["calendar/month", "#monthGrid"], ["goals", "#goalsView"]]) {
         await go(route, selector);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${route} overflows at ${width}`);
+        if (route === "habits") {
+          assert.equal(await page.locator('[data-habit-id="water-ml"] input').inputValue(), "3000");
+          assert.equal(await page.locator(".habit-number-row").evaluateAll((rows) => rows.every((row) => {
+            const input = row.querySelector("input"), plus = row.querySelectorAll(".habit-stepper")[1];
+            const field = input.getBoundingClientRect(), button = plus.getBoundingClientRect(), bounds = row.getBoundingClientRect();
+            return field.width >= 90 && Math.abs(field.top - button.top) < 2 && button.left - field.right <= 8
+              && [...row.children].every((child) => child.getBoundingClientRect().right <= bounds.right + 1);
+          })), true, `number habit controls are clipped or separated at ${width}`);
+        }
+        if (route === "tasks") {
+          await page.locator('[data-task-pane="backlog"]').click();
+          assert.equal(await page.locator(".historical-task-item").first().evaluate((card) => {
+            const bounds = card.getBoundingClientRect(), title = card.querySelector("strong").getBoundingClientRect();
+            return title.left - bounds.left >= 12 && title.top - bounds.top >= 12 && title.right <= bounds.right - 12;
+          }), true, `backlog card is missing inner spacing at ${width}`);
+          await page.screenshot({ path: path.join(capture, `backlog-${width}.png`) });
+          await page.locator('[data-task-pane="day"]').click();
+        }
         await page.screenshot({ path: path.join(capture, `${route.replace("/", "-")}-${width}.png`) });
       }
     }

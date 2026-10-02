@@ -97,7 +97,7 @@
         fill.className = "progress-fill";
         fill.style.width = `${percent}%`;
         track.appendChild(fill);
-        row.append(decrement, input, value, increment);
+        row.append(decrement, input, increment, value);
         control.replaceChildren(row, track);
 
         const updateValue = (nextRawValue) => {

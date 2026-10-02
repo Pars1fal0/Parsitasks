@@ -52,7 +52,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(copy.checklist.length, 8);
     assert.deepEqual(copy.checklistLogs, {});
     await page.locator("#openTaskForm").click();
-    assert.deepEqual(await page.locator('#taskForm input:visible, #taskForm select:visible, #taskForm textarea:visible').evaluateAll((fields) => fields.map((field) => field.id)), ["taskTitle", "taskDate", "taskDeferred"]);
+    assert.deepEqual(await page.locator('#taskForm input:visible, #taskForm select:visible, #taskForm textarea:visible').evaluateAll((fields) => fields.map((field) => field.id)), ["taskTitle", "taskDate", "taskDeferred", "taskCategoryId", "taskPriority"]);
     assert.equal(await page.locator('#taskForm button[type="submit"]').innerText(), "Создать");
     await page.locator("#taskTitle").fill("Позвонить другу");
     await page.locator('#taskForm button[type="submit"]').click();
