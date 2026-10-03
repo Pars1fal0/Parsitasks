@@ -31,6 +31,7 @@ const axePath = require.resolve("axe-core/axe.min.js");
         { id: "early", title: "Ранний звонок", date: "2026-10-03", repeat: "none", scheduleMode: "block", startTime: "00:15", endTime: "01:00", time: "01:00", completed: {} },
         { id: "late", title: "Поздняя встреча", date: "2026-10-03", repeat: "none", scheduleMode: "block", startTime: "23:00", endTime: "23:45", time: "23:45", completed: {} },
         { id: "last-minute", title: "Закрыть день", date: "2026-10-03", repeat: "none", time: "23:59", completed: {} },
+        ...Array.from({ length: 99 }, (_, index) => ({ id: `load-${index}`, title: `Большой список ${index + 1}`, date: "2026-10-02", repeat: "none", completed: { "2026-10-02": index < 49 } })),
       ], habits: [
         { id: "water", title: "Вода", type: "number", goal: 1000, unit: "мл", repeat: "daily", startDate: "2026-09-04", logs: water },
         { id: "walk", title: "Прогулка", type: "check", repeat: "daily", startDate: "2026-09-04", logs: walk },
@@ -58,10 +59,14 @@ const axePath = require.resolve("axe-core/axe.min.js");
     await page.waitForSelector(".activity-chart-frame canvas");
     const values = await page.evaluate(() => {
       const [tasks, habits] = [...document.querySelectorAll(".activity-chart-frame canvas")].map((canvas) => window.RhythmCharts.Chart.getChart(canvas));
-      return { tasks: tasks.data.datasets[0].data, planned: tasks.data.datasets[1].data, habits: habits.data.datasets[0].data };
+      return { tasks: tasks.data.datasets[0].data, datasets: tasks.data.datasets.length, min: tasks.scales.y.min, max: tasks.scales.y.max, habits: habits.data.datasets[0].data };
     });
-    assert.equal(values.tasks.length, 30); assert.equal(values.tasks.reduce((sum, value) => sum + value, 0), 20);
-    assert.equal(values.planned.at(-1), 4); assert.equal(values.habits.at(-1), 50);
+    assert.equal(values.tasks.length, 30); assert.equal(values.datasets, 1);
+    assert.equal(values.tasks[0], 0); assert.equal(values.tasks[1], 100);
+    assert.equal(values.tasks.at(-2), 50, "50 of 100 tasks is 50%, not a new chart maximum");
+    assert.equal(values.tasks.at(-1), 25); assert.equal(values.habits.at(-1), 50);
+    assert.equal(values.min, 0); assert.equal(values.max, 100);
+    assert.equal(await page.locator('[data-activity-chart="tasks"] .activity-chart-metric strong').textContent(), "63%", "each scheduled day has equal weight in the daily average");
     assert.equal(await page.locator('[data-activity-chart="habits"] .activity-chart-metric strong').textContent(), "58%");
     const taskCanvas = page.locator('[data-activity-chart="tasks"] canvas');
     await taskCanvas.focus();
@@ -71,6 +76,9 @@ const axePath = require.resolve("axe-core/axe.min.js");
     assert.equal(await page.locator('[data-activity-chart="tasks"] .activity-chart-tooltip').getAttribute("data-date"), "2026-09-05");
     await taskCanvas.press("End");
     assert.equal(await page.locator('[data-activity-chart="tasks"] .activity-chart-tooltip').getAttribute("data-date"), "2026-10-03");
+    assert.equal(await page.locator('[data-activity-chart="tasks"] .activity-chart-tooltip span').textContent(), "25% · выполнено 1 из 4");
+    await taskCanvas.press("ArrowLeft");
+    assert.equal(await page.locator('[data-activity-chart="tasks"] .activity-chart-tooltip span').textContent(), "50% · выполнено 50 из 100");
     await taskCanvas.press("Escape");
     assert.equal(await page.locator('[data-activity-chart="tasks"] .activity-chart-tooltip').isVisible(), false);
     await page.locator('[data-chart-days="7"]').click();

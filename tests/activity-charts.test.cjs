@@ -10,6 +10,7 @@ module.exports = [
     const series = buildActivitySeries({ ...helpers, endDate: "2026-10-03", today: "2026-10-06", days: 30 });
     assert.equal(series.length, 30); assert.equal(series[0].date, "2026-09-04"); assert.equal(series.at(-1).date, "2026-10-03");
     assert.equal(series[0].taskDone, 1); assert.equal(series[0].taskTotal, 2);
+    assert.equal(series[0].taskPercent, 50);
   } },
   { name: "future selections never create artificial missed days in activity charts", fn() {
     const series = buildActivitySeries({ ...helpers, endDate: "2027-01-20", today: "2026-10-03", days: 7 });
@@ -22,6 +23,15 @@ module.exports = [
   { name: "days without scheduled habits remain gaps rather than zero or perfect scores", fn() {
     const [point] = buildActivitySeries({ ...helpers, statsForDate: () => ({ taskDone: 0, taskTotal: 0, habitDone: 1, habitTotal: 1, habitFlexibleDone: 1 }), endDate: "2026-10-03", today: "2026-10-03", days: 1 });
     assert.equal(point.habitPercent, null); assert.equal(point.habitTotal, 0);
+    assert.equal(point.taskPercent, null);
+  } },
+  { name: "task percentages compare days independently of their task counts", fn() {
+    const series = buildActivitySeries({ ...helpers, statsForDate: (date) => ({ ...helpers.statsForDate(), taskDone: date === "2026-10-02" ? 50 : 1, taskTotal: date === "2026-10-02" ? 100 : 2 }), endDate: "2026-10-03", today: "2026-10-03", days: 2 });
+    assert.deepEqual(series.map((point) => point.taskPercent), [50, 50]);
+  } },
+  { name: "scheduled tasks without completions have a genuine zero percent", fn() {
+    const [point] = buildActivitySeries({ ...helpers, statsForDate: () => ({ ...helpers.statsForDate(), taskDone: 0, taskTotal: 100 }), endDate: "2026-10-03", today: "2026-10-03", days: 1 });
+    assert.equal(point.taskPercent, 0);
   } },
   { name: "chart ranges cross leap years without duplicate or missing local dates", fn() {
     const series = buildActivitySeries({ ...helpers, endDate: "2024-03-01", today: "2026-10-03", days: 3 });

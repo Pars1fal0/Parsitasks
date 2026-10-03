@@ -9,6 +9,7 @@
       const habitDone = Math.max(0, stats.habitDone - (stats.habitFlexibleDone || 0));
       const habitTotal = Math.max(0, stats.habitTotal - (stats.habitFlexibleDone || 0));
       return { date: key, taskDone: stats.taskDone, taskTotal: stats.taskTotal, habitDone, habitTotal,
+        taskPercent: stats.taskTotal ? Math.round(stats.taskDone / stats.taskTotal * 100) : null,
         habitPercent: habitTotal ? Math.round(habitDone / habitTotal * 100) : null };
     });
   }
@@ -45,9 +46,10 @@
       const reduced = global.matchMedia("(prefers-reduced-motion: reduce)").matches;
       const formatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
       const configs = [
-        { key: "tasks", title: "Задачи", color: "#2ec4a0", label: "Выполнено", value: (point) => point.taskDone,
-          total: series.reduce((sum, point) => sum + point.taskDone, 0), unit: "выполнено за период", hasData: series.some((point) => point.taskTotal),
-          detail: (point) => point.taskTotal ? `Выполнено ${point.taskDone} из ${point.taskTotal}` : "Не было задач" },
+        { key: "tasks", title: "Задачи", color: "#2ec4a0", label: "Выполнено, %", value: (point) => point.taskPercent,
+          total: (() => { const scheduled = series.filter((point) => point.taskTotal); return scheduled.length ? `${Math.round(scheduled.reduce((sum, point) => sum + point.taskDone / point.taskTotal * 100, 0) / scheduled.length)}%` : "—"; })(),
+          unit: "в среднем за день", hasData: series.some((point) => point.taskTotal),
+          detail: (point) => point.taskTotal ? `${point.taskPercent}% · выполнено ${point.taskDone} из ${point.taskTotal}` : "Не было задач" },
         { key: "habits", title: "Привычки по расписанию", color: "#82aaff", label: "Выполнено, %", value: (point) => point.habitPercent,
           total: (() => { const count = series.reduce((sum, point) => sum + point.habitTotal, 0); return count ? `${Math.round(series.reduce((sum, point) => sum + point.habitDone, 0) / count * 100)}%` : "—"; })(),
           unit: "выполнение за период", hasData: series.some((point) => point.habitTotal),
@@ -62,7 +64,6 @@
         heading.append(title, metric); section.append(heading); grid.append(section);
         const legend = element("div", "activity-chart-legend");
         const done = element("span", "", config.label); done.style.setProperty("--series-color", config.color); legend.append(done);
-        if (config.key === "tasks") { const planned = element("span", "is-planned", "Запланировано"); planned.style.setProperty("--series-color", muted); legend.append(planned); }
         section.append(legend);
         if (!config.hasData) { section.append(element("p", "activity-chart-empty muted", config.key === "tasks" ? "За этот период задач пока нет" : "За этот период нет привычек по расписанию")); return; }
         const frame = element("div", "activity-chart-frame");
@@ -84,16 +85,14 @@
         const data = [{ label: config.label, data: series.map(config.value), borderColor: config.color,
           backgroundColor: config.color + "18", fill: true, borderWidth: 2.5, cubicInterpolationMode: "monotone",
           pointRadius: days === 7 ? 3 : 2, pointHoverRadius: 5, pointBackgroundColor: config.color, spanGaps: false }];
-        if (config.key === "tasks") data.push({ label: "Запланировано", data: series.map((point) => point.taskTotal),
-          borderColor: muted, borderDash: [4, 5], borderWidth: 1.5, pointRadius: 0, cubicInterpolationMode: "monotone" });
         const chart = new global.RhythmCharts.Chart(canvas, {
           type: "line", data: { labels: series.map((point) => formatter.format(ctx.parseDate(point.date))), datasets: data }, plugins: [cursor],
           options: { responsive: true, maintainAspectRatio: false, animation: reduced ? false : { duration: 450, easing: "easeOutQuart" },
             interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { enabled: false } },
             scales: { x: { border: { display: false }, grid: { display: false }, ticks: { color: muted, maxRotation: 0, maxTicksLimit: 5, font: { size: 11 } } },
-              y: { min: 0, ...(config.key === "habits" ? { max: 100 } : { suggestedMax: 3 }), border: { display: false },
+              y: { min: 0, max: 100, border: { display: false },
                 grid: { color: "rgba(129, 144, 139, .16)", tickLength: 0 }, ticks: { color: muted, precision: 0, maxTicksLimit: 5, padding: 8,
-                  callback: (value) => config.key === "habits" ? `${value}%` : Number.isInteger(value) ? value : "", font: { size: 11 } } } },
+                  callback: (value) => `${value}%`, font: { size: 11 } } } },
             color: text,
           },
         }); charts.push(chart);
@@ -129,7 +128,7 @@
       ["Дата", "Задачи", "Привычки по расписанию"].forEach((label) => { const cell = element("th", "", label); cell.scope = "col"; titles.append(cell); }); head.append(titles);
       const body = element("tbody");
       [...series].reverse().forEach((point) => { const row = element("tr"); const date = element("th", "", ctx.formatShortDate(point.date)); date.scope = "row";
-        row.append(date, element("td", "", `${point.taskDone} / ${point.taskTotal}`), element("td", "", point.habitTotal ? `${point.habitDone} / ${point.habitTotal} · ${point.habitPercent}%` : "—")); body.append(row); });
+        row.append(date, element("td", "", point.taskTotal ? `${point.taskDone} / ${point.taskTotal} · ${point.taskPercent}%` : "—"), element("td", "", point.habitTotal ? `${point.habitDone} / ${point.habitTotal} · ${point.habitPercent}%` : "—")); body.append(row); });
       table.append(caption, head, body); details.append(table); root.append(details);
     }
     return { render };
