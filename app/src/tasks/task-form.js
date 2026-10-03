@@ -7,6 +7,23 @@
     const dueDateField = ctx.els.taskForm.querySelector("#taskDueDate");
     const dueTimeField = ctx.els.taskForm.querySelector("#taskDueTime");
     const dueReminderField = ctx.els.taskForm.querySelector("#taskDueReminder");
+    const settingsSummary = document.createElement("span");
+    settingsSummary.className = "task-settings-summary";
+    extraPanel.querySelector("summary").append(settingsSummary);
+    ctx.els.taskForm.addEventListener("input", updateSettingsSummary);
+    ctx.els.taskForm.addEventListener("change", updateSettingsSummary);
+    extraPanel.addEventListener("toggle", updateSettingsSummary);
+
+    function updateSettingsSummary() {
+      const parts = [];
+      if (deferredControl?.checked) parts.push("Позже");
+      if (dueDateField.value) parts.push(`Срок ${dueDateField.value}${dueTimeField.value ? ` · ${dueTimeField.value}` : ""}`);
+      if (ctx.els.taskRepeat.value !== "none") parts.push(ctx.els.taskRepeat.selectedOptions[0]?.textContent);
+      if (ctx.els.taskCategoryId.value) parts.push(ctx.els.taskCategoryId.selectedOptions[0]?.textContent);
+      if (ctx.getTaskScheduleMode() === "block") parts.push(`${ctx.els.taskStartTime.value}–${ctx.els.taskEndTime.value}`);
+      else if (ctx.getTaskScheduleMode() === "deadline" && ctx.els.taskTime.value) parts.push(`К ${ctx.els.taskTime.value}`);
+      settingsSummary.textContent = parts.filter(Boolean).join(" · ");
+    }
     if (scopePanel && extraPanel) extraPanel.before(scopePanel);
     deferredControl?.addEventListener("change", () => setDeferred(deferredControl.checked));
     const checklistEditor = global.RhythmGoalCheckpointEditor?.createGoalCheckpointEditor({
@@ -77,6 +94,7 @@
         studyDetails: existing?.studyDetails || "",
         studyAssignedDate: existing?.studyAssignedDate || "",
         studyFileIds: existing?.studyFileIds || [],
+        sourceNoteId: existing?.sourceNoteId || "",
       };
       if (task.repeat !== "none" && task.dueDate) {
         ctx.showToast("Отдельный срок доступен для разовой задачи. Для повтора используй время каждого дня.");
@@ -157,9 +175,10 @@
       setDeferred(task.date === null);
       const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
       if (extra) extra.open = Boolean(task.categoryId || task.priority === "high" || task.priority === "low"
-        || task.repeat !== "none" || task.time || task.dueDate || task.checklist?.length);
+        || task.repeat !== "none" || task.time || task.dueDate || task.date === null || task.checklist?.length);
       ctx.markFormPristine?.(ctx.els.taskForm);
       ctx.els.taskTitle.focus();
+      updateSettingsSummary();
     }
 
     function resetTaskForm(options = {}) {
@@ -196,6 +215,7 @@
       if (extra) extra.open = false;
       setDeferred(false);
       ctx.markFormPristine?.(ctx.els.taskForm);
+      updateSettingsSummary();
     }
 
     function setDeferred(value) {

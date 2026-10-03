@@ -15,7 +15,7 @@ const { _electron: electron } = require("playwright-core");
 
   try {
     await page.waitForSelector("#pageTitle");
-    await page.locator('.nav-tab[data-view="study"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "study");
     assert.equal(await page.locator("#studyDriveStatus").isVisible(), false);
     await page.locator('[data-study-tab="materials"]').click();
     assert.equal(await page.locator("#studyDriveStatus").isVisible(), true);
@@ -134,7 +134,7 @@ const { _electron: electron } = require("playwright-core");
     const state = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")));
     assert.equal(state.tasks.find((task) => task.title === "Решить упражнения 4–6").studySubjectId, subjectId);
     assert.equal(state.tasks.find((task) => task.title === "Решить упражнения 4–6").completed[dueYesterday], true);
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     await page.locator("#activeDate").fill(dueYesterday);
     await page.locator("#activeDate").dispatchEvent("change");
     assert.match(await page.locator("#tasksView").innerText(), /Решить упражнения 4–6/);

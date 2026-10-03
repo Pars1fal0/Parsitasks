@@ -37,7 +37,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#activeDate").dispatchEvent("change");
     await page.setViewportSize({ width: 320, height: 720 });
 
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     const taskCard = page.locator(".task-item").first();
     await taskCard.locator(".task-more > summary").click();
     await waitForDisclosurePosition(taskCard.locator(".task-more"));
@@ -46,7 +46,7 @@ const { _electron: electron } = require("playwright-core");
     await page.mouse.click(1, 1);
     assert.equal(await taskCard.locator(".task-more").getAttribute("open"), null, "outside click must close task menu");
 
-    await page.locator('.nav-tab[data-view="habits"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "habits");
     const habitCards = page.locator(".habit-item");
     await habitCards.first().locator(".habit-more > summary").click();
     await habitCards.nth(1).locator(".habit-more > summary").click();
@@ -57,7 +57,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await habitCards.nth(1).locator(".habit-more").getAttribute("open"), null, "Escape must close habit menu");
 
     await page.setViewportSize({ width: 1440, height: 800 });
-    await page.locator('.nav-tab[data-view="timeline"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "timeline");
     const timelineTask = page.locator(".timeline-task.is-scheduled").first();
     await timelineTask.scrollIntoViewIfNeeded();
     await timelineTask.locator(".timeline-menu-button").click();

@@ -4,6 +4,7 @@ const { installDom } = require("./dom-test-utils.cjs");
 function loadDomModules() {
   installDom();
   global.RhythmHeatmapView = { createHeatmapView: () => ({ renderHeatmap() {} }) };
+  global.RhythmActivityCharts = { createActivityCharts: () => ({ render() {} }) };
   delete require.cache[require.resolve("../app/src/tasks/archive-view.js")];
   delete require.cache[require.resolve("../app/src/calendar/calendar-view.js")];
   delete require.cache[require.resolve("../app/src/tasks/categories.js")];

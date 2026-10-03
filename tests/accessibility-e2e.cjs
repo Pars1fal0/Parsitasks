@@ -52,13 +52,7 @@ const { _electron: electron } = require("playwright-core");
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 800 });
       for (const view of views) {
-        const directTab = page.locator(`.nav-tab[data-view="${view}"]:visible`).first();
-        if (await directTab.count()) {
-          await directTab.click();
-        } else {
-          await page.locator(".nav-more-summary:visible").click();
-          await page.locator(`.nav-more-menu .nav-tab[data-view="${view}"]`).click();
-        }
+        await require("./navigation-fixture.cjs").navigate(page, view);
         await page.waitForTimeout(20);
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
         assert.ok(overflow <= 1, `${view} must not overflow horizontally at ${width}px`);
@@ -82,7 +76,7 @@ const { _electron: electron } = require("playwright-core");
       }
     }
     await page.setViewportSize({ width: 320, height: 700 });
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     const compactDateBox = await page.locator("#activeDate").boundingBox();
     assert.ok(compactDateBox.width >= 130, "date field must remain readable at 320px");
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), "tasks must fit 320px");

@@ -15,7 +15,7 @@ const { _electron: electron } = require("playwright-core");
 
   try {
     await page.waitForSelector("#pageTitle");
-    await page.locator('.nav-tab[data-view="study"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "study");
     await page.locator('[data-study-tab="schedule"]').click();
     await page.locator('#studySubjectForm [name="name"]').fill("Математика");
     await page.locator('#studySubjectForm button[type="submit"]').click();
@@ -72,7 +72,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('[data-notes-tab="notes"]').click();
     await page.locator(".notes-list-item").click();
 
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     await page.locator("#activeDate").fill(task.date);
     await page.locator("#activeDate").dispatchEvent("change");
     const taskRow = page.locator(`[data-task-id="${task.id}"]`);

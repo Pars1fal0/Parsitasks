@@ -20,7 +20,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("#archivePeriodFilter").evaluate((node) => node.closest(".view")?.id), "archiveView");
     assert.equal(await page.locator("#categoryForm").evaluate((node) => node.closest(".view")?.id), "settingsView");
 
-    await page.locator('.nav-tab[data-view="overview"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "overview");
     assert.equal(await page.evaluate(() => window.location.hash), "#calendar/week");
     assert.equal(await page.locator("#weeklyTaskMetric").textContent(), "—");
     assert.equal(await page.locator("#weeklyHabitMetric").textContent(), "—");
@@ -45,7 +45,7 @@ const { _electron: electron } = require("playwright-core");
     await page.waitForSelector('body[data-view="overview"]');
     assert.equal(await page.locator("#activeDate").inputValue(), "2026-07-20");
 
-    await page.locator('.nav-tab[data-view="journal"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "journal");
     assert.equal(await page.evaluate(() => window.location.hash), "#journal");
     await page.locator('[data-notes-tab="journal"]').click();
     await page.locator("#journalText").fill("Сегодня проверил дневник дня.\n\nЗапись сохранилась.");
@@ -69,7 +69,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#globalSearchInput").press("Enter");
     assert.equal(await page.evaluate(() => window.location.hash), "#journal");
 
-    await page.locator('.nav-tab[data-view="nutrition"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "nutrition");
     assert.equal(await page.evaluate(() => window.location.hash), "#nutrition");
     assert.equal(await page.locator(".nutrition-day-column").count(), 1);
     const nutritionDaysFit = await page.evaluate(() => {
@@ -99,7 +99,7 @@ const { _electron: electron } = require("playwright-core");
     await page.waitForSelector('body[data-view="nutrition"]');
     assert.equal(await page.locator(".nutrition-meal-card").count(), 1);
 
-    await page.locator('.nav-tab[data-view="board"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "board");
     assert.equal(await page.evaluate(() => window.location.hash), "#board");
     await page.locator("#boardAddMenu summary").click();
     await page.locator("#boardAddText").click();
@@ -321,7 +321,7 @@ const { _electron: electron } = require("playwright-core");
     await page.waitForTimeout(80);
     assert.match(await page.locator("#boardZoomLabel").textContent(), /^2(?:\.0)?%$/);
 
-    await page.locator('.nav-tab[data-view="settings"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "settings");
     assert.equal(await page.evaluate(() => window.location.hash), "#settings");
     assert.equal(await page.locator(".settings-primary-group").count(), 4);
     assert.equal(await page.locator("#helpSettings.settings-primary-group").count(), 1);
@@ -391,11 +391,11 @@ const { _electron: electron } = require("playwright-core");
     const archiveToolbarFits = await page.locator(".archive-toolbar").evaluate((node) => node.scrollWidth <= node.clientWidth + 1);
     assert.equal(archiveToolbarFits, true, "archive filters must fit the mobile viewport");
 
-    await page.locator('.nav-tab[data-view="overview"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "overview");
     await page.locator('[data-overview-mode="week"]').click();
     assert.equal(await page.locator(".focus-board").evaluate((node) => getComputedStyle(node).display), "none");
     assert.equal(await page.locator(".calendar-insights").evaluate((node) => node.open), false);
-    const weekBox = await page.locator(".week-board-panel").boundingBox();
+    const weekBox = await page.locator(".calendar-time-scroll").boundingBox();
     const insightsBox = await page.locator(".calendar-insights").boundingBox();
     assert.ok(weekBox.y < insightsBox.y, "calendar must precede collapsed insights on mobile");
     await page.locator("#updateBanner").evaluate((node) => { node.hidden = false; });
@@ -403,7 +403,7 @@ const { _electron: electron } = require("playwright-core");
     assert.ok(updateBox && updateBox.x >= 0 && updateBox.x + updateBox.width <= 390.5, "update banner must fit mobile");
     await page.locator("#updateBanner").evaluate((node) => { node.hidden = true; });
 
-    await page.locator('.nav-tab[data-view="habits"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "habits");
     await page.locator("#openHabitForm").click();
     const formBox = await page.locator("#habitFormPanel").boundingBox();
     assert.ok(formBox, "habit form should be visible");
@@ -425,10 +425,10 @@ const { _electron: electron } = require("playwright-core");
       const mobileLabels = await page.locator(".nav-tabs > .nav-tab[data-mobile-label]:visible span").evaluateAll((nodes) =>
         nodes.map((node) => getComputedStyle(node, "::after").content.replaceAll('"', "")),
       );
-      assert.deepEqual(mobileLabels, ["Задачи", "Время", "Привыч.", "Кален."]);
+      assert.deepEqual(mobileLabels, ["Задачи", "Привыч.", "Кален."]);
     }
 
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     await page.evaluate(() => window.scrollTo(0, 0));
     const taskActionBox = await page.locator("#openTaskForm").boundingBox();
     const mobileNavBox = await page.locator(".nav-tabs").boundingBox();
@@ -442,7 +442,7 @@ const { _electron: electron } = require("playwright-core");
     await page.keyboard.press("Escape");
 
     await page.setViewportSize({ height: 780, width: 390 });
-    await page.locator('.nav-tab[data-view="timeline"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "timeline");
     assert.equal(await page.locator(".timeline-hour-slot").count(), 24);
     assert.equal(await page.locator(".timeline-hour-slot").first().getAttribute("data-hour"), "0");
     assert.equal(await page.locator(".timeline-hour-slot").last().getAttribute("data-hour"), "23");
@@ -456,7 +456,7 @@ const { _electron: electron } = require("playwright-core");
     await page.waitForSelector('body[data-view="tasks"]');
     assert.equal(await page.evaluate(() => window.location.hash), "#tasks");
 
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     await page.evaluate(() => {
       const originalSetItem = Storage.prototype.setItem;
       window.__restoreStorageSetItem = () => { Storage.prototype.setItem = originalSetItem; };
@@ -469,11 +469,12 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#quickTaskInput").fill("Проверить сохранение");
     await page.locator("#quickTaskForm").evaluate((form) => form.requestSubmit());
     assert.match(await page.locator("#saveStatus").textContent(), /хранилище заполнено/i);
-    assert.equal(await page.locator(".task-item").filter({ hasText: "Проверить сохранение" }).count(), 1);
+    assert.equal(await page.locator(".task-item").filter({ hasText: "Проверить сохранение" }).count(), 0);
+    assert.equal(await page.locator("#quickTaskInput").inputValue(), "Проверить сохранение", "failed quick input remains available for retry");
     assert.equal(
       await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-ui-v1") || "{}").remoteSyncPending),
       true,
-      "a failed local write must still queue the in-memory change for cloud sync",
+      "a failed local write must leave sync pending rather than claim persistence",
     );
     await page.evaluate(() => window.__restoreStorageSetItem?.());
     assert.deepEqual(pageErrors, []);

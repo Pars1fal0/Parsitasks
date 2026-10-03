@@ -1,0 +1,36 @@
+{
+  "browser": "153.0.8010.55",
+  "findings": [
+    {
+      "name": "failed checkbox reverts instead of claiming completion",
+      "passed": false,
+      "evidence": "Привычка отмечена\nОтменить"
+    },
+    {
+      "name": "failed numeric habit restores its previous value",
+      "passed": false,
+      "evidence": "Вода\n\nСерия: 0 дн. · Каждый день\n\n...\n-\n+\n/ 2000 мл\n+250 мл\n+500 мл"
+    },
+    {
+      "name": "failed habit create keeps the editor text",
+      "passed": false,
+      "evidence": {
+        "rows": 3,
+        "toast": "Привычка создана\nОтменить"
+      }
+    },
+    {
+      "name": "failed freeze keeps selection and reason in an open dialog",
+      "passed": false,
+      "evidence": {
+        "frozen": 1,
+        "toast": "Заморожено: 1\nОтменить"
+      }
+    },
+    {
+      "name": "no browser runtime errors",
+      "passed": true,
+      "evidence": []
+    }
+  ]
+}

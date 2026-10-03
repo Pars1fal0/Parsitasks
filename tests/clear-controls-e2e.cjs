@@ -49,7 +49,7 @@ const { _electron: electron } = require("playwright-core");
     await habit.locator(".archive-habit").click();
     await page.locator("#habitArchivePanel > summary").click();
     await page.getByRole("button", { name: "Вернуть в активные", exact: true }).click();
-    assert.match(await habit.innerText(), /Выполнено/);
+    assert.equal(await habit.locator(".check-button").getAttribute("aria-pressed"), "true", "restoring a habit preserves its completion");
     assert.ok(await page.locator("#appToast.is-visible.has-action").isVisible());
     await navigate("settings");
     const groups = page.locator("#settingsView .settings-grid > details");
@@ -89,8 +89,8 @@ const { _electron: electron } = require("playwright-core");
           await navigate(view);
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${view} fits ${width}`);
           if (view === "tasks") {
-            assert.equal(await page.locator(".sidebar-pulse").isVisible(), width > 900);
-            assert.equal(await page.locator(".day-progress").isVisible(), width > 680 && width <= 900);
+            assert.equal(await page.locator(".sidebar-pulse").isVisible(), false);
+            assert.equal(await page.locator(".day-progress").isVisible(), false);
             assert.equal(await page.locator("#sideProgressBar").evaluate((node) => node.style.width), "75%");
           }
           if (view === "settings") {

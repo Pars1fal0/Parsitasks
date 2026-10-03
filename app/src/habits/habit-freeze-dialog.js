@@ -119,7 +119,12 @@
       const undo = ctx.createUndoSnapshot();
       const now = new Date().toISOString();
       changes.forEach(({ habit, dateKey }) => global.RhythmHabitFreeze.setFrozen(habit, dateKey, operation === "freeze", chosenReason, now));
-      ctx.saveState();
+      if (ctx.saveState() === false) {
+        ctx.restoreState(undo);
+        ctx.render();
+        message.textContent = "Не удалось сохранить. Настройки оставлены — попробуйте ещё раз.";
+        return;
+      }
       ctx.render();
       dialog.close();
       const action = operation === "freeze" ? "Заморожено" : "Разморожено";

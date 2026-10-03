@@ -16,8 +16,9 @@
   function createAppShellController(ctx) {
     function render() {
       const activeView = ctx.getActiveView();
-      if (activeView !== "timeline") ctx.restoreTaskFormPanel();
+      if (!["timeline", "overview"].includes(activeView)) ctx.restoreTaskFormPanel();
       ctx.els.activeDate.value = ctx.getActiveDate();
+      updateDateNavigation();
       ctx.els.todayLabel.textContent = ctx.formatLongDate(ctx.getActiveDate());
       ctx.renderSaveStatus();
       ctx.els.pageTitle.textContent = PAGE_TITLES[activeView] || PAGE_TITLES.tasks;
@@ -31,7 +32,10 @@
         if (isActive) button.setAttribute("aria-current", "page");
       });
 
-      const isMoreView = ctx.isMobilePinned ? !ctx.isMobilePinned(activeView) : ["goals", "nutrition", "journal", "board", "archive", "settings", "study"].includes(activeView);
+      const compact = global.matchMedia?.("(max-width: 900px)")?.matches;
+      const isMoreView = compact
+        ? ctx.isMobilePinned ? !ctx.isMobilePinned(activeView) : ["goals", "nutrition", "journal", "board", "archive", "settings", "study"].includes(activeView)
+        : !["tasks", "habits", "overview", "study", "timeline"].includes(activeView);
       ctx.els.navMoreSummary?.classList.toggle("is-active", isMoreView);
       if (isMoreView) ctx.els.navMoreSummary?.setAttribute("aria-current", "page");
       else ctx.els.navMoreSummary?.removeAttribute("aria-current");
@@ -72,6 +76,17 @@
       ctx.els.views.overview.dataset.mode = mode;
       document.querySelectorAll("[data-overview-mode]").forEach((button) => {
         button.classList.toggle("is-active", button.dataset.overviewMode === mode);
+      });
+      updateDateNavigation();
+    }
+
+    function updateDateNavigation() {
+      const mode = ctx.getActiveView() === "overview" ? ctx.getOverviewMode() : "day";
+      const labels = mode === "week" ? ["Предыдущая неделя", "Следующая неделя"]
+        : mode === "month" ? ["Предыдущий месяц", "Следующий месяц"] : ["Предыдущий день", "Следующий день"];
+      [ctx.els.prevDay, ctx.els.nextDay].forEach((button, index) => {
+        button?.setAttribute("aria-label", labels[index]);
+        button?.setAttribute("title", labels[index]);
       });
     }
 

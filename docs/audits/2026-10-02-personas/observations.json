@@ -1,0 +1,917 @@
+{
+  "date": "2026-10-02",
+  "localVersion": "0.33.3 plus unpublished account-preferences changes",
+  "chromeVersion": "153.0.8010.55",
+  "timezone": "Europe/Saratov",
+  "profiles": [
+    {
+      "id": "01-student"
+    },
+    {
+      "id": "02-working-student"
+    },
+    {
+      "id": "03-office"
+    },
+    {
+      "id": "04-freelancer"
+    },
+    {
+      "id": "05-parent"
+    },
+    {
+      "id": "06-habits"
+    },
+    {
+      "id": "07-minimalist"
+    },
+    {
+      "id": "08-system-builder"
+    },
+    {
+      "id": "09-skeptic"
+    },
+    {
+      "id": "10-keyboard"
+    }
+  ],
+  "externalRequestsBlocked": 19,
+  "networkPolicy": "All HTTP(S) requests aborted in all browser contexts; local file frontend automation mode; no real authentication",
+  "records": [
+    {
+      "id": 1,
+      "persona": "Студент",
+      "studentStart": {
+        "name": "01-study-first-390",
+        "text": "Домашних заданий пока нет\n\nДомашние задания\nРасписание\nМатериалы\nВсе семестры\nПредметы\nНазвание\nСеместр\nЦвет\nПреподаватель\nДобавить предмет\nДомашние задания\nНовое ДЗ\nЗаметки\nВсе предметы\nИстория ДЗ\nАктуальных заданий нет.",
+        "overflow": 0
+      },
+      "suggestion": {
+        "date": "2026-10-05",
+        "time": "11:30",
+        "hint": "Следующая практика: 5 октября в 11:30 · отсчёт от 2 октября"
+      },
+      "task": {
+        "id": "5593d72f-f21a-4885-b446-0de975a74047",
+        "title": "Решить задачи по графам",
+        "date": "2026-10-02",
+        "time": "",
+        "scheduleMode": "none",
+        "startTime": "",
+        "endTime": "",
+        "dueDate": "2026-10-05",
+        "dueTime": "11:30",
+        "dueReminderOffset": "60",
+        "categoryId": "",
+        "priority": "medium",
+        "repeat": "none",
+        "repeatUntil": "",
+        "customRepeat": {},
+        "reminderOffset": "none",
+        "completed": {},
+        "acknowledgedOverdue": {},
+        "excludedDates": {},
+        "notified": {},
+        "checklist": [],
+        "checklistLogs": {},
+        "studySubjectId": "820b3580-f3a8-4467-8f9b-4f78704992e2",
+        "studyDetails": "",
+        "studyAssignedDate": "2026-10-02",
+        "studyFileIds": [],
+        "createdAt": "2026-10-02T06:01:15.893Z",
+        "updatedAt": "2026-10-02T06:01:15.893Z"
+      },
+      "completedView": {
+        "name": "01-homework-created-390",
+        "text": "1 задание ждёт выполнения\n\nДомашние задания\nРасписание\nМатериалы\nВсе семестры\nБез семестра\nДомашние задания\nНовое ДЗ\nЗаметки\nВсе предметы\nДискретная математика\nИстория ДЗ\n\nРешить задачи по графам\n\n Дискретная математика\nСдать 05.10.2026, 11:30\nПодготовка 02.10.2026\nНовое задание\nПредмет\nВыберите предмет\nДискретная математика\nДобавить предмет\nЧто сделать\nПодробности\nСдать до\nВремя, если есть\nЗапланировать подготовку на\nМатериалы\nМатериалов пока нет\nСохранить задание",
+        "overflow": 0
+      },
+      "taskView": {
+        "name": "01-homework-in-tasks-390",
+        "text": "День\n1\nПозже\n0\nНезавершённые\n0\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nРешить задачи по графам\nДискретная математика\nСдать 5 окт., 11:30\n...",
+        "overflow": 0
+      },
+      "completedLifecycle": {
+        "onDueDay": "Решить задачи по графам\n\n Дискретная математика\nСдать 05.10.2026, 11:30\nПодготовка 02.10.2026",
+        "afterDueDay": "Актуальных заданий нет.",
+        "storedTask": {
+          "id": "5593d72f-f21a-4885-b446-0de975a74047",
+          "title": "Решить задачи по графам",
+          "date": "2026-10-02",
+          "time": "",
+          "scheduleMode": "none",
+          "startTime": "",
+          "endTime": "",
+          "dueDate": "2026-10-05",
+          "dueTime": "11:30",
+          "dueReminderOffset": "60",
+          "categoryId": "",
+          "priority": "medium",
+          "repeat": "none",
+          "repeatUntil": "",
+          "customRepeat": {},
+          "reminderOffset": "none",
+          "completed": {
+            "2026-10-02": true
+          },
+          "acknowledgedOverdue": {},
+          "excludedDates": {},
+          "notified": {},
+          "checklist": [],
+          "checklistLogs": {},
+          "studySubjectId": "820b3580-f3a8-4467-8f9b-4f78704992e2",
+          "studyDetails": "",
+          "studyAssignedDate": "2026-10-02",
+          "studyFileIds": [],
+          "createdAt": "2026-10-02T06:01:15.893Z",
+          "updatedAt": "2026-10-02T06:15:23.160Z"
+        },
+        "history": "Решить задачи по графам\n\n Дискретная математика\nСдать 05.10.2026, 11:30\nПодготовка 02.10.2026",
+        "done": true,
+        "validation": "Повторная проверка той же персоны в изолированной сессии с ожиданием конечного DOM: 5 октября показано, 6 октября только в истории. Быстрое первоначальное чтение после смены времени видело предыдущий кадр."
+      },
+      "evenWeekPractice": {
+        "date": "2026-10-12",
+        "time": "11:30",
+        "hint": "Следующая практика: 12 октября в 11:30 · отсчёт от 6 октября"
+      }
+    },
+    {
+      "id": 2,
+      "persona": "Работающий студент",
+      "taskForm": {
+        "name": "02-task-form-390",
+        "text": "День\n1\nПозже\n0\nНезавершённые\n0\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nРабочая смена\n12:00-18:00\n...\nПЛАНИРОВАНИЕ\nНовая задача\n×\nНазвание\nДень работы\nБез даты · в список «Позже»\nКатегория\nБез категории\nДом\nЗдоровье\nРабота\nФокус\nПриоритет\nВысокий\nСредний\nНизкий\nДополнительные настройки\nВремя работы\nБез времени\nВыполнить к\nБлок времени\nНачало\nКонец\n08:00\n09:00\n10:00\n12:00\n15:00\n18:00\n21:00\nБез времени\nНапомнить о работе\nНе напоминать\nВ указанное время\nЗа 5 минут\nЗа 15 минут\nЗа 30 минут\nЗа 1 час\nЗа день\nСрок выполнения\nДата\nВремя\nНапомнить о сроке\nНе напоминать\nВ момент срока\nЗа 15 минут\nЗа час\nЗа день\nСоздать категорию\nПовтор\nБез повтора\nКаждый день\nКаждые 2 дня\nКаждые 3 дня\nПо будням\nПо выходным\nКаждую неделю\nКаждый месяц\nКаждый год\nНастроить...\nШаги задачи\nПунктов пока нет\nСоздать\nОчистить",
+        "overflow": 0
+      },
+      "calendar": {
+        "name": "02-calendar-conflict-390",
+        "text": "Занятия\nНеделя\nМесяц\nГод\nНЕДЕЛЯ\n28 сент. — 4 окт.\nпн\n28\n0\nвт\n29\n0\nср\n30\n0\nчт\n1\n0\nпт\n2\n3\nсб\n3\n0\nвс\n4\n0\nДела и занятия\nСроки сдачи\nпятница, 2 октября\nБазы данных\n09:45–11:15 · Лекция\n10:30–11:30 · Подготовить курсовую\n12:00–18:00 · Рабочая смена\nИтоги и цели",
+        "overflow": 0
+      },
+      "timeline": {
+        "name": "02-timeline-conflict-390",
+        "text": "Занятия\nК задаче\n−\n1:1\n+\n3 по времени · 0 без времени · 1 занятий\nБЕЗ ВРЕМЕНИ\nЗадачи без точного часа\n0\n00:00\n01:00\n02:00\n03:00\n04:00\n05:00\n06:00\n07:00\n08:00\n09:00\n09:45-11:15\nБазы данных\n10:00\nСейчас\n10:30-11:30\nПодготовить курсовую\n...\n11:00\n12:00\n12:00-18:00\nРабочая смена\n...\n13:00\n14:00\n15:00\n16:00\n17:00\n18:00\n19:00\n20:00\n21:00\n22:00\n23:00",
+        "overflow": 0
+      },
+      "task": {
+        "id": "600dc31d-cbda-4b5a-89b5-eeb36d905307",
+        "title": "Подготовить курсовую",
+        "date": "2026-10-02",
+        "dueDate": "2026-10-05",
+        "dueTime": "09:00",
+        "dueReminderOffset": "none",
+        "deferredFromDate": "",
+        "scheduleMode": "block",
+        "startTime": "10:30",
+        "endTime": "11:30",
+        "time": "11:30",
+        "categoryId": "",
+        "priority": "medium",
+        "repeat": "none",
+        "repeatUntil": "",
+        "sourceTaskId": "",
+        "movedFromDate": "",
+        "customRepeat": {},
+        "reminderOffset": "none",
+        "completed": {},
+        "acknowledgedOverdue": {},
+        "excludedDates": {},
+        "notified": {},
+        "checklist": [],
+        "checklistLogs": {},
+        "createdAt": "2026-10-02T06:00:00.548Z",
+        "updatedAt": "2026-10-02T06:00:00.548Z",
+        "studySubjectId": "",
+        "studyDetails": "",
+        "studyAssignedDate": "",
+        "studyFileIds": []
+      },
+      "submissionDay": {
+        "name": "02-deadline-on-submission-day-390",
+        "text": "Занятия\nНеделя\nМесяц\nГод\nНЕДЕЛЯ\n5 окт. — 11 окт.\nпн\n5\n0\nвт\n6\n0\nср\n7\n0\nчт\n8\n0\nпт\n9\n1\nсб\n10\n0\nвс\n11\n0\nДела и занятия\nСроки сдачи\nпонедельник, 5 октября\nСдать 09:00 · Подготовить курсовую\nИтоги и цели",
+        "overflow": 0
+      }
+    },
+    {
+      "id": 3,
+      "persona": "Офисный сотрудник",
+      "emptyCategories": "Без категории\nДом\nЗдоровье\nРабота\nФокус",
+      "category": {
+        "id": "65743d40-8a9d-4825-be3e-e11a02b54ed7",
+        "name": "Документы",
+        "color": "#00a78e",
+        "createdAt": "2026-10-02T06:00:00.275Z",
+        "updatedAt": "2026-10-02T06:00:00.275Z"
+      },
+      "filtered": {
+        "name": "03-category-filter-desktop",
+        "text": "День\n2\nПозже\n0\nНезавершённые\n0\nФильтры и поиск (1)\nВсе\nАктивные\nГотовые\nКатегория\nВсе категории\nБез категории\nДокументы\nДом\nЗдоровье\nРабота\nФокус\nПоиск\nОчистить поиск\nВыбрать задачи\nНовая задача\nДокументы\nСбросить фильтры\nБыстрый ввод\nПодготовить документы для банка\nДокументы\nВысокий\n...",
+        "overflow": 0
+      },
+      "officeDone": {
+        "name": "03-completed-filter-desktop",
+        "text": "День\n2\nПозже\n0\nНезавершённые\n0\nФильтры и поиск (1)\nВсе\nАктивные\nГотовые\nКатегория\nВсе категории\nБез категории\nДокументы\nДом\nЗдоровье\nРабота\nФокус\nПоиск\nОчистить поиск\nВыбрать задачи\nНовая задача\nДокументы\nСбросить фильтры\nБыстрый ввод\nПодготовить документы для банка\nДокументы\nВысокий\n...",
+        "overflow": 0
+      },
+      "tasks": [
+        {
+          "id": "23d449ef-73c3-49ad-a2cc-e7be696a8703",
+          "title": "Подготовить документы для банка",
+          "date": "2026-10-02",
+          "dueDate": "",
+          "dueTime": "",
+          "dueReminderOffset": "none",
+          "deferredFromDate": "",
+          "scheduleMode": "none",
+          "startTime": "",
+          "endTime": "",
+          "time": "",
+          "categoryId": "65743d40-8a9d-4825-be3e-e11a02b54ed7",
+          "priority": "high",
+          "repeat": "none",
+          "repeatUntil": "",
+          "sourceTaskId": "",
+          "movedFromDate": "",
+          "customRepeat": {},
+          "reminderOffset": "none",
+          "completed": {
+            "2026-10-02": true
+          },
+          "acknowledgedOverdue": {},
+          "excludedDates": {},
+          "notified": {},
+          "checklist": [],
+          "checklistLogs": {},
+          "createdAt": "2026-10-02T06:00:00.326Z",
+          "updatedAt": "2026-10-02T06:00:00.326Z",
+          "studySubjectId": "",
+          "studyDetails": "",
+          "studyAssignedDate": "",
+          "studyFileIds": []
+        },
+        {
+          "id": "9d103749-763b-40a0-834c-f05a899b08e4",
+          "title": "Спланировать день",
+          "date": "2026-10-02",
+          "time": "",
+          "scheduleMode": "none",
+          "startTime": "",
+          "endTime": "",
+          "categoryId": "",
+          "priority": "medium",
+          "repeat": "none",
+          "customRepeat": {},
+          "reminderOffset": "none",
+          "completed": {},
+          "excludedDates": {},
+          "notified": {},
+          "createdAt": "2026-10-02T06:00:00.350Z"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "persona": "Фрилансер",
+      "longTitle": {
+        "initialLength": 126,
+        "quickMax": "200",
+        "editorMax": "80",
+        "before4": "Подготовить финальную версию презентации для клиента: проверить тексты, согласовать иллюстрации и приложить исходные материалы",
+        "after4": "Подготовить финальную версию презентации для клиента: проверить тексты, согласовать иллюстрации и приложить исходные материалы"
+      },
+      "form": {
+        "name": "04-two-times-desktop",
+        "text": "День\n1\nПозже\n0\nНезавершённые\n0\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nПодготовить финальную версию презентации для клиента: проверить тексты, согласовать иллюстрации и приложить исходные материалы\n...\nПЛАНИРОВАНИЕ\nРедактировать задачу\n×\nНазвание\nДень работы\nБез даты · в список «Позже»\nКатегория\nБез категории\nДом\nЗдоровье\nРабота\nФокус\nПриоритет\nВысокий\nСредний\nНизкий\nДополнительные настройки\nВремя работы\nБез времени\nВыполнить к\nБлок времени\nВыполнить к\n08:00\n09:00\n10:00\n12:00\n15:00\n18:00\n21:00\nБез времени\nНапомнить о работе\nНе напоминать\nВ указанное время\nЗа 5 минут\nЗа 15 минут\nЗа 30 минут\nЗа 1 час\nЗа день\nСрок выполнения\nДата\nВремя\nНапомнить о сроке\nНе напоминать\nВ момент срока\nЗа 15 минут\nЗа час\nЗа день\nСоздать категорию\nПовтор\nБез повтора\nКаждый день\nКаждые 2 дня\nКаждые 3 дня\nПо будням\nПо выходным\nКаждую неделю\nКаждый месяц\nКаждый год\nНастроить...\nШаги задачи\nПунктов пока нет\nСохранить\nОтмена",
+        "overflow": 0
+      },
+      "saved": {
+        "id": "8edfdc9b-4e61-4b8f-b4b5-4a9b4bf80c45",
+        "title": "Подготовить финальную версию презентации для клиента: проверить тексты, согласовать иллюстрации и приложить исходные материалы",
+        "date": "2026-10-02",
+        "time": "17:00",
+        "scheduleMode": "deadline",
+        "startTime": "",
+        "endTime": "",
+        "categoryId": "",
+        "priority": "medium",
+        "repeat": "none",
+        "customRepeat": {},
+        "reminderOffset": "none",
+        "completed": {},
+        "excludedDates": {},
+        "notified": {},
+        "createdAt": "2026-10-02T06:00:00.185Z",
+        "dueDate": "2026-10-05",
+        "dueTime": "18:00",
+        "dueReminderOffset": "none",
+        "deferredFromDate": "",
+        "repeatUntil": "",
+        "sourceTaskId": "",
+        "movedFromDate": "",
+        "acknowledgedOverdue": {},
+        "checklist": [],
+        "checklistLogs": {},
+        "updatedAt": "2026-10-02T06:01:13.801Z",
+        "studySubjectId": "",
+        "studyDetails": "",
+        "studyAssignedDate": "",
+        "studyFileIds": []
+      }
+    },
+    {
+      "id": 5,
+      "persona": "Родитель",
+      "backlog": {
+        "name": "05-backlog-320",
+        "text": "День\n1\nПозже\n0\nНезавершённые\n2\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nПроверить школьный дневник и подписать документы · пропусков: 31\nЗаписать ребёнка на обследование\nвторник, 29 сентября\nПеренести на сегодня\n…",
+        "overflow": 0
+      },
+      "confirm": {
+        "visible": true,
+        "acceptBox": {
+          "x": 307.265625,
+          "y": 426.046875,
+          "width": 74.1875,
+          "height": 47.34375
+        },
+        "message": "Внесённые в форму изменения будут потеряны."
+      },
+      "draftPreserved": "Забрать результаты обследования",
+      "missingMetadata": {
+        "text": "Записать ребёнка на обследование\nвторник, 29 сентября\nПеренести на сегодня\n…",
+        "dueDate": "2026-10-03",
+        "dueTime": "12:00",
+        "priority": "high",
+        "category": "Здоровье",
+        "screen": {
+          "name": "05-backlog-missing-due-320",
+          "text": "День\n1\nПозже\n0\nНезавершённые\n2\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nПроверить школьный дневник и подписать документы · пропусков: 31\nЗаписать ребёнка на обследование\nвторник, 29 сентября\nПеренести на сегодня\n…",
+          "overflow": 0
+        }
+      },
+      "bulk": {
+        "selected": "Выбрано: 32",
+        "dailyCardsAfter": 32,
+        "stateCount": 33,
+        "afterUndoCount": 2,
+        "screen": {
+          "name": "05-bulk-move-many-copies-320",
+          "text": "День\n33\nПозже\n0\nНезавершённые\n0\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nЗаписать ребёнка на обследование\nЗдоровье\nСдать 3 окт., 12:00\nВысокий\n...\nПроверить школьный дневник и подписать документы\nКаждый день\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...\nПроверить школьный дневник и подписать документы\n...",
+          "overflow": 0
+        }
+      },
+      "confirmClipping": [
+        {
+          "width": 320,
+          "dialog": {
+            "x": 18,
+            "y": 305.609375,
+            "width": 384.453125,
+            "height": 188.78125,
+            "top": 305.609375,
+            "right": 402.453125,
+            "bottom": 494.390625,
+            "left": 18
+          },
+          "buttons": {
+            "confirmCancel": {
+              "x": 39,
+              "y": 426.046875,
+              "width": 68.40625,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 107.40625,
+              "bottom": 473.390625,
+              "left": 39
+            },
+            "confirmSecondary": {
+              "x": 117.40625,
+              "y": 426.046875,
+              "width": 179.859375,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 297.265625,
+              "bottom": 473.390625,
+              "left": 117.40625
+            },
+            "confirmAccept": {
+              "x": 307.265625,
+              "y": 426.046875,
+              "width": 74.1875,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 381.453125,
+              "bottom": 473.390625,
+              "left": 307.265625
+            }
+          }
+        },
+        {
+          "width": 390,
+          "dialog": {
+            "x": 18,
+            "y": 305.609375,
+            "width": 384.453125,
+            "height": 188.78125,
+            "top": 305.609375,
+            "right": 402.453125,
+            "bottom": 494.390625,
+            "left": 18
+          },
+          "buttons": {
+            "confirmCancel": {
+              "x": 39,
+              "y": 426.046875,
+              "width": 68.40625,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 107.40625,
+              "bottom": 473.390625,
+              "left": 39
+            },
+            "confirmSecondary": {
+              "x": 117.40625,
+              "y": 426.046875,
+              "width": 179.859375,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 297.265625,
+              "bottom": 473.390625,
+              "left": 117.40625
+            },
+            "confirmAccept": {
+              "x": 307.265625,
+              "y": 426.046875,
+              "width": 74.1875,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 381.453125,
+              "bottom": 473.390625,
+              "left": 307.265625
+            }
+          }
+        },
+        {
+          "width": 599,
+          "dialog": {
+            "x": 79.5,
+            "y": 305.609375,
+            "width": 440,
+            "height": 188.78125,
+            "top": 305.609375,
+            "right": 519.5,
+            "bottom": 494.390625,
+            "left": 79.5
+          },
+          "buttons": {
+            "confirmCancel": {
+              "x": 100.5,
+              "y": 426.046875,
+              "width": 77.59375,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 178.09375,
+              "bottom": 473.390625,
+              "left": 100.5
+            },
+            "confirmSecondary": {
+              "x": 188.09375,
+              "y": 426.046875,
+              "width": 215.65625,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 403.75,
+              "bottom": 473.390625,
+              "left": 188.09375
+            },
+            "confirmAccept": {
+              "x": 413.75,
+              "y": 426.046875,
+              "width": 84.75,
+              "height": 47.34375,
+              "top": 426.046875,
+              "right": 498.5,
+              "bottom": 473.390625,
+              "left": 413.75
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "persona": "Пользователь привычек",
+      "water": {
+        "id": "7673baa5-1b38-4c25-a092-a8a4458b17d3",
+        "title": "Вода",
+        "titleHistory": [
+          {
+            "fromDate": "2026-10-02",
+            "title": "Вода",
+            "updatedAt": "2026-10-02T06:00:00.294Z"
+          }
+        ],
+        "type": "number",
+        "repeat": "daily",
+        "weeklyTarget": 3,
+        "reminderTime": "",
+        "notified": {},
+        "customRepeat": {},
+        "startDate": "2026-10-02",
+        "unit": "мл",
+        "goal": 3000,
+        "logs": {
+          "2026-10-02": 750
+        },
+        "freezeDays": {},
+        "availabilityHistory": [],
+        "configHistory": [
+          {
+            "type": "number",
+            "repeat": "daily",
+            "customRepeat": {},
+            "weeklyTarget": 3,
+            "unit": "мл",
+            "goal": 3000,
+            "fromDate": "2026-10-02",
+            "updatedAt": "2026-10-02T06:00:00.294Z"
+          }
+        ],
+        "archived": false,
+        "archivedAt": "",
+        "archivedFromDate": "",
+        "createdAt": "2026-10-02T06:00:00.294Z",
+        "updatedAt": "2026-10-02T06:00:00.370Z"
+      },
+      "friday": {
+        "name": "06-weekend-habit-friday-390",
+        "text": "Новая привычка\nВода\n\nСерия: 0 дн. · Каждый день\n\n...\n-\n+\n/ 3000 мл\n+250 мл\n+500 мл",
+        "overflow": 0
+      },
+      "saturday": {
+        "name": "06-weekend-habit-saturday-390",
+        "text": "Новая привычка\nВода\n\nСерия: 0 дн. · Каждый день\n\n...\n-\n+\n/ 3000 мл\n+250 мл\n+500 мл\nПрогулка по выходным\n\nСерия: 0 дн. · Выходные\n\n...\nНе отмечено",
+        "overflow": 0
+      }
+    },
+    {
+      "id": 7,
+      "persona": "Минималист",
+      "later": {
+        "name": "07-minimal-later-390",
+        "text": "День\n0\nПозже\n1\nНезавершённые\n0\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nзавтра 10:00\n14:00-15:30\nчерез 2 часа\n#категория\n!high\nКупить велосипед\nСредний\nНазначить дату\n...\nДобавить без даты",
+        "overflow": 0
+      },
+      "emptyCloseWarning": false,
+      "saved": {
+        "ui": {
+          "activeDate": "2026-10-02",
+          "activeView": "tasks",
+          "accentPreference": "emerald",
+          "archiveCategoryFilter": "all",
+          "archivePeriod": "all",
+          "archiveSearchQuery": "",
+          "backupSchedule": "5",
+          "currentToday": "2026-10-02",
+          "densityPreference": "comfortable",
+          "firstDayOfWeek": "monday",
+          "lastAutoBackupAt": "",
+          "localStateUpdatedAt": "2026-10-02T06:01:14.602Z",
+          "notificationSetting": "on",
+          "navigationPreferences": {
+            "hidden": [
+              "timeline",
+              "goals",
+              "study",
+              "nutrition",
+              "journal",
+              "board",
+              "archive",
+              "habits",
+              "overview"
+            ],
+            "mobile": [
+              "tasks"
+            ]
+          },
+          "quietHours": {
+            "enabled": false,
+            "start": "22:00",
+            "end": "08:00"
+          },
+          "overviewMode": "week",
+          "overdueHidden": false,
+          "remoteSyncAnonKey": "",
+          "remoteSyncAccountId": "",
+          "remoteSyncEnabled": "off",
+          "remoteSyncLastPulledAt": "",
+          "remoteSyncLastPushedAt": "",
+          "remoteSyncPending": true,
+          "remoteSyncUrl": "",
+          "taskCategoryFilter": "all",
+          "taskFilter": "all",
+          "taskPane": "later",
+          "showStudyEvents": true,
+          "taskSearchQuery": "",
+          "themePreference": "dark",
+          "timeFormat": "24"
+        },
+        "profile": {
+          "journalAccess": {
+            "read": true,
+            "write": true
+          },
+          "timeZone": "Europe/Saratov",
+          "preferences": {
+            "navigationPreferences": {
+              "value": {
+                "hidden": [
+                  "timeline",
+                  "goals",
+                  "study",
+                  "nutrition",
+                  "journal",
+                  "board",
+                  "archive",
+                  "habits",
+                  "overview"
+                ],
+                "mobile": [
+                  "tasks"
+                ]
+              },
+              "updatedAt": "2026-10-02T06:01:14.495Z"
+            }
+          },
+          "updatedAt": ""
+        }
+      },
+      "task": {
+        "id": "4c431abd-c7b1-4e41-8c17-367f8b5f583c",
+        "title": "Купить велосипед",
+        "date": null,
+        "time": "",
+        "scheduleMode": "none",
+        "startTime": "",
+        "endTime": "",
+        "categoryId": "",
+        "priority": "medium",
+        "repeat": "none",
+        "customRepeat": {},
+        "reminderOffset": "none",
+        "completed": {},
+        "excludedDates": {},
+        "notified": {},
+        "createdAt": "2026-10-02T06:01:14.602Z"
+      }
+    },
+    {
+      "id": 8,
+      "persona": "Любитель систем",
+      "goalStart": {
+        "name": "08-goal-linked-desktop",
+        "text": "Цели\nНовая цель\nАКТИВНЫЕ\n1\nПРОСРОЧЕНЫ\n0\nДОСТИГНУТЫ\n0\nВ работе\nНа паузе\nАрхив\nВсе цели\nЗапустить портфолио\n\nБез срока\n\nВ работе\nВыполнено из плана\n0%\n\nЗАДАЧА\nПодготовить портфолио\n\nПлан · 1 пунктов",
+        "overflow": 0
+      },
+      "noteRead": {
+        "name": "08-note-read-desktop",
+        "text": "Заметки\nНовая заметка\nЗаметки\nДневник\nВсе заметки\nБез предмета\n1 заметка\nТребования к портфолио\nПоказать три проекта. Приложить ссылки. Проверить контакты.\n2 окт., 10:00\nИзменена 2 окт., 10:00\nСохранено\nСохранить\nЗакрепить заметку\nРедактор\nЧтение\nЗадача из выделения\nПоказать три проекта. Приложить ссылки. Проверить контакты.\nСвязи с предметом и задачей\nПредмет\nБез предмета\nЗадача\nБез задачи\nПодготовить портфолио · 2026-10-02\nОткрыть задачу",
+        "overflow": 0
+      },
+      "goalDone": {
+        "name": "08-goal-completed-desktop",
+        "text": "Цели\nНовая цель\nАКТИВНЫЕ\n0\nПРОСРОЧЕНЫ\n0\nДОСТИГНУТЫ\n1\nВ работе\nНа паузе\nАрхив\nВсе цели\nЗапустить портфолио\n\nБез срока\n\nДостигнута\nВыполнено из плана\n100%\nПлан · 1 пунктов",
+        "overflow": 0
+      },
+      "boardDone": {
+        "name": "08-board-completed-desktop",
+        "text": "Доска\n\nПроекты, материалы и важные мысли в одном пространстве\n\nФото хранятся в Supabase Storage\nОсновная доска\nСписок карточек\nДобавить\nЗадача\nВыполнена\nПодготовить портфолио\n\n02.10.2026\n\nОткрыть\n150%",
+        "overflow": 0
+      },
+      "goal": {
+        "id": "83dcba7b-8823-40e1-b70b-2b97f9fc32ef",
+        "title": "Запустить портфолио",
+        "dueDate": "",
+        "paused": false,
+        "archived": false,
+        "steps": [],
+        "linkedTaskIds": [
+          "portfolio"
+        ],
+        "taskTargets": [
+          {
+            "taskId": "portfolio",
+            "mode": "once",
+            "targetCount": 1,
+            "startDate": ""
+          }
+        ],
+        "habitTargets": [],
+        "createdAt": "2026-10-02T06:00:00.422Z",
+        "updatedAt": "2026-10-02T06:00:51.282Z",
+        "status": "done",
+        "completedAt": "2026-10-02T06:00:51.282Z"
+      },
+      "note": {
+        "id": "96b2d6ca-108a-449e-a1b1-fd46fdbefe98",
+        "title": "Требования к портфолио",
+        "body": "Показать три проекта. Приложить ссылки. Проверить контакты.",
+        "pinned": false,
+        "subjectId": "",
+        "taskId": "portfolio",
+        "createdAt": "2026-10-02T06:00:00.616Z",
+        "updatedAt": "2026-10-02T06:00:00.616Z"
+      },
+      "draftRestore": {
+        "text": "Несохранённое уточнение: добавить четвёртый проект.",
+        "status": "Изменена 2 окт., 10:00\nВосстановлен черновик на этом устройстве\nСохранить\nЗакрепить заметку\nРедактор\nЧтение\nЗадача из выделения\nСвязи с предметом и задачей\nОткрыть задачу\nУдалить черновик"
+      }
+    },
+    {
+      "id": 9,
+      "persona": "Скептик другого трекера",
+      "search": "Задача\nПодписать договор\n2026-10-02\nЗаметка\nУсловия договора\nПроверить штрафы и срок оплаты",
+      "export": {
+        "suggestedFilename": "parsitasks-2026-10-02.json",
+        "taskCount": 1
+      },
+      "preview": {
+        "title": "Заменить данные из файла?",
+        "message": "Дата копии: 02.10.2026, 10:00:00 задач: 1 · привычек: 0 · заметок: 1 · целей: 0 · предметов: 0 · занятий: 0 · ссылок на файлы: 0 · объектов доски: 0 · записей дневника: 0 · категорий: 4 Все текущие данные будут заменены. Перед заменой сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.",
+        "button": "Заменить данные",
+        "box": {
+          "x": 194.859375,
+          "y": 536.46875,
+          "width": 156.140625,
+          "height": 44
+        }
+      },
+      "cancelled": [
+        "Подписать договор"
+      ],
+      "replaced": [
+        "Задача из копии"
+      ],
+      "restored": [
+        "Подписать договор"
+      ]
+    },
+    {
+      "id": 10,
+      "persona": "Клавиатура и доступность",
+      "tabPath": [
+        {
+          "id": "",
+          "text": "Перейти к содержимому",
+          "tag": "A"
+        },
+        {
+          "id": "",
+          "text": "Задачи",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "",
+          "text": "Привычки",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "",
+          "text": "Календарь",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "",
+          "text": "Учёба",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "",
+          "text": "Дополнительные разделы",
+          "tag": "SUMMARY"
+        },
+        {
+          "id": "openReminderCenter",
+          "text": "Напоминания",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "globalSearchButton",
+          "text": "Поиск по приложению",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "prevDay",
+          "text": "Предыдущий день",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "activeDate",
+          "text": "Выбранная дата",
+          "tag": "INPUT"
+        },
+        {
+          "id": "activeDate",
+          "text": "Выбранная дата",
+          "tag": "INPUT"
+        },
+        {
+          "id": "activeDate",
+          "text": "Выбранная дата",
+          "tag": "INPUT"
+        },
+        {
+          "id": "activeDate",
+          "text": "Выбранная дата",
+          "tag": "INPUT"
+        },
+        {
+          "id": "nextDay",
+          "text": "Следующий день",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "todayButton",
+          "text": "Перейти к сегодняшнему дню",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "",
+          "text": "День 3",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "",
+          "text": "Позже 0",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "",
+          "text": "Незавершённые 0",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "taskFilterSummary",
+          "text": "Фильтры и поиск",
+          "tag": "SUMMARY"
+        },
+        {
+          "id": "taskSelectMode",
+          "text": "Выбрать задачи для переноса",
+          "tag": "BUTTON"
+        },
+        {
+          "id": "openTaskForm",
+          "text": "Новая задача",
+          "tag": "BUTTON"
+        }
+      ],
+      "formFocus": {
+        "id": "taskTitle",
+        "visible": true
+      },
+      "keyboardCreated": true,
+      "orderBefore": [
+        "a",
+        "b",
+        "c",
+        "60921848-a002-4c43-91c4-e59e708a4ad2"
+      ],
+      "orderAfter": [
+        "b",
+        "a",
+        "c",
+        "60921848-a002-4c43-91c4-e59e708a4ad2"
+      ],
+      "axe": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "description": "Ensure the order of headings is semantically correct",
+          "nodes": [
+            [
+              "article[data-task-id=\"b\"] > .task-content > .task-row > h3"
+            ]
+          ]
+        },
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "description": "Ensure landmarks are unique",
+          "nodes": [
+            [
+              "#tasksView"
+            ]
+          ]
+        }
+      ],
+      "screen": {
+        "name": "10-keyboard-320",
+        "text": "День\n4\nПозже\n0\nНезавершённые\n0\nФильтры и поиск\nВыбрать задачи\nНовая задача\nБыстрый ввод\nКупить лекарства\n...\nПозвонить врачу\n...\nПроверить документы\n...\nЗадача только с клавиатуры\n...",
+        "overflow": 0
+      }
+    }
+  ],
+  "additionalValidation": "Повторная сессия учебного профиля, не отдельная персона."
+}

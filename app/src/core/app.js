@@ -116,7 +116,7 @@ let taskFilter = ["all", "open", "done"].includes(initialUiState.taskFilter)
 let activeView = initialRoute?.view || (VALID_VIEWS.includes(initialUiState.activeView) ? initialUiState.activeView : "tasks");
 let taskPane = ["day", "later", "backlog"].includes(initialUiState.taskPane) ? initialUiState.taskPane : "day";
 let showStudyEvents = initialUiState.showStudyEvents !== false;
-let overviewMode = initialRoute?.overviewMode || (["week", "month", "year"].includes(initialUiState.overviewMode)
+let overviewMode = initialRoute?.overviewMode || (["day", "week", "month", "year"].includes(initialUiState.overviewMode)
   ? initialUiState.overviewMode
   : "week");
 let taskCategoryFilter = initialUiState.taskCategoryFilter || "all";
@@ -136,6 +136,7 @@ let backupSchedule = normalizeBackupSchedule(initialUiState.backupSchedule);
 let firstDayOfWeek = normalizeFirstDayOfWeek(initialUiState.firstDayOfWeek);
 let densityPreference = normalizeDensityPreference(initialUiState.densityPreference);
 let timeFormat = normalizeTimeFormat(initialUiState.timeFormat);
+let appliedAccountPreferences = "";
 let remoteSyncEnabled = normalizeRemoteSyncEnabled(initialUiState.remoteSyncEnabled);
 let remoteSyncUrl = cleanText(initialUiState.remoteSyncUrl || "");
 let remoteSyncAnonKey = cleanText(initialUiState.remoteSyncAnonKey || "");
@@ -674,6 +675,7 @@ const habitsView = window.RhythmHabitsView.createHabitsView({
   els,
   confirmAction,
   createUndoSnapshot,
+  restoreState: restoreFailedSave,
   deleteHabit,
   escapeHtml,
   fillHabitForm,
@@ -700,6 +702,7 @@ const habitsView = window.RhythmHabitsView.createHabitsView({
 const habitFreezeDialog = window.RhythmHabitFreezeDialog.createHabitFreezeDialog({
   els,
   createUndoSnapshot,
+  restoreState: restoreFailedSave,
   getActiveDate: () => activeDate,
   getState: () => state,
   habitStatusOnDate,
@@ -723,6 +726,7 @@ const goalsView = window.RhythmGoalsView.createGoalsView({
   confirmAction,
   createId,
   createUndoSnapshot,
+  restoreState: (snapshot) => replaceState(JSON.parse(snapshot.state)),
   deleteGoal,
   getActiveDate: () => activeDate,
   getState: () => state,
@@ -747,6 +751,7 @@ const goalsView = window.RhythmGoalsView.createGoalsView({
 });
 
 const calendarView = window.RhythmCalendarView.createCalendarView({
+  renderSchedule: (mode) => calendarSchedule.render(mode),
   selectCalendarDate: (dateKey) => { activeDate = dateKey; saveUiState(); render(); },
   getStudyEvents,
   openStudyLesson,
@@ -788,10 +793,12 @@ const calendarView = window.RhythmCalendarView.createCalendarView({
 });
 
 const timelineController = window.RhythmTimelineController.createTimelineController({
+  markFormPristine,
   cleanTimeValue,
   confirmAction,
   createId,
   createUndoSnapshot,
+  restoreState: restoreFailedSave,
   deleteTask,
   deleteMovedReplacement,
   excludeTaskDate,
@@ -829,6 +836,93 @@ const timelineController = window.RhythmTimelineController.createTimelineControl
   taskSortTime,
   timeToMinutes,
 });
+
+const calendarSchedule = window.RhythmCalendarSchedule.createCalendarSchedule({
+  getActiveDate: () => activeDate,
+  getState: () => state,
+  getTasks: getOrderedTasksForDate,
+  getStudyEvents,
+  getWeekDates,
+  getCategory,
+  isTaskDone,
+  todayKey: () => toDateKey(new Date()),
+  formatLongDate,
+  formatShortDate,
+  openLesson: (lesson, date) => openStudyLesson(lesson.id, date),
+  selectDate: async (date) => {
+    if (!(await confirmDiscardOpenForms())) return false;
+    activeDate = date;
+    resetTaskForm({ open: false });
+    saveUiState();
+    render();
+    return true;
+  },
+  createTask: async (date, start, end) => {
+    if (!(await confirmDiscardOpenForms())) return;
+    activeDate = date;
+    saveUiState();
+    render();
+    if (start && end) timelineController.createTaskAtTime(start, end);
+    else { resetTaskForm(); openFloatingTaskForm(); els.taskTitle.focus(); }
+  },
+  editTask: async (task, date) => {
+    const owner = state;
+    if (!(await confirmDiscardOpenForms()) || state !== owner || !state.tasks.includes(task)) return;
+    activeDate = date;
+    saveUiState();
+    render();
+    openFloatingTaskForm();
+    taskFormController.fillTaskForm(task);
+  },
+  scheduleTask: calendarScheduleTask,
+  resizeTask: async (id, date, start, end) => {
+    const owner = state;
+    if (!(await confirmDiscardOpenForms()) || state !== owner) { render(); return false; }
+    const task = state.tasks.find((item) => item.id === id);
+    if (!task || !taskOccursOn(task, date)) return false;
+    activeDate = date;
+    saveUiState();
+    const result = await timelineController.resizeTaskBlockTime(id, start, end);
+    if (!result) render();
+    return result;
+  },
+});
+
+async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime) {
+  const owner = state;
+  if (!(await confirmDiscardOpenForms()) || state !== owner) return false;
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task || !taskOccursOn(task, sourceDate)) return false;
+  if (sourceDate === targetDate) {
+    activeDate = sourceDate;
+    saveUiState();
+    const result = await timelineController.setTaskTime(taskId, startTime);
+    if (!result) render();
+    return result;
+  }
+  if (task.repeat !== "none") {
+    const choice = await confirmAction({ title: "Перенести этот повтор?",
+      message: "На другой день будет перенесено только выбранное выполнение. Остальное расписание останется прежним.",
+      confirmLabel: "Перенести", secondaryLabel: "Отмена" });
+    if (choice !== true || state !== owner) return false;
+  }
+  const undo = createUndoSnapshot();
+  let moved = task;
+  window.RhythmTaskMoves.postponeTask({ state, task, sourceDateKey: sourceDate, targetDateKey: targetDate,
+    options: { separateOccurrence: true }, helpers: { createId, taskScheduledOn } });
+  if (task.repeat !== "none") moved = state.tasks.at(-1);
+  const duration = isTimeBlock(task) ? timeToMinutes(task.endTime) - timeToMinutes(task.startTime) : 60;
+  const end = Math.min(23 * 60 + 45, timeToMinutes(startTime) + duration);
+  Object.assign(moved, { scheduleMode: "block", startTime: minutesToTime(Math.max(0, end - duration)),
+    endTime: minutesToTime(end), time: minutesToTime(end), updatedAt: new Date().toISOString() });
+  delete moved.notified?.[targetDate];
+  if (saveState() === false) { restoreFailedSave(undo); render(); return false; }
+  activeDate = targetDate;
+  saveUiState();
+  render();
+  showToast(`Запланировано на ${formatLongDate(targetDate)}`, { undo });
+  return true;
+}
 
 const timelineView = window.RhythmTimelineView.createTimelineView({
   getStudyEvents,
@@ -1180,6 +1274,7 @@ const habitFormController = window.RhythmHabitForm.createHabitForm({
   cleanTimeValue,
   createId,
   createUndoSnapshot,
+  restoreState: restoreFailedSave,
   findHabit: (id) => state.habits.find((habit) => habit.id === id),
   getActiveDate: () => activeDate,
   getHabitCustomRepeatFromForm,
@@ -1244,7 +1339,15 @@ const importExportController = window.RhythmImportExport.createImportExport({
 });
 
 const settingsTransfer = window.RhythmSettingsTransfer.createSettingsTransfer({
-  applyImportedSettings,
+  applyImportedSettings: (settings) => {
+    const previousSettings = getUiSettings();
+    applyImportedSettings(settings);
+    if (!saveAccountPreferences(profileSettings.preferenceKeys)) {
+      applyImportedSettings(previousSettings);
+      saveUiState();
+      throw new Error("Не удалось сохранить настройки аккаунта");
+    }
+  },
   confirmAction,
   document,
   els,
@@ -1542,11 +1645,12 @@ const appEvents = window.RhythmAppEvents.createAppEvents({
   ].some(([form, panel]) => !panel.classList.contains("is-collapsed") && isFormDirty(form)) || (activeView === "journal" && notesView.hasUnpersistedChanges()),
   calendarDragController,
   changeOverviewMode: (mode, activeButton) => {
-    overviewMode = ["week", "month", "year"].includes(mode) ? mode : "week";
+    overviewMode = ["day", "week", "month", "year"].includes(mode) ? mode : "week";
     els.views.overview.dataset.mode = overviewMode;
     document.querySelectorAll("[data-overview-mode]").forEach((item) => {
       item.classList.toggle("is-active", item === activeButton);
     });
+    appShellController.syncOverviewMode();
     saveUiState();
     syncNavigationRoute();
     renderOverview();
@@ -1799,6 +1903,7 @@ async function synchronizeAuthenticatedAccount() {
       throw new Error("Не удалось сохранить данные выбранного аккаунта");
     }
     notesView.resetForState();
+    applyAccountPreferences(true);
     remoteSyncLastPulledAt = pulled.updatedAt || pulled.clientUpdatedAt || "";
     remoteSyncLastPushedAt = "";
     remoteSyncPending = false;
@@ -1811,6 +1916,7 @@ async function synchronizeAuthenticatedAccount() {
   renderRemoteSyncStatus();
   await remoteSyncWorkflow.syncLatest({ silent: true });
   if (!isCurrent()) return;
+  migrateAccountPreferences();
   await remoteSyncWorkflow.push({ silent: true });
   if (!isCurrent()) return;
   await remoteSyncWorkflow.resumePending();
@@ -1831,6 +1937,7 @@ function handleDateRollover() {
 }
 
 function render() {
+  applyAccountPreferences();
   appShellController.render();
   workspaceGuide.render();
 }
@@ -1906,9 +2013,7 @@ function excludeTaskDate(task, dateKey) {
   if (Array.isArray(state.taskOrder[dateKey])) {
     state.taskOrder[dateKey] = state.taskOrder[dateKey].filter((id) => id !== task.id);
   }
-  saveState();
-  render();
-  showToast("Повтор исключен на выбранный день", { undo });
+  return commitTaskChange("Повтор исключен на выбранный день", undo);
 }
 
 function acknowledgeOverdueTask(task, dateKey) {
@@ -1916,9 +2021,7 @@ function acknowledgeOverdueTask(task, dateKey) {
   task.acknowledgedOverdue = task.acknowledgedOverdue || {};
   task.acknowledgedOverdue[dateKey] = true;
   task.updatedAt = new Date().toISOString();
-  saveState();
-  render();
-  showToast("Скрыта из просроченных · задача остаётся невыполненной", { undo });
+  return commitTaskChange("Скрыта из просроченных · задача остаётся невыполненной", undo);
 }
 
 function acknowledgeAllOverdueTasks(entries) {
@@ -1929,9 +2032,7 @@ function acknowledgeAllOverdueTasks(entries) {
     task.acknowledgedOverdue[dateKey] = true;
     task.updatedAt = new Date().toISOString();
   });
-  saveState();
-  render();
-  showToast(`Скрыто из просроченных: ${entries.length} · отметки выполнения не изменены`, { undo });
+  return commitTaskChange(`Скрыто из просроченных: ${entries.length} · отметки выполнения не изменены`, undo);
 }
 
 function restoreOverdueTask(task, dateKey) {
@@ -1939,9 +2040,7 @@ function restoreOverdueTask(task, dateKey) {
   const undo = createUndoSnapshot();
   delete task.acknowledgedOverdue[dateKey];
   task.updatedAt = new Date().toISOString();
-  saveState();
-  render();
-  showToast("Задача снова появится в просроченных на следующем дне", { undo });
+  return commitTaskChange("Задача снова появится в просроченных на следующем дне", undo);
 }
 
 function restoreTaskDate(task, dateKey) {
@@ -1950,9 +2049,7 @@ function restoreTaskDate(task, dateKey) {
     delete task.excludedDates[dateKey];
   }
   task.updatedAt = new Date().toISOString();
-  saveState();
-  render();
-  showToast(`Повтор возвращен на ${formatLongDate(dateKey)}`, { undo });
+  return commitTaskChange(`Повтор возвращен на ${formatLongDate(dateKey)}`, undo);
 }
 
 function stopTaskSeries(task, dateKey) {
@@ -1969,9 +2066,18 @@ function stopTaskSeries(task, dateKey) {
   Object.keys(state.taskOrder).forEach((key) => {
     if (key >= dateKey) state.taskOrder[key] = state.taskOrder[key].filter((id) => id !== task.id);
   });
-  saveState();
+  return commitTaskChange(`Повтор завершен с ${formatLongDate(dateKey)}`, undo);
+}
+
+function commitTaskChange(message, undo, toastOptions = {}) {
+  if (saveState() === false) {
+    restoreFailedSave(undo);
+    render();
+    return false;
+  }
   render();
-  showToast(`Повтор завершен с ${formatLongDate(dateKey)}`, { undo });
+  showToast(message, { ...toastOptions, undo });
+  return true;
 }
 
 function deleteTask(taskId) {
@@ -2193,10 +2299,7 @@ function postponeTask(task, sourceDateKey, targetDateKey, options = {}) {
     },
   });
 
-  saveState();
-  render();
-  showToast(`Задача перенесена на ${formatLongDate(targetDate)}`, {
-    undo,
+  return commitTaskChange(`Задача перенесена на ${formatLongDate(targetDate)}`, undo, {
     action: { label: "Открыть день", onClick: () => openDateTasks(targetDate) },
   });
 }
@@ -2205,12 +2308,27 @@ function renderHabits() {
   habitsView.renderHabits();
 }
 
-function moveSelectedTasks(entries, targetDateKey) {
+async function chooseRepeatMoveStrategy(entries, targetDateKey) {
+  const groups = window.RhythmTaskMoves.recurringBacklogGroups({ state, entries, targetDateKey, helpers: { taskScheduledOn, toDateKey } });
+  if (!groups.size) return "each";
+  const userId = remoteAuth.getSession()?.user?.id || "";
+  const snapshot = state;
+  const count = [...groups.values()].reduce((total, group) => total + group.length, 0);
+  const choice = await confirmAction({ title: "Как перенести пропущенные повторы?",
+    message: `Выбрано пропусков повторяющихся задач: ${count}. «Каждый отдельно» перенесёт каждое выполнение отдельной карточкой ${targetDateKey ? `на ${formatLongDate(targetDateKey)}` : "в Позже"}. «Одно на задачу» оставит одно актуальное действие для каждой серии; остальные выбранные пропуски сохранятся в истории как невыполненные. Обычные задачи будут перенесены без объединения.`,
+    secondaryLabel: "Одно на задачу", confirmLabel: "Каждый отдельно" });
+  if (!choice || state !== snapshot || (remoteAuth.getSession()?.user?.id || "") !== userId) return null;
+  return choice === "secondary" ? "single" : "each";
+}
+
+async function moveSelectedTasks(entries, targetDateKey) {
   const targetDate = normalizeDateKey(targetDateKey, "");
   if (!targetDate) return false;
+  const recurringMode = await chooseRepeatMoveStrategy(entries, targetDate);
+  if (!recurringMode) return false;
   const undo = createUndoSnapshot();
   const result = window.RhythmTaskMoves.moveTasksToDate({
-    state, entries, targetDateKey: targetDate,
+    state, entries, targetDateKey: targetDate, recurringMode,
     helpers: { cleanTimeValue, createId, taskScheduledOn, toDateKey },
   });
   if (!result.moved) {
@@ -2223,18 +2341,20 @@ function moveSelectedTasks(entries, targetDateKey) {
     return false;
   }
   render();
-  showToast(`Перенесено задач: ${result.moved}${result.skipped ? ` · без изменений: ${result.skipped}` : ""}`, {
+  showToast(result.consolidated ? `Повторы разобраны: ${result.moved} · по одному действию на серию` : `Перенесено задач: ${result.moved}${result.skipped ? ` · без изменений: ${result.skipped}` : ""}`, {
     undo, action: { label: "Открыть день", onClick: () => openDateTasks(targetDate) },
   });
   return true;
 }
 
-function deferSelectedTasks(entries) {
+async function deferSelectedTasks(entries) {
+  const recurringMode = await chooseRepeatMoveStrategy(entries, null);
+  if (!recurringMode) return false;
   const undo = createUndoSnapshot();
-  const result = window.RhythmTaskMoves.moveTasksToLater({ state, entries, helpers: { createId, taskScheduledOn } });
+  const result = window.RhythmTaskMoves.moveTasksToLater({ state, entries, recurringMode, helpers: { createId, taskScheduledOn, toDateKey } });
   if (!result.moved) { showToast("Выполненные и уже отложенные задачи не изменены"); return false; }
   if (saveState() === false) { replaceState(JSON.parse(undo.state)); render(); return false; }
-  render(); showToast(`В Позже: ${result.moved}`, { undo });
+  render(); showToast(result.consolidated ? "В Позже: по одному действию на серию" : `В Позже: ${result.moved}`, { undo });
   return true;
 }
 
@@ -2349,9 +2469,13 @@ async function saveQuickTask(event) {
     !taskMatchesSearch(task, taskSearchQuery, activeDate)) clearTaskFilters();
   saveUiState();
   syncNavigationRoute();
+  if (saveState() === false) {
+    restoreFailedSave(undo);
+    render();
+    return;
+  }
   els.quickTaskInput.value = "";
   updateQuickTaskPreview();
-  saveState();
   resetTaskForm({ open: false });
   render();
   showToast(task.date ? `Добавлено на ${formatLongDate(task.date)}: ${task.title}` : `Добавлено в Позже: ${task.title}`, {
@@ -2376,10 +2500,10 @@ function updateQuickTaskPreview() {
       : "";
   const details = [
     taskPane === "later" ? "Позже · без даты" : formatLongDate(parsed.date),
-    taskPane === "later" ? "без времени" : parsed.scheduleMode === "block" ? formatTaskWindow(parsed) : parsed.time ? formatTaskTime(parsed.time) : "без времени",
-    category || "без категории",
-    priorityLabels[parsed.priority],
-  ];
+    taskPane === "later" ? "" : parsed.scheduleMode === "block" ? formatTaskWindow(parsed) : parsed.time ? formatTaskTime(parsed.time) : "",
+    category,
+    parsed.priority !== "medium" ? priorityLabels[parsed.priority] : "",
+  ].filter(Boolean);
 
   els.quickTaskPreview.hidden = false;
   const children = [createQuickPreviewSummary(parsed), createQuickPreviewChips(details)];
@@ -2550,7 +2674,7 @@ function updateHabitCustomRepeatSummary() {
 
 async function fillTaskForm(task) {
   if (!(await confirmDiscardOpenForms())) return;
-  if (activeView === "timeline") openFloatingTaskForm();
+  if (["timeline", "overview"].includes(activeView)) openFloatingTaskForm();
   taskFormController.fillTaskForm(task);
 }
 
@@ -2989,6 +3113,8 @@ function getReminderDate(task, dateKey) {
 
 async function shiftDate(days) {
   if (!(await confirmDiscardOpenForms())) return;
+  if (activeView === "overview" && overviewMode === "month") return shiftMonth(days);
+  if (activeView === "overview" && overviewMode === "week") days *= 7;
   const date = parseDate(activeDate);
   date.setDate(date.getDate() + days);
   activeDate = toDateKey(date);
@@ -3181,6 +3307,48 @@ function getRemoteUiSettings(overrides = {}) {
 }
 
 function updateSetting(name, value) {
+  const previousSettings = getUiSettings();
+  const result = updateDeviceSetting(name, value);
+  if (result === false || !profileSettings.preferenceKeys.includes(name)) return result;
+  if (!saveAccountPreferences([name])) {
+    applyImportedSettings(previousSettings);
+    saveUiState();
+    return false;
+  }
+  return result;
+}
+
+function saveAccountPreferences(keys, stamp = new Date().toISOString()) {
+  const previous = state.profile;
+  const preferences = profileSettings.normalizePreferences(state.profile?.preferences);
+  const settings = getUiSettings();
+  for (const key of keys) preferences[key] = { value: settings[key], updatedAt: stamp };
+  state.profile = { ...state.profile, preferences };
+  if (saveState() === false) { state.profile = previous; return false; }
+  appliedAccountPreferences = JSON.stringify(preferences);
+  return true;
+}
+
+function migrateAccountPreferences() {
+  const preferences = profileSettings.normalizePreferences(state.profile?.preferences);
+  const missing = profileSettings.preferenceKeys.filter((key) => !preferences[key]);
+  // Legacy device settings are a baseline, never newer than an explicit account edit.
+  if (missing.length) saveAccountPreferences(missing, "1970-01-01T00:00:00.000Z");
+}
+
+function applyAccountPreferences(reset = false) {
+  const preferences = profileSettings.normalizePreferences(state.profile?.preferences);
+  const signature = JSON.stringify(preferences);
+  if (!reset && signature === appliedAccountPreferences) return;
+  appliedAccountPreferences = signature;
+  const values = Object.fromEntries(Object.entries(preferences).map(([key, entry]) => [key, entry.value]));
+  const defaults = reset ? settingsState.normalizeImportedSettings() : {};
+  const accountDefaults = Object.fromEntries(profileSettings.preferenceKeys.filter((key) => key in defaults).map((key) => [key, defaults[key]]));
+  applyImportedSettings({ ...getUiSettings(), ...accountDefaults, ...values });
+  saveUiState();
+}
+
+function updateDeviceSetting(name, value) {
   switch (name) {
     case "navigationPreferences": {
       const previous = navigationPreferences;
@@ -3296,12 +3464,18 @@ function updateSetting(name, value) {
 }
 
 function resetInterfacePreferences() {
+  const previousSettings = getUiSettings();
   themePreference = "dark";
   accentPreference = "emerald";
   densityPreference = "comfortable";
   timeFormat = "24";
   firstDayOfWeek = "monday";
   navigationPreferences = window.RhythmNavigationPreferences.normalize();
+  if (!saveAccountPreferences(["themePreference", "accentPreference", "densityPreference", "timeFormat", "firstDayOfWeek", "navigationPreferences"])) {
+    applyImportedSettings(previousSettings);
+    saveUiState();
+    return;
+  }
   applyThemePreference();
   applySettingsPreferences();
   saveUiState();
@@ -3324,6 +3498,7 @@ function applyImportedSettings(settings = {}) {
   remoteSyncWorkflow.clearError();
   applyThemePreference();
   applySettingsPreferences();
+  renderWeekdayLabels();
   scheduleAutoBackup();
   settingsController.syncControls();
   renderRemoteSyncStatus();
@@ -3575,6 +3750,11 @@ function createUndoSnapshot() {
     activeView,
     state: JSON.stringify(state),
   };
+}
+
+function restoreFailedSave(snapshot) {
+  replaceState(JSON.parse(snapshot.state));
+  syncDesktopReminders();
 }
 
 function restoreUndoSnapshot(snapshot) {

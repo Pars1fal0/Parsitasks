@@ -306,6 +306,8 @@ function createWindow() {
           Boolean(quickTaskId) &&
           document.querySelector("#activeDate").value === quickSourceDate &&
           state.tasks.some((task) => task.id === quickTaskId && task.date === quickTargetDate);
+        // The moved task can now belong to the next week or month.
+        activeDate = quickTargetDate;
         click('[data-view="overview"]');
         const hasWeekBoard =
           document.querySelectorAll(".week-board-day").length === 7 &&
@@ -371,7 +373,11 @@ function createWindow() {
           state.goals.find((goal) => goal.title === "Smoke Goal")?.steps?.[0]?.done === true &&
           updatedSmokeGoalItem?.querySelector('[role="progressbar"]')?.getAttribute("aria-valuenow") === "50";
         document.querySelectorAll(".goal-step input")[1]?.click();
+        const completedHiddenFromActive = ![...document.querySelectorAll(".goal-item")].some((item) => item.textContent.includes("Smoke Goal"));
+        document.querySelector("#goalFilter").value = "done";
+        document.querySelector("#goalFilter").dispatchEvent(new Event("change", { bubbles: true }));
         const goalCompleteWorks =
+          completedHiddenFromActive &&
           state.goals.some((goal) => goal.title === "Smoke Goal" && goal.status === "done") &&
           [...document.querySelectorAll(".goal-item.is-done")].some((item) => item.textContent.includes("Smoke Goal"));
         const goalCompletionAnimationWorks = document.querySelector(".goal-item.is-done.is-celebrating .goal-celebration")?.children.length === 12;
@@ -756,8 +762,9 @@ function createWindow() {
           window.innerWidth <= 400 &&
           (getComputedStyle(mobileTaskRailNode).display === "none" || mobileTaskPanel?.top < mobileTaskRail?.top) &&
           getComputedStyle(document.querySelector(".focus-board")).display === "none";
+        window.smokeMobileLayout = { width: innerWidth, panel: mobileTaskPanel?.toJSON(), rail: mobileTaskRail?.toJSON(), railDisplay: getComputedStyle(mobileTaskRailNode).display, formCollapsed: els.taskFormPanel.classList.contains("is-collapsed") };
         const mobileNavColumns = getComputedStyle(document.querySelector(".nav-tabs")).gridTemplateColumns.split(" ").filter(Boolean).length;
-        const expectedNavColumns = navigationPreferences.mobile.length + (document.querySelector(".nav-more").hidden ? 0 : 1);
+        const expectedNavColumns = navigationPreferences.mobile.filter((view) => view !== "timeline").length + (document.querySelector(".nav-more").hidden ? 0 : 1);
         const mobileNavigationFits = mobileNavColumns === expectedNavColumns && document.documentElement.scrollWidth <= innerWidth + 1;
         click('[data-view="overview"]');
         await new Promise((resolve) => setTimeout(resolve, 30));
@@ -951,6 +958,7 @@ function createWindow() {
         console.error(`SMOKE_FAIL ${JSON.stringify(failedChecks)}`);
         const context = await mainWindow.webContents.executeJavaScript(`({
           activeView, activeDate,
+          mobileLayout: window.smokeMobileLayout,
           taskTitles: state.tasks.map((task) => ({ title: task.title, date: task.date, scheduleMode: task.scheduleMode })),
           visibleView: document.querySelector(".view.is-active")?.id,
           quickInput: document.querySelector("#quickTaskInput")?.value,

@@ -41,10 +41,20 @@ jobs:
         run: npm run test:e2e
       - name: Verify planning and recovery workflows
         run: npm run test:planning
+      - name: Verify audit regressions in isolated profiles
+        run: npm run test:audit
+      - name: Verify the simplified daily workspace and unified calendar
+        run: npm run test:minimal
+      - name: Verify full-day calendar and interactive activity charts
+        run: npm run test:calendar-activity
+      - name: Verify habits and timeline rollback after storage failures
+        run: npm run test:save-failures
       - name: Verify storage failure and backup recovery
         run: npm run test:reliability
       - name: Verify setup and private support diagnostics
         run: npm run test:onboarding
+      - name: Verify account preferences across isolated devices
+        run: npm run test:settings-sync
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

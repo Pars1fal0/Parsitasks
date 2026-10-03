@@ -10,12 +10,7 @@ const { _electron: electron } = require("playwright-core");
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   async function navigate(view) {
-    const direct = page.locator(`.nav-tab[data-view="${view}"]:visible`).first();
-    if (await direct.count()) await direct.click();
-    else {
-      await page.locator(".nav-more-summary").click();
-      await page.locator(`.nav-more-menu [data-view="${view}"]`).click();
-    }
+    await require("./navigation-fixture.cjs").navigate(page, view);
   }
   async function reload() { await page.reload(); await page.waitForSelector("#pageTitle"); }
   async function state() { return page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1"))); }

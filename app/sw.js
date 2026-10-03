@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v103-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v105-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -16,6 +16,10 @@ const APP_SHELL = [
   "assets/styles/styles.css",
   "assets/styles/workspace-ux.css",
   "assets/styles/workspace-guide.css",
+  "assets/styles/daily-workspace.css",
+  "assets/styles/activity-charts.css",
+  "assets/vendor/chart.js",
+  "src/calendar/activity-charts.js",
   "assets/styles/disclosure-menus.css",
   "assets/styles/study.css",
   "assets/styles/notes.css",
@@ -82,6 +86,7 @@ const APP_SHELL = [
   "src/calendar/heatmap-view.js",
   "src/auth/hosted-config.js",
   "src/calendar/calendar-view.js",
+  "src/calendar/calendar-schedule.js",
   "src/calendar/calendar-drag-controller.js",
   "src/ui/confirm-dialog.js",
   "src/ui/form-dialog.js",

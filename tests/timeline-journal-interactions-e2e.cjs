@@ -129,7 +129,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("#taskEndTime").inputValue(), "10:30");
     assert.equal(await page.locator("#taskScheduleBlock").isChecked(), true);
     await page.locator("#closeTaskForm").click();
-    await page.locator("#confirmAccept").click();
+    assert.equal(await page.locator("#confirmModal").isVisible(), false, "prefilled untouched block is not an unsaved edit");
 
     const viewedDate = await page.locator("#activeDate").inputValue();
     await blockCard.locator(".timeline-menu-button").click();
@@ -144,7 +144,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#timelineJumpToTask").click();
     await page.waitForFunction(() => scrollY > 200);
 
-    await page.locator('.nav-tab[data-view="journal"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "journal");
     await page.locator('[data-notes-tab="journal"]').click();
     const editor = page.locator("#journalText");
     await editor.fill("Итог дня");

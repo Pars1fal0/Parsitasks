@@ -407,6 +407,8 @@ body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; back
 .historical-task-actions { display: flex; align-items: center; gap: 8px; }
 .backlog-group { margin: 8px 0; border-bottom: 1px solid var(--line); }
 .backlog-group-tools { padding: 0 12px 12px; }
+.backlog-group > summary .backlog-group-meta { display: flex; margin-top: 8px; }
+.historical-task-item .task-meta { display: flex; flex-wrap: wrap; gap: 6px; }
 @media (max-width: 680px) {
   body:is([data-view="tasks"], [data-view="habits"]) .day-progress { display: none; }
   body:is([data-view="tasks"], [data-view="habits"]) .topbar { gap: 4px; margin-bottom: 6px; }

@@ -29,4 +29,20 @@ async function enableAllSections(page) {
   await page.waitForSelector('.nav-tabs > button[data-view="study"]:visible');
 }
 
-module.exports = { enableAllSections };
+async function navigate(page, view) {
+  if (view === "timeline") {
+    // The old route remains covered for existing links, but is no longer a tab.
+    await page.evaluate(() => { location.hash = "timeline"; });
+    await page.locator("#timelineView").waitFor({ state: "visible" });
+    return;
+  }
+  const direct = page.locator(`.nav-tabs > [data-view="${view}"]:visible`);
+  if (await direct.count()) await direct.click();
+  else {
+    const more = page.locator(".nav-more");
+    if (!(await more.evaluate((node) => node.open))) await more.locator(":scope > summary").click();
+    await more.locator(`[data-view="${view}"]`).click();
+  }
+}
+
+module.exports = { enableAllSections, navigate };

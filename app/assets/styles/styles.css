@@ -3831,7 +3831,7 @@ body.has-floating-task-form::before {
   gap: 8px;
 }
 
-.historical-task-item span {
+.historical-task-item > div > span {
   color: var(--muted);
   font-size: 12px;
 }
@@ -6197,10 +6197,15 @@ body.has-floating-task-form::before {
   gap: 6px;
 }
 
-.habit-freeze-message {
+.habit-freeze-message,
+.form-save-error {
   min-height: 1em;
   margin: 0;
   color: var(--coral);
+}
+
+.form-save-error:empty {
+  display: none;
 }
 
 .habit-freeze-actions {
@@ -6429,6 +6434,7 @@ body.has-floating-task-form::before {
   inset: 0;
   z-index: 40;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 18px;
 }
@@ -6446,6 +6452,10 @@ body.has-floating-task-form::before {
   display: grid;
   gap: 12px;
   width: min(440px, 100%);
+  min-width: 0;
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
+  overflow-wrap: anywhere;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: var(--surface);
@@ -6469,9 +6479,23 @@ body.has-floating-task-form::before {
 
 .confirm-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 4px;
+}
+
+.confirm-actions > button {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+@media (max-width: 600px) {
+  .confirm-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .confirm-verification {

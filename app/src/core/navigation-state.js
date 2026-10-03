@@ -16,7 +16,7 @@
   const ROUTE_TO_VIEW = Object.fromEntries(
     Object.entries(VIEW_TO_ROUTE).map(([view, route]) => [route, view]),
   );
-  const OVERVIEW_MODES = new Set(["week", "month", "year"]);
+  const OVERVIEW_MODES = new Set(["day", "week", "month", "year"]);
 
   function parseHash(hash) {
     const route = String(hash || "").replace(/^#\/?/, "").replace(/\/$/, "");

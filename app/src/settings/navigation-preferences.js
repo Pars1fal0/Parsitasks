@@ -31,17 +31,23 @@
 
     function apply() {
       const prefs = normalize(ctx.getPreferences());
-      const hasMore = Object.keys(LABELS).some((view) => !prefs.hidden.includes(view) && !prefs.mobile.includes(view));
+      const primary = ["tasks", "habits", "overview", "study"];
+      const pins = prefs.mobile.filter((view) => view !== "timeline");
+      const hasMore = Object.keys(LABELS).some((view) => view !== "timeline" && !prefs.hidden.includes(view) && !pins.includes(view));
       nav.querySelector(".nav-more").hidden = !hasMore;
-      nav.style.setProperty("--mobile-nav-count", prefs.mobile.length + (hasMore ? 1 : 0));
+      nav.style.setProperty("--mobile-nav-count", pins.length + (hasMore ? 1 : 0));
       direct.forEach((button) => {
         const view = button.dataset.view;
-        button.classList.toggle("is-section-hidden", prefs.hidden.includes(view));
-        button.classList.toggle("is-mobile-pin", prefs.mobile.includes(view));
-        button.style.setProperty("--mobile-nav-order", prefs.mobile.includes(view) ? prefs.mobile.indexOf(view) : 10);
+        button.classList.toggle("is-section-hidden", prefs.hidden.includes(view) || view === "timeline");
+        button.classList.toggle("is-secondary-section", !primary.includes(view));
+        button.classList.toggle("is-mobile-pin", pins.includes(view));
+        button.style.setProperty("--mobile-nav-order", pins.includes(view) ? pins.indexOf(view) : 10);
       });
       menu.querySelectorAll("[data-view]").forEach((button) => {
-        button.classList.toggle("is-section-hidden", prefs.hidden.includes(button.dataset.view) || prefs.mobile.includes(button.dataset.view));
+        const view = button.dataset.view;
+        button.classList.toggle("is-section-hidden", prefs.hidden.includes(view) || view === "timeline");
+        button.classList.toggle("is-desktop-direct", primary.includes(view));
+        button.classList.toggle("is-mobile-direct", pins.includes(view));
       });
     }
 
@@ -53,7 +59,7 @@
       const legend = document.createElement("legend");
       legend.textContent = "Видимые разделы";
       visibility.append(legend);
-      Object.entries(LABELS).filter(([view]) => view !== "settings").forEach(([view, label]) => {
+      Object.entries(LABELS).filter(([view]) => !["settings", "timeline"].includes(view)).forEach(([view, label]) => {
         const row = document.createElement("label");
         const input = document.createElement("input");
         input.type = "checkbox";
@@ -73,7 +79,7 @@
         const select = document.createElement("select");
         select.dataset.navigationKey = `pin-${index}`;
         select.add(new Option("Не выбрано", ""));
-        Object.entries(LABELS).filter(([view]) => !prefs.hidden.includes(view)).forEach(([view, title]) => {
+        Object.entries(LABELS).filter(([view]) => view !== "timeline" && !prefs.hidden.includes(view)).forEach(([view, title]) => {
           const option = new Option(title, view);
           option.disabled = prefs.mobile.includes(view) && prefs.mobile[index] !== view;
           select.add(option);

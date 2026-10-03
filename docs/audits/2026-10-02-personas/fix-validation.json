@@ -1,0 +1,17 @@
+{
+  "buildHash": "b789deacd747",
+  "browserVersion": "153.0.8010.55",
+  "viewport": {
+    "width": 320,
+    "height": 800
+  },
+  "url": "http://127.0.0.1:5194/app?automation=1#goals",
+  "foldedTaskCount": 2,
+  "acknowledgedMisses": 31,
+  "quota": {
+    "progress": "0",
+    "persisted": false,
+    "toast": "Не удалось сохранить данные. Экспортируй JSON, чтобы не потерять изменения"
+  },
+  "errors": []
+}

@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="assets/styles/board.css?v=1">
     <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=1">
     <link rel="stylesheet" href="assets/styles/workspace-guide.css?v=1">
+  <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=1">
+  <link rel="stylesheet" href="assets/styles/activity-charts.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -347,7 +349,7 @@
           <form class="quick-task-form" id="quickTaskForm">
             <label class="quick-task-input">
               <span class="sr-only">Быстрый ввод</span>
-              <input id="quickTaskInput" type="text" maxlength="200" autocomplete="off" placeholder="Например, купить хлеб">
+              <input id="quickTaskInput" type="text" maxlength="240" autocomplete="off" placeholder="Например, купить хлеб">
             </label>
             <button class="primary-button compact-button" type="submit" aria-label="Добавить задачу" title="Добавить задачу"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button>
             <div class="quick-input-hints" id="quickInputHints" aria-label="Подсказки быстрого ввода">
@@ -427,17 +429,17 @@
                   <input type="hidden" id="taskId">
                   <label>
                     Название
-                    <input id="taskTitle" type="text" maxlength="80" required placeholder="Например: закрыть отчет">
+                    <input id="taskTitle" type="text" maxlength="240" required placeholder="Например: закрыть отчет">
                   </label>
                   <label>День работы<input id="taskDate" type="date" required></label>
+                  <details class="task-extra-fields" id="taskExtraFields">
+                    <summary>Дополнительные настройки</summary>
+                    <div class="stack-form">
                   <label class="task-defer-toggle"><input id="taskDeferred" type="checkbox">Без даты · в список «Позже»</label>
                   <div class="form-grid">
                     <label>Категория<select id="taskCategoryId"></select></label>
                     <label>Приоритет<select id="taskPriority"><option value="high">Высокий</option><option value="medium" selected>Средний</option><option value="low">Низкий</option></select></label>
                   </div>
-                  <details class="task-extra-fields" id="taskExtraFields">
-                    <summary>Дополнительные настройки</summary>
-                    <div class="stack-form">
                   <div class="deadline-card">
                     <div class="deadline-title">
                       <svg class="ui-icon"><use href="#icon-clock"></use></svg>
@@ -763,6 +765,7 @@
                     <summary>Дополнительные настройки</summary>
                     <label>Напоминание<input id="habitReminderTime" type="time"></label>
                   </details>
+                  <p class="form-save-error" role="alert"></p>
                   <div class="form-actions">
                     <button class="primary-button" type="submit">Создать</button>
                     <button class="ghost-button" id="resetHabitForm" type="button">Очистить</button>
@@ -864,16 +867,17 @@
         <section class="view" id="overviewView" aria-labelledby="overviewHeading">
           <div class="toolbar">
             <div>
-              <h2 id="overviewHeading">Обзор недели</h2>
-              <p class="muted">Сводка по задачам и привычкам вокруг выбранной даты.</p>
+              <h2 id="overviewHeading">Неделя</h2>
             </div>
             <div class="calendar-toolbar-actions"><label class="study-layer-toggle"><input type="checkbox" data-study-layer checked>Занятия</label><div class="segmented-control overview-mode-control" aria-label="Период обзора">
+              <button type="button" data-overview-mode="day">День</button>
               <button class="is-active" type="button" data-overview-mode="week">Неделя</button>
               <button type="button" data-overview-mode="month">Месяц</button>
-              <button type="button" data-overview-mode="year">Год</button>
+              <button type="button" data-overview-mode="year">Статистика</button>
             </div></div>
           </div>
           <div class="overview-grid">
+            <section id="calendarSchedule" class="calendar-schedule" aria-label="Планирование времени" hidden></section>
             <section class="panel metric-panel metric-panel-dark">
               <span class="metric-label">Задачи</span>
               <strong id="weeklyTaskMetric">—</strong>
@@ -935,6 +939,7 @@
               </div>
               <div class="month-grid" id="monthGrid"></div>
             </section>
+            <section class="activity-charts" id="activityCharts" data-overview-panel="year" aria-label="Графики активности"></section>
             <section class="panel heatmap-panel" data-overview-panel="year">
               <div class="panel-heading compact">
                 <div>
@@ -2075,6 +2080,8 @@
     <script src="src/ui/disclosure-menus.js?v=1" defer></script>
     <script src="src/core/app-events.js?v=5" defer></script>
     <script src="src/calendar/heatmap-view.js?v=3" defer></script>
+    <script src="assets/vendor/chart.js?v=4.5.1" defer></script>
+    <script src="src/calendar/activity-charts.js?v=1" defer></script>
     <script src="src/calendar/calendar-view.js?v=6" defer></script>
     <script src="src/calendar/calendar-drag-controller.js?v=2" defer></script>
     <script src="src/ui/confirm-dialog.js?v=3" defer></script>
@@ -2106,6 +2113,7 @@
     <script src="src/timeline/timeline-drag.js?v=3" defer></script>
     <script src="src/timeline/timeline-view.js?v=11" defer></script>
     <script src="src/timeline/timeline-controller.js?v=8" defer></script>
+    <script src="src/calendar/calendar-schedule.js?v=1" defer></script>
     <script src="src/core/daily-pulse.js?v=1" defer></script>
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=4" defer></script>

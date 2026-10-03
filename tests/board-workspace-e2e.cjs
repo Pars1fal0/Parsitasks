@@ -32,7 +32,7 @@ const { _electron: electron } = require("playwright-core");
     });
     await page.reload();
     await page.waitForSelector("#pageTitle");
-    await page.locator('.nav-tab[data-view="board"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "board");
     assert.equal(await page.locator("#boardEmpty").isVisible(), true);
     await page.locator('[data-board-template="study"]').click();
     assert.equal(await page.locator(".board-frame").count(), 3);
@@ -122,7 +122,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("#taskTitle").inputValue(), "Подготовить доклад");
 
     await page.locator("#closeTaskForm").click();
-    await page.locator('.nav-tab[data-view="board"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "board");
     await taskCard.click();
     await page.locator("#boardDelete").click();
     state = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")));
@@ -132,7 +132,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('.board-linked-card').filter({ hasText: "Тезисы выступления" }).locator(".board-link-open").click();
     assert.equal(await page.locator("#journalView").isVisible(), true);
     assert.equal(await page.locator("#noteTitle").inputValue(), "Тезисы выступления");
-    await page.locator('.nav-tab[data-view="board"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "board");
 
     for (const [type, title, view, target] of [
       ["goal", "Сдать проект", "#goalsView", '[data-goal-id="board-goal"]'],
@@ -147,7 +147,7 @@ const { _electron: electron } = require("playwright-core");
       await page.locator(".board-linked-card").filter({ hasText: title }).locator(".board-link-open").click();
       assert.equal(await page.locator(view).isVisible(), true);
       assert.equal(await page.locator(target).isVisible(), true);
-      await page.locator('.nav-tab[data-view="board"]:visible').click();
+      await require("./navigation-fixture.cjs").navigate(page, "board");
     }
     state = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")));
     assert.equal(state.boardItems.length, 8);

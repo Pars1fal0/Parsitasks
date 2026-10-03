@@ -90,6 +90,54 @@ function createHarness(ctxOverrides = {}) {
 
 module.exports = [
   {
+    name: "cancels pending recurring edits when the workspace is replaced",
+    async fn() {
+      for (const method of ["duplicateTask", "moveTaskTime", "deleteTask"]) {
+        let current;
+        const { controller, state, calls } = createHarness({
+          getState: () => current,
+          confirmAction: async () => { current = { tasks: [], taskOrder: {} }; return true; },
+        });
+        current = state;
+        state.tasks[0].repeat = "daily";
+        const before = structuredClone(state);
+        assert.equal(await controller[method]("task-1", "11:00"), method === "duplicateTask" ? null : false);
+        assert.deepEqual(state, before);
+        assert.deepEqual(current, { tasks: [], taskOrder: {} });
+        assert.equal(calls.save, 0);
+      }
+    },
+  },
+  {
+    name: "deletes consolidated copies without a misleading restore-repeat prompt",
+    fn() {
+      const { controller, state } = createHarness({ confirmAction: () => { throw new Error("No excluded occurrence to restore"); } });
+      const copy = state.tasks[0];
+      copy.sourceTaskId = "source";
+      copy.movedFromDate = "2026-07-01";
+      state.tasks.push({ id: "source", repeat: "daily", acknowledgedOverdue: { "2026-07-01": true }, excludedDates: {} });
+      assert.equal(controller.deleteTask(copy.id), true);
+      assert.deepEqual(state.tasks.map((task) => task.id), ["source"]);
+    },
+  },
+  ...["toggleTaskDone", "deleteTask", "duplicateTask", "clearTaskTime", "moveTaskTime", "resizeTaskBlockTime"].map((method) => ({
+    name: `rolls back failed timeline ${method} without reporting success`,
+    async fn() {
+      const { controller, state, calls } = createHarness({
+        createUndoSnapshot: () => ({ state: JSON.stringify(state) }),
+        restoreState: (snapshot) => Object.assign(state, JSON.parse(snapshot.state)),
+        saveState: () => false,
+      });
+      Object.assign(state.tasks[0], { scheduleMode: "block", startTime: "09:00", endTime: "10:00" });
+      const before = structuredClone(state);
+      const result = await controller[method]("task-1", "11:00", "12:00");
+      assert.equal(result, method === "duplicateTask" ? null : false);
+      assert.deepEqual(state, before);
+      assert.deepEqual(calls.toasts, []);
+      assert.equal(calls.render, 1);
+    },
+  })),
+  {
     name: "duplicates only one occurrence when selected for a recurring task",
     async fn() {
       const { controller, state } = createHarness({ confirmAction: async () => "secondary" });

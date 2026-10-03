@@ -3,7 +3,7 @@ const { createSettingsState } = require("../app/src/settings/settings-state.js")
 
 module.exports = [
   {
-    name: "normalizes imported settings and keeps all interface settings device-local",
+    name: "normalizes imported settings without copying device credentials into remote ui_state",
     fn() {
       const settingsState = createSettingsState({
         cleanText: (value) => String(value || "").trim(),

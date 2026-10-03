@@ -11,9 +11,7 @@ const { _electron: electron } = require("playwright-core");
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("dialog", (dialog) => dialog.accept().catch(() => {}));
   async function navigate(view) {
-    const direct = page.locator(`.nav-tab[data-view="${view}"]:visible`).first();
-    if (await direct.count()) await direct.click();
-    else { await page.locator(".nav-more-summary:visible").click(); await page.locator(`.nav-more-menu [data-view="${view}"]`).click(); }
+    await require("./navigation-fixture.cjs").navigate(page, view);
     await page.evaluate(() => window.scrollTo(0, 0));
   }
   async function state() { return page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1"))); }
@@ -37,8 +35,8 @@ const { _electron: electron } = require("playwright-core");
     await page.reload(); await page.waitForSelector("#pageTitle");
     await page.setViewportSize({ width: 390, height: 844 });
     assert.ok(await page.locator("#quickTaskInput").isVisible());
-    assert.ok(await page.locator("#openTaskForm > span").isVisible());
-    assert.equal(await page.locator("#openTaskForm").innerText(), "Новая задача");
+    assert.equal(await page.locator("#openTaskForm > span").isVisible(), false);
+    assert.equal(await page.locator("#openTaskForm").getAttribute("aria-label"), "Новая задача");
     assert.equal(await page.locator("#sideProgressValue").textContent(), "0%");
     await capture("tasks-position");
     assert.ok((await page.locator("#taskList").boundingBox()).y < 440, `mobile tasks and pane navigation must start before 440px, got ${(await page.locator("#taskList").boundingBox()).y}`);
@@ -143,7 +141,8 @@ const { _electron: electron } = require("playwright-core");
           await navigate(view);
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${view} must fit ${width}px`);
           if (view === "tasks") {
-            assert.ok(await page.locator("#openTaskForm > span").isVisible());
+            assert.equal(await page.locator("#openTaskForm > span").isVisible(), width > 680);
+            assert.equal(await page.locator("#openTaskForm").getAttribute("aria-label"), "Новая задача");
             const button = await page.locator("#openTaskForm").boundingBox();
             assert.ok(button.x >= 0 && button.x + button.width <= width, `new task button must fit ${width}px`);
           }

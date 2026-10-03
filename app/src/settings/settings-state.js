@@ -51,7 +51,7 @@
     }
 
     function createRemoteUiSettings() {
-      // Interface preferences remain device-local by design.
+      // Account preferences live in state.profile; credentials and device settings never enter ui_state.
       return {};
     }
 

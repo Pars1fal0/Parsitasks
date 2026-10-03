@@ -10,7 +10,7 @@
     const goalFilter = document.createElement("select");
     goalFilter.id = "goalFilter";
     goalFilter.setAttribute("aria-label", "Состояние целей");
-    [["active", "В работе"], ["paused", "На паузе"], ["archived", "Архив"], ["all", "Все цели"]].forEach(([value, label]) => goalFilter.add(new Option(label, value)));
+    [["active", "В работе"], ["done", "Достигнутые"], ["paused", "На паузе"], ["archived", "Архив"], ["all", "Все цели"]].forEach(([value, label]) => goalFilter.add(new Option(label, value)));
     ctx.els.goalList.before(goalFilter);
 
     function bindEvents() {
@@ -61,8 +61,8 @@
 
     function renderGoals() {
       const allGoals = ctx.getState().goals || [];
-      const goals = allGoals.filter((goal) => goalFilter.value === "all" || (goalFilter.value === "archived" ? goal.archived : goalFilter.value === "paused" ? goal.paused && !goal.archived : !goal.paused && !goal.archived));
       const todayKey = ctx.toDateKey(new Date());
+      const goals = allGoals.filter((goal) => goalMatchesFilter(goal, goalFilter.value, todayKey));
       const stats = goalStats(allGoals, todayKey);
 
       ctx.els.goalActiveMetric.textContent = stats.active;
@@ -70,6 +70,7 @@
       ctx.els.goalDoneMetric.textContent = stats.done;
       ctx.els.goalList.replaceChildren();
       ctx.els.goalEmpty.classList.toggle("is-visible", goals.length === 0);
+      ctx.els.goalEmpty.textContent = allGoals.length ? ({ active: "Целей в работе нет", done: "Достигнутых целей пока нет", paused: "Целей на паузе нет", archived: "Архив целей пуст" }[goalFilter.value] || "Целей пока нет") : "Целей пока нет.";
 
       goals
         .sort((a, b) => goalSortRank(a, todayKey) - goalSortRank(b, todayKey) || a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title))
@@ -79,7 +80,7 @@
     function revealGoal(id) {
       const goal = ctx.getState().goals.find((item) => item.id === id);
       if (!goal) return;
-      goalFilter.value = goal.archived ? "archived" : goal.paused ? "paused" : "active";
+      goalFilter.value = goal.archived ? "archived" : goal.paused ? "paused" : goal.status === "done" ? "done" : "active";
       renderGoals();
     }
 
@@ -168,7 +169,7 @@
       goal.status = done ? "done" : "active";
       goal.completedAt = done ? existing?.completedAt || now : "";
       ctx.upsertGoal(goal);
-      ctx.saveState();
+      if (!saveGoalChange(undo)) return;
       resetGoalForm({ open: false });
       renderGoals();
       ctx.showToast(existing ? "Цель обновлена" : "Цель добавлена", { undo });
@@ -355,14 +356,14 @@
       goal.status = achieved ? "done" : "active";
       goal.completedAt = achieved ? goal.completedAt || new Date().toISOString() : "";
       goal.updatedAt = new Date().toISOString();
+      if (!saveGoalChange(undo)) return;
       if (achieved && !wasDone) celebratingGoalId = goal.id;
-
-      ctx.saveState();
       renderGoals();
       ctx.showToast(achieved && !wasDone ? "Цель достигнута" : done ? "Этап выполнен" : "Этап снова активен", { undo });
     }
 
     async function deleteGoal(goalId) {
+      const originalState = ctx.getState();
       const goal = ctx.getState().goals.find((item) => item.id === goalId);
       if (!goal) return;
       const confirmed = await ctx.confirmAction?.({
@@ -371,11 +372,11 @@
         confirmLabel: "Удалить",
         tone: "danger",
       });
-      if (confirmed === false || confirmed == null) return;
+      if (confirmed === false || confirmed == null || ctx.getState() !== originalState) return;
 
       const undo = ctx.createUndoSnapshot();
       ctx.deleteGoal(goalId);
-      ctx.saveState();
+      if (!saveGoalChange(undo)) return;
       resetGoalForm({ open: false });
       renderGoals();
       ctx.showToast("Цель удалена", { undo });
@@ -402,12 +403,18 @@
 
     function changeGoalState(goal, field) {
       const undo = ctx.createUndoSnapshot();
-      const previous = { ...goal };
       goal[field] = !goal[field];
       goal.updatedAt = new Date().toISOString();
-      if (ctx.saveState() === false) { Object.assign(goal, previous); return; }
+      if (!saveGoalChange(undo)) return;
       renderGoals();
       ctx.showToast(field === "archived" ? (goal.archived ? "Цель в архиве" : "Цель восстановлена") : (goal.paused ? "Цель на паузе" : "Цель снова в работе"), { undo });
+    }
+
+    function saveGoalChange(undo) {
+      if (ctx.saveState() !== false) return true;
+      ctx.restoreState(undo);
+      renderGoals();
+      return false;
     }
 
     function createMenuAction(iconName, label, handler, danger = false) {
@@ -593,6 +600,11 @@
     return "active";
   }
 
+  function goalMatchesFilter(goal, filter, todayKey) {
+    const state = goalState(goal, todayKey);
+    return filter === "all" || (filter === "active" ? ["active", "overdue"].includes(state) : state === filter);
+  }
+
   function goalSortRank(goal, todayKey) {
     return { overdue: 0, active: 1, done: 2 }[goalState(goal, todayKey)] ?? 1;
   }
@@ -651,7 +663,7 @@
     return `goal-step-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
-  const api = { createGoalsView, goalProgress, goalSortRank, goalStats, goalState, parseGoalSteps };
+  const api = { createGoalsView, goalMatchesFilter, goalProgress, goalSortRank, goalStats, goalState, parseGoalSteps };
   global.RhythmGoalsView = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

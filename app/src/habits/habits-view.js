@@ -2,6 +2,13 @@
   function createHabitsView(ctx) {
     let draggedHabitId = "";
 
+    function saveChange(undo) {
+      if (ctx.saveState() !== false) return true;
+      ctx.restoreState(undo);
+      ctx.render();
+      return false;
+    }
+
     function renderHabits() {
       const activeDate = ctx.getActiveDate();
       const habits = ctx.habitsForDate(activeDate);
@@ -57,7 +64,7 @@
         restore.addEventListener("click", () => {
           const undo = ctx.createUndoSnapshot();
           global.RhythmHabitFreeze.setFrozen(habit, activeDate, false);
-          ctx.saveState();
+          if (!saveChange(undo)) return;
           ctx.render();
           ctx.showToast("Заморозка снята", { undo });
         });
@@ -115,7 +122,7 @@
             delete habit.logs[activeDate];
           }
           habit.updatedAt = new Date().toISOString();
-          ctx.saveState();
+          if (!saveChange(undo)) return;
           ctx.renderDailyPulse();
           ctx.renderOverviewIfActive?.();
           node.querySelector(".habit-streak").textContent = habitSubtitle(habit);
@@ -151,6 +158,7 @@
         });
         if (quickAdds.childElementCount) row.appendChild(quickAdds);
       } else {
+        node.classList.add("is-check-habit");
         const done = habit.logs[activeDate] === true;
         const row = document.createElement("div");
         row.className = "habit-check-row";
@@ -159,6 +167,7 @@
         button.type = "button";
         button.className = `check-button${done ? " is-checked" : ""}`;
         button.setAttribute("aria-label", `Отметить ${habitTitle}`);
+        button.setAttribute("aria-pressed", String(done));
 
         const label = document.createElement("span");
         const weekly = habitConfig.repeat === "weeklyGoal" ? global.RhythmHabitSchedule.weekProgress(habit, activeDate, activeDate) : null;
@@ -168,7 +177,7 @@
           const undo = ctx.createUndoSnapshot();
           habit.logs[activeDate] = !done;
           habit.updatedAt = new Date().toISOString();
-          ctx.saveState();
+          if (!saveChange(undo)) return;
           ctx.render();
           ctx.showToast(done ? "Отметка снята" : "Привычка отмечена", { undo });
         });
@@ -186,21 +195,22 @@
       node.querySelector(".archive-habit")?.addEventListener("click", () => {
         const undo = ctx.createUndoSnapshot();
         Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, false, activeDate));
-        ctx.saveState();
+        if (!saveChange(undo)) return;
         ctx.render();
         ctx.showToast("Привычка убрана из активных", { undo });
       });
       node.querySelector(".delete-habit").addEventListener("click", async () => {
+        const state = ctx.getState();
         const confirmed = await ctx.confirmAction({
           confirmLabel: "Удалить",
           message: `Удалить привычку «${habitTitle}» вместе со всей историей отметок?`,
           tone: "danger",
           title: "Удалить привычку?",
         });
-        if (!confirmed) return;
+        if (!confirmed || ctx.getState() !== state) return;
         const undo = ctx.createUndoSnapshot();
         ctx.deleteHabit(habit.id);
-        ctx.saveState();
+        if (!saveChange(undo)) return;
         ctx.render();
         ctx.showToast("Привычка удалена", { undo });
       });
@@ -228,21 +238,22 @@
         restore.addEventListener("click", () => {
           const undo = ctx.createUndoSnapshot();
           Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, true, ctx.getActiveDate()));
-          ctx.saveState();
+          if (!saveChange(undo)) return;
           ctx.render();
           ctx.showToast("Привычка снова активна", { undo });
         });
         remove.addEventListener("click", async () => {
+          const state = ctx.getState();
           const confirmed = await ctx.confirmAction({
             confirmLabel: "Удалить",
             message: `Удалить привычку «${habit.title}» вместе со всей историей отметок?`,
             tone: "danger",
             title: "Удалить привычку навсегда?",
           });
-          if (!confirmed) return;
+          if (!confirmed || ctx.getState() !== state) return;
           const undo = ctx.createUndoSnapshot();
           ctx.deleteHabit(habit.id);
-          ctx.saveState();
+          if (!saveChange(undo)) return;
           ctx.render();
           ctx.showToast("Привычка удалена", { undo });
         });
@@ -297,7 +308,7 @@
         if (!sourceId || sourceId === habit.id) return;
         const undo = ctx.createUndoSnapshot();
         ctx.reorderHabit(sourceId, habit.id);
-        ctx.saveState();
+        if (!saveChange(undo)) return;
         ctx.render();
         ctx.showToast("Порядок привычек обновлен", { undo });
       });
@@ -371,7 +382,7 @@
       if (!sourceId || !targetId || sourceId === targetId) return;
       const undo = ctx.createUndoSnapshot();
       ctx.reorderHabit(sourceId, targetId);
-      ctx.saveState();
+      if (!saveChange(undo)) return;
       ctx.render();
       ctx.showToast(title ? `${title}: порядок обновлен` : "Порядок привычек обновлен", { undo });
     }

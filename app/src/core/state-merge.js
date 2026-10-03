@@ -144,9 +144,9 @@
   function mergeProfile(local = {}, remote = {}) {
     const localUpdatedAt = String(local?.updatedAt || "");
     const remoteUpdatedAt = String(remote?.updatedAt || "");
-    if (!localUpdatedAt) return clone(remote);
-    if (!remoteUpdatedAt) return clone(local);
-    return clone(remoteUpdatedAt >= localUpdatedAt ? remote : local);
+    const newest = !localUpdatedAt ? remote : !remoteUpdatedAt ? local : remoteUpdatedAt >= localUpdatedAt ? remote : local;
+    const profileApi = global.RhythmProfileSettings || (typeof require === "function" ? require("../settings/profile-settings.js") : null);
+    return { ...clone(newest), preferences: profileApi.mergePreferences(local?.preferences, remote?.preferences) };
   }
 
   function mergeEntities(local = [], remote = [], mergeEntity = chooseNewest) {

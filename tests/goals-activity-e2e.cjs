@@ -15,21 +15,21 @@ const { _electron: electron } = require("playwright-core");
 
   try {
     await page.waitForSelector("#pageTitle");
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     await page.locator("#openTaskForm").click();
     await page.locator("#taskTitle").fill("Подготовить презентацию");
     await page.locator('#taskForm button[type="submit"]').click();
     const task = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")).tasks.find((item) => item.title === "Подготовить презентацию"));
     assert.ok(task);
 
-    await page.locator('.nav-tab[data-view="habits"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "habits");
     await page.locator("#openHabitForm").click();
     await page.locator("#habitTitle").fill("Повторять материал");
     await page.locator('#habitForm button[type="submit"]').click();
     const habit = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")).habits.find((item) => item.title === "Повторять материал"));
     assert.ok(habit);
 
-    await page.locator('.nav-tab[data-view="goals"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "goals");
     await page.locator("#openGoalForm").click();
     await page.locator("#goalTitle").fill("Сдать проект");
     await page.locator("#goalDueDate").fill(task.date);
@@ -60,20 +60,23 @@ const { _electron: electron } = require("playwright-core");
     const goalRow = page.locator(`[data-goal-id="${goal.id}"]`);
     assert.equal(await goalRow.locator('[role="progressbar"]').getAttribute("aria-valuenow"), "0");
 
-    await page.locator('.nav-tab[data-view="tasks"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "tasks");
     await page.locator(`[data-task-id="${task.id}"] .check-button`).click();
-    await page.locator('.nav-tab[data-view="goals"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "goals");
     assert.equal(await goalRow.locator('[role="progressbar"]').getAttribute("aria-valuenow"), "50");
 
-    await page.locator('.nav-tab[data-view="habits"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "habits");
     await page.locator(`[data-habit-id="${habit.id}"] .check-button`).click();
-    await page.locator('.nav-tab[data-view="goals"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "goals");
+    assert.equal(await goalRow.count(), 0);
+    await page.locator("#goalFilter").selectOption("done");
     assert.equal(await goalRow.locator('[role="progressbar"]').getAttribute("aria-valuenow"), "100");
     assert.match(await goalRow.innerText(), /Достигнута/);
     state = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")));
     assert.equal(state.goals.find((item) => item.id === goal.id).status, "done");
 
-    await page.locator('.nav-tab[data-view="overview"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "overview");
+    await page.locator(".calendar-insights > summary").click();
     assert.equal(await page.locator("#goalWeekList .goal-week-row").count(), 1);
     assert.match(await page.locator("#goalWeekSummary").innerText(), /1 из 1/);
     assert.match(await page.locator("#goalWeekList").innerText(), /1 задача · 1 отметка привычек/);
@@ -85,6 +88,7 @@ const { _electron: electron } = require("playwright-core");
       await page.setViewportSize({ width: 1200, height: 800 });
     }
     await page.locator("#goalWeekList .goal-week-title").click();
+    assert.equal(await page.locator("#goalFilter").inputValue(), "done");
     assert.equal(await goalRow.isVisible(), true);
 
     await goalRow.locator(".goal-details summary").click();
@@ -103,9 +107,11 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("#tasksView").isVisible(), true);
     await page.locator("#closeTaskForm").click();
 
-    await page.locator('.nav-tab[data-view="habits"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "habits");
     await page.locator(`[data-habit-id="${habit.id}"] .check-button`).click();
-    await page.locator('.nav-tab[data-view="goals"]:visible').click();
+    await require("./navigation-fixture.cjs").navigate(page, "goals");
+    assert.equal(await goalRow.count(), 0);
+    await page.locator("#goalFilter").selectOption("active");
     assert.equal(await goalRow.locator('[role="progressbar"]').getAttribute("aria-valuenow"), "50");
     state = await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")));
     assert.equal(state.goals.find((item) => item.id === goal.id).status, "active");

@@ -6,17 +6,18 @@
     function deleteTask(taskId) {
       const task = ctx.findTask(taskId);
       if (!task) return false;
-      if (task.sourceTaskId && ctx.confirmAction) return deleteMovedReplacement(task);
+      const source = task.sourceTaskId ? ctx.getState().tasks.find((item) => item.id === task.sourceTaskId) : null;
+      if (source?.excludedDates?.[task.movedFromDate] === true && ctx.confirmAction) return deleteMovedReplacement(task);
       if (task.repeat !== "none" && ctx.confirmAction) {
         return deleteRecurringTask(task);
       }
       const undo = ctx.createUndoSnapshot();
       ctx.deleteTask(taskId);
-      commit(ctx.messages.deleted, undo);
-      return true;
+      return commit(ctx.messages.deleted, undo);
     }
 
     async function deleteMovedReplacement(task) {
+      const state = ctx.getState();
       const choice = await ctx.confirmAction({
         title: "Удалить перенесенную задачу?",
         message: "Можно вернуть исходный повтор на этот день или оставить день исключенным из серии.",
@@ -24,14 +25,14 @@
         confirmLabel: "Оставить день пустым",
         tone: "danger",
       });
-      if (!choice) return false;
+      if (!choice || ctx.getState() !== state) return false;
       const undo = ctx.createUndoSnapshot();
       ctx.deleteMovedReplacement(task.id, { restoreSourceOccurrence: choice === "secondary" });
-      commit(choice === "secondary" ? "Исходный повтор возвращен" : ctx.messages.deleted, undo);
-      return true;
+      return commit(choice === "secondary" ? "Исходный повтор возвращен" : ctx.messages.deleted, undo);
     }
 
     async function deleteRecurringTask(task) {
+      const state = ctx.getState();
       const dateKey = ctx.getActiveDate();
       const scope = await ctx.confirmAction({
         title: "Удалить повторяющуюся задачу?",
@@ -40,13 +41,12 @@
         confirmLabel: "Прекратить повторение с этой даты",
         tone: "danger",
       });
+      if (ctx.getState() !== state) return false;
       if (scope === "secondary") {
-        ctx.excludeTaskDate(task, dateKey);
-        return true;
+        return ctx.excludeTaskDate(task, dateKey) !== false;
       }
       if (scope === true) {
-        ctx.stopTaskSeries(task, dateKey);
-        return true;
+        return ctx.stopTaskSeries(task, dateKey) !== false;
       }
       return false;
     }
@@ -60,8 +60,7 @@
       task.completed = task.completed || {};
       task.completed[activeDate] = !done;
       task.updatedAt = new Date().toISOString();
-      commit(done ? ctx.messages.active : ctx.messages.done, undo);
-      return true;
+      return commit(done ? ctx.messages.active : ctx.messages.done, undo);
     }
 
     function duplicateTask(taskId) {
@@ -72,13 +71,15 @@
     }
 
     async function chooseDuplicateScope(task) {
+      const state = ctx.getState();
+      const activeDate = ctx.getActiveDate();
       const choice = await ctx.confirmAction({
         title: "Дублировать повторяющуюся задачу?",
         message: "Создать разовую копию выбранного дня или вторую повторяющуюся серию?",
         secondaryLabel: "Создать разовую копию",
         confirmLabel: "Дублировать всю серию",
       });
-      if (!choice) return null;
+      if (!choice || ctx.getState() !== state || ctx.getActiveDate() !== activeDate) return null;
       return createDuplicate(task, { wholeSeries: choice === true });
     }
 
@@ -113,8 +114,7 @@
         ctx.getState().taskOrder[activeDate].splice(sourceIndex + 1, 0, duplicate.id);
       }
 
-      commit(ctx.messages.duplicated, undo);
-      return duplicate;
+      return commit(ctx.messages.duplicated, undo) ? duplicate : null;
     }
 
     function moveTaskTime(taskId, targetTime) {
@@ -151,8 +151,7 @@
       task.reminderOffset = "none";
       clearNotification(task, ctx.getActiveDate());
       task.updatedAt = new Date().toISOString();
-      commit("Задача теперь без времени", undo);
-      return true;
+      return commit("Задача теперь без времени", undo);
     }
 
     function updateTaskTime(taskId, targetTime, message) {
@@ -169,8 +168,7 @@
       applySchedule(task, schedule);
       clearNotification(task, ctx.getActiveDate());
       task.updatedAt = new Date().toISOString();
-      commit(message || ctx.messages.timeUpdated, undo);
-      return true;
+      return commit(message || ctx.messages.timeUpdated, undo);
     }
 
     function scheduleAtTime(task, nextTime, helpers) {
@@ -216,18 +214,19 @@
       applySchedule(task, schedule);
       clearNotification(task, ctx.getActiveDate());
       task.updatedAt = new Date().toISOString();
-      commit(`${ctx.messages.blockUpdated}: ${ctx.formatTaskWindow(task)}`, undo);
-      return true;
+      return commit(`${ctx.messages.blockUpdated}: ${ctx.formatTaskWindow(task)}`, undo);
     }
 
     async function updateRecurringSchedule(task, schedule, message) {
+      const state = ctx.getState();
+      const activeDate = ctx.getActiveDate();
       const choice = await ctx.confirmAction({
         title: "Изменить расписание повтора?",
         message: `Выбери, применить изменение только к ${ctx.formatLongDate(ctx.getActiveDate())} или к этой дате и всем последующим повторениям. Прошлые дни не изменятся.`,
         secondaryLabel: "Только этот день",
         confirmLabel: "Этот и последующие",
       });
-      if (!choice) return false;
+      if (!choice || ctx.getState() !== state || ctx.getActiveDate() !== activeDate) return false;
 
       const undo = ctx.createUndoSnapshot();
       const updatedTask = taskMovesApi.updateRecurringTaskSchedule({
@@ -241,8 +240,7 @@
       if (!updatedTask) return false;
       if (!schedule.time) updatedTask.reminderOffset = "none";
       clearNotification(updatedTask, ctx.getActiveDate());
-      commit(message, undo);
-      return true;
+      return commit(message, undo);
     }
 
     function createTaskAtTime(startTime, endTime) {
@@ -256,15 +254,23 @@
       ctx.els.taskReminder.value = "15";
       ctx.syncTaskScheduleMode();
       ctx.syncTaskTimePresets();
+      const extra = ctx.els.taskFormPanel.querySelector("#taskExtraFields");
+      if (extra) extra.open = true;
+      ctx.markFormPristine?.(ctx.els.taskForm);
       ctx.els.taskFormPanel.classList.remove("is-collapsed");
       ctx.els.taskTitle.focus();
       return true;
     }
 
     function commit(message, undo) {
-      ctx.saveState();
+      if (ctx.saveState() === false) {
+        ctx.restoreState(undo);
+        ctx.render();
+        return false;
+      }
       ctx.render();
       ctx.showToast(message, { undo });
+      return true;
     }
 
     return {

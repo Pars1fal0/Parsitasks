@@ -12,9 +12,7 @@ const { _electron: electron } = require("playwright-core");
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   async function navigate(view) {
-    const direct = page.locator(`.nav-tab[data-view="${view}"]:visible`).first();
-    if (await direct.count()) await direct.click();
-    else { await page.locator(".nav-more-summary").click(); await page.locator(`.nav-more-menu [data-view="${view}"]`).click(); }
+    await require("./navigation-fixture.cjs").navigate(page, view);
   }
   async function day(value) { await page.locator("#activeDate").fill(value); await page.locator("#activeDate").dispatchEvent("change"); }
   async function state() { return page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1"))); }
@@ -46,9 +44,10 @@ const { _electron: electron } = require("playwright-core");
     }
     await day("2026-09-20");
     assert.match(await page.locator(".habit-streak").innerText(), /3 из 3.*цель достигнута.*Серия: 1 нед/);
-    assert.match(await page.locator(".habit-check-row").innerText(), /Цель недели достигнута/);
+    assert.equal(await page.locator(".habit-check-row .check-button").getAttribute("aria-pressed"), "false", "weekly target achievement does not mark an optional day complete");
     await navigate("overview");
     await page.locator('[data-overview-mode="week"]').click();
+    await page.locator(".calendar-insights > summary").click();
     assert.equal(await page.locator("#weeklyHabitMetric").innerText(), "100%");
     await day("2026-09-21");
     assert.equal(await page.locator("#weeklyHabitMetric").innerText(), "0%");

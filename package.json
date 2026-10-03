@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.33.3",
+  "version": "0.34.0",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",
@@ -18,6 +18,11 @@
     "test:reliability": "node tests/release-reliability-e2e.cjs",
     "test:onboarding": "node tests/workspace-guide-e2e.cjs",
     "test:ux-polish": "node tests/ux-polish-e2e.cjs",
+    "test:audit": "node tests/persona-regressions-e2e.cjs",
+    "test:minimal": "node tests/minimal-workspace-e2e.cjs",
+    "test:calendar-activity": "node tests/calendar-activity-e2e.cjs",
+    "test:save-failures": "node tests/save-failure-workspaces-e2e.cjs",
+    "test:settings-sync": "node tests/account-preferences-e2e.cjs",
     "verify:production": "node scripts/check-production.cjs",
     "check:availability": "node scripts/check-availability.cjs",
     "release:prepare": "node scripts/release-candidate.cjs prepare",
@@ -26,6 +31,7 @@
     "test:sync-live": "node tests/remote-sync-live.cjs",
     "capture:landing": "node scripts/capture-landing-product.cjs",
     "generate:icons": "node scripts/generate-icons.cjs",
+    "vendor:charts": "node scripts/vendor-charts.cjs",
     "build:web": "node scripts/build-web.cjs",
     "build:worker": "wrangler deploy --dry-run --outdir .wrangler-build",
     "build:cloudflare": "npm run test:dependencies && npm test && npm run lint && npm run build:web && npm run build:worker",
@@ -88,8 +94,9 @@
     "@supabase/supabase-js": "^2.110.7",
     "agents": "^0.17.4",
     "axe-core": "^4.12.0",
+    "chart.js": "4.5.1",
     "electron": "^43.2.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "26.15.3",
     "esbuild": "^0.28.1",
     "playwright-core": "^1.61.1",
     "sharp": "^0.35.2",
@@ -97,6 +104,9 @@
     "zod": "^4.4.3"
   },
   "overrides": {
+    "app-builder-lib": {
+      "@electron/get": "5.1.0"
+    },
     "@hono/node-server": "2.0.11",
     "brace-expansion": "5.0.12"
   },

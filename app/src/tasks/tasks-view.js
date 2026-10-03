@@ -35,8 +35,8 @@
       selectableEntries.forEach((entry) => selectedTasks.set(entryKey(entry), entry));
       renderTasks();
     });
-    document.querySelector("#taskBulkLater")?.addEventListener("click", () => {
-      if (ctx.deferTasks?.([...selectedTasks.values()])) { selectedTasks.clear(); selectionMode = false; renderTasks(); }
+    document.querySelector("#taskBulkLater")?.addEventListener("click", async () => {
+      if (await ctx.deferTasks?.([...selectedTasks.values()])) { selectedTasks.clear(); selectionMode = false; renderTasks(); }
     });
     document.querySelector("#taskBulkDismiss")?.addEventListener("click", async () => {
       if (await ctx.dismissTasks?.([...selectedTasks.values()])) { selectedTasks.clear(); selectionMode = false; renderTasks(); }
@@ -50,9 +50,9 @@
       ctx.onPaneChange?.(pane);
       renderTasks();
     }
-    bulkForm?.addEventListener("submit", (event) => {
+    bulkForm?.addEventListener("submit", async (event) => {
       event.preventDefault();
-      if (ctx.moveTasks([...selectedTasks.values()], bulkDate.value)) {
+      if (await ctx.moveTasks([...selectedTasks.values()], bulkDate.value)) {
         selectedTasks.clear();
         selectionMode = false;
         renderTasks();
@@ -204,7 +204,9 @@
         const identity = document.createElement("div"); identity.className = "later-task-identity";
         const meta = document.createElement("div"); meta.className = "later-task-meta";
         renderTaskMeta(meta, task);
-        const priority = document.createElement("span"); priority.className = `task-meta-chip priority-${task.priority}`; priority.textContent = ctx.priorityLabels[task.priority] || "Средний"; meta.append(priority);
+        if ((task.priority || "medium") !== "medium") {
+          const priority = document.createElement("span"); priority.className = `task-meta-chip priority-${task.priority}`; priority.textContent = ctx.priorityLabels[task.priority]; meta.append(priority);
+        }
         identity.append(title, meta);
         const today = ctx.toDateKey(new Date());
         row.classList.toggle("is-due-overdue", Boolean(task.dueDate && task.dueDate < today));
@@ -274,6 +276,9 @@
           const dismiss = createButton("ghost-button compact-button", "Не выполнять эти дни");
           select.addEventListener("click", () => { expandedBacklogGroups.add(groupId); selectionMode = true; group.forEach(({ task, dateKey }) => selectedTasks.set(entryKey({taskId:task.id,dateKey}), {taskId:task.id,dateKey})); renderTasks(); });
           dismiss.addEventListener("click", () => ctx.dismissTasks?.(group.map(({task,dateKey})=>({taskId:task.id,dateKey}))));
+          const meta = document.createElement("div"); meta.className = "task-meta backlog-group-meta";
+          renderBacklogMeta(meta, group[0].task);
+          summary.append(meta);
           tools.append(select, dismiss); details.append(summary, tools); destination.append(details); destination = details;
         }
         group.forEach((entry) => {
@@ -292,6 +297,9 @@
         title.textContent = task.title;
         date.textContent = `${ctx.formatLongDate(dateKey)}${entry.recurring ? " · повтор" : ""}`;
         content.append(title, date);
+        const meta = document.createElement("div"); meta.className = "task-meta";
+        renderBacklogMeta(meta, task);
+        content.append(meta);
         acknowledge.textContent = "Не выполнять";
         actions.className = "historical-task-actions";
         const more = document.createElement("details"); more.className = "task-more";
@@ -582,6 +590,16 @@
       });
     }
 
+    function renderBacklogMeta(meta, task) {
+      renderTaskMeta(meta, task);
+      if ((task.priority || "medium") !== "medium") {
+        const priority = document.createElement("span");
+        priority.className = `task-meta-chip priority-${task.priority}`;
+        priority.textContent = ctx.priorityLabels[task.priority] || "Средний";
+        meta.append(priority);
+      }
+    }
+
     function renderOverdueTasks() {
       const overdueEntries = ctx.overdueTaskEntries();
       const visibleEntries = overdueEntries.slice(0, overdueVisibleCount);
@@ -709,7 +727,8 @@
     }
 
     async function deleteTaskWithScope(task, dateKey) {
-      if (task.sourceTaskId) {
+      const source = task.sourceTaskId ? ctx.getState().tasks.find((item) => item.id === task.sourceTaskId) : null;
+      if (task.sourceTaskId && source?.excludedDates?.[dateKey] === true) {
         const choice = await ctx.confirmAction({
           title: "Удалить перенесенную задачу?",
           message: "Можно вернуть исходный повтор на этот день или оставить день исключенным из серии.",

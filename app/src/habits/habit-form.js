@@ -1,5 +1,6 @@
 (function (global) {
   function createHabitForm(ctx) {
+    const saveError = ctx.els.habitForm.querySelector(".form-save-error");
     function saveHabitFromForm(event) {
       event.preventDefault();
       const undo = ctx.createUndoSnapshot();
@@ -51,13 +52,19 @@
 
       if (existing && existing.reminderTime !== habit.reminderTime) habit.notified = {};
       ctx.upsertHabit(habit);
-      ctx.saveState();
+      if (ctx.saveState() === false) {
+        ctx.restoreState(undo);
+        ctx.render();
+        if (saveError) saveError.textContent = "Не удалось сохранить. Введённые данные оставлены — попробуйте ещё раз.";
+        return false;
+      }
       resetHabitForm({ open: false });
       ctx.render();
       ctx.showToast(existing ? "Привычка обновлена" : "Привычка создана", { undo });
     }
 
     function fillHabitForm(habit) {
+      if (saveError) saveError.textContent = "";
       const effectiveConfig = ctx.habitConfigOnDate?.(habit, ctx.getActiveDate()) || habit;
       ctx.els.habitFormPanel.classList.remove("is-collapsed");
       if (ctx.els.habitFormHeading) ctx.els.habitFormHeading.textContent = "Редактировать привычку";
@@ -80,6 +87,7 @@
     }
 
     function resetHabitForm(options = {}) {
+      if (saveError) saveError.textContent = "";
       ctx.els.habitFormPanel.classList.toggle("is-collapsed", options.open === false);
       if (ctx.els.habitFormHeading) ctx.els.habitFormHeading.textContent = "Новая привычка";
       ctx.els.habitForm.querySelector('button[type="submit"]').textContent = "Создать";

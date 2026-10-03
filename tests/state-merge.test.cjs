@@ -3,6 +3,21 @@ const { mergeStates } = require("../app/src/core/state-merge.js");
 
 module.exports = [
   {
+    name: "preserves separate offline preference edits without reverting profile privacy",
+    fn() {
+      const local = { profile: { timeZone: "Europe/Samara", journalAccess: { read: false, write: false }, updatedAt: "2026-10-01T12:00:00.000Z",
+        preferences: { themePreference: { value: "light", updatedAt: "2026-10-01T10:00:00.000Z" } } } };
+      const remote = { profile: { timeZone: "Europe/Moscow", updatedAt: "2026-10-01T09:00:00.000Z",
+        preferences: { firstDayOfWeek: { value: "sunday", updatedAt: "2026-10-01T13:00:00.000Z" } } } };
+      const merged = mergeStates(local, remote);
+      assert.equal(merged.profile.timeZone, "Europe/Samara");
+      assert.equal(merged.profile.journalAccess.read, false);
+      assert.equal(merged.profile.preferences.themePreference.value, "light");
+      assert.equal(merged.profile.preferences.firstDayOfWeek.value, "sunday");
+      assert.deepEqual(mergeStates(remote, local).profile, merged.profile);
+    },
+  },
+  {
     name: "keeps the newest Google Calendar task link across devices",
     fn() {
       const merged = mergeStates(

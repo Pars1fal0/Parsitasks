@@ -1,0 +1,153 @@
+{
+  "browser": "153.0.8010.55",
+  "appUrl": "http://127.0.0.1:5194/app?automation=1#habits",
+  "buildHash": "d765d66c1ee3",
+  "syntheticDate": "2026-10-02",
+  "findings": [
+    {
+      "name": "failed checkbox reverts instead of claiming completion",
+      "passed": true,
+      "evidence": "Не удалось сохранить данные. Экспортируй JSON, чтобы не потерять изменения"
+    },
+    {
+      "name": "failed numeric habit restores its previous value",
+      "passed": true,
+      "evidence": "Вода\n\nСерия: 0 дн. · Каждый день\n\n...\n-\n+\n/ 2000 мл\n+250 мл\n+500 мл"
+    },
+    {
+      "name": "failed habit create keeps the editor text",
+      "passed": true,
+      "evidence": {
+        "rows": 2,
+        "toast": "Не удалось сохранить данные. Экспортируй JSON, чтобы не потерять изменения"
+      }
+    },
+    {
+      "name": "inline save error fits 320px",
+      "passed": true,
+      "evidence": {
+        "left": 29,
+        "right": 291,
+        "overflow": false
+      }
+    },
+    {
+      "name": "inline save error fits 390px",
+      "passed": true,
+      "evidence": {
+        "left": 29,
+        "right": 361,
+        "overflow": false
+      }
+    },
+    {
+      "name": "inline save error fits 599px",
+      "passed": true,
+      "evidence": {
+        "left": 29,
+        "right": 570,
+        "overflow": false
+      }
+    },
+    {
+      "name": "inline save error fits 1440px",
+      "passed": true,
+      "evidence": {
+        "left": 1067,
+        "right": 1389,
+        "overflow": false
+      }
+    },
+    {
+      "name": "failed freeze keeps selection and reason in an open dialog",
+      "passed": true,
+      "evidence": {
+        "frozen": 0,
+        "toast": "Не удалось сохранить данные. Экспортируй JSON, чтобы не потерять изменения"
+      }
+    },
+    {
+      "name": "habit archive rolls back on failure",
+      "passed": true,
+      "evidence": {
+        "count": 2
+      }
+    },
+    {
+      "name": "habit delete rolls back on failure",
+      "passed": true,
+      "evidence": {
+        "count": 2
+      }
+    },
+    {
+      "name": "habit edit rolls back on failure",
+      "passed": true,
+      "evidence": {
+        "count": 2
+      }
+    },
+    {
+      "name": "habit reorder rolls back on failure",
+      "passed": true,
+      "evidence": {
+        "count": 2
+      }
+    },
+    {
+      "name": "archive restore and permanent delete roll back",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "timeline complete rolls back and retry survives reload",
+      "passed": true,
+      "evidence": "Подготовить доклад"
+    },
+    {
+      "name": "timeline duplicate rolls back and retry survives reload",
+      "passed": true,
+      "evidence": "Подготовить доклад"
+    },
+    {
+      "name": "timeline unschedule rolls back and retry survives reload",
+      "passed": true,
+      "evidence": "Подготовить доклад"
+    },
+    {
+      "name": "timeline delete rolls back and retry survives reload",
+      "passed": true,
+      "evidence": "Подготовить доклад"
+    },
+    {
+      "name": "timeline postpone-next rolls back and retry survives reload",
+      "passed": true,
+      "evidence": "Подготовить доклад"
+    },
+    {
+      "name": "timeline shift rolls back and retry survives reload",
+      "passed": true,
+      "evidence": "Подготовить доклад"
+    },
+    {
+      "name": "recurring timeline shift rolls back",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "recurring timeline skip rolls back",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "recurring timeline stop rolls back",
+      "passed": true,
+      "evidence": {}
+    },
+    {
+      "name": "no browser runtime errors",
+      "passed": true,
+      "evidence": []
+    }
+  ]
+}

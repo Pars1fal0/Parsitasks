@@ -57,7 +57,7 @@ const { chromium } = require("playwright-core");
     await page.locator("#appToast").getByRole("button", { name: "Отменить", exact: true }).click();
 
     await page.locator("#openTaskForm").click();
-    assert.equal(await page.locator("#taskCategoryId").isVisible(), true);
+    assert.equal(await page.locator("#taskCategoryId").isVisible(), false);
     assert.equal(await page.locator("#closeTaskForm").isVisible(), true);
     await page.locator("#taskTitle").fill("Раздельные даты");
     await page.locator("#taskExtraFields > summary").click();
@@ -115,21 +115,21 @@ const { chromium } = require("playwright-core");
     await page.locator("#studyJumpToHomeworkForm").click();
     assert.equal(await page.locator('#studyHomeworkForm [name="title"]').evaluate((input) => input === document.activeElement), true);
 
-    await go("calendar/week", "#weekBoardGrid");
-    assert.ok((await page.locator("#weekBoardGrid").boundingBox()).height < 140);
-    const dayButton = page.locator(`.week-board-day[data-date="${dates.tomorrow}"] .week-board-header`);
+    await go("calendar/week", "#calendarSchedule");
+    assert.equal(await page.locator(".calendar-time-column").count(), 7);
+    const dayButton = page.locator(`.calendar-time-column:has(.calendar-time-day[data-date="${dates.tomorrow}"]) .calendar-time-heading`);
     if (await dayButton.count()) {
       await dayButton.click();
       assert.equal(await page.locator("#activeDate").inputValue(), dates.tomorrow);
-      assert.equal(await page.locator("#calendarWeekAgenda .calendar-study-event").count(), 2);
-      assert.equal(await page.locator("#calendarWeekAgenda .calendar-deadline").count(), 2);
-      assert.match(await page.locator("#calendarWeekAgenda").innerText(), /11:30/);
+      assert.equal(await page.locator(".calendar-selected-agenda .calendar-lesson-detail").count(), 2);
+      assert.equal(await page.locator(".calendar-selected-agenda .calendar-deadline").count(), 2);
+      assert.match(await page.locator(".calendar-selected-agenda").innerText(), /11:30/);
     }
     await page.locator("#activeDate").fill(dates.today);
     await page.locator("#activeDate").press("Tab");
     for (const width of [320, 390, 599, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      for (const [route, selector] of [["tasks", "#tasksView"], ["habits", "#habitsView"], ["study", "#studyView"], ["calendar/week", "#weekBoardGrid"], ["calendar/month", "#monthGrid"], ["goals", "#goalsView"]]) {
+      for (const [route, selector] of [["tasks", "#tasksView"], ["habits", "#habitsView"], ["study", "#studyView"], ["calendar/week", "#calendarSchedule"], ["calendar/month", "#monthGrid"], ["goals", "#goalsView"]]) {
         await go(route, selector);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${route} overflows at ${width}`);
         if (route === "habits") {

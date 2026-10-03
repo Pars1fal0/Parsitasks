@@ -1,0 +1,169 @@
+{
+  "app": "Parsitasks",
+  "schemaVersion": 26,
+  "exportedAt": "2026-10-02T06:00:00.447Z",
+  "state": {
+    "schemaVersion": 26,
+    "defaultsSeeded": true,
+    "profile": {
+      "journalAccess": {
+        "read": true,
+        "write": true
+      },
+      "timeZone": "Europe/Saratov",
+      "preferences": {},
+      "updatedAt": ""
+    },
+    "tasks": [
+      {
+        "id": "own-task",
+        "title": "Подписать договор",
+        "date": "2026-10-02",
+        "dueDate": "",
+        "sourceNoteId": "",
+        "dueTime": "",
+        "dueReminderOffset": "none",
+        "deferredFromDate": "",
+        "time": "",
+        "scheduleMode": "none",
+        "startTime": "",
+        "endTime": "",
+        "categoryId": "",
+        "priority": "medium",
+        "repeat": "none",
+        "repeatUntil": "",
+        "sourceTaskId": "",
+        "movedFromDate": "",
+        "customRepeat": {
+          "type": "weekdays",
+          "weekdays": [
+            1,
+            3,
+            5
+          ]
+        },
+        "reminderOffset": "none",
+        "completed": {},
+        "acknowledgedOverdue": {},
+        "excludedDates": {},
+        "notified": {},
+        "checklist": [],
+        "checklistLogs": {},
+        "createdAt": "2026-10-02T06:00:00.244Z",
+        "updatedAt": "2026-10-02T06:00:00.244Z",
+        "studySubjectId": "",
+        "studyDetails": "",
+        "studyAssignedDate": "",
+        "studyFileIds": []
+      }
+    ],
+    "habits": [],
+    "goals": [],
+    "boardItems": [],
+    "journalEntries": [],
+    "notes": [
+      {
+        "id": "contract-note",
+        "title": "Условия договора",
+        "body": "Проверить штрафы и срок оплаты",
+        "pinned": false,
+        "subjectId": "",
+        "taskId": "",
+        "createdAt": "2026-10-02T06:00:00.000Z",
+        "updatedAt": "2026-10-02T06:00:00.000Z"
+      }
+    ],
+    "studySubjects": [],
+    "studyLessons": [],
+    "studyFiles": [],
+    "studyWeekCycle": {
+      "anchorMonday": "",
+      "anchorParity": "even",
+      "updatedAt": ""
+    },
+    "nutritionFoods": [],
+    "nutritionMeals": [],
+    "nutritionTemplates": [],
+    "nutritionSettings": {
+      "targets": {
+        "calories": 0,
+        "protein": 0,
+        "fat": 0,
+        "carbs": 0
+      },
+      "paused": false,
+      "updatedAt": ""
+    },
+    "googleCalendarLinks": {},
+    "categories": [
+      {
+        "id": "36ae1b30-fac1-4bcf-b8b1-63b304dd2585",
+        "name": "Работа",
+        "color": "#5967d8",
+        "createdAt": "2026-10-02T06:00:00.119Z",
+        "updatedAt": "2026-10-02T06:00:00.119Z"
+      },
+      {
+        "id": "592c3457-3b95-4040-a72f-00125ab231e3",
+        "name": "Фокус",
+        "color": "#00a78e",
+        "createdAt": "2026-10-02T06:00:00.119Z",
+        "updatedAt": "2026-10-02T06:00:00.119Z"
+      },
+      {
+        "id": "5039a366-2d23-4b65-be9e-e3ccfbaf92b6",
+        "name": "Здоровье",
+        "color": "#ef6a4b",
+        "createdAt": "2026-10-02T06:00:00.119Z",
+        "updatedAt": "2026-10-02T06:00:00.119Z"
+      },
+      {
+        "id": "c10af4aa-bc55-47eb-b3cd-ae52299b4d41",
+        "name": "Дом",
+        "color": "#e7b84a",
+        "createdAt": "2026-10-02T06:00:00.119Z",
+        "updatedAt": "2026-10-02T06:00:00.119Z"
+      }
+    ],
+    "taskOrder": {},
+    "mcpActivity": [],
+    "tombstones": {
+      "tasks": {},
+      "habits": {},
+      "goals": {},
+      "boardItems": {},
+      "journalEntries": {},
+      "notes": {},
+      "categories": {},
+      "nutritionFoods": {},
+      "nutritionMeals": {},
+      "nutritionTemplates": {},
+      "studySubjects": {},
+      "studyLessons": {},
+      "studyFiles": {}
+    },
+    "syncMeta": {
+      "entityFields": {
+        "tasks": {},
+        "habits": {},
+        "goals": {},
+        "boardItems": {},
+        "journalEntries": {},
+        "notes": {},
+        "nutritionFoods": {},
+        "nutritionMeals": {},
+        "nutritionTemplates": {},
+        "categories": {},
+        "studySubjects": {},
+        "studyLessons": {},
+        "studyFiles": {}
+      },
+      "taskFields": {},
+      "habitLogs": {},
+      "taskOrder": {},
+      "habitOrderUpdatedAt": "",
+      "goalSteps": {},
+      "goalStepOrder": {}
+    }
+  }
+}

@@ -2,13 +2,12 @@
   function createCalendarView(ctx) {
     let centeredWeek = "";
     const heatmapView = global.RhythmHeatmapView.createHeatmapView(ctx);
+    const activityCharts = global.RhythmActivityCharts.createActivityCharts(ctx);
     const grid = ctx.els.views?.overview?.querySelector(".overview-grid");
     if (grid) {
       const insights = document.createElement("details");
       insights.className = "calendar-insights";
-      const mobile = global.matchMedia?.("(max-width: 680px)");
-      insights.open = !mobile?.matches;
-      mobile?.addEventListener?.("change", () => { insights.open = !mobile.matches; });
+      insights.open = false;
       const summary = document.createElement("summary"); summary.textContent = "Итоги и цели";
       const body = document.createElement("div"); body.className = "calendar-insights-body";
       grid.querySelectorAll(".metric-panel, .goal-week-review").forEach((panel) => body.appendChild(panel));
@@ -51,6 +50,7 @@
       const week = ctx.getWeekDates(activeDate);
       const mode = ctx.els.views?.overview?.dataset.mode || "week";
       const period = overviewPeriod(mode, activeDate, week, ctx);
+      ctx.renderSchedule?.(mode);
       let taskDone = 0;
       let taskTotal = 0;
       let habitDone = 0;
@@ -89,10 +89,11 @@
         renderWeekBoard(week);
       }
       if (mode === "month") renderMonthCalendar();
-      if (mode === "year") renderHeatmap();
+      if (mode === "year") { activityCharts.render(); renderHeatmap(); }
     }
 
     function overviewPeriod(mode, activeDate, week, helpers) {
+      if (mode === "day") return { dates: [activeDate], heading: "День", suffix: "за день" };
       if (mode === "month") {
         const active = helpers.parseDate(activeDate);
         const lastDay = new Date(active.getFullYear(), active.getMonth() + 1, 0).getDate();
