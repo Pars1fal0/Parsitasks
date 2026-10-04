@@ -363,12 +363,12 @@ select:focus-visible {
 }
 
 /* Keep native input semantics, with one visual treatment for visible checkboxes. */
-input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) {
+:root input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) {
   appearance: none;
   -webkit-appearance: none;
   display: inline-grid;
   place-items: center;
-  flex-shrink: 0;
+  flex: 0 0 auto;
   width: 18px;
   height: 18px;
   min-width: 18px;
@@ -406,7 +406,7 @@ input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step 
   input[type="checkbox"] { transition: none; }
 }
 @media (forced-colors: active) {
-  input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) { appearance: auto; -webkit-appearance: auto; }
+  :root input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) { appearance: auto; -webkit-appearance: auto; }
   input[type="checkbox"]::before { display: none; }
 }
 

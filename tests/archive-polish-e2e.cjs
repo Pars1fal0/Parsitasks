@@ -129,6 +129,8 @@ const { chromium } = require("playwright-core");
     await page.locator("#overviewView").waitFor({ state: "visible" });
     for (const check of await page.locator("#overviewView input[type='checkbox']:visible").all()) {
       assert.equal(await check.evaluate((node) => getComputedStyle(node).appearance), "none", "calendar uses the shared checkbox");
+      const box = await check.boundingBox();
+      assert.ok(Math.abs(box.height - box.width) < 1 && box.height <= 22, "mobile calendar checkbox stays square, not input-height");
     }
     await page.evaluate(() => { location.hash = "tasks"; });
     const checklist = page.locator('[data-checklist-task-id="plan"]');
