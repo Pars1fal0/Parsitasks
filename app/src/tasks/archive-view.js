@@ -104,10 +104,13 @@
       const deleteButton = document.createElement("button");
       const actions = document.createElement("div");
       const select = document.createElement("input");
+      const selectArea = document.createElement("label");
       const category = ctx.getCategory(entry.task.categoryId);
 
       node.className = "archive-item";
+      node.classList.toggle("is-selected", selectedKeys.has(entryKey(entry)));
       content.className = "archive-item-content";
+      selectArea.className = "archive-select-hit-area";
       select.type = "checkbox";
       select.className = "archive-item-select";
       select.checked = selectedKeys.has(entryKey(entry));
@@ -115,24 +118,28 @@
       select.addEventListener("change", () => {
         if (select.checked) selectedKeys.add(entryKey(entry));
         else selectedKeys.delete(entryKey(entry));
+        node.classList.toggle("is-selected", select.checked);
         renderBulkBar();
       });
+      selectArea.appendChild(select);
       title.textContent = entry.task.title;
-      appendArchiveMeta(meta, ctx.formatLongDate(entry.dateKey));
       if (category) {
         const categoryLabel = document.createElement("span");
+        categoryLabel.className = "archive-category-label";
         const dot = document.createElement("span");
         dot.className = "category-dot";
         dot.style.setProperty("--category-color", category.color);
         categoryLabel.append(dot, document.createTextNode(category.name));
         appendArchiveMeta(meta, categoryLabel);
-      } else {
-        appendArchiveMeta(meta, "Без категории");
       }
-      appendArchiveMeta(meta, ctx.priorityLabels[entry.task.priority] || "Средний");
-      restoreButton.className = "ghost-button restore-task";
+      if (entry.task.priority && entry.task.priority !== "medium" && ctx.priorityLabels[entry.task.priority]) {
+        appendArchiveMeta(meta, ctx.priorityLabels[entry.task.priority]);
+      }
+      restoreButton.className = "icon-button subtle restore-task";
       restoreButton.type = "button";
-      restoreButton.textContent = "Вернуть в задачи";
+      restoreButton.title = "Вернуть в задачи";
+      restoreButton.setAttribute("aria-label", `Вернуть в задачи: ${entry.task.title}`);
+      restoreButton.appendChild(createIcon("undo"));
       restoreButton.addEventListener("click", async () => {
         const state = ctx.getState();
         const choice = await ctx.confirmAction({
@@ -162,7 +169,7 @@
       actions.className = "archive-item-actions";
       actions.append(restoreButton, deleteButton);
       content.append(title, meta);
-      node.append(select, content, actions);
+      node.append(selectArea, content, actions);
 
       return node;
     }
@@ -260,6 +267,7 @@
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
       svg.classList.add("ui-icon");
+      svg.setAttribute("aria-hidden", "true");
       use.setAttribute("href", `#icon-${name}`);
       svg.appendChild(use);
       return svg;

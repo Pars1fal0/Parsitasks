@@ -61,6 +61,60 @@ body:is([data-view="tasks"], [data-view="habits"]) #pageTitle { font-size: 30px;
 #habitsView .habit-quick-adds { margin-left: 0; }
 #habitsView .habit-number-row > span { margin-right: 8px; }
 #habitsView .progress-track { height: 2px; opacity: .7; }
+/* Archive shares the quiet list layout of daily tasks. */
+body[data-view="archive"] .topbar { margin-bottom: 20px; }
+body[data-view="archive"] #pageTitle { font-size: 30px; line-height: 1.2; font-weight: 700; }
+#archiveView > .toolbar { margin-bottom: 12px; }
+#archiveView .archive-toolbar { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(150px, 190px) minmax(140px, 170px) 44px; gap: 8px; width: 100%; flex: 1; align-items: center; }
+#archiveView .archive-toolbar > label { display: block; min-width: 0; margin: 0; }
+#archiveView .search-box { width: 100%; min-width: 0; }
+#archiveView .archive-toolbar input,
+#archiveView .archive-toolbar select { min-height: 44px; height: 44px; font-size: 13px; font-weight: 500; }
+#archiveView #clearArchiveFilter { grid-column: auto; }
+#archiveView .main-panel { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#archiveView .archive-list { display: grid; gap: 0; }
+#archiveView .archive-date-header { position: static; padding: 24px 12px 8px; color: var(--muted); font-size: 12px; font-weight: 600; line-height: 1.5; letter-spacing: 0; text-transform: none; }
+#archiveView .archive-date-header:first-child { padding-top: 12px; }
+#archiveView .archive-item { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 72px; padding: 10px 4px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; box-shadow: none; }
+#archiveView .archive-item:hover { background: color-mix(in srgb, var(--surface-elevated) 35%, transparent); transform: none; }
+#archiveView .archive-item.is-selected { background: color-mix(in srgb, var(--teal) 7%, transparent); }
+#archiveView .archive-select-hit-area { display: grid; place-items: center; width: 44px; min-height: 44px; cursor: pointer; }
+#archiveView :is(.archive-item-select, #archiveSelectAll) { flex: 0 0 18px; width: 18px; height: 18px; min-height: 18px; padding: 0; margin: 0; cursor: pointer; }
+#archiveView .archive-item-content { grid-column: 2; min-width: 0; }
+#archiveView .archive-item h3 { margin: 0; color: var(--text); font-size: 15px; font-weight: 550; line-height: 1.5; overflow-wrap: anywhere; }
+#archiveView .archive-item p { margin: 4px 0 0; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 450; line-height: 1.5; }
+#archiveView .archive-item p:empty { display: none; }
+#archiveView .archive-category-label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+#archiveView .category-dot { flex: 0 0 7px; width: 7px; height: 7px; box-shadow: none; }
+#archiveView .archive-item-actions { grid-column: 3; display: flex; align-items: center; gap: 2px; justify-content: end; }
+#archiveView :is(.archive-item-actions, .archive-toolbar) .icon-button { width: 44px; height: 44px; min-height: 44px; padding: 12px; border: 0; background: transparent; box-shadow: none; color: var(--muted); }
+#archiveView .icon-button:hover { background: var(--surface-elevated); color: var(--text); }
+#archiveView .archive-delete-entry:hover { color: var(--danger); }
+#archiveView :is(button, input):focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+#archiveView .archive-bulk-bar { flex-wrap: wrap; gap: 8px 16px; min-height: 44px; padding: 0 12px 8px; margin: 0; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; color: var(--muted); font-size: 12px; }
+#archiveView .archive-bulk-bar[hidden] { display: none; }
+#archiveView .archive-select-all { min-height: 44px; gap: 8px; font-weight: 450; }
+#archiveView .archive-bulk-actions { flex-wrap: wrap; gap: 8px; }
+#archiveView .archive-bulk-actions button { min-height: 44px; font-size: 12px; font-weight: 550; }
+#archiveView .archive-bulk-count { font-variant-numeric: tabular-nums; color: var(--text); }
+#archiveView .archive-load-more { justify-self: center; margin-top: 20px; min-height: 44px; font-size: 13px; }
+#archiveView .empty-state { padding: 48px 16px; color: var(--muted); font-size: 14px; }
+@media (max-width: 680px) {
+  body[data-view="archive"] .topbar { margin-bottom: 12px; }
+  body[data-view="archive"] #pageTitle { font-size: 24px; }
+  #archiveView .archive-toolbar { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
+  #archiveView .archive-toolbar > .search-control { grid-column: 1 / -1; }
+  #archiveView .archive-toolbar select { padding-left: 10px; padding-right: 24px; background-position: right 8px center; font-size: 12px; }
+  #archiveView .archive-item { grid-template-columns: 44px minmax(0, 1fr) 44px; gap: 4px; padding: 8px 0; }
+  #archiveView .archive-item-actions { flex-direction: column; gap: 0; }
+  #archiveView .archive-date-header { padding-left: 4px; }
+  #archiveView .archive-bulk-bar { padding-inline: 4px; }
+  #archiveView .archive-bulk-actions { margin-left: 0; width: 100%; }
+  #archiveView .archive-bulk-actions button { flex: 1 1 auto; }
+}
+@media (min-width: 901px) {
+  :root[data-density="compact"] #archiveView .archive-item { min-height: 64px; padding-block: 6px; }
+}
 @media (hover: hover) and (min-width: 901px) {
   #tasksView .task-item .drag-handle, #habitsView .habit-drag-handle { opacity: .25; transition: opacity .15s; }
   #tasksView .task-item:hover .drag-handle, #tasksView .task-item:focus-within .drag-handle,
@@ -138,7 +192,7 @@ body:is([data-view="tasks"], [data-view="habits"]) #pageTitle { font-size: 30px;
 .calendar-agenda-open { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; gap: 8px; flex: 1; min-width: 0; min-height: 44px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; }
 .calendar-agenda-title { min-width: 0; overflow-wrap: anywhere; }
 .calendar-agenda-open:hover, .calendar-agenda-open:focus-visible { background: var(--surface-elevated); outline: 1px solid var(--teal); }
-.calendar-task-check { appearance: auto; width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; margin: 12px; padding: 0; accent-color: var(--teal); cursor: pointer; }
+.calendar-task-check { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; margin: 12px; padding: 0; cursor: pointer; }
 .calendar-agenda-row { display: flex; gap: 4px; align-items: center; min-width: 0; }
 .calendar-agenda-row :is(.calendar-agenda-task, .calendar-deadline) { flex: 1; min-width: 0; }
 .calendar-untimed { margin-bottom: 12px; border-block: 1px solid var(--line); padding-block: 8px; }

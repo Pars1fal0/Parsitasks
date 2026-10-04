@@ -65,6 +65,8 @@ jobs:
         run: npm run test:icons
       - name: Verify task and archive rollback, checklist limits and late calendar intervals
         run: npm run test:task-recovery
+      - name: Verify archive layout, shared checkboxes and stable background
+        run: npm run test:archive
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

@@ -11,16 +11,16 @@
     <link rel="manifest" href="manifest.webmanifest">
     <script src="src/auth/auth-gate.js?v=1"></script>
     <script src="src/platform/shell-version.js?v=4"></script>
-    <link rel="stylesheet" href="assets/styles/styles.css?v=45">
+    <link rel="stylesheet" href="assets/styles/styles.css?v=46">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
     <link rel="stylesheet" href="assets/styles/study.css?v=6">
     <link rel="stylesheet" href="assets/styles/notes.css?v=1">
-    <link rel="stylesheet" href="assets/styles/goals.css?v=2">
+    <link rel="stylesheet" href="assets/styles/goals.css?v=3">
     <link rel="stylesheet" href="assets/styles/calendar-goals.css?v=1">
     <link rel="stylesheet" href="assets/styles/board.css?v=3">
     <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=5">
     <link rel="stylesheet" href="assets/styles/workspace-guide.css?v=1">
-    <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=7">
+    <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=9">
   <link rel="stylesheet" href="assets/styles/activity-charts.css?v=1">
     <link rel="stylesheet" href="assets/styles/settings-appearance.css?v=1">
   </head>
@@ -1479,26 +1479,23 @@
 
         <section class="view" id="archiveView" aria-labelledby="archiveHeading">
           <div class="toolbar">
-            <div>
-              <h2 id="archiveHeading">История выполнения</h2>
-              <p class="muted">Каждая запись — выполнение за конкретную дату. Восстановление не меняет остальные повторы.</p>
-            </div>
+            <h2 class="sr-only" id="archiveHeading">История выполнения</h2>
             <div class="task-toolbar-meta archive-toolbar">
               <label class="search-control">
-                <span>Поиск</span>
+                <span class="sr-only">Поиск в архиве</span>
                 <span class="search-box">
                   <svg class="ui-icon"><use href="#icon-search"></use></svg>
-                  <input id="archiveSearch" type="search" placeholder="Название, категория, дата" autocomplete="off">
+                  <input id="archiveSearch" type="search" placeholder="Поиск в архиве" autocomplete="off">
                 </span>
               </label>
               <label class="sort-control">
-                <span>Категория</span>
+                <span class="sr-only">Категория</span>
                 <select id="archiveCategoryFilter" aria-label="Фильтр архива по категории">
                   <option value="all">Все категории</option>
                 </select>
               </label>
               <label class="sort-control">
-                <span>Период</span>
+                <span class="sr-only">Период</span>
                 <select id="archivePeriodFilter" aria-label="Период архива">
                   <option value="all">За всё время</option>
                   <option value="week">7 дней</option>
@@ -1506,9 +1503,8 @@
                   <option value="quarter">3 месяца</option>
                 </select>
               </label>
-              <button class="ghost-button compact-button icon-text-button" id="clearArchiveFilter" type="button">
-                <svg class="ui-icon"><use href="#icon-history"></use></svg>
-                Все записи
+              <button class="icon-button subtle" id="clearArchiveFilter" type="button" aria-label="Сбросить фильтры архива" title="Сбросить фильтры">
+                <svg class="ui-icon" aria-hidden="true"><use href="#icon-history"></use></svg>
               </button>
             </div>
           </div>
@@ -1516,8 +1512,8 @@
             <label class="archive-select-all"><input id="archiveSelectAll" type="checkbox"> Выбрать видимые</label>
             <span class="archive-bulk-count" id="archiveBulkCount">Выбрано: 0</span>
             <div class="archive-bulk-actions">
-              <button class="ghost-button compact-button" id="archiveBulkRestore" type="button">Вернуть в задачи</button>
-              <button class="ghost-button compact-button danger-button" id="archiveBulkDelete" type="button">Удалить навсегда</button>
+              <button class="ghost-button compact-button icon-text-button" id="archiveBulkRestore" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-undo"></use></svg>Вернуть в задачи</button>
+              <button class="ghost-button compact-button danger-button icon-text-button" id="archiveBulkDelete" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-trash"></use></svg>Удалить навсегда</button>
             </div>
           </div>
           <section class="panel main-panel">
@@ -2114,7 +2110,7 @@
     <script src="src/core/workspace-local.js?v=1" defer></script>
     <script src="src/core/storage.js?v=1" defer></script>
     <script src="src/core/navigation-state.js?v=2" defer></script>
-    <script src="src/tasks/archive-view.js?v=5" defer></script>
+    <script src="src/tasks/archive-view.js?v=6" defer></script>
     <script src="src/ui/disclosure-menus.js?v=2" defer></script>
     <script src="src/core/app-events.js?v=5" defer></script>
     <script src="src/calendar/heatmap-view.js?v=3" defer></script>

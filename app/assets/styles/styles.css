@@ -176,6 +176,9 @@ body {
   background:
     radial-gradient(circle at 78% 0%, rgb(var(--accent-rgb) / 11%), transparent 34%),
     linear-gradient(180deg, var(--bg-2) 0, var(--bg) 440px);
+  background-color: var(--bg);
+  background-size: 100% 900px, 100% 100%;
+  background-repeat: no-repeat;
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 15px;
@@ -357,6 +360,54 @@ input:focus-visible,
 select:focus-visible {
   outline: 3px solid rgb(var(--accent-strong-rgb) / 18%);
   outline-offset: 2px;
+}
+
+/* Keep native input semantics, with one visual treatment for visible checkboxes. */
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface-input);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: border-color 140ms var(--ease), background-color 140ms var(--ease), box-shadow 140ms var(--ease);
+}
+
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input))::before {
+  content: "";
+  width: 72%;
+  height: 72%;
+  background: var(--bg);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  opacity: 0;
+}
+
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):is(:checked, :indeterminate) {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):is(:checked, :indeterminate)::before { opacity: 1; }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):indeterminate::before { width: 56%; height: 2px; border-radius: 1px; mask: none; }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):hover:not(:disabled) { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):disabled { opacity: .45; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  input[type="checkbox"] { transition: none; }
+}
+@media (forced-colors: active) {
+  input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) { appearance: auto; -webkit-appearance: auto; }
+  input[type="checkbox"]::before { display: none; }
 }
 
 .app-shell {
