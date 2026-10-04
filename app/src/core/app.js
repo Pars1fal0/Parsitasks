@@ -475,10 +475,6 @@ const els = {
   },
   weekBoardGrid: document.querySelector("#weekBoardGrid"),
   weekBoardLabel: document.querySelector("#weekBoardLabel"),
-  goalWeekHeading: document.querySelector("#goalWeekHeading"),
-  goalWeekList: document.querySelector("#goalWeekList"),
-  goalWeekSummary: document.querySelector("#goalWeekSummary"),
-  openGoalsFromCalendar: document.querySelector("#openGoalsFromCalendar"),
   weeklyHabitMetric: document.querySelector("#weeklyHabitMetric"),
   weeklyHabitText: document.querySelector("#weeklyHabitText"),
   weeklyTaskMetric: document.querySelector("#weeklyTaskMetric"),
@@ -779,18 +775,6 @@ const calendarView = window.RhythmCalendarView.createCalendarView({
   heatAlpha,
   isTaskDone,
   openDateTasks,
-  openGoals: (goalId) => {
-    if (goalId) goalsView.revealGoal(goalId);
-    activeView = "goals";
-    saveUiState();
-    syncNavigationRoute();
-    render();
-    if (goalId) requestAnimationFrame(() => {
-      [...els.goalList.querySelectorAll("[data-goal-id]")]
-        .find((item) => item.dataset.goalId === goalId)?.scrollIntoView({ block: "center" });
-    });
-    else scrollWorkspaceTop();
-  },
   parseDate,
   priorityLabels,
   statsForDate,

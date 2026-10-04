@@ -114,7 +114,7 @@ const { _electron: electron } = require("playwright-core");
         if (width < 680) {
           assert.ok((await page.locator(".sidebar").boundingBox()).height <= 66, "consistent compact mobile header");
           if (view === "overview") {
-            assert.equal(await page.locator(".calendar-insights").evaluate((node) => node.open), false);
+            assert.equal(await page.locator(".calendar-insights, .goal-week-review").count(), 0);
             assert.ok((await page.locator(".calendar-time-scroll").boundingBox()).y < 500, "calendar on first screen");
           }
           if (view === "journal") {

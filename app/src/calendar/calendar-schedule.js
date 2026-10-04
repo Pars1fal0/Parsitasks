@@ -1,6 +1,6 @@
 (function (global) {
   const layout = global.RhythmTimelineLayout || (typeof require !== "undefined" ? require("../timeline/timeline-layout.js") : null);
-  const HOUR_HEIGHT = 64;
+  const HOUR_HEIGHT = 96;
   const DRAG_TYPE = "application/x-parsitasks-calendar";
 
   function freeIntervals(entries, start = 480, end = 1320) {
@@ -24,15 +24,45 @@
     const root = document.querySelector("#calendarSchedule");
     const weekdayFormatter = new Intl.DateTimeFormat("ru-RU", { weekday: "short" });
     let viewportKey = "";
-    let scrollTop = 8 * HOUR_HEIGHT;
+    let scrollHour = 0;
     let scrollLeft = 0;
     let dragged = null;
     let resizing = false;
-    let scale = "fit";
     let hourHeight = HOUR_HEIGHT;
     let lastMode = "week";
     let resizeFrame;
     let renderedWidth = 0;
+    const preview = element("div", "calendar-event-preview");
+    preview.id = "calendarEventPreview";
+    preview.setAttribute("role", "tooltip");
+    preview.hidden = true;
+    document.body.append(preview);
+    let previewOwner = null;
+    function hidePreview() {
+      preview.hidden = true;
+      previewOwner?.removeAttribute("aria-describedby");
+      previewOwner = null;
+    }
+    function showPreview(node, open, entry) {
+      if (!node.classList.contains("is-short")) return;
+      hidePreview();
+      preview.replaceChildren(element("strong", "", entry.title), element("span", "", open.querySelector("small").textContent));
+      preview.hidden = false;
+      const anchor = node.getBoundingClientRect();
+      const size = preview.getBoundingClientRect();
+      preview.style.left = `${Math.max(12, Math.min(global.innerWidth - size.width - 12, anchor.left))}px`;
+      preview.style.top = `${anchor.bottom + size.height + 20 <= global.innerHeight ? anchor.bottom + 8 : Math.max(12, anchor.top - size.height - 8)}px`;
+      previewOwner = open;
+      open.setAttribute("aria-describedby", preview.id);
+    }
+    function blockHeight(start, end) {
+      return Math.max(2, (Math.min(1440, end) - start) / 60 * hourHeight - 1);
+    }
+    function sizeCard(node, height) {
+      node.style.height = `${height}px`;
+      node.classList.toggle("is-short", height < 46);
+      node.classList.toggle("is-tiny", height < 18);
+    }
     function centerSelection() {
       const scroller = root.querySelector(".calendar-time-scroll");
       const selected = scroller?.querySelector(`.calendar-time-day[data-date="${ctx.getActiveDate()}"]`);
@@ -40,7 +70,7 @@
     }
     global.addEventListener("resize", () => {
       if (root.hidden) return;
-      if (scale === "fit" && !resizing) {
+      if (!resizing) {
         global.cancelAnimationFrame(resizeFrame);
         resizeFrame = global.requestAnimationFrame(() => { render(lastMode); centerSelection(); });
         return;
@@ -93,27 +123,29 @@
       const lesson = task.studyEvent;
       const node = element("article", `calendar-time-event${lesson ? " is-lesson" : ""}${entry.done ? " is-done" : ""}${entry.isTimeBlock ? " is-block" : " is-time-marker"}`);
       node.dataset.eventId = task.id;
-      const remaining = (1440 - entry.minutes) / 60 * hourHeight;
-      const height = Math.max(scale === "fit" ? 4 : 28, Math.min(remaining, entry.visualDuration / 60 * hourHeight - 2));
-      node.classList.toggle("is-short", height < 46);
-      node.classList.toggle("is-tiny", height < 18);
+      const height = blockHeight(entry.minutes, entry.minutes + entry.visualDuration);
+      sizeCard(node, height);
       node.dataset.date = date;
       node.style.top = `${Math.min(entry.minutes / 60 * hourHeight, 24 * hourHeight - height)}px`;
-      node.style.height = `${height}px`;
       node.style.left = `calc(${entry.columnIndex / entry.columnCount * 100}% + 3px)`;
       node.style.width = `calc(${100 / entry.columnCount}% - 6px)`;
       if (entry.categoryColor) node.style.setProperty("--event-color", entry.categoryColor);
       const open = button("calendar-event-open", "", () => {
+        hidePreview();
         if (!resizing) lesson ? ctx.openLesson(lesson, date) : ctx.editTask(task, date);
       });
       open.setAttribute("aria-label", `${entry.timeLabel} · ${task.title}`);
-      open.title = `${entry.timeLabel} · ${task.title}`;
+      if (height >= 46) open.title = `${entry.timeLabel} · ${task.title}`;
       open.append(element("small", "", entry.timeLabel), element("strong", "", task.title));
       if (lesson) open.append(element("small", "", [lesson.typeLabel, lesson.room].filter(Boolean).join(" · ")));
       node.append(open);
+      open.addEventListener("mouseenter", () => showPreview(node, open, entry));
+      open.addEventListener("mouseleave", () => { if (document.activeElement !== open) hidePreview(); });
+      open.addEventListener("focus", () => showPreview(node, open, entry));
+      open.addEventListener("blur", hidePreview);
       if (!lesson) {
         attachDrag(node, task, date);
-        if (entry.isTimeBlock && scale === "detail") {
+        if (entry.isTimeBlock) {
           const handle = button("calendar-event-resize", "", () => {});
           handle.setAttribute("aria-label", `Изменить длительность: ${task.title}`);
           handle.title = "Изменить длительность";
@@ -129,6 +161,7 @@
           handle.addEventListener("pointerdown", (event) => {
             if (event.button !== 0) return;
             event.preventDefault(); event.stopPropagation();
+            hidePreview();
             const initialY = event.clientY;
             let end = entry.endMinutes;
             resizing = true;
@@ -136,7 +169,7 @@
             const move = (pointer) => {
               end = Math.max(entry.minutes + 15, Math.min(layout.TIMELINE_LAST_MINUTE,
                 layout.snapMinutes(entry.endMinutes + (pointer.clientY - initialY) / hourHeight * 60)));
-              node.style.height = `${Math.max(28, (end - entry.minutes) / 60 * hourHeight - 2)}px`;
+              sizeCard(node, blockHeight(entry.minutes, end));
               open.querySelector("small").textContent = `${time(entry.minutes)}–${time(end)}`;
             };
             const stop = (pointer) => {
@@ -146,7 +179,7 @@
               if (handle.hasPointerCapture(pointer.pointerId)) handle.releasePointerCapture(pointer.pointerId);
               setTimeout(() => { resizing = false; }, 0);
             };
-            const cancel = (pointer) => { stop(pointer); node.style.height = `${height}px`; open.querySelector("small").textContent = entry.timeLabel; };
+            const cancel = (pointer) => { stop(pointer); sizeCard(node, height); open.querySelector("small").textContent = entry.timeLabel; };
             const finish = (pointer) => { stop(pointer); handle.removeEventListener("pointerup", finish); ctx.resizeTask(task.id, date, time(entry.minutes), time(end)); };
             handle.addEventListener("pointermove", move);
             handle.addEventListener("pointerup", finish, { once: true });
@@ -159,23 +192,18 @@
     }
 
     function render(mode) {
+      hidePreview();
       root.hidden = !["day", "week"].includes(mode);
       if (root.hidden) return;
       lastMode = mode;
-      hourHeight = HOUR_HEIGHT;
-      root.dataset.scale = scale;
-      root.style.setProperty("--calendar-hour-height", `${hourHeight}px`);
       const date = ctx.getActiveDate();
       const dates = mode === "day" ? [date] : ctx.getWeekDates(date);
       const models = dates.map(modelFor);
-      const key = `${mode}:${dates[0]}:${scale}`;
+      const key = `${mode}:${dates[0]}`;
       const existing = root.querySelector(".calendar-time-scroll");
-      if (existing && viewportKey === key) { scrollTop = existing.scrollTop; scrollLeft = existing.scrollLeft; }
+      if (existing && viewportKey === key) { scrollHour = existing.scrollTop / hourHeight; scrollLeft = existing.scrollLeft; }
       if (key !== viewportKey) {
-        const selected = models[dates.indexOf(date)];
-        const now = new Date();
-        const minute = date === ctx.todayKey() ? now.getHours() * 60 + now.getMinutes() : selected.timedTasks[0]?.minutes ?? 480;
-        scrollTop = scale === "fit" ? 0 : Math.max(0, minute - 60) / 60 * hourHeight;
+        scrollHour = 0;
         scrollLeft = 0;
       }
       viewportKey = key;
@@ -183,36 +211,30 @@
       const toolbar = element("div", "calendar-schedule-toolbar");
       const period = element("span", "calendar-schedule-period", mode === "day" ? ctx.formatLongDate(date) : `${ctx.formatShortDate(dates[0])} — ${ctx.formatShortDate(dates[6])}`);
       const controls = element("div", "calendar-schedule-controls");
-      const zoom = element("div", "segmented-control calendar-scale-control");
-      zoom.setAttribute("aria-label", "Масштаб календаря");
-      [["fit", "Весь день"], ["detail", "Подробно"]].forEach(([value, label]) => {
-        const choice = button(scale === value ? "is-active" : "", label, () => { scale = value; render(mode); root.querySelector(`[data-calendar-scale="${value}"]`)?.focus({ preventScroll: true }); });
-        choice.dataset.calendarScale = value;
-        choice.setAttribute("aria-pressed", String(scale === value));
-        zoom.append(choice);
-      });
       const nowButton = button("ghost-button compact-button", "Сейчас", async () => {
         const today = ctx.todayKey();
         if (await ctx.selectDate(today) === false) return;
         const scroller = root.querySelector(".calendar-time-scroll");
         const current = new Date();
-        scroller.scrollTop = scale === "fit" ? 0 : Math.max(0, current.getHours() - 1) * hourHeight;
+        scroller.scrollTop = Math.max(0, current.getHours() - 1) * hourHeight;
         const currentColumn = scroller.querySelector(`.calendar-time-day[data-date="${today}"]`);
         if (currentColumn) scroller.scrollLeft = Math.max(0, currentColumn.parentElement.offsetLeft - 48);
       });
-      controls.append(zoom, nowButton);
+      controls.append(nowButton);
       toolbar.append(period, controls);
       root.append(toolbar);
       const scroller = element("div", "calendar-time-scroll");
       scroller.tabIndex = 0;
       scroller.setAttribute("aria-label", mode === "day" ? "Часы дня" : "Часы недели");
+      scroller.addEventListener("scroll", hidePreview, { passive: true });
       root.append(scroller);
-      if (scale === "fit") {
-        const navigation = global.innerWidth <= 900 ? document.querySelector(".nav-tabs")?.getBoundingClientRect().height || 72 : 0;
-        const top = scroller.getBoundingClientRect().top + global.scrollY;
-        hourHeight = (Math.max(288, Math.min(768, global.innerHeight - top - navigation - 20)) - 48) / 24;
-        root.style.setProperty("--calendar-hour-height", `${hourHeight}px`);
-      }
+      // A quarter-hour must fit a readable title; preserve the viewed time on resize.
+      const navigation = global.innerWidth <= 900 ? document.querySelector(".nav-tabs")?.getBoundingClientRect().height || 72 : 0;
+      const top = scroller.getBoundingClientRect().top + global.scrollY;
+      const availableHeight = Math.max(240, global.innerHeight - top - navigation - 20);
+      scroller.style.height = `${Math.min(scroller.clientHeight || 528, availableHeight)}px`;
+      hourHeight = Math.max(HOUR_HEIGHT, ((scroller.clientHeight || 528) - 48) / 12);
+      root.style.setProperty("--calendar-hour-height", `${hourHeight}px`);
       const grid = element("div", `calendar-time-grid is-${mode}`);
       grid.style.setProperty("--calendar-days", dates.length);
       const rail = element("div", "calendar-hour-rail");
@@ -255,7 +277,7 @@
         column.append(hours); grid.append(column);
       });
       scroller.append(grid);
-      scroller.scrollTop = scrollTop; scroller.scrollLeft = scrollLeft;
+      scroller.scrollTop = scrollHour * hourHeight; scroller.scrollLeft = scrollLeft;
       if (mode === "week" && (key !== existing?.dataset.period || renderedWidth !== global.innerWidth)) {
         const selectedColumn = scroller.querySelectorAll(".calendar-time-column")[dates.indexOf(date)];
         if (selectedColumn && scroller.clientWidth < grid.scrollWidth) scroller.scrollLeft = selectedColumn.offsetLeft - 48;

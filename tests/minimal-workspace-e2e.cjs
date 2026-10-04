@@ -89,14 +89,15 @@ const { chromium } = require("playwright-core");
     const preserved = (await stored()).tasks.find((task) => task.id === "block");
     assert.equal(preserved.sourceNoteId, "note"); assert.equal(preserved.dueDate, "2026-10-05"); assert.equal(preserved.studySubjectId, "math");
 
-    await page.locator('[data-calendar-scale="detail"]').click();
+    assert.equal(await page.locator("[data-calendar-scale]").count(), 0);
     const handle = page.locator('.calendar-time-event[data-event-id="block"] .calendar-event-resize');
     await handle.focus(); await handle.press("ArrowDown");
     assert.equal((await stored()).tasks.find((task) => task.id === "block").endTime, "11:45");
     const resizeBox = await handle.boundingBox();
+    const quarterHourPixels = await page.locator("#calendarSchedule").evaluate((node) => Number.parseFloat(getComputedStyle(node).getPropertyValue("--calendar-hour-height")) / 4);
     await page.mouse.move(resizeBox.x + resizeBox.width / 2, resizeBox.y + resizeBox.height / 2);
     await page.mouse.down();
-    await page.mouse.move(resizeBox.x + resizeBox.width / 2, resizeBox.y + resizeBox.height / 2 + 16, { steps: 4 });
+    await page.mouse.move(resizeBox.x + resizeBox.width / 2, resizeBox.y + resizeBox.height / 2 + quarterHourPixels, { steps: 4 });
     await page.mouse.up();
     assert.equal((await stored()).tasks.find((task) => task.id === "block").endTime, "12:00", "pointer resize is saved");
     await handle.focus(); await handle.press("ArrowUp");

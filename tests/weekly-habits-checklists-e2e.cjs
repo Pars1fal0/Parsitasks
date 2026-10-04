@@ -47,7 +47,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator(".habit-check-row .check-button").getAttribute("aria-pressed"), "false", "weekly target achievement does not mark an optional day complete");
     await navigate("overview");
     await page.locator('[data-overview-mode="week"]').click();
-    await page.locator(".calendar-insights > summary").click();
+    assert.equal(await page.locator(".calendar-period-metrics").isVisible(), true);
     assert.equal(await page.locator("#weeklyHabitMetric").innerText(), "100%");
     await day("2026-09-21");
     assert.equal(await page.locator("#weeklyHabitMetric").innerText(), "0%");

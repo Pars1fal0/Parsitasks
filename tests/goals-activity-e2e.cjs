@@ -76,10 +76,10 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(state.goals.find((item) => item.id === goal.id).status, "done");
 
     await require("./navigation-fixture.cjs").navigate(page, "overview");
-    await page.locator(".calendar-insights > summary").click();
-    assert.equal(await page.locator("#goalWeekList .goal-week-row").count(), 1);
-    assert.match(await page.locator("#goalWeekSummary").innerText(), /1 из 1/);
-    assert.match(await page.locator("#goalWeekList").innerText(), /1 задача · 1 отметка привычек/);
+    assert.equal(await page.locator(".calendar-insights, .goal-week-review").count(), 0);
+    assert.equal(await page.locator(".calendar-period-metrics .metric-panel").count(), 2);
+    assert.match(await page.locator("#weeklyTaskText").innerText(), /Выполнено 1 из/);
+    assert.match(await page.locator("#weeklyHabitText").innerText(), /Выполнено 1 из/);
     if (process.env.CAPTURE_GOAL_REVIEW) {
       await page.screenshot({ path: path.join(os.tmpdir(), "parsitasks-goal-week-desktop.png"), animations: "disabled" });
       await page.setViewportSize({ width: 390, height: 844 });
@@ -87,7 +87,7 @@ const { _electron: electron } = require("playwright-core");
       await page.screenshot({ path: path.join(os.tmpdir(), "parsitasks-goal-week-mobile.png"), animations: "disabled" });
       await page.setViewportSize({ width: 1200, height: 800 });
     }
-    await page.locator("#goalWeekList .goal-week-title").click();
+    await require("./navigation-fixture.cjs").navigate(page, "goals");
     assert.equal(await page.locator("#goalFilter").inputValue(), "done");
     assert.equal(await goalRow.isVisible(), true);
 

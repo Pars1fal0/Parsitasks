@@ -42,7 +42,14 @@ const axePath = require.resolve("axe-core/axe.min.js");
     await page.reload(); await page.waitForSelector(".calendar-time-day");
     const stateBefore = await page.evaluate(() => localStorage.getItem("rhythm-day-state-v1"));
     const fits = async () => {
-      assert.ok(await page.locator(".calendar-time-scroll").evaluate((node) => node.scrollHeight <= node.clientHeight + 2), "24 hours fit without vertical scrolling");
+      const geometry = await page.locator(".calendar-time-scroll").evaluate((node) => {
+        const hourHeight = Number.parseFloat(getComputedStyle(node.closest(".calendar-schedule")).getPropertyValue("--calendar-hour-height"));
+        return { hourHeight, visibleHours: (node.clientHeight - 48) / hourHeight, scrollHeight: node.scrollHeight, height: node.clientHeight };
+      });
+      assert.ok(geometry.hourHeight >= 96, "quarter-hour blocks retain room for a title");
+      assert.ok(geometry.visibleHours >= 1.9 && geometry.visibleHours <= 13, "visible hours adapt without compressing short tasks");
+      assert.ok(geometry.scrollHeight > geometry.height * 1.7, "the remaining hours are scrollable");
+      assert.equal(await page.locator("[data-calendar-scale]").count(), 0, "no scale switch is needed");
       const body = await page.locator('.calendar-time-day[data-date="2026-10-03"]').boundingBox();
       for (const id of ["early", "late", "last-minute"]) {
         const event = await page.locator(`.calendar-time-event[data-event-id="${id}"]`).boundingBox();
@@ -50,9 +57,11 @@ const axePath = require.resolve("axe-core/axe.min.js");
       }
     };
     await fits();
-    await page.locator('[data-calendar-scale="detail"]').click();
-    assert.ok(await page.locator(".calendar-time-scroll").evaluate((node) => node.scrollHeight > node.clientHeight * 2), "detailed scale is still available");
-    await page.locator('[data-calendar-scale="fit"]').click(); await fits();
+    assert.equal(await page.locator(".sidebar-pulse").isVisible(), true);
+    assert.equal(await page.locator(".calendar-period-metrics .metric-panel").count(), 2);
+    assert.equal(await page.locator(".calendar-insights, .goal-week-review").count(), 0);
+    await page.getByRole("button", { name: "Сейчас", exact: true }).click();
+    assert.ok(await page.locator(".calendar-time-scroll").evaluate((node) => node.scrollTop > 0), "Now scrolls to the current time");
     await page.screenshot({ path: path.join(captures, "day-desktop.png") });
     await page.locator('[data-overview-mode="week"]').click(); await fits();
     await page.locator('[data-overview-mode="year"]').click();
@@ -117,7 +126,7 @@ const axePath = require.resolve("axe-core/axe.min.js");
     await fits();
     await page.locator(".calendar-time-scroll").scrollIntoViewIfNeeded();
     const mobileSchedule = await page.locator(".calendar-time-scroll").boundingBox();
-    assert.ok(mobileSchedule.height < 500, "full-day height adapts to mobile header and bottom navigation");
+    assert.ok(mobileSchedule.height < 500, "scroll viewport adapts to mobile header and bottom navigation");
     const selectedHeading = await page.locator(".calendar-time-heading.is-selected").boundingBox();
     assert.ok(selectedHeading.x >= mobileSchedule.x && selectedHeading.x + selectedHeading.width <= mobileSchedule.x + mobileSchedule.width + 1, "selected weekday stays visible after returning from statistics on mobile");
     await page.screenshot({ path: path.join(captures, "week-mobile.png") });

@@ -5,15 +5,11 @@
     const activityCharts = global.RhythmActivityCharts.createActivityCharts(ctx);
     const grid = ctx.els.views?.overview?.querySelector(".overview-grid");
     if (grid) {
-      const insights = document.createElement("details");
-      insights.className = "calendar-insights";
-      insights.open = false;
-      const summary = document.createElement("summary"); summary.textContent = "Итоги и цели";
-      const body = document.createElement("div"); body.className = "calendar-insights-body";
-      grid.querySelectorAll(".metric-panel, .goal-week-review").forEach((panel) => body.appendChild(panel));
-      insights.append(summary, body); grid.appendChild(insights);
+      const metrics = document.createElement("div");
+      metrics.className = "calendar-period-metrics";
+      grid.querySelectorAll(".metric-panel").forEach((panel) => metrics.appendChild(panel));
+      grid.appendChild(metrics);
     }
-    ctx.els.openGoalsFromCalendar?.addEventListener("click", () => ctx.openGoals());
     const agenda = document.createElement("section"); agenda.className = "calendar-day-agenda"; agenda.id = "calendarDayAgenda";
     const weekAgenda = document.createElement("section"); weekAgenda.className = "calendar-day-agenda"; weekAgenda.id = "calendarWeekAgenda";
     ctx.els.weekBoardGrid?.after(weekAgenda);
@@ -85,7 +81,6 @@
         ? `Выполнено ${habitDone} из ${habitTotal} ${period.suffix}${weeklyGoals.size ? ", включая недельные цели" : ""}`
         : `Нет обязательных привычек ${period.suffix}`}${habitFrozen ? ` · заморожено ${habitFrozen}` : ""}`;
       if (mode === "week") {
-        renderGoalWeek(week);
         renderWeekBoard(week);
       }
       if (mode === "month") renderMonthCalendar();
@@ -112,72 +107,6 @@
       return { dates: week, heading: "Обзор недели", suffix: "за неделю" };
     }
 
-    function renderGoalWeek(week) {
-      const state = ctx.getState();
-      const todayKey = ctx.toDateKey(new Date());
-      const isCurrentWeek = week.includes(todayKey);
-      const goals = (state.goals || []).filter((goal) => !goal.archived && !goal.paused && (goal.status !== "done"
-        || (goal.completedAt && goal.completedAt.slice(0, 10) >= week[0] && goal.completedAt.slice(0, 10) <= week[6])));
-      const entries = goals.map((goal) => ({
-        goal,
-        weekActivity: global.RhythmGoalActivity.goalWeekActivity(goal, state, week, { todayKey, habitStatusOnDate: ctx.habitStatusOnDate }),
-        activity: global.RhythmGoalActivity.goalActivity(goal, state, { todayKey, habitStatusOnDate: ctx.habitStatusOnDate }),
-      }));
-      const goalSection = ctx.els.goalWeekList.closest?.(".goal-week-review");
-      if (goalSection) goalSection.hidden = entries.length === 0;
-      const tracked = entries.filter(({ weekActivity }) => weekActivity.hasLinks);
-      const moved = tracked.filter(({ weekActivity }) => weekActivity.taskCount + weekActivity.habitCount > 0).length;
-      ctx.els.goalWeekHeading.textContent = `Цели · ${ctx.formatShortDate(week[0])} — ${ctx.formatShortDate(week[6])}`;
-      ctx.els.goalWeekSummary.textContent = !entries.length
-        ? "Активных целей сейчас нет"
-        : tracked.length
-          ? `По связанным задачам и привычкам: ${moved} из ${tracked.length} с отметками`
-          : "У текущих целей нет связанных задач или привычек";
-      ctx.els.goalWeekList.replaceChildren();
-      if (!entries.length) return;
-      entries.sort((a, b) => (a.goal.status === "done") - (b.goal.status === "done")
-        || (a.goal.dueDate || "9999").localeCompare(b.goal.dueDate || "9999"));
-      entries.slice(0, 4).forEach(({ goal, weekActivity, activity }) => {
-        const row = document.createElement("div");
-        const title = document.createElement("button");
-        const count = document.createElement("span");
-        const next = document.createElement("span");
-        row.className = "goal-week-row";
-        title.type = "button";
-        title.className = "goal-week-title";
-        title.textContent = goal.title;
-        title.addEventListener("click", () => ctx.openGoals(goal.id));
-        count.className = "goal-week-count";
-        const steps = goal.steps || [];
-        count.textContent = weekActivity.hasLinks
-          ? weekActivity.taskCount + weekActivity.habitCount
-            ? `${weekActivity.taskCount} ${russianCount(weekActivity.taskCount, ["задача", "задачи", "задач"])} · ${weekActivity.habitCount} ${russianCount(weekActivity.habitCount, ["отметка", "отметки", "отметок"])} привычек`
-            : "Без отметок за неделю"
-          : `${steps.filter((step) => step.done).length} из ${steps.length} этапов · без недельных дат`;
-        next.className = "goal-week-next";
-        const nextTask = activity.taskResults.find((item) => !item.done && item.task);
-        const nextStep = (goal.steps || []).find((item) => !item.done);
-        const nextHabit = activity.habitResults.find((item) => !item.done && item.habit);
-        next.textContent = goal.status === "done" ? "Достигнута" : isCurrentWeek
-          ? `Дальше: ${nextTask?.task.title || nextStep?.title || nextHabit?.habit.title || "добавьте шаг в цель"}`
-          : "";
-        row.append(title, count, next);
-        ctx.els.goalWeekList.appendChild(row);
-      });
-      if (entries.length > 4) {
-        const more = document.createElement("span");
-        more.className = "goal-week-more";
-        more.textContent = `Ещё ${entries.length - 4} целей в разделе «Цели»`;
-        ctx.els.goalWeekList.appendChild(more);
-      }
-    }
-
-    function russianCount(value, forms) {
-      const lastTwo = value % 100;
-      if (lastTwo >= 11 && lastTwo <= 14) return forms[2];
-      const last = value % 10;
-      return last === 1 ? forms[0] : last >= 2 && last <= 4 ? forms[1] : forms[2];
-    }
 
     function renderWeekBoard(week) {
       const activeDate = ctx.getActiveDate();
