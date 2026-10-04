@@ -11,6 +11,10 @@
     let selectionDate = null;
     let selectableEntries = [];
     let pane = ctx.getPane?.() || "day";
+    const backlogHint = document.createElement("p");
+    backlogHint.className = "muted task-backlog-hint";
+    backlogHint.textContent = "Невыполненные задачи прошлых дней. Сегодняшние дела остаются во вкладке «День».";
+    document.querySelector(".task-pane-tabs").after(backlogHint);
     const entryKey = (entry) => `${entry.taskId}:${entry.dateKey || "later"}`;
     document.querySelectorAll("button[data-task-pane]").forEach((button) => button.addEventListener("click", () => setPane(button.dataset.taskPane)));
     const selectionButton = document.querySelector("#taskSelectMode");
@@ -118,6 +122,7 @@
       renderLaterTasks(laterTasks);
       document.querySelector("#tasksView").dataset.pane = pane;
       document.body.dataset.taskPaneMode = pane;
+      backlogHint.hidden = pane !== "backlog";
       if (document.body.dataset.view === "tasks") ctx.els.pageTitle.textContent = { day: "Задачи на день", later: "Позже", backlog: "Незавершённые" }[pane];
       document.querySelectorAll("button[data-task-pane]").forEach((button) => {
         button.setAttribute("aria-pressed", String(button.dataset.taskPane === pane));
@@ -482,6 +487,7 @@
     }
 
     function appendChecklist(container, task, dateKey) {
+      const expansionKey = `${task.id}:${dateKey}`;
       if (!task.checklist?.length) return;
       const details = document.createElement("details");
       const summary = document.createElement("summary");
@@ -489,16 +495,16 @@
       details.className = "task-checklist";
       details.dataset.checklistTaskId = task.id;
       details.dataset.checklistDate = dateKey;
-      const expansionKey = `${task.id}:${dateKey}`;
       details.open = expandedChecklists.has(expansionKey);
       details.addEventListener("toggle", () => {
         if (!details.isConnected) return;
         if (details.open) expandedChecklists.add(expansionKey);
         else expandedChecklists.delete(expansionKey);
       });
-      const update = () => { const progress = global.RhythmTaskChecklist.progress(task, dateKey); summary.textContent = `Подзадачи: ${progress.done} из ${progress.total}`; };
+      const update = () => { const progress = global.RhythmTaskChecklist.progress(task, dateKey); summary.textContent = progress.total ? `Подзадачи: ${progress.done} из ${progress.total}` : "Подзадачи"; };
       update();
-      task.checklist.forEach((item) => {
+      (task.checklist || []).forEach((item, index) => {
+        const row = document.createElement("div"); row.className = "task-checklist-row";
         const label = document.createElement("label");
         const checkbox = document.createElement("input");
         const text = document.createElement("span");
@@ -516,9 +522,57 @@
           else ctx.showToast(checkbox.checked ? "Подзадача выполнена" : "Отметка подзадачи снята", { undo });
           update();
         });
-        label.append(checkbox, text); list.append(label);
+        const remove = document.createElement("button");
+        remove.type = "button"; remove.className = "icon-button task-checklist-remove";
+        remove.dataset.checklistItemId = item.id;
+        remove.setAttribute("aria-label", `Удалить подзадачу: ${item.title}`);
+        remove.title = `Удалить подзадачу: ${item.title}`;
+        remove.append(createIcon("trash"));
+        remove.addEventListener("click", () => {
+          const neighbor = task.checklist[index + 1] || task.checklist[index - 1];
+          const result = ctx.removeSubtask(task, dateKey, item.id, scope.value);
+          if (result.error) { error.textContent = result.error; return; }
+          refreshChecklist(result.id, input.value, neighbor?.id);
+        });
+        label.append(checkbox, text); row.append(label, remove); list.append(row);
       });
-      details.append(summary, list); container.append(details);
+      const add = document.createElement("form"); add.className = "task-checklist-add";
+      const input = document.createElement("input"); input.type = "text"; input.name = "title"; input.maxLength = 120; input.required = true;
+      input.placeholder = "Добавить пункт…"; input.setAttribute("aria-label", `Новая подзадача: ${task.title}`);
+      const submit = document.createElement("button"); submit.type = "submit"; submit.className = "icon-button";
+      submit.setAttribute("aria-label", "Добавить подзадачу");
+      submit.title = "Добавить подзадачу"; submit.disabled = true;
+      input.addEventListener("input", () => { submit.disabled = !input.value.trim(); error.textContent = ""; });
+      submit.append(createIcon("plus"));
+      const scope = document.createElement("select"); scope.name = "scope"; scope.setAttribute("aria-label", "Для каких выполнений изменить подзадачи");
+      [["occurrence", "Только это выполнение"], ["following", "Это и будущие выполнения"]].forEach(([value, text]) => scope.add(new Option(text, value)));
+      scope.hidden = task.repeat === "none" || Boolean(task.sourceTaskId);
+      const error = document.createElement("small"); error.setAttribute("role", "alert");
+      function refreshChecklist(taskId, draft = "", focusItemId) {
+        expandChecklist(taskId, dateKey);
+        ctx.render();
+        expandChecklist(taskId, dateKey);
+        const next = [...document.querySelectorAll(".task-checklist")].find((node) => node.dataset.checklistTaskId === taskId && node.dataset.checklistDate === dateKey);
+        if (!next) {
+          const parent = [...ctx.els.taskList.querySelectorAll("[data-task-id]")].find((node) => node.dataset.taskId === taskId);
+          parent?.querySelector(".task-more > summary")?.focus({ preventScroll: true });
+          return;
+        }
+        next.querySelector('[name="scope"]').value = scope.value;
+        const field = next.querySelector('[name="title"]'); field.value = draft;
+        field.dispatchEvent(new Event("input"));
+        const neighbor = [...next.querySelectorAll(".task-checklist-remove")].find((node) => node.dataset.checklistItemId === focusItemId);
+        (neighbor || field).focus({ preventScroll: true });
+      }
+      const entry = document.createElement("div"); entry.className = "task-checklist-entry";
+      entry.append(input, submit); add.append(entry, scope, error);
+      add.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const result = ctx.addSubtask(task, dateKey, input.value, scope.value);
+        if (result.error) { error.textContent = result.error; return; }
+        refreshChecklist(result.id);
+      });
+      details.append(summary, list, add); container.append(details);
     }
 
     function expandChecklist(taskId, dateKey) {

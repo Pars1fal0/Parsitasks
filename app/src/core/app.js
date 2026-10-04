@@ -589,6 +589,27 @@ const calendarDragController = window.RhythmCalendarDragController.createCalenda
   openDateTasks,
 });
 
+function saveSubtaskChange(task, dateKey, scope, changes) {
+  const undo = createUndoSnapshot();
+  const removing = Object.hasOwn(changes, "itemId");
+  let saved;
+  try {
+    const mutate = removing ? window.RhythmTaskSubtasks.removeSubtask : window.RhythmTaskSubtasks.appendSubtask;
+    saved = mutate({ state, task, dateKey, scope, createId, ...changes });
+  } catch (error) { return { error: error.message }; }
+  if (saveState() === false) {
+    // Keep the draft mounted while restoring the original task references.
+    const previous = JSON.parse(undo.state);
+    const original = previous.tasks.find((item) => item.id === task.id);
+    Object.keys(task).forEach((key) => delete task[key]); Object.assign(task, original);
+    state.tasks = previous.tasks.map((item) => item.id === task.id ? task : state.tasks.find((current) => current.id === item.id) || item);
+    state.taskOrder = previous.taskOrder;
+    return { error: "Не удалось сохранить. Попробуйте снова." };
+  }
+  showToast(removing ? "Подзадача удалена" : "Подзадача добавлена", { undo });
+  return { id: saved.id };
+}
+
 const tasksView = window.RhythmTasksView.createTasksView({
   getPane: () => taskPane,
   onPaneChange: (value) => { taskPane = value; saveUiState(); updateQuickTaskPreview(); },
@@ -614,6 +635,8 @@ const tasksView = window.RhythmTasksView.createTasksView({
     if (!(await confirmDiscardOpenForms()) || state !== previousState) return;
     subtaskController.open(task, dateKey);
   },
+  addSubtask: (task, dateKey, title, scope) => saveSubtaskChange(task, dateKey, scope, { title }),
+  removeSubtask: (task, dateKey, itemId, scope) => saveSubtaskChange(task, dateKey, scope, { itemId }),
   formatLongDate,
   formatTime,
   formatTaskRepeat,
@@ -672,6 +695,7 @@ const tasksView = window.RhythmTasksView.createTasksView({
 });
 
 const habitsView = window.RhythmHabitsView.createHabitsView({
+  todayKey: () => toDateKey(new Date()),
   applyHabitAvailabilityChange: window.RhythmHabitConfigHistory.applyHabitAvailabilityChange,
   els,
   confirmAction,
@@ -752,6 +776,7 @@ const goalsView = window.RhythmGoalsView.createGoalsView({
 });
 
 const calendarView = window.RhythmCalendarView.createCalendarView({
+  toggleTaskDone: toggleCalendarTaskDone,
   renderSchedule: (mode) => calendarSchedule.render(mode),
   selectCalendarDate: (dateKey) => { activeDate = dateKey; saveUiState(); render(); },
   getStudyEvents,
@@ -827,6 +852,7 @@ const timelineController = window.RhythmTimelineController.createTimelineControl
 });
 
 const calendarSchedule = window.RhythmCalendarSchedule.createCalendarSchedule({
+  toggleTaskDone: toggleCalendarTaskDone,
   getActiveDate: () => activeDate,
   getState: () => state,
   getTasks: getOrderedTasksForDate,
@@ -876,6 +902,22 @@ const calendarSchedule = window.RhythmCalendarSchedule.createCalendarSchedule({
     return result;
   },
 });
+
+async function toggleCalendarTaskDone(taskId, date) {
+  const owner = state;
+  if (!(await confirmDiscardOpenForms()) || state !== owner) { render(); return false; }
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (!task || (!taskOccursOn(task, date) && !(task.date === null && task.repeat === "none" && task.dueDate === date))) { render(); return false; }
+  const undo = createUndoSnapshot();
+  const done = isTaskDone(task, date);
+  task.completed ||= {};
+  task.completed[date] = !done;
+  task.updatedAt = new Date().toISOString();
+  if (saveState() === false) { restoreFailedSave(undo); render(); return false; }
+  render();
+  showToast(done ? "Задача снова активна" : "Задача выполнена", { undo });
+  return true;
+}
 
 async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime) {
   const owner = state;
@@ -2653,6 +2695,7 @@ function syncHabitTypeFields() {
   if (els.habitNumericFields) els.habitNumericFields.hidden = !isNumber;
   els.habitUnit.disabled = !isNumber;
   els.habitGoal.disabled = !isNumber;
+  els.habitForm.querySelector("#habitNumberStep").disabled = !isNumber;
 }
 
 function setHabitCustomRepeatMode(mode = "weekdays") {

@@ -232,6 +232,7 @@ export function updateHabitCommand(state, input, options = {}) {
       customRepeat: latest.customRepeat,
       unit: latest.unit,
       goal: latest.goal,
+      numberStep: latest.numberStep || 0,
     });
     changed = true;
   }
@@ -508,6 +509,7 @@ function normalizeHabitConfig(input) {
     customRepeat,
     unit: type === "number" ? clean(input.unit).slice(0, 30) : "",
     goal,
+    ...(type === "number" && Number.isFinite(Number(input.numberStep)) && Number(input.numberStep) > 0 ? { numberStep: Number(input.numberStep) } : {}),
   };
 }
 

@@ -12,7 +12,9 @@
     const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => "") });
     let activeBoardId = local?.read("active-board") || "";
     let boardOwner = local?.owner();
-    let listMode = local?.read("board-list-mode") ?? (global.innerWidth <= 600);
+    let mobileLayout = global.innerWidth <= 600;
+    const listPreference = () => local?.read(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`) ?? (mobileLayout ? true : local?.read("board-list-mode") ?? false);
+    let listMode = listPreference();
     ctx = { ...ctx, getItems: () => getAllItems().filter((item) => item.type !== "board" && (item.boardId || "") === activeBoardId),
       commitItems: (items, options) => commitAllItems([...getAllItems().filter((item) => item.type === "board" || (item.boardId || "") !== activeBoardId), ...items.map((item) => ({ ...item, boardId: activeBoardId }))], options) };
     const boardControls = document.createElement("div"); boardControls.className = "board-space-controls";
@@ -20,10 +22,13 @@
     const newBoard = document.createElement("button"); newBoard.type = "button"; newBoard.className = "icon-button"; newBoard.setAttribute("aria-label", "Создать доску"); newBoard.title = "Создать доску";
     const renameBoard = document.createElement("button"); renameBoard.type = "button"; renameBoard.className = "icon-button"; renameBoard.setAttribute("aria-label", "Переименовать доску"); renameBoard.title = "Переименовать доску";
     const listToggle = document.createElement("button"); listToggle.type = "button"; listToggle.className = "ghost-button compact-button";
+    const listAdd = document.createElement("button"); listAdd.type = "button"; listAdd.className = "icon-button";
+    listAdd.setAttribute("aria-label", "Добавить карточку на доску"); listAdd.title = "Добавить карточку";
     const cardList = document.createElement("div"); cardList.id = "boardCardList"; cardList.className = "board-card-list";
     const makeIcon = (name) => { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.classList.add("ui-icon"); const use = document.createElementNS(svg.namespaceURI, "use"); use.setAttribute("href", `#icon-${name}`); svg.append(use); return svg; };
     newBoard.append(makeIcon("plus")); renameBoard.append(makeIcon("edit"));
-    boardControls.append(boardSelect, newBoard, renameBoard, listToggle);
+    listAdd.append(makeIcon("plus"));
+    boardControls.append(boardSelect, newBoard, renameBoard, listToggle, listAdd);
     ctx.els.boardViewport.before(boardControls, cardList);
     const cameraStorage = { getItem: (key) => JSON.stringify(local?.read(key)), setItem: (key, value) => local?.write(key, JSON.parse(value)) };
     const loadBoardCamera = () => cameraApi.loadCamera(cameraStorage, `board-camera:${activeBoardId}`, MIN_ZOOM, MAX_ZOOM)
@@ -53,7 +58,9 @@
       boardSelect.addEventListener("change", () => switchBoard(boardSelect.value));
       newBoard.addEventListener("click", () => editBoardName());
       renameBoard.addEventListener("click", () => editBoardName(activeBoardId));
-      listToggle.addEventListener("click", () => { finishActiveTextEdit(); listMode = !listMode; local?.write("board-list-mode", listMode); render(); });
+      listToggle.addEventListener("click", () => { finishActiveTextEdit(); listMode = !listMode; local?.write(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`, listMode); render(); });
+      listAdd.addEventListener("click", () => { listMode = false; render(); ctx.els.boardAddMenu.open = true; ctx.els.boardAddMenu.querySelector("summary").focus(); });
+      global.addEventListener("resize", () => { if (mobileLayout !== (global.innerWidth <= 600)) { finishActiveTextEdit(); mobileLayout = global.innerWidth <= 600; listMode = listPreference(); render(); } });
       ctx.els.boardAddText?.addEventListener("click", () => { closeAddMenu(); addTextAtCenter(); });
       ctx.els.boardAddFrame?.addEventListener("click", () => { closeAddMenu(); addFrameAtCenter(); });
       ctx.els.boardAddImage?.addEventListener("click", () => {
@@ -147,7 +154,7 @@
       if (!ctx.els.boardWorld || !ctx.els.boardViewport) return;
       if (boardOwner !== local?.owner()) {
         boardOwner = local?.owner(); activeBoardId = local?.read("active-board") || "";
-        listMode = local?.read("board-list-mode") ?? (global.innerWidth <= 600);
+        listMode = listPreference();
         selectedIds.clear(); selectedId = ""; editingId = ""; undoStack = []; redoStack = []; camera = loadBoardCamera(); cameraReady = false;
       }
       const boards = getAllItems().filter((item) => item.type === "board");
@@ -157,6 +164,7 @@
       listToggle.setAttribute("aria-pressed", String(listMode));
       listToggle.textContent = listMode ? "Полотно" : "Список карточек";
       cardList.hidden = !listMode;
+      listAdd.hidden = !listMode;
       document.querySelector("#boardView").classList.toggle("is-list-mode", listMode);
       renderCardList();
       if (listMode) return;
@@ -868,11 +876,17 @@
       saveCamera();
     }
 
-    function focusItem(id) {
+    function focusItem(id, options = {}) {
       const item = getAllItems().find((item) => item.id === id);
       if (!item) return false;
       if (item.type === "board") { switchBoard(item.id); return true; }
       if ((item.boardId || "") !== activeBoardId) switchBoard(item.boardId || "");
+      if (listMode && !options.canvas) {
+        render();
+        const row = [...cardList.children].find((node) => node.dataset.id === id);
+        if (row) { row.tabIndex = -1; row.scrollIntoView({ block: "center" }); row.focus({ preventScroll: true }); }
+        return true;
+      }
       listMode = false; render();
       const rect = ctx.els.boardViewport.getBoundingClientRect();
       camera = cameraApi.fitCamera(ctx.model.bounds([item]), rect, MIN_ZOOM, Math.min(MAX_ZOOM, 1.5));
@@ -919,7 +933,7 @@
         const source = item.type === "link" ? ctx.links.resolve(item, ctx.getState()) : null;
         const title = document.createElement("h3"); title.textContent = source?.title || item.text || item.name || "Изображение";
         const open = document.createElement("button"); open.type = "button"; open.className = "ghost-button compact-button"; open.textContent = source ? "Открыть" : "На полотне";
-        open.onclick = () => source ? ctx.openSource(item.sourceType, item.sourceId) : focusItem(item.id);
+        open.onclick = () => source ? ctx.openSource(item.sourceType, item.sourceId) : focusItem(item.id, { canvas: true });
         if (item.type === "text") { const text = document.createElement("p"); text.className = "board-list-text"; text.textContent = item.text || "Без текста"; row.append(text); }
         else row.append(title);
         if (item.type === "image") {

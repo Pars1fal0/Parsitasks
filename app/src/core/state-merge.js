@@ -217,6 +217,7 @@
       customRepeat: clone(latestConfig.customRepeat),
       unit: latestConfig.unit,
       goal: latestConfig.goal,
+      numberStep: latestConfig.numberStep,
       configHistory,
       availabilityHistory,
       archived,

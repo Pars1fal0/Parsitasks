@@ -3,6 +3,8 @@
     let resolver = null;
     let previouslyFocused = null;
     let verificationText = "";
+    let originalParent = null;
+    let originalNext = null;
 
     function confirmAction({
       cancelLabel = "Отмена",
@@ -18,6 +20,12 @@
 
       close(false, { silent: true });
       previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      const nativeDialog = document.querySelector("dialog[open]:modal");
+      if (nativeDialog && !nativeDialog.contains(ctx.els.confirmModal)) {
+        originalParent = ctx.els.confirmModal.parentNode;
+        originalNext = ctx.els.confirmModal.nextSibling;
+        nativeDialog.append(ctx.els.confirmModal);
+      }
       ctx.els.confirmTitle.textContent = title;
       ctx.els.confirmMessage.textContent = message;
       ctx.els.confirmCancel.textContent = cancelLabel;
@@ -63,6 +71,10 @@
 
     function close(value, { silent = false } = {}) {
       if (ctx.els.confirmModal) ctx.els.confirmModal.hidden = true;
+      if (originalParent) {
+        originalParent.insertBefore(ctx.els.confirmModal, originalNext?.parentNode === originalParent ? originalNext : null);
+        originalParent = null; originalNext = null;
+      }
       verificationText = "";
       const focusTarget = previouslyFocused;
       previouslyFocused = null;

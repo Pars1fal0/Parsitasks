@@ -19,6 +19,9 @@
   }
 
   function time(minutes) { return layout.formatHourMinute(Math.floor(minutes / 60), minutes % 60); }
+  function quarterMinute(offset, height) {
+    return Math.max(0, Math.min(1425, Math.floor(offset / height * 60 / 15) * 15));
+  }
 
   function createCalendarSchedule(ctx) {
     const root = document.querySelector("#calendarSchedule");
@@ -118,6 +121,25 @@
       });
     }
 
+    function agendaRow(entry, date, deadline = false) {
+      const task = entry.task;
+      const node = element("div", `calendar-schedule-agenda-item${entry.done ? " is-done" : ""}${deadline ? " calendar-deadline" : ""}`);
+      node.dataset.agendaTaskId = task.id;
+      if (!task.studyEvent && (!deadline || task.repeat === "none")) {
+        const check = element("input", "calendar-task-check");
+        check.type = "checkbox"; check.checked = entry.done;
+        check.setAttribute("aria-label", `Выполнено: ${task.title}`);
+        check.addEventListener("change", () => ctx.toggleTaskDone(task.id, deadline ? task.date || task.dueDate : date));
+        node.append(check);
+      }
+      const open = button("calendar-agenda-open", "", () => task.studyEvent ? ctx.openLesson(task.studyEvent, date) : ctx.editTask(task, deadline ? task.date || date : date));
+      open.append(element("span", "calendar-agenda-time", entry.timeLabel || "Без времени"), element("span", "calendar-agenda-title", task.title));
+      if (task.studyEvent) open.lastChild.append(element("small", "calendar-lesson-detail", [task.studyEvent.typeLabel, task.studyEvent.teacher, task.studyEvent.room].filter(Boolean).join(" · ")));
+      node.append(open);
+      if (!task.studyEvent && !deadline) attachDrag(open, task, date);
+      return node;
+    }
+
     function eventCard(entry, date) {
       const task = entry.task;
       const lesson = task.studyEvent;
@@ -199,11 +221,12 @@
       const date = ctx.getActiveDate();
       const dates = mode === "day" ? [date] : ctx.getWeekDates(date);
       const models = dates.map(modelFor);
-      const key = `${mode}:${dates[0]}`;
+      const key = `${mode}:${dates[0]}:${date}`;
       const existing = root.querySelector(".calendar-time-scroll");
       if (existing && viewportKey === key) { scrollHour = existing.scrollTop / hourHeight; scrollLeft = existing.scrollLeft; }
       if (key !== viewportKey) {
-        scrollHour = 0;
+        const first = models[dates.indexOf(date)].timedTasks[0]?.minutes;
+        scrollHour = date === ctx.todayKey() ? Math.max(0, new Date().getHours() - 1) : Math.max(0, (first ?? 540) / 60 - 1);
         scrollLeft = 0;
       }
       viewportKey = key;
@@ -223,6 +246,17 @@
       controls.append(nowButton);
       toolbar.append(period, controls);
       root.append(toolbar);
+      const selectedModel = models[dates.indexOf(date)];
+      const due = ctx.getState().tasks.filter((task) => task.dueDate === date);
+      if (selectedModel.unscheduledTasks.length || due.length) {
+        const untimed = element("section", "calendar-untimed");
+        untimed.setAttribute("aria-label", "Дела без времени и сроки выбранного дня");
+        untimed.append(element("h3", "", "Без времени и сроки"));
+        const list = element("div", "calendar-untimed-list");
+        due.forEach((task) => list.append(agendaRow({ task, done: ctx.isTaskDone(task, task.date || date), timeLabel: `Сдать${task.dueTime ? ` ${task.dueTime}` : ""}` }, date, true)));
+        selectedModel.unscheduledTasks.forEach((entry) => list.append(agendaRow(entry, date)));
+        untimed.append(list); root.append(untimed);
+      }
       const scroller = element("div", "calendar-time-scroll");
       scroller.tabIndex = 0;
       scroller.setAttribute("aria-label", mode === "day" ? "Часы дня" : "Часы недели");
@@ -251,18 +285,28 @@
         column.append(heading);
         const hours = element("div", "calendar-time-day"); hours.dataset.date = day;
         for (let hour = 0; hour < 24; hour++) {
-          const slot = button("calendar-hour-slot", "", () => ctx.createTask(day, time(hour * 60), time(Math.min(layout.TIMELINE_LAST_MINUTE, (hour + 1) * 60))));
+          const minuteAt = (event) => event.type === "click" && !event.detail ? hour * 60 : quarterMinute(event.clientY - hours.getBoundingClientRect().top, hourHeight);
+          const slot = button("calendar-hour-slot", "", (event) => {
+            const start = minuteAt(event);
+            ctx.createTask(day, time(start), time(Math.min(layout.TIMELINE_LAST_MINUTE, start + 60)));
+          });
           slot.dataset.time = time(hour * 60);
           slot.setAttribute("aria-label", `Новая задача · ${ctx.formatLongDate(day)} · ${time(hour * 60)}`);
+          const highlightQuarter = (event) => {
+            const minute = minuteAt(event);
+            slot.style.setProperty("--slot-quarter", `${(minute % 60) / 60 * 100}%`);
+            slot.title = `Новая задача · ${time(minute)}`;
+          };
+          slot.addEventListener("pointermove", highlightQuarter);
           slot.addEventListener("dragover", (event) => {
             if (!dragged || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
-            event.preventDefault(); event.dataTransfer.dropEffect = "move"; slot.classList.add("is-drop-target");
+            event.preventDefault(); highlightQuarter(event); event.dataTransfer.dropEffect = "move"; slot.classList.add("is-drop-target");
           });
           slot.addEventListener("dragleave", () => slot.classList.remove("is-drop-target"));
           slot.addEventListener("drop", (event) => {
             event.preventDefault(); slot.classList.remove("is-drop-target");
             if (!dragged) return;
-            ctx.scheduleTask(dragged.taskId, dragged.date, day, time(hour * 60));
+            ctx.scheduleTask(dragged.taskId, dragged.date, day, time(minuteAt(event)));
             dragged = null;
           });
           hours.append(slot);
@@ -290,21 +334,7 @@
       agendaHeading.append(element("h3", "", ctx.formatLongDate(date)), button("icon-button", "+", () => ctx.createTask(date)));
       agendaHeading.lastChild.setAttribute("aria-label", "Добавить задачу на выбранный день");
       agenda.append(agendaHeading);
-      const selectedModel = models[dates.indexOf(date)];
-      [...selectedModel.timedTasks, ...selectedModel.unscheduledTasks].forEach((entry) => {
-        const row = button(`calendar-schedule-agenda-item${entry.done ? " is-done" : ""}`, "", () => entry.task.studyEvent ? ctx.openLesson(entry.task.studyEvent, date) : ctx.editTask(entry.task, date));
-        row.dataset.agendaTaskId = entry.task.id;
-        const title = element("span", "", entry.title);
-        if (entry.task.studyEvent) title.append(element("small", "calendar-lesson-detail", [entry.task.studyEvent.typeLabel, entry.task.studyEvent.teacher, entry.task.studyEvent.room].filter(Boolean).join(" · ")));
-        row.append(element("span", "calendar-agenda-time", entry.timeLabel || "Без времени"), title);
-        if (!entry.task.studyEvent) attachDrag(row, entry.task, date);
-        agenda.append(row);
-      });
-      const due = ctx.getState().tasks.filter((task) => task.dueDate === date);
-      due.forEach((task) => {
-        const row = button("calendar-schedule-agenda-item calendar-deadline", "", () => ctx.editTask(task, task.date || date));
-        row.append(element("span", "calendar-agenda-time", `Сдать${task.dueTime ? ` ${task.dueTime}` : ""}`), element("span", "", task.title)); agenda.append(row);
-      });
+      selectedModel.timedTasks.forEach((entry) => agenda.append(agendaRow(entry, date)));
       if (!selectedModel.timedTasks.length && !selectedModel.unscheduledTasks.length && !due.length) agenda.append(element("p", "muted", "На этот день пока ничего нет"));
       root.append(agenda);
       const gaps = freeIntervals(selectedModel.timedTasks).filter((gap) => gap.end - gap.start >= 45);
@@ -318,7 +348,7 @@
     }
     return { render };
   }
-  const api = { createCalendarSchedule, freeIntervals };
+  const api = { createCalendarSchedule, freeIntervals, quarterMinute };
   global.RhythmCalendarSchedule = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

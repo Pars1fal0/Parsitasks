@@ -100,6 +100,7 @@ const { chromium } = require("playwright-core");
     assert.equal(await page.locator(".study-archive-notice").isVisible(), true);
     await page.getByRole("button", { name: "К текущим предметам", exact: true }).click();
     assert.equal(await page.locator(".study-archive-notice").isVisible(), false);
+    await page.locator('#studyJumpToHomeworkForm').click();
     const subject = page.locator('#studyHomeworkForm [name="subjectId"]');
     const time = page.locator('#studyHomeworkForm [name="time"]');
     await subject.selectOption("math");
@@ -114,6 +115,7 @@ const { chromium } = require("playwright-core");
     assert.equal(await time.inputValue(), "");
     await page.locator("#studyJumpToHomeworkForm").click();
     assert.equal(await page.locator('#studyHomeworkForm [name="title"]').evaluate((input) => input === document.activeElement), true);
+    await page.locator('#studyHomeworkCancel').click();
 
     await go("calendar/week", "#calendarSchedule");
     assert.equal(await page.locator(".calendar-time-column").count(), 7);
@@ -122,7 +124,7 @@ const { chromium } = require("playwright-core");
       await dayButton.click();
       assert.equal(await page.locator("#activeDate").inputValue(), dates.tomorrow);
       assert.equal(await page.locator(".calendar-selected-agenda .calendar-lesson-detail").count(), 2);
-      assert.equal(await page.locator(".calendar-selected-agenda .calendar-deadline").count(), 2);
+      assert.equal(await page.locator(".calendar-untimed .calendar-deadline").count(), 2);
       assert.match(await page.locator(".calendar-selected-agenda").innerText(), /11:30/);
     }
     await page.locator("#activeDate").fill(dates.today);

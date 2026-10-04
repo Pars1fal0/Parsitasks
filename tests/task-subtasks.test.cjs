@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { appendSubtask } = require("../app/src/tasks/task-subtasks.js");
+const { appendSubtask, removeSubtask } = require("../app/src/tasks/task-subtasks.js");
 const checklist = require("../app/src/tasks/task-checklist.js");
 function fixture(repeat = "none") {
   let id = 0;
@@ -7,6 +7,41 @@ function fixture(repeat = "none") {
   return { task, state: { tasks: [task], taskOrder: {} }, createId: () => `new-${++id}`, dateKey: "2026-10-04", title: "  Второй   шаг  " };
 }
 module.exports = [
+  { name: "deleting a subtask removes its own marks without completing or deleting the parent", fn() {
+    const args = fixture(); args.task.checklist.push({ id: "keep", title: "Оставить" });
+    args.task.checklistLogs["2026-10-02"].keep = { done: true, updatedAt: "2026-10-02T10:00:00Z" };
+    const saved = removeSubtask({ ...args, itemId: "old" });
+    assert.deepEqual(saved.checklist.map((item) => item.id), ["keep"]);
+    assert.equal(saved.checklistLogs["2026-10-02"].old, undefined);
+    assert.equal(saved.checklistLogs["2026-10-02"].keep.done, true);
+    assert.equal(saved.completed["2026-10-02"], true); assert.equal(args.state.tasks.length, 1);
+    removeSubtask({ ...args, itemId: "keep" }); assert.deepEqual(args.task.checklist, []);
+  } },
+  { name: "deleting from one recurring occurrence keeps the original checklist and history", fn() {
+    const args = fixture("daily"); args.task.checklistLogs[args.dateKey] = { old: { done: true, updatedAt: "2026-10-04T10:00:00Z" } };
+    const saved = removeSubtask({ ...args, itemId: "old" });
+    assert.equal(saved.repeat, "none"); assert.equal(saved.sourceTaskId, "parent");
+    assert.deepEqual(saved.checklist, []); assert.equal(saved.checklistLogs[args.dateKey].old, undefined);
+    assert.equal(args.task.checklist.length, 1); assert.equal(args.task.checklistLogs["2026-10-02"].old.done, true);
+    assert.equal(args.task.checklistLogs[args.dateKey].old.done, true);
+  } },
+  { name: "deleting from future recurring occurrences preserves past series and other progress", fn() {
+    const args = fixture("daily"); args.task.checklist.push({ id: "keep", title: "Оставить" });
+    args.task.checklistLogs["2026-10-05"] = { old: { done: true, updatedAt: "2026-10-05T10:00:00Z" }, keep: { done: true, updatedAt: "2026-10-05T10:00:00Z" } };
+    const saved = removeSubtask({ ...args, itemId: "old", scope: "following" });
+    assert.equal(args.task.repeatUntil, "2026-10-03"); assert.equal(args.task.checklist.length, 2);
+    assert.equal(args.task.checklistLogs["2026-10-02"].old.done, true);
+    assert.deepEqual(saved.checklist.map((item) => item.id), ["keep"]);
+    assert.equal(saved.checklistLogs["2026-10-05"].old, undefined);
+    assert.equal(saved.checklistLogs["2026-10-05"].keep.done, true);
+  } },
+  { name: "missing subtasks and invalid deletion scope cannot mutate data", fn() {
+    const args = fixture("daily"); const before = JSON.stringify(args.state);
+    assert.throws(() => removeSubtask({ ...args, itemId: "missing" }), /недоступна/);
+    assert.throws(() => removeSubtask({ ...args, itemId: "old", scope: "all" }), /область/);
+    assert.equal(JSON.stringify(args.state), before);
+    args.state.tasks = []; assert.throws(() => removeSubtask({ ...args, itemId: "old" }), /недоступна/);
+  } },
   { name: "subtasks reuse checklist data without independent tasks or automatic parent completion", fn() {
     const args = fixture(); const saved = appendSubtask(args);
     assert.equal(args.state.tasks.length, 1); assert.equal(saved.checklist[1].title, "Второй шаг");

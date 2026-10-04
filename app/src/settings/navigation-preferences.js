@@ -19,12 +19,13 @@
     const direct = [...nav.querySelectorAll(":scope > button[data-view]")];
     direct.forEach((button) => {
       if (!menu.querySelector(`[data-view="${button.dataset.view}"]`)) menu.append(button.cloneNode(true));
-      const span = button.querySelector("span");
-      span.dataset.mobileLabel = LABELS[button.dataset.view];
-      if (button.dataset.view === "habits") span.dataset.mobileLabel = "Привыч.";
-      if (button.dataset.view === "overview") span.dataset.mobileLabel = "Кален.";
-      button.dataset.mobileLabel = span.dataset.mobileLabel;
     });
+    nav.querySelectorAll("button[data-view]").forEach((button) => {
+      const label = LABELS[button.dataset.view];
+      button.setAttribute("aria-label", label); button.title = label;
+      button.querySelector(".ui-icon").setAttribute("aria-hidden", "true");
+    });
+    nav.querySelector(".nav-more-summary").title = "Дополнительные разделы";
     ctx.els.navTabs = nav.querySelectorAll(".nav-tab[data-view]");
     document.documentElement.classList.add("navigation-custom");
     const container = document.querySelector("#navigationPreferences");

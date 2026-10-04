@@ -2,7 +2,7 @@
   function createCalendarView(ctx) {
     let centeredWeek = "";
     const heatmapView = global.RhythmHeatmapView.createHeatmapView(ctx);
-    const activityCharts = global.RhythmActivityCharts.createActivityCharts(ctx);
+    const activityCharts = global.RhythmActivityCharts.createActivityCharts({ ...ctx, onPeriodChange: renderOverview });
     const grid = ctx.els.views?.overview?.querySelector(".overview-grid");
     if (grid) {
       const metrics = document.createElement("div");
@@ -19,12 +19,18 @@
     ctx.els.weekBoardGrid?.after(legend.cloneNode(true));
 
     function deadlines(dateKey) { return ctx.getState().tasks.filter((task) => task.dueDate === dateKey); }
-    function createDeadline(task) {
+    function createDeadline(task, completion = false) {
       const button = document.createElement("button"); button.type = "button"; button.className = "calendar-deadline";
       button.dataset.deadlineTaskId = task.id;
       button.textContent = `Сдать${task.dueTime ? ` ${task.dueTime}` : ""} · ${task.title}`;
       button.classList.toggle("is-done", ctx.isTaskDone(task, task.date || task.dueDate));
-      button.addEventListener("click", () => ctx.openDateTasks(task.date, task.id)); return button;
+      button.addEventListener("click", () => ctx.openDateTasks(task.date, task.id));
+      if (!completion || task.repeat !== "none") return button;
+      const row = document.createElement("div"); row.className = "calendar-agenda-row";
+      const check = document.createElement("input"); check.type = "checkbox"; check.className = "calendar-task-check";
+      check.checked = ctx.isTaskDone(task, task.date || task.dueDate); check.setAttribute("aria-label", `Выполнено: ${task.title}`);
+      check.addEventListener("change", () => ctx.toggleTaskDone(task.id, task.date || task.dueDate));
+      row.append(check, button); return row;
     }
     function renderAgenda(dateKey, target = agenda) {
       const title = document.createElement("h3"); title.textContent = ctx.formatLongDate(dateKey);
@@ -34,9 +40,14 @@
         const time = task.scheduleMode === "block" ? `${task.startTime}–${task.endTime}` : task.time ? `До ${task.time}` : "Без времени";
         button.textContent = `${time} · ${task.title}`;
         button.classList.toggle("is-done", ctx.isTaskDone(task, dateKey));
-        button.addEventListener("click", () => ctx.openDateTasks(dateKey, task.id)); return button;
+        button.addEventListener("click", () => ctx.openDateTasks(dateKey, task.id));
+        const row = document.createElement("div"); row.className = "calendar-agenda-row";
+        const check = document.createElement("input"); check.type = "checkbox"; check.className = "calendar-task-check";
+        check.checked = ctx.isTaskDone(task, dateKey); check.setAttribute("aria-label", `Выполнено: ${task.title}`);
+        check.addEventListener("change", () => ctx.toggleTaskDone(task.id, dateKey));
+        row.append(check, button); return row;
       });
-      const due = deadlines(dateKey).map(createDeadline);
+      const due = deadlines(dateKey).map((task) => createDeadline(task, true));
       const empty = document.createElement("p"); empty.textContent = "На этот день ничего не запланировано";
       target.replaceChildren(title, ...lessons, ...tasks, ...due, ...(!lessons.length && !tasks.length && !due.length ? [empty] : []));
     }
@@ -96,13 +107,8 @@
         return { dates, heading: "Обзор месяца", suffix: "за месяц" };
       }
       if (mode === "year") {
-        const end = helpers.parseDate(activeDate);
-        const dates = Array.from({ length: 365 }, (_, index) => {
-          const date = new Date(end);
-          date.setDate(end.getDate() - (364 - index));
-          return helpers.toDateKey(date);
-        });
-        return { dates, heading: "Обзор года", suffix: "за год" };
+        const dates = activityCharts.getDates();
+        return { dates, heading: "Статистика", suffix: `за ${dates.length} дней` };
       }
       return { dates: week, heading: "Обзор недели", suffix: "за неделю" };
     }

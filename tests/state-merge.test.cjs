@@ -2,6 +2,13 @@ const assert = require("node:assert/strict");
 const { mergeStates } = require("../app/src/core/state-merge.js");
 
 module.exports = [
+  { name: "numeric habit increment is taken from the latest merged configuration", fn() {
+    const habit = { id: "water", type: "number", title: "Water", goal: 3000, repeat: "daily", startDate: "2026-10-01", logs: {} };
+    const local = { habits: [{ ...habit, numberStep: 100, updatedAt: "2026-10-01T12:00:00Z" }] };
+    const remote = { habits: [{ ...habit, numberStep: 250, updatedAt: "2026-10-02T12:00:00Z" }] };
+    assert.equal(mergeStates(local, remote).habits[0].numberStep, 250);
+    assert.equal(mergeStates(remote, local).habits[0].numberStep, 250);
+  } },
   {
     name: "preserves separate offline preference edits without reverting profile privacy",
     fn() {

@@ -422,10 +422,11 @@ const { _electron: electron } = require("playwright-core");
         navigationBox && navigationBox.x >= 0 && navigationBox.x + navigationBox.width <= width + 0.5,
         `navigation must fit ${width}px`,
       );
-      const mobileLabels = await page.locator(".nav-tabs > .nav-tab[data-mobile-label]:visible span").evaluateAll((nodes) =>
-        nodes.map((node) => getComputedStyle(node, "::after").content.replaceAll('"', "")),
+      const mobileButtons = await page.locator(".nav-tabs > button.is-mobile-pin:visible").evaluateAll((nodes) =>
+        nodes.map((node) => ({ label: node.getAttribute("aria-label"), textHidden: getComputedStyle(node.querySelector("span")).display === "none" })),
       );
-      assert.deepEqual(mobileLabels, ["Задачи", "Привыч.", "Кален."]);
+      assert.deepEqual(mobileButtons.map((button) => button.label), ["Задачи", "Привычки", "Календарь"]);
+      assert.ok(mobileButtons.every((button) => button.textHidden));
     }
 
     await require("./navigation-fixture.cjs").navigate(page, "tasks");

@@ -16,3 +16,7 @@ voice-assistant/*.pid
 .dev.vars
 .dev.vars.*
 !.dev.vars.example
+
+# Keep Markdown documentation local, except files in the repository root.
+**/*.[mM][dD]
+!/*.[mM][dD]

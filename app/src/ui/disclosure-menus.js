@@ -1,6 +1,6 @@
 (function (global) {
-  const DISCLOSURE_SELECTOR = ".task-more, .habit-more, .goal-menu, .overdue-more, .nav-more";
-  const MENU_SELECTOR = ".task-more-menu, .habit-more-menu, .goal-menu-popover, .overdue-more-menu, .nav-more-menu";
+  const DISCLOSURE_SELECTOR = ".task-more, .habit-more, .goal-menu, .overdue-more, .nav-more, .study-row-menu";
+  const MENU_SELECTOR = ".task-more-menu, .habit-more-menu, .goal-menu-popover, .overdue-more-menu, .nav-more-menu, .study-row-menu > .study-item-actions";
 
   function chooseMenuDirection(triggerRect, menuHeight, viewportHeight, gap = 8) {
     const roomAbove = triggerRect.top - gap;

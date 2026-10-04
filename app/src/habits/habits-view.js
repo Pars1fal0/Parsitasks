@@ -96,8 +96,9 @@
         input.setAttribute("aria-label", habitTitle);
         increment.type = "button";
         increment.className = "habit-stepper";
-        increment.textContent = "+";
-        increment.setAttribute("aria-label", `Увеличить ${habitTitle}`);
+        increment.textContent = `+${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+        increment.setAttribute("aria-label", `${habitTitle}: добавить ${step} ${habitConfig.unit || ""}`);
+        decrement.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
         value.textContent = `/ ${goal} ${habitConfig.unit || ""}`;
         track.className = "progress-track";
         track.setAttribute("aria-hidden", "true");
@@ -397,7 +398,8 @@
       const saved = ctx.habitStatusOnDate?.(habit, ctx.getActiveDate()) === "frozen" ? " · сохранена" : "";
       const weekly = effective.repeat === "weeklyGoal" ? global.RhythmHabitSchedule.weekProgress(habit, ctx.getActiveDate(), ctx.getActiveDate()) : null;
       const progress = weekly ? `За неделю: ${weekly.completed} из ${weekly.target}${weekly.achieved ? " · цель достигнута" : weekly.target === 0 ? " · на паузе" : ""} · ` : "";
-      return `${progress}Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} ${weekly ? "нед." : "дн."}${saved} · ${repeat}${habit.reminderTime ? ` · Напоминание ${habit.reminderTime}` : ""}`;
+      const pending = ctx.getActiveDate() === ctx.todayKey() && !weekly?.achieved && !["complete", "frozen"].includes(ctx.habitStatusOnDate(habit, ctx.getActiveDate())) ? " · Сегодня ещё не выполнено" : "";
+      return `${progress}Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} ${weekly ? "нед." : "дн."}${saved} · ${repeat}${pending}${habit.reminderTime ? ` · Напоминание ${habit.reminderTime}` : ""}`;
     }
 
     return {
@@ -408,6 +410,7 @@
   }
 
   function habitNumberStep(habit) {
+    if (Number.isFinite(Number(habit?.numberStep)) && Number(habit.numberStep) > 0) return Number(habit.numberStep);
     const goal = Math.max(1, Number(habit?.goal || 1));
     if (goal <= 20) return 1;
     if (goal <= 100) return 5;

@@ -15,17 +15,22 @@
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
     <link rel="stylesheet" href="assets/styles/study.css?v=6">
     <link rel="stylesheet" href="assets/styles/notes.css?v=1">
-    <link rel="stylesheet" href="assets/styles/goals.css?v=1">
+    <link rel="stylesheet" href="assets/styles/goals.css?v=2">
     <link rel="stylesheet" href="assets/styles/calendar-goals.css?v=1">
-    <link rel="stylesheet" href="assets/styles/board.css?v=1">
-    <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=3">
+    <link rel="stylesheet" href="assets/styles/board.css?v=2">
+    <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=5">
     <link rel="stylesheet" href="assets/styles/workspace-guide.css?v=1">
-    <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=5">
+    <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=7">
   <link rel="stylesheet" href="assets/styles/activity-charts.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
     <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="icon-nav-tasks" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1.5"/><path d="m3 17 2 2 4-4M13 6h8M13 17h8"/></symbol>
+      <symbol id="icon-nav-habits" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4M21 13v3a2 2 0 0 1-2 2H3"/></symbol>
+      <symbol id="icon-nav-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></symbol>
+      <symbol id="icon-nav-study" viewBox="0 0 24 24"><path d="m2 10 10-6 10 6-10 6-10-6ZM6 12.4V18c4 2.7 8 2.7 12 0v-5.6M22 10v7"/></symbol>
+      <symbol id="icon-nav-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
       <symbol id="icon-archive" viewBox="0 0 24 24"><path d="M4 7h16v13H4V7Z"/><path d="M3 4h18v3H3V4Z"/><path d="M9 11h6"/></symbol>
       <symbol id="icon-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></symbol>
       <symbol id="icon-board" viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Z"/><path d="M8 8h4v4H8V8ZM14 8h2M14 12h2M8 16h8"/></symbol>
@@ -87,27 +92,27 @@
 
         <nav class="nav-tabs" aria-label="Разделы">
           <button class="nav-tab is-active" data-view="tasks" data-mobile-label="Задачи" type="button" aria-current="page">
-            <svg class="ui-icon"><use href="#icon-tasks"></use></svg>
+            <svg class="ui-icon"><use href="#icon-nav-tasks"></use></svg>
             <span>Задачи</span>
           </button>
           <button class="nav-tab" data-view="timeline" data-mobile-label="Время" type="button">
             <svg class="ui-icon"><use href="#icon-clock"></use></svg>
             <span>Таймлайн</span>
           </button>
-          <button class="nav-tab" data-view="habits" data-mobile-label="Привыч." type="button">
-            <svg class="ui-icon"><use href="#icon-habit"></use></svg>
+          <button class="nav-tab" data-view="habits" data-mobile-label="Привычки" type="button">
+            <svg class="ui-icon"><use href="#icon-nav-habits"></use></svg>
             <span>Привычки</span>
           </button>
           <button class="nav-tab" data-view="goals" type="button">
             <svg class="ui-icon"><use href="#icon-target"></use></svg>
             <span>Цели</span>
           </button>
-          <button class="nav-tab" data-view="overview" data-mobile-label="Кален." type="button">
-            <svg class="ui-icon"><use href="#icon-calendar"></use></svg>
+          <button class="nav-tab" data-view="overview" data-mobile-label="Календарь" type="button">
+            <svg class="ui-icon"><use href="#icon-nav-calendar"></use></svg>
             <span>Календарь</span>
           </button>
           <button class="nav-tab" data-view="study" type="button">
-            <svg class="ui-icon"><use href="#icon-study"></use></svg>
+            <svg class="ui-icon"><use href="#icon-nav-study"></use></svg>
             <span>Учёба</span>
           </button>
           <button class="nav-tab" data-view="nutrition" type="button">
@@ -132,12 +137,12 @@
           </button>
           <details class="nav-more">
             <summary class="nav-tab nav-more-summary" aria-label="Дополнительные разделы">
-              <svg class="ui-icon"><use href="#icon-more"></use></svg>
+              <svg class="ui-icon"><use href="#icon-nav-more"></use></svg>
               <span>Еще</span>
             </summary>
             <div class="nav-more-menu">
               <button class="nav-tab" data-view="study" type="button">
-                <svg class="ui-icon"><use href="#icon-study"></use></svg>
+                <svg class="ui-icon"><use href="#icon-nav-study"></use></svg>
                 <span>Учёба</span>
               </button>
               <button class="nav-tab" data-view="goals" type="button">
@@ -443,16 +448,16 @@
                   <div class="deadline-card">
                     <div class="deadline-title">
                       <svg class="ui-icon"><use href="#icon-clock"></use></svg>
-                      Время работы
+                      Когда заниматься
                     </div>
-                    <div class="schedule-mode-control" aria-label="Время работы в запланированный день">
+                    <div class="schedule-mode-control" aria-label="Когда заниматься в запланированный день">
                       <label>
                         <input id="taskScheduleNone" type="radio" name="taskScheduleMode" value="none" checked>
                         <span data-mobile-label="Нет времени">Без времени</span>
                       </label>
                       <label>
                         <input id="taskScheduleDeadline" type="radio" name="taskScheduleMode" value="deadline">
-                        <span data-mobile-label="Выполнить к">Выполнить к</span>
+                        <span data-mobile-label="Отметка">Отметка времени</span>
                       </label>
                       <label>
                         <input id="taskScheduleBlock" type="radio" name="taskScheduleMode" value="block">
@@ -461,7 +466,7 @@
                     </div>
                     <div class="form-grid">
                       <label id="taskDeadlineTimeField">
-                        Выполнить к
+                        Время в плане
                         <input id="taskTime" type="time" step="300">
                       </label>
                     </div>
@@ -499,7 +504,7 @@
                     </label>
                   </div>
                   <fieldset class="task-due-fields">
-                    <legend>Срок выполнения</legend>
+                    <legend>Когда должно быть готово</legend>
                     <div class="study-field-row"><label>Дата<input id="taskDueDate" type="date"></label><label>Время<input id="taskDueTime" type="time"></label></div>
                     <label>Напомнить о сроке<select id="taskDueReminder"><option value="none">Не напоминать</option><option value="0">В момент срока</option><option value="15">За 15 минут</option><option value="60">За час</option><option value="1440">За день</option></select></label>
                   </fieldset>
@@ -760,6 +765,7 @@
                       <span id="habitGoalLabel">Цель в день</span>
                       <input id="habitGoal" type="number" min="1" step="1" placeholder="2000">
                     </label>
+                    <label>Основной шаг<input id="habitNumberStep" type="number" min="0.001" step="any" placeholder="Автоматически"></label>
                   </div>
                   <details class="task-extra-fields" id="habitExtraFields">
                     <summary>Дополнительные настройки</summary>
@@ -1362,8 +1368,7 @@
             <button type="button" role="tab" data-study-tab="schedule" aria-selected="false">Расписание</button>
             <button type="button" role="tab" data-study-tab="materials" aria-selected="false">Материалы</button>
           </div>
-          <div id="studySubjectSetup" class="study-subject-setup" hidden>
-          </div>
+          <div id="studySubjectSetup" class="study-subject-setup" hidden><p class="muted">Добавьте первый предмет, чтобы создать домашнее задание или занятие.</p><button class="primary-button" data-study-add-subject="homework" type="button">Добавить предмет</button></div>
           <div class="study-pane is-active" data-study-pane="homework" role="tabpanel">
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyHomeworkHeading">
@@ -1391,8 +1396,9 @@
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyScheduleHeading">
                 <div class="study-schedule-heading">
-                  <div><h3 id="studyScheduleHeading">Расписание</h3><p id="studyWeekLabel" class="study-week-label" aria-live="polite"></p></div>
+                  <div><h3 class="sr-only" id="studyScheduleHeading">Расписание</h3><p id="studyWeekLabel" class="study-week-label" aria-live="polite"></p></div>
                   <div class="study-schedule-controls">
+                    <button class="primary-button compact-button icon-text-button" id="studyNewLesson" type="button"><svg class="ui-icon"><use href="#icon-plus"></use></svg>Новое занятие</button>
                     <div class="study-schedule-modes" role="group" aria-label="Период расписания">
                       <button type="button" data-study-schedule-mode="day" aria-pressed="false">День</button>
                       <button type="button" data-study-schedule-mode="week" aria-pressed="true">Неделя</button>
@@ -1407,7 +1413,7 @@
                 <div id="studyScheduleList" class="study-schedule"></div>
               </section>
               <div class="study-side-stack">
-                <div id="studySubjectFormHome"></div>
+                <details class="study-subject-manager"><summary>Предметы</summary><div id="studySubjectFormHome"><div id="studySubjectList" class="study-subject-list"></div><button class="ghost-button" data-study-add-subject="" type="button">Добавить предмет</button></div></details>
                 <form id="studyLessonForm" class="study-form" aria-label="Добавить занятие">
                   <h3 id="studyLessonFormTitle">Добавить занятие</h3>
                   <input name="id" type="hidden">
@@ -1431,7 +1437,6 @@
                 <form id="studySubjectForm" class="study-form" aria-label="Добавить предмет">
                   <h3 id="studySubjectFormTitle">Предметы</h3>
                   <input name="id" type="hidden">
-                  <div id="studySubjectList" class="study-subject-list"></div>
                   <label>Название<input name="name" maxlength="80" required placeholder="Название предмета"></label>
                   <label>Семестр<input name="semester" maxlength="80" placeholder="Например, 2026 · осень"></label>
                   <div class="study-field-row"><label>Цвет<input name="color" type="color" value="#56c8a6"></label><label>Преподаватель<input name="teacher" maxlength="120" placeholder="Необязательно"></label></div>
@@ -1448,7 +1453,7 @@
             </div>
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyMaterialsHeading">
-                <div class="study-section-heading"><h3 id="studyMaterialsHeading">Материалы</h3><select id="studyMaterialFilter" aria-label="Фильтр материалов"><option value="all">Все предметы</option></select></div>
+                <div class="study-section-heading"><h3 class="sr-only" id="studyMaterialsHeading">Материалы</h3><button class="primary-button compact-button icon-text-button" id="studyNewMaterial" type="button"><svg class="ui-icon"><use href="#icon-plus"></use></svg>Загрузить материал</button><select id="studyMaterialFilter" aria-label="Фильтр материалов"><option value="all">Все предметы</option></select></div>
                 <div id="studyMaterialList" class="study-list"></div>
               </section>
               <form id="studyMaterialForm" class="study-form" aria-label="Загрузить материал">
@@ -2058,58 +2063,58 @@
     <script src="src/nutrition/nutrition-model.js?v=1" defer></script>
     <script src="src/core/data-normalizers.js?v=1" defer></script>
     <script src="src/study/study-model.js?v=4" defer></script>
-    <script src="src/study/study-controller.js?v=8" defer></script>
+    <script src="src/study/study-controller.js?v=9" defer></script>
     <script src="src/sync/sync-metadata.js?v=10" defer></script>
     <script src="src/sync/tombstone-retention.js?v=3" defer></script>
     <script src="src/habits/habit-title-history.js?v=1" defer></script>
-    <script src="src/habits/habit-config-history.js?v=1" defer></script>
+    <script src="src/habits/habit-config-history.js?v=2" defer></script>
     <script src="src/habits/habit-freeze.js?v=1" defer></script>
-    <script src="src/habits/habit-schedule.js?v=1" defer></script>
+    <script src="src/habits/habit-schedule.js?v=2" defer></script>
     <script src="src/tasks/task-checklist.js?v=1" defer></script>
-    <script src="src/tasks/task-subtasks.js?v=1" defer></script>
+    <script src="src/tasks/task-subtasks.js?v=2" defer></script>
     <script src="src/integrations/mcp-activity.js?v=2" defer></script>
     <script src="src/integrations/mcp-activity-controller.js?v=1" defer></script>
     <script src="src/platform/pwa-controller.js?v=1" defer></script>
     <script src="src/platform/desktop-update-controller.js?v=2" defer></script>
-    <script src="src/core/state-normalizer.js?v=16" defer></script>
+    <script src="src/core/state-normalizer.js?v=17" defer></script>
     <script src="src/core/state-controller.js?v=1" defer></script>
-    <script src="src/core/state-merge.js?v=11" defer></script>
+    <script src="src/core/state-merge.js?v=12" defer></script>
     <script src="src/core/date-rollover.js?v=1" defer></script>
     <script src="src/core/planning-history.js?v=2" defer></script>
     <script src="src/journal/journal-view.js?v=3" defer></script>
     <script src="src/notes/notes-view.js?v=1" defer></script>
     <script src="src/board/board-camera.js?v=1" defer></script>
-    <script src="src/board/board-view.js?v=8" defer></script>
+    <script src="src/board/board-view.js?v=9" defer></script>
     <script src="src/nutrition/nutrition-controller.js?v=1" defer></script>
     <script src="src/nutrition/nutrition-view.js?v=1" defer></script>
     <script src="src/core/workspace-local.js?v=1" defer></script>
     <script src="src/core/storage.js?v=1" defer></script>
     <script src="src/core/navigation-state.js?v=2" defer></script>
     <script src="src/tasks/archive-view.js?v=4" defer></script>
-    <script src="src/ui/disclosure-menus.js?v=1" defer></script>
+    <script src="src/ui/disclosure-menus.js?v=2" defer></script>
     <script src="src/core/app-events.js?v=5" defer></script>
     <script src="src/calendar/heatmap-view.js?v=3" defer></script>
     <script src="assets/vendor/chart.js?v=4.5.1" defer></script>
-    <script src="src/calendar/activity-charts.js?v=2" defer></script>
-    <script src="src/calendar/calendar-view.js?v=7" defer></script>
+    <script src="src/calendar/activity-charts.js?v=3" defer></script>
+    <script src="src/calendar/calendar-view.js?v=8" defer></script>
     <script src="src/calendar/calendar-drag-controller.js?v=2" defer></script>
-    <script src="src/ui/confirm-dialog.js?v=3" defer></script>
+    <script src="src/ui/confirm-dialog.js?v=4" defer></script>
     <script src="src/ui/form-dialog.js?v=1" defer></script>
     <script src="src/tasks/categories.js?v=7" defer></script>
     <script src="src/goals/goal-checkpoint-editor.js?v=2" defer></script>
     <script src="src/ui/global-search.js?v=3" defer></script>
     <script src="src/goals/goals-view.js?v=11" defer></script>
-    <script src="src/habits/habit-form.js?v=5" defer></script>
-    <script src="src/habits/habits-view.js?v=6" defer></script>
+    <script src="src/habits/habit-form.js?v=6" defer></script>
+    <script src="src/habits/habits-view.js?v=7" defer></script>
     <script src="src/habits/habit-freeze-dialog.js?v=1" defer></script>
     <script src="src/settings/import-export.js?v=6" defer></script>
     <script src="src/platform/reminder-policy.js?v=1" defer></script>
-    <script src="src/settings/navigation-preferences.js?v=1" defer></script>
+    <script src="src/settings/navigation-preferences.js?v=2" defer></script>
     <script src="src/platform/notifications.js?v=3" defer></script>
     <script src="src/tasks/overdue-controller.js?v=4" defer></script>
     <script src="src/tasks/task-schedule.js?v=1" defer></script>
-    <script src="src/tasks/task-form.js?v=12" defer></script>
-    <script src="src/tasks/tasks-view.js?v=15" defer></script>
+    <script src="src/tasks/task-form.js?v=13" defer></script>
+    <script src="src/tasks/tasks-view.js?v=18" defer></script>
     <script src="src/tasks/task-moves.js?v=9" defer></script>
     <script src="src/tasks/task-state.js?v=5" defer></script>
     <script src="src/settings/settings-sync.js?v=1" defer></script>
@@ -2122,11 +2127,11 @@
     <script src="src/timeline/timeline-drag.js?v=3" defer></script>
     <script src="src/timeline/timeline-view.js?v=11" defer></script>
     <script src="src/timeline/timeline-controller.js?v=8" defer></script>
-    <script src="src/calendar/calendar-schedule.js?v=4" defer></script>
+    <script src="src/calendar/calendar-schedule.js?v=5" defer></script>
     <script src="src/core/daily-pulse.js?v=1" defer></script>
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=4" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=61" defer></script>
+    <script src="src/core/app.js?v=63" defer></script>
   </body>
 </html>

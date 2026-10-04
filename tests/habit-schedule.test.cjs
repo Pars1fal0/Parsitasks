@@ -7,6 +7,18 @@ function habit(extra = {}) {
     logs: {}, freezeDays: {}, reminderTime: "09:00", ...extra };
 }
 module.exports = [
+  { name: "an unfinished today preserves yesterday's streak, a missed past day does not", fn() {
+    const h = habit({ repeat: "daily", logs: { "2026-09-14": true, "2026-09-15": true } });
+    assert.equal(schedule.streak(h, "2026-09-16", "2026-09-16"), 2);
+    assert.equal(schedule.streak(h, "2026-09-16", "2026-09-17"), 0);
+    assert.equal(schedule.streak(h, "2026-09-17", "2026-09-17"), 0);
+    h.logs["2026-09-16"] = true;
+    assert.equal(schedule.streak(h, "2026-09-16", "2026-09-16"), 3);
+    const weekends = habit({ repeat: "weekends", startDate: "2026-09-19", logs: { "2026-09-19": true, "2026-09-20": true } });
+    assert.equal(schedule.streak(weekends, "2026-09-26", "2026-09-26"), 2);
+    const number = habit({ repeat: "daily", type: "number", goal: 10, logs: { "2026-09-14": 10, "2026-09-15": 10, "2026-09-16": 4 } });
+    assert.equal(schedule.streak(number, "2026-09-16", "2026-09-16"), 2);
+  } },
   { name: "flexible goals never create daily misses and count distinct complete days", fn() {
     const h = habit({ logs: { "2026-09-14": true, "2026-09-16": true, "2026-09-20": true } });
     assert.equal(schedule.statusOnDate(h, "2026-09-15"), "not-due");

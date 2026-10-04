@@ -2,6 +2,12 @@ const assert = require("node:assert/strict");
 const { createStateNormalizer } = require("./test-utils.cjs");
 
 module.exports = [
+  { name: "numeric habit increment survives round trips and keeps its dated configuration", fn() {
+    const normalizer = createStateNormalizer();
+    const habits = normalizer.normalizeState(normalizer.normalizeState({ habits: [{ id: "water", title: "Water", type: "number", goal: 3000, numberStep: 250, repeat: "daily", startDate: "2026-10-01", logs: {} }] })).habits;
+    assert.equal(habits[0].numberStep, 250);
+    assert.equal(habits[0].configHistory[0].numberStep, 250);
+  } },
   { name: "imports and round trips flexible targets, habit reminders and checklist history", fn() {
     const normalizer = createStateNormalizer();
     const raw = { habits: [{ id: "h", title: "Gym", repeat: "weeklyGoal", weeklyTarget: 3, startDate: "2026-09-14", reminderTime: "08:30", logs: {} }],

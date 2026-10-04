@@ -1,8 +1,14 @@
 const assert = require("node:assert/strict");
-const { freeIntervals } = require("../app/src/calendar/calendar-schedule.js");
+const { freeIntervals, quarterMinute } = require("../app/src/calendar/calendar-schedule.js");
 const { buildHash, parseHash } = require("../app/src/core/navigation-state.js");
 
 module.exports = [
+  { name: "calendar clicks and drops use the quarter hour under the pointer", fn() {
+    assert.equal(quarterMinute(9.75 * 96 + 1, 96), 585);
+    assert.equal(quarterMinute(9.25 * 96, 96), 555);
+    assert.equal(quarterMinute(-10, 96), 0);
+    assert.equal(quarterMinute(25 * 96, 96), 1425);
+  } },
   { name: "day calendar has a stable deep link", fn() {
     assert.equal(buildHash("overview", "day"), "#calendar/day");
     assert.deepEqual(parseHash("#calendar/day"), { view: "overview", overviewMode: "day" });

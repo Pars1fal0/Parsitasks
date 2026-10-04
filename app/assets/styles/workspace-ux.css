@@ -88,7 +88,7 @@ body:is([data-view="nutrition"], [data-view="settings"], [data-view="study"], [d
 #nutritionView .nutrition-details > summary { min-height: 44px; padding: 12px 0; overflow-wrap: anywhere; }
 #nutritionView .nutrition-details[open] { grid-column: 1 / -1; order: 1; }
 @media (max-width: 680px) { #nutritionView .nutrition-side { grid-template-columns: minmax(0, 1fr); } }
-.task-checklist:not([open]) > div { display: none; }
+.task-checklist:not([open]) > div, .task-checklist:not([open]) > form { display: none; }
 .task-checklist > summary { min-height: 32px; padding-block: 6px; }
 #tasksView .task-meta:not(:has(:not([hidden]))) { display: none; }
 .study-subject-setup { margin-bottom: 20px; }
@@ -164,8 +164,6 @@ body[data-view="tasks"] #pageTitle { font-size: 28px; }
   .navigation-custom .nav-tabs > button.nav-tab { display: none; order: var(--mobile-nav-order, 10); }
   .navigation-custom .nav-tabs > button.nav-tab.is-mobile-pin:not(.is-section-hidden) { display: grid; }
   .navigation-custom .nav-tabs > .nav-more { order: 20; }
-  .navigation-custom .nav-tabs > button.nav-tab.is-mobile-pin span { font-size: 0; }
-  .navigation-custom .nav-tabs > button.nav-tab.is-mobile-pin span::after { content: attr(data-mobile-label); font-size: 11px; }
   .reminder-center-button { position: fixed; top: 16px; right: 16px; z-index: 41; }
   .navigation-preferences fieldset { grid-template-columns: 1fr; }
   .feature-dialog { padding: 14px; }
@@ -370,7 +368,7 @@ body:not([data-view="nutrition"]) .toast button { min-height: 44px; }
 #habitsView .habit-number-row input { flex: 0 0 96px; width: 96px; min-height: 44px; padding: 0 8px; appearance: textfield; font-variant-numeric: tabular-nums; }
 #habitsView .habit-number-row input::-webkit-inner-spin-button,
 #habitsView .habit-number-row input::-webkit-outer-spin-button { appearance: none; margin: 0; }
-#habitsView .habit-stepper { width: 44px; height: 44px; min-width: 44px; font-weight: 600; }
+#habitsView .habit-stepper { width: auto; height: 44px; min-width: 44px; padding-inline: 10px; font-size: 12px; font-weight: 600; }
 #habitsView .habit-number-row > span { grid-column: auto; flex: 0 1 auto; min-width: 0; font-size: 12px; font-weight: 450; overflow-wrap: anywhere; }
 #habitsView .habit-quick-adds { margin: 0; gap: 6px; }
 #habitsView .habit-quick-adds > button { min-height: 44px; padding: 6px 8px; font-size: 12px; }
@@ -382,7 +380,7 @@ body:not([data-view="nutrition"]) .toast button { min-height: 44px; }
 #goalsView .goal-metric .metric-label { font-size: 12px; font-weight: 450; }
 #tasksView .task-meta-chip:is([data-meta-type="repeat"], [data-meta-type="schedule"]) { border: 0; background: transparent; padding: 2px 0; color: var(--muted); }
 #tasksView .task-meta-chip[data-meta-type="due"] { border-color: color-mix(in srgb, var(--coral) 35%, transparent); }
-#studyView > .toolbar h2, #journalView > .toolbar h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#studyView > .toolbar h2, #journalView > .toolbar h2, #boardView > .toolbar h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; background: var(--bg); padding-bottom: 8px; }
 .month-day { position: relative; }
 .month-due-badge { position: absolute; top: 5px; right: 5px; z-index: 1; min-width: 16px; padding: 1px 4px; border-radius: 4px; color: var(--coral); background: var(--surface-elevated); font-size: 10px; pointer-events: none; }
@@ -395,11 +393,55 @@ body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; back
 #boardViewport { height: max(300px, calc(100dvh - 285px)); min-height: 300px; }
 .board-card-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 12px; }
 .board-list-card { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.board-list-card:focus { outline: 2px solid var(--teal); outline-offset: 2px; }
 .board-list-card h3 { margin: 0 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: 1.5; font-weight: 650; }
 .board-list-card p { color: var(--muted); overflow-wrap: anywhere; }
 .board-list-card .board-list-text { color: var(--text); white-space: pre-wrap; font-size: 15px; line-height: 1.6; margin-top: 0; }
 .board-list-image { display: block; width: 100%; max-height: 360px; object-fit: contain; margin-bottom: 12px; }
 #boardView.is-list-mode #boardViewport { display: none; }
+.task-checklist { min-width: 0; max-width: 560px; }
+.task-checklist > div { gap: 2px; }
+.task-checklist-row { display: grid; grid-template-columns: minmax(0, 1fr) 36px; align-items: center; gap: 8px; }
+.task-checklist-row label { align-items: center; min-height: 36px; margin: 0; font-size: 13px; line-height: 1.5; font-weight: 450; cursor: pointer; }
+.task-checklist-remove.icon-button { width: 36px; height: 36px; min-height: 36px; padding: 8px; background: transparent; border-color: transparent; box-shadow: none; color: var(--muted); }
+.task-checklist-remove.icon-button:hover { color: var(--coral); background: color-mix(in srgb, var(--coral) 10%, transparent); }
+.task-checklist-add { display: grid; gap: 6px; min-width: 0; max-width: 560px; margin-top: 10px; }
+.task-checklist-entry { display: grid; grid-template-columns: minmax(0, 1fr) 36px; align-items: center; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); transition: border-color 160ms, box-shadow 160ms; }
+.task-checklist-entry:focus-within { border-color: var(--teal); box-shadow: 0 0 0 2px rgb(var(--accent-rgb) / 12%); }
+.task-checklist-entry input[type="text"] { width: 100%; min-width: 0; height: 36px; min-height: 36px; padding: 6px 9px; border: 0; outline: 0; background: transparent; box-shadow: none; color: var(--text); font-size: 13px; line-height: 1.5; }
+.task-checklist-entry .icon-button { width: 36px; height: 36px; min-height: 36px; padding: 8px; border: 0; box-shadow: none; background: var(--teal-soft); color: var(--teal); }
+.task-checklist-entry .icon-button:disabled { background: transparent; color: var(--muted); opacity: .45; }
+.task-checklist-add select { justify-self: start; max-width: 100%; width: auto; min-width: 0; min-height: 36px; padding-block: 6px; font-size: 12px; background-color: transparent; border-color: transparent; color: var(--muted); }
+.task-checklist-add select:hover, .task-checklist-add select:focus-visible { border-color: var(--line); color: var(--text); }
+.task-checklist-add select[hidden], .task-checklist-add small:empty { display: none; }
+.task-checklist-add small { color: var(--coral); line-height: 1.5; }
+@media (max-width: 900px) {
+  .task-checklist-row { grid-template-columns: minmax(0, 1fr) 44px; }
+  .task-checklist-row label { min-height: 44px; }
+  .task-checklist-remove.icon-button { width: 44px; height: 44px; min-height: 44px; padding: 12px; }
+  .task-checklist-entry { grid-template-columns: minmax(0, 1fr) 44px; }
+  .task-checklist-entry input[type="text"] { height: 44px; min-height: 44px; font-size: 16px; }
+  .task-checklist-entry .icon-button { width: 44px; height: 44px; min-height: 44px; padding: 12px; }
+  .task-checklist-add select { min-height: 44px; }
+}
+.task-backlog-hint { margin: 0 0 12px; font-size: 12px; line-height: 1.5; }
+.study-create-dialog { position: fixed; inset: 0; box-sizing: border-box; width: min(540px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); margin: auto; padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-elevated); color: var(--text); box-shadow: var(--shadow-lift); overflow-y: auto; }
+.study-create-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.study-create-dialog .study-form { border: 0; padding: 0; box-shadow: none; background: transparent; max-width: none; }
+.study-create-dialog .study-form h3 { padding-right: 40px; }
+.study-dialog-close { position: absolute; top: 12px; right: 12px; }
+.study-create-dialog .study-form-actions { position: sticky; bottom: -24px; padding-block: 12px; background: var(--surface-elevated); }
+#studyView .study-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.study-subject-manager > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; color: var(--muted); }
+.study-row-menu { position: relative; justify-self: end; align-self: start; }
+.study-row-menu > summary { list-style: none; cursor: pointer; }
+.study-row-menu > summary::-webkit-details-marker { display: none; }
+.study-row-menu:not([open]) > .study-item-actions { display: none; }
+.study-row-menu > .study-item-actions { position: absolute; right: 0; top: calc(100% + 4px); z-index: 36; display: grid; width: min(270px, calc(100vw - 48px)); padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-elevated); box-shadow: var(--shadow-lift); }
+.study-row-menu > .study-item-actions button { display: flex; align-items: center; gap: 8px; min-height: 44px; text-align: left; font-size: 12px; }
+.study-row-menu > .study-item-actions { transform: translateX(var(--menu-shift-x, 0px)); max-height: var(--menu-max-height, calc(100dvh - 32px)); overflow-y: auto; overscroll-behavior: contain; }
+.study-row-menu.menu-opens-up > .study-item-actions { top: auto; bottom: calc(100% + 4px); }
+.study-row-menu .ui-icon { flex-shrink: 0; }
 .historical-task-actions { display: flex; align-items: center; gap: 8px; }
 .backlog-group { margin: 8px 0; border-bottom: 1px solid var(--line); }
 .backlog-group-tools { padding: 0 12px 12px; }

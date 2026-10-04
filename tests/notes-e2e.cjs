@@ -17,12 +17,15 @@ const { _electron: electron } = require("playwright-core");
     await page.waitForSelector("#pageTitle");
     await require("./navigation-fixture.cjs").navigate(page, "study");
     await page.locator('[data-study-tab="schedule"]').click();
+    await page.locator('.study-subject-manager > summary').click();
+    await page.locator('#studySubjectFormHome [data-study-add-subject]').click();
     await page.locator('#studySubjectForm [name="name"]').fill("Математика");
     await page.locator('#studySubjectForm button[type="submit"]').click();
     const subjectId = await page.locator("[data-study-subject-edit]").getAttribute("data-study-subject-edit");
     assert.ok(subjectId);
 
     await page.locator('[data-study-tab="homework"]').click();
+    await page.locator('#studyJumpToHomeworkForm').click();
     await page.locator('#studyHomeworkForm [name="subjectId"]').selectOption(subjectId);
     await page.locator('#studyHomeworkForm [name="title"]').fill("Решить задачи по графам");
     await page.locator('#studyHomeworkForm button[type="submit"]').click();

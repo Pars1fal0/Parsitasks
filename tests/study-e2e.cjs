@@ -23,6 +23,7 @@ const { _electron: electron } = require("playwright-core");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator("#studyJumpToHomeworkForm").click();
     await page.waitForFunction(() => document.querySelector("#studySubjectForm").getBoundingClientRect().top < innerHeight * 0.5);
+    await page.locator('#studySubjectCancel').click();
     await page.setViewportSize({ width: 1200, height: 800 });
     await page.locator('[data-study-tab="schedule"]').click();
 
@@ -36,6 +37,8 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('#studyWeekCycleForm [name="anchorParity"]').selectOption("even");
     await page.locator('#studyWeekCycleForm button[type="submit"]').click();
     assert.match(await page.locator("#studyWeekLabel").innerText(), /Чётная неделя/);
+    await page.locator('.study-subject-manager > summary').click();
+    await page.locator('#studySubjectFormHome [data-study-add-subject]').click();
 
     await page.locator('#studySubjectForm [name="name"]').fill("Математика");
     await page.locator('#studySubjectForm [name="teacher"]').fill("Иванова");
@@ -50,6 +53,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(await page.locator("[data-study-subject-edit]").getAttribute("data-study-subject-edit"), subjectId);
     assert.match(await page.locator("#studySubjectList").innerText(), /Алгебра.*Иванова/s);
 
+    await page.locator('#studyNewLesson').click();
     await page.locator('#studyLessonForm [name="subjectId"]').selectOption(subjectId);
     await page.locator('#studyLessonForm [name="weekday"]').selectOption("1");
     await page.locator('#studyLessonForm [name="weekType"]').selectOption("even");
@@ -61,6 +65,7 @@ const { _electron: electron } = require("playwright-core");
     const lessonId = await page.locator("[data-study-lesson-edit]").getAttribute("data-study-lesson-edit");
     assert.ok(lessonId);
 
+    await page.locator('#studyScheduleList .study-row-menu > summary').click();
     await page.locator("[data-study-lesson-edit]").click();
     await page.locator('#studyLessonForm [name="endTime"]').fill("10:00");
     await page.locator('#studyLessonForm button[type="submit"]').click();
@@ -71,6 +76,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#studyNextWeek").click();
     assert.match(await page.locator("#studyWeekLabel").innerText(), /Нечётная неделя/);
     assert.doesNotMatch(await page.locator("#studyScheduleList").innerText(), /09:00–10:00/);
+    await page.locator('#studyNewLesson').click();
     await page.locator('#studyLessonForm [name="subjectId"]').selectOption(subjectId);
     await page.locator('#studyLessonForm [name="weekday"]').selectOption("1");
     await page.locator('#studyLessonForm [name="weekType"]').selectOption("odd");
@@ -122,6 +128,7 @@ const { _electron: electron } = require("playwright-core");
       date.setDate(date.getDate() - 1);
       return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
     });
+    await page.locator('#studyJumpToHomeworkForm').click();
     await page.locator('#studyHomeworkForm [name="subjectId"]').selectOption(subjectId);
     assert.equal(await page.locator('#studyHomeworkForm [name="date"]').inputValue(), nextPractice);
     await page.locator('#studyHomeworkForm [name="title"]').fill("Решить упражнения 4–6");

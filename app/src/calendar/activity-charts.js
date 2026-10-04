@@ -35,7 +35,7 @@
       [7, 30, 90].forEach((value) => {
         const choice = element("button", days === value ? "is-active" : "", `${value} дней`); choice.type = "button";
         choice.dataset.chartDays = value; choice.setAttribute("aria-pressed", String(days === value));
-        choice.addEventListener("click", () => { days = value; render(); root.querySelector(`[data-chart-days="${value}"]`)?.focus({ preventScroll: true }); });
+        choice.addEventListener("click", () => { days = value; if (ctx.onPeriodChange) ctx.onPeriodChange(); else render(); root.querySelector(`[data-chart-days="${value}"]`)?.focus({ preventScroll: true }); });
         control.append(choice);
       });
       toolbar.append(period, control); root.append(toolbar);
@@ -131,7 +131,7 @@
         row.append(date, element("td", "", point.taskTotal ? `${point.taskDone} / ${point.taskTotal} · ${point.taskPercent}%` : "—"), element("td", "", point.habitTotal ? `${point.habitDone} / ${point.habitTotal} · ${point.habitPercent}%` : "—")); body.append(row); });
       table.append(caption, head, body); details.append(table); root.append(details);
     }
-    return { render };
+    return { render, getDates: () => buildActivitySeries({ endDate: ctx.getActiveDate(), days, today: ctx.toDateKey(new Date()), ...ctx }).map((point) => point.date) };
   }
   const api = { buildActivitySeries, createActivityCharts };
   global.RhythmActivityCharts = api;

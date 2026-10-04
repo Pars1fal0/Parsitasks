@@ -46,7 +46,10 @@
   }
   function weekEnd(dateKey) { return addDays(weekStart(dateKey), 6); }
   function streak(habit, dateKey, todayKey = dateKey) {
-    if (configOnDate(habit, dateKey).repeat !== "weeklyGoal") return freeze.streak(habit, dateKey, statusOnDate);
+    if (configOnDate(habit, dateKey).repeat !== "weeklyGoal") {
+      const pendingToday = dateKey === todayKey && statusOnDate(habit, dateKey) === "missed";
+      return freeze.streak(habit, pendingToday ? addDays(dateKey, -1) : dateKey, statusOnDate);
+    }
     let cursor = dateKey;
     let count = 0;
     for (let checked = 0; checked < 523 && cursor >= habit.startDate; checked += 1) {

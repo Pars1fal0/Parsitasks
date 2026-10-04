@@ -9,6 +9,9 @@ module.exports = [
       assert.equal(habitNumberStep({ goal: 100 }), 5);
       assert.equal(habitNumberStep({ goal: 500 }), 50);
       assert.equal(habitNumberStep({ goal: 2000 }), 100);
+      assert.equal(habitNumberStep({ goal: 2000, numberStep: 250 }), 250);
+      assert.equal(habitNumberStep({ goal: 2, numberStep: 0.25 }), 0.25);
+      assert.equal(habitNumberStep({ goal: 2000, numberStep: -1 }), 100);
     },
   },
 ];

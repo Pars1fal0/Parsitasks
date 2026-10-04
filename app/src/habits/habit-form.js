@@ -21,6 +21,7 @@
         startDate: existing?.startDate || ctx.getActiveDate(),
         unit: ctx.cleanText(ctx.els.habitUnit.value),
         goal: type === "number" ? Math.max(1, Number(ctx.els.habitGoal.value || 1)) : 1,
+        numberStep: Number(ctx.els.habitForm.querySelector("#habitNumberStep").value) || 0,
         logs: existing?.logs || {},
         freezeDays: existing?.freezeDays || {},
         availabilityHistory: existing?.availabilityHistory || [],
@@ -41,6 +42,7 @@
               customRepeat: ctx.els.habitRepeat.value === "custom" ? ctx.getHabitCustomRepeatFromForm() : {},
               unit: ctx.cleanText(ctx.els.habitUnit.value),
               goal: type === "number" ? Math.max(1, Number(ctx.els.habitGoal.value || 1)) : 1,
+              numberStep: habit.numberStep,
             },
             ctx.getActiveDate(),
             { normalizeCustomRepeat: ctx.normalizeCustomRepeat, normalizeRepeat: ctx.normalizeHabitRepeat, updatedAt: now },
@@ -82,6 +84,7 @@
       ctx.syncHabitCustomRepeatPanel();
       ctx.els.habitUnit.value = effectiveConfig.unit || "";
       ctx.els.habitGoal.value = effectiveConfig.goal || "";
+      ctx.els.habitForm.querySelector("#habitNumberStep").value = effectiveConfig.numberStep || "";
       ctx.markFormPristine?.(ctx.els.habitForm);
       ctx.els.habitTitle.focus();
     }

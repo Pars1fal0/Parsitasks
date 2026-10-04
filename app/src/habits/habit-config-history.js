@@ -154,6 +154,7 @@
       weeklyTarget: latest.weeklyTarget,
       unit: latest.unit,
       goal: latest.goal,
+      numberStep: latest.numberStep,
       configHistory: history,
       updatedAt,
     };
@@ -193,6 +194,7 @@
       weeklyTarget: Math.max(1, Math.min(7, Math.round(Number(value.weeklyTarget) || 3))),
       unit: cleanText(value.unit),
       goal: type === "number" ? Math.max(1, Number(value.goal || 1)) : 1,
+      numberStep: type === "number" && Number.isFinite(Number(value.numberStep)) && Number(value.numberStep) > 0 ? Number(value.numberStep) : 0,
     };
   }
 
