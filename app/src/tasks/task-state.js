@@ -16,7 +16,7 @@
       if (options.restoreSourceOccurrence) {
         const source = state.tasks.find((task) => task.id === replacement.sourceTaskId);
         if (source?.excludedDates) {
-          delete source.excludedDates[replacement.date];
+          delete source.excludedDates[replacement.movedFromDate || replacement.date];
           source.updatedAt = new Date().toISOString();
         }
       }

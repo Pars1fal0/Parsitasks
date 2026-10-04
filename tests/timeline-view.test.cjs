@@ -20,13 +20,35 @@ module.exports = [
     },
   },
   {
-    name: "keeps resized blocks on the 15 minute end-of-day grid",
+    name: "keeps quarter-hour start slots but lets resized blocks reach 23:59",
     fn() {
       assert.equal(TIMELINE_LAST_MINUTE, 23 * 60 + 45);
       assert.deepEqual(nextBlockTimes(23 * 60, 23 * 60 + 30, "end", 60), {
         start: 23 * 60,
-        end: 23 * 60 + 45,
+        end: 23 * 60 + 59,
       });
+      assert.deepEqual(nextBlockTimes(23 * 60 + 45, 23 * 60 + 59, "end", 15), { start: 1425, end: 1439 });
+      assert.deepEqual(nextBlockTimes(1425, 1439, "start", 15), { start: 1425, end: 1439 });
+      assert.deepEqual(nextBlockTimes(600, 607, "end", 0), { start: 600, end: 607 });
+    },
+  },
+  {
+    name: "deadline overdue status uses actual time, not the marker visual height",
+    fn() {
+      const model = buildTimelineModel({
+        activeDate: "2026-10-04", todayKey: "2026-10-04", now: new Date(2026, 9, 4, 9, 15),
+        formatTime: (value) => value, getCategory: () => null, isTaskDone: () => false, priorityLabels: {},
+        tasks: [
+          { id: "deadline", title: "Deadline", time: "09:00" },
+          { id: "block", title: "Block", time: "09:30", scheduleMode: "block", startTime: "09:00", endTime: "09:30" },
+          { id: "current", title: "Current", time: "09:15" },
+        ],
+      });
+      const byId = new Map(model.timedTasks.map((entry) => [entry.task.id, entry]));
+      assert.equal(byId.get("deadline").isOverdue, true);
+      assert.equal(byId.get("block").isOverdue, false);
+      assert.equal(byId.get("current").isOverdue, false);
+      assert.equal(byId.get("deadline").visualDuration, 30);
     },
   },
   {

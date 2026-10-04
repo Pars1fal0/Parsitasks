@@ -63,6 +63,8 @@ jobs:
         run: npm run test:appearance
       - name: Verify button icons on desktop and mobile
         run: npm run test:icons
+      - name: Verify task and archive rollback, checklist limits and late calendar intervals
+        run: npm run test:task-recovery
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

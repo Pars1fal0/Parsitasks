@@ -3,6 +3,21 @@ const { createTaskState } = require("../app/src/tasks/task-state.js");
 
 module.exports = [
   {
+    name: "restores the original day of a moved repeat without changing other skipped dates",
+    fn() {
+      const state = {
+        goals: [], habits: [], taskOrder: {},
+        tasks: [
+          { id: "series", excludedDates: { "2026-10-03": true, "2026-10-04": true } },
+          { id: "replacement", sourceTaskId: "series", movedFromDate: "2026-10-03", date: "2026-10-04" },
+        ],
+      };
+      createTaskState({ getState: () => state }).deleteMovedReplacement("replacement", { restoreSourceOccurrence: true });
+      assert.equal(state.tasks[0].excludedDates["2026-10-03"], undefined);
+      assert.equal(state.tasks[0].excludedDates["2026-10-04"], true);
+    },
+  },
+  {
     name: "restores a source occurrence when deleting its moved replacement",
     fn() {
       const state = {

@@ -3,6 +3,12 @@
     const saveError = ctx.els.habitForm.querySelector(".form-save-error");
     function saveHabitFromForm(event) {
       event.preventDefault();
+      const title = ctx.cleanText(ctx.els.habitTitle.value);
+      if (!title) {
+        ctx.showToast("Укажи название привычки");
+        ctx.els.habitTitle.focus();
+        return false;
+      }
       const undo = ctx.createUndoSnapshot();
       const id = ctx.els.habitId.value || ctx.createId();
       const existing = ctx.findHabit(id);
@@ -10,7 +16,7 @@
       const now = new Date().toISOString();
       let habit = {
         id,
-        title: existing?.title || ctx.cleanText(ctx.els.habitTitle.value),
+        title: existing?.title || title,
         titleHistory: existing?.titleHistory || [],
         type,
         repeat: ctx.normalizeHabitRepeat(ctx.els.habitRepeat.value),
@@ -49,8 +55,8 @@
           )
         : habit;
       habit = ctx.applyHabitTitleChange
-        ? ctx.applyHabitTitleChange(habit, ctx.els.habitTitle.value, ctx.getActiveDate(), { cleanText: ctx.cleanText, updatedAt: now })
-        : { ...habit, title: ctx.cleanText(ctx.els.habitTitle.value) };
+        ? ctx.applyHabitTitleChange(habit, title, ctx.getActiveDate(), { cleanText: ctx.cleanText, updatedAt: now })
+        : { ...habit, title };
 
       if (existing && existing.reminderTime !== habit.reminderTime) habit.notified = {};
       ctx.upsertHabit(habit);

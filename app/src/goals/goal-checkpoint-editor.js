@@ -13,6 +13,10 @@
     }
 
     function getSteps() {
+      if (ctx.maxItems && steps.length >= ctx.maxItems && clean(ctx.els.goalCheckpointInput.value)) {
+        focus();
+        throw new Error(`Не больше ${ctx.maxItems} пунктов. Удали один, чтобы добавить новый.`);
+      }
       commitPending(false);
       return steps.map((step) => ({ ...step }));
     }

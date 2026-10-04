@@ -3,6 +3,7 @@
   const TIMELINE_SLOT_MINUTES = 15;
   const DEFAULT_BLOCK_MINUTES = 60;
   const TIMELINE_LAST_MINUTE = 23 * 60 + 45;
+  const TIMELINE_DAY_END = 23 * 60 + 59;
 
   function buildTimelineModel({ activeDate, formatTime, getCategory, isTaskDone, now = new Date(), priorityLabels, tasks, todayKey }) {
     const timedTasks = [];
@@ -24,7 +25,7 @@
         done,
         endMinutes,
         hour: Number.isFinite(minutes) ? Math.floor(minutes / 60) : null,
-        isOverdue: Number.isFinite(endMinutes) && !done && isTaskTimeOverdue(activeDate, endMinutes, resolvedTodayKey, currentMinutes),
+        isOverdue: Number.isFinite(minutes) && !done && isTaskTimeOverdue(activeDate, Number.isFinite(block.end) ? block.end : minutes, resolvedTodayKey, currentMinutes),
         isTimeBlock: Number.isFinite(block.start) && Number.isFinite(block.end),
         metaLabel: category?.name || priorityLabels[task.priority] || "Задача",
         minutes,
@@ -110,11 +111,13 @@
   }
 
   function nextBlockTimes(start, end, edge, delta) {
+    if (!delta) return { start, end };
     if (edge === "start") {
-      const nextStart = Math.max(0, Math.min(end - TIMELINE_SLOT_MINUTES, start + delta));
+      const minDuration = Math.min(TIMELINE_SLOT_MINUTES, end - start);
+      const nextStart = Math.max(0, Math.min(end - minDuration, start + delta));
       return { start: nextStart, end };
     }
-    const nextEnd = Math.max(start + TIMELINE_SLOT_MINUTES, Math.min(TIMELINE_LAST_MINUTE, end + delta));
+    const nextEnd = Math.min(TIMELINE_DAY_END, Math.max(start + TIMELINE_SLOT_MINUTES, end + delta));
     return { start, end: nextEnd };
   }
 
@@ -192,6 +195,7 @@
     DEFAULT_BLOCK_MINUTES,
     TIMELINE_HOUR_HEIGHT,
     TIMELINE_LAST_MINUTE,
+    TIMELINE_DAY_END,
     TIMELINE_SLOT_MINUTES,
     buildTimelineModel,
     formatBlockLabel,

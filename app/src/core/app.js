@@ -682,6 +682,7 @@ const tasksView = window.RhythmTasksView.createTasksView({
   restoreTaskDate,
   restoreOverdueTask,
   stopTaskSeries,
+  restoreState: restoreFailedSave,
   saveState,
   setDraggedTask: (taskId, dateKey) => {
     calendarDragController.setDraggedTask(taskId, dateKey);
@@ -943,7 +944,7 @@ async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime) {
     options: { separateOccurrence: true }, helpers: { createId, taskScheduledOn } });
   if (task.repeat !== "none") moved = state.tasks.at(-1);
   const duration = isTimeBlock(task) ? timeToMinutes(task.endTime) - timeToMinutes(task.startTime) : 60;
-  const end = Math.min(23 * 60 + 45, timeToMinutes(startTime) + duration);
+  const end = Math.min(23 * 60 + 59, timeToMinutes(startTime) + duration);
   Object.assign(moved, { scheduleMode: "block", startTime: minutesToTime(Math.max(0, end - duration)),
     endTime: minutesToTime(end), time: minutesToTime(end), updatedAt: new Date().toISOString() });
   delete moved.notified?.[targetDate];
@@ -988,6 +989,8 @@ const archiveView = window.RhythmArchiveView.createArchiveView({
   archiveEntryMatchesSearch,
   confirmAction,
   createUndoSnapshot,
+  getState: () => state,
+  restoreState: restoreFailedSave,
   deleteTask,
   escapeHtml,
   formatLongDate,
@@ -3801,15 +3804,28 @@ function restoreFailedSave(snapshot) {
 
 function restoreUndoSnapshot(snapshot) {
   if (!snapshot?.state) return;
+  const previous = createUndoSnapshot();
+  let saved = false;
+  const rollback = () => {
+    restoreFailedSave(previous);
+    activeDate = previous.activeDate;
+    activeView = previous.activeView;
+    render();
+  };
   try {
     replaceState(JSON.parse(snapshot.state));
     activeDate = normalizeDateKey(snapshot.activeDate, toDateKey(new Date()));
     activeView = snapshot.activeView || "tasks";
-    saveState();
+    if (saveState() === false) {
+      rollback();
+      return;
+    }
+    saved = true;
     resetTaskForm({ open: false });
     render();
     showToast("Действие отменено");
   } catch {
+    if (!saved) rollback();
     showToast("Не удалось отменить действие");
   }
 }

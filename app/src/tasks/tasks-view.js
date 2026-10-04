@@ -10,6 +10,12 @@
     let selectionMode = false;
     let selectionDate = null;
     let selectableEntries = [];
+    function saveChange(undo) {
+      if (ctx.saveState() !== false) return true;
+      ctx.restoreState(undo);
+      ctx.render();
+      return false;
+    }
     let pane = ctx.getPane?.() || "day";
     const backlogHint = document.createElement("p");
     backlogHint.className = "muted task-backlog-hint";
@@ -319,7 +325,7 @@
         later.addEventListener("click", () => ctx.deferTasks?.([{ taskId: task.id, dateKey }]));
         done.addEventListener("click", () => {
           const undo = ctx.createUndoSnapshot(); task.completed ||= {}; task.completed[dateKey] = true;
-          if (ctx.saveState() === false) { delete task.completed[dateKey]; ctx.render(); return; }
+          if (!saveChange(undo)) return;
           ctx.render(); ctx.showToast("Задача выполнена", { undo });
         });
         open.addEventListener("click", () => ctx.openDate(dateKey));
@@ -431,7 +437,7 @@
         if (sourceId && sourceId !== task.id) {
           const undo = ctx.createUndoSnapshot();
           ctx.reorderTask(activeDate, sourceId, task.id);
-          ctx.saveState();
+          if (!saveChange(undo)) return;
           ctx.render();
           ctx.showToast("Порядок задач изменен", { undo });
         }
@@ -443,7 +449,8 @@
       check.addEventListener("click", () => {
         const undo = ctx.createUndoSnapshot();
         task.completed[activeDate] = !done;
-        ctx.saveState();
+        task.updatedAt = new Date().toISOString();
+        if (!saveChange(undo)) return;
         ctx.render();
         ctx.showToast(done ? "Задача снова активна" : "Задача выполнена", { undo });
       });
@@ -640,7 +647,7 @@
       if (!sourceId || !targetId || sourceId === targetId) return;
       const undo = ctx.createUndoSnapshot();
       ctx.reorderTask(ctx.getActiveDate(), sourceId, targetId);
-      ctx.saveState();
+      if (!saveChange(undo)) return;
       ctx.render();
       ctx.showToast(`${title}: порядок обновлен`, { undo });
     }
@@ -772,7 +779,8 @@
         doneButton.addEventListener("click", () => {
           const undo = ctx.createUndoSnapshot();
           entry.task.completed[entry.dateKey] = true;
-          ctx.saveState();
+          entry.task.updatedAt = new Date().toISOString();
+          if (!saveChange(undo)) return;
           ctx.render();
           ctx.showToast("Просроченная задача закрыта", { undo });
         });
@@ -805,8 +813,9 @@
     }
 
     async function deleteTaskWithScope(task, dateKey) {
+      const state = ctx.getState();
       const source = task.sourceTaskId ? ctx.getState().tasks.find((item) => item.id === task.sourceTaskId) : null;
-      if (task.sourceTaskId && source?.excludedDates?.[dateKey] === true) {
+      if (task.sourceTaskId && source?.excludedDates?.[task.movedFromDate || task.date] === true) {
         const choice = await ctx.confirmAction({
           title: "Удалить перенесенную задачу?",
           message: "Можно вернуть исходный повтор на этот день или оставить день исключенным из серии.",
@@ -814,10 +823,10 @@
           confirmLabel: "Оставить день пустым",
           tone: "danger",
         });
-        if (!choice) return;
+        if (!choice || ctx.getState() !== state) return;
         const undo = ctx.createUndoSnapshot();
         ctx.deleteMovedReplacement(task.id, { restoreSourceOccurrence: choice === "secondary" });
-        ctx.saveState();
+        if (!saveChange(undo)) return;
         ctx.render();
         ctx.showToast(choice === "secondary" ? "Исходный повтор возвращен" : "Перенесенная задача удалена", { undo });
         return;
@@ -825,7 +834,7 @@
       if (task.repeat === "none") {
         const undo = ctx.createUndoSnapshot();
         ctx.deleteTask(task.id);
-        ctx.saveState();
+        if (!saveChange(undo)) return;
         ctx.render();
         ctx.showToast("Задача удалена", { undo });
         return;
@@ -843,6 +852,7 @@
         confirmLabel: "Прекратить повторение с этой даты",
         tone: "danger",
       });
+      if (ctx.getState() !== state) return;
       if (scope === "secondary") {
         ctx.excludeTaskDate(task, dateKey);
       } else if (scope === true) {

@@ -38,6 +38,12 @@
 
     function saveTaskFromForm(event) {
       event.preventDefault();
+      const title = ctx.cleanText(ctx.els.taskTitle.value);
+      if (!title) {
+        ctx.showToast("Укажи название задачи");
+        ctx.els.taskTitle.focus();
+        return;
+      }
       const undo = ctx.createUndoSnapshot();
       const id = ctx.els.taskId.value || ctx.createId();
       const existing = ctx.findTask(id);
@@ -62,9 +68,16 @@
         ctx.els.taskRepeatUntil.focus();
         return;
       }
+      let checklist;
+      try {
+        checklist = global.RhythmTaskChecklist.normalizeItems(checklistEditor.getSteps(), ctx.createId);
+      } catch (error) {
+        ctx.showToast(error.message);
+        return;
+      }
       const task = {
         id,
-        title: ctx.cleanText(ctx.els.taskTitle.value),
+        title,
         date: deferred ? null : ctx.els.taskDate.value || ctx.getActiveDate(),
         dueDate: ctx.normalizeDateKey(dueDateField.value, ""),
         dueTime: dueTimeField.value,
@@ -86,7 +99,7 @@
         acknowledgedOverdue: existing?.acknowledgedOverdue || {},
         excludedDates: existing?.excludedDates || {},
         notified: { ...(existing?.notified || {}) },
-        checklist: global.RhythmTaskChecklist.normalizeItems(checklistEditor.getSteps(), ctx.createId),
+        checklist,
         checklistLogs: existing?.checklistLogs || {},
         createdAt: existing?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),

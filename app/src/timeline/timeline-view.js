@@ -6,6 +6,7 @@
   const {
     DEFAULT_BLOCK_MINUTES,
     TIMELINE_LAST_MINUTE,
+    TIMELINE_DAY_END,
     TIMELINE_SLOT_MINUTES,
     buildTimelineModel,
     formatBlockLabel,
@@ -250,11 +251,11 @@
 
     function createTaskBeside(entry) {
       if (!Number.isFinite(entry?.minutes) || !ctx.createTaskAtTime) return false;
-      const start = entry.minutes;
+      const start = entry.isTimeBlock ? entry.minutes : Math.min(TIMELINE_LAST_MINUTE, entry.minutes);
       const end = entry.isTimeBlock && Number.isFinite(entry.endMinutes)
         ? entry.endMinutes
-        : Math.min(TIMELINE_LAST_MINUTE, start + DEFAULT_BLOCK_MINUTES);
-      ctx.createTaskAtTime(formatMinutes(start), formatMinutes(Math.max(start + TIMELINE_SLOT_MINUTES, end)));
+        : Math.min(TIMELINE_DAY_END, start + DEFAULT_BLOCK_MINUTES);
+      ctx.createTaskAtTime(formatMinutes(start), formatMinutes(end));
       return true;
     }
 
@@ -342,7 +343,7 @@
       const startX = event.clientX;
       const startY = event.clientY;
       const originalStart = entry.minutes;
-      const duration = entry.isTimeBlock ? Math.max(TIMELINE_SLOT_MINUTES, entry.endMinutes - entry.minutes) : 0;
+      const duration = entry.isTimeBlock ? entry.endMinutes - entry.minutes : 0;
       const isTouch = event.pointerType === "touch";
       let didMove = false;
       let latestStart = originalStart;
@@ -375,7 +376,7 @@
         moveEvent.preventDefault();
         const rawDelta = ((moveEvent.clientY - startY) / getSlotHeight(card.closest(".timeline-hour-slot"))) * 60;
         const delta = snapMinutes(rawDelta);
-        const maxStart = duration ? TIMELINE_LAST_MINUTE - duration : TIMELINE_LAST_MINUTE;
+        const maxStart = duration ? TIMELINE_DAY_END - duration : TIMELINE_DAY_END;
         const nextStart = Math.max(0, Math.min(maxStart, originalStart + delta));
         if (distance > 3) didMove = true;
         if (didMove) timelineDrag.showUnscheduledTarget();
@@ -496,8 +497,8 @@
       if (!ctx.createTaskAtTime) return;
       slot.addEventListener("pointerdown", (event) => {
         if (event.button !== 0 || event.target.closest(".timeline-task") || event.target.closest(".timeline-now-line")) return;
-        const startMinutes = Math.min(TIMELINE_LAST_MINUTE - TIMELINE_SLOT_MINUTES, minuteFromPointerFree(event, slot, hour));
-        let latestEnd = Math.min(TIMELINE_LAST_MINUTE, startMinutes + DEFAULT_BLOCK_MINUTES);
+        const startMinutes = minuteFromPointerFree(event, slot, hour);
+        let latestEnd = Math.min(TIMELINE_DAY_END, startMinutes + DEFAULT_BLOCK_MINUTES);
         const isTouch = event.pointerType === "touch";
         let didMove = false;
         let active = false;
@@ -529,7 +530,7 @@
           moveEvent.preventDefault();
           if (Math.abs(moveEvent.clientY - startY) > 4) didMove = true;
           const rawEnd = minuteFromPointerFree(moveEvent, slot, hour);
-          latestEnd = Math.max(startMinutes + TIMELINE_SLOT_MINUTES, rawEnd);
+          latestEnd = Math.min(TIMELINE_DAY_END, Math.max(startMinutes + TIMELINE_SLOT_MINUTES, rawEnd));
           updateCreatePreview(preview, startMinutes, latestEnd);
           timelineDrag.showPointerHint(formatBlockLabel(startMinutes, latestEnd), moveEvent);
         };
@@ -572,9 +573,9 @@
       slot.addEventListener("click", (event) => {
         if (slot.dataset.suppressClick === "true") return;
         if (event.target.closest(".timeline-task") || event.target.closest(".timeline-now-line")) return;
-        const minutes = Math.min(TIMELINE_LAST_MINUTE - TIMELINE_SLOT_MINUTES, minuteFromPointer(event, slot, hour));
+        const minutes = minuteFromPointer(event, slot, hour);
         const startTime = formatMinutes(minutes);
-        const end = Math.min(TIMELINE_LAST_MINUTE, minutes + DEFAULT_BLOCK_MINUTES);
+        const end = Math.min(TIMELINE_DAY_END, minutes + DEFAULT_BLOCK_MINUTES);
         const endTime = formatMinutes(end);
         ctx.createTaskAtTime(startTime, endTime);
       });

@@ -1,6 +1,7 @@
 (function (global) {
   const layout = global.RhythmTimelineLayout || (typeof require !== "undefined" ? require("../timeline/timeline-layout.js") : null);
   const HOUR_HEIGHT = 96;
+  const DAY_END = 23 * 60 + 59;
   const DRAG_TYPE = "application/x-parsitasks-calendar";
 
   function freeIntervals(entries, start = 480, end = 1320) {
@@ -176,7 +177,7 @@
           handle.addEventListener("keydown", async (event) => {
             if (!["ArrowUp", "ArrowDown"].includes(event.key)) return;
             event.preventDefault();
-            const end = Math.max(entry.minutes + 15, Math.min(layout.TIMELINE_LAST_MINUTE, entry.endMinutes + (event.key === "ArrowUp" ? -15 : 15)));
+            const end = Math.min(DAY_END, Math.max(entry.minutes + 15, entry.endMinutes + (event.key === "ArrowUp" ? -15 : 15)));
             const changed = await ctx.resizeTask(task.id, date, time(entry.minutes), time(end));
             if (changed) [...root.querySelectorAll(".calendar-time-event")].find((card) => card.dataset.eventId === task.id && card.dataset.date === date)?.querySelector(".calendar-event-resize")?.focus({ preventScroll: true });
           });
@@ -189,7 +190,7 @@
             resizing = true;
             handle.setPointerCapture(event.pointerId);
             const move = (pointer) => {
-              end = Math.max(entry.minutes + 15, Math.min(layout.TIMELINE_LAST_MINUTE,
+              end = Math.min(DAY_END, Math.max(entry.minutes + 15,
                 layout.snapMinutes(entry.endMinutes + (pointer.clientY - initialY) / hourHeight * 60)));
               sizeCard(node, blockHeight(entry.minutes, end));
               open.querySelector("small").textContent = `${time(entry.minutes)}–${time(end)}`;
@@ -288,7 +289,7 @@
           const minuteAt = (event) => event.type === "click" && !event.detail ? hour * 60 : quarterMinute(event.clientY - hours.getBoundingClientRect().top, hourHeight);
           const slot = button("calendar-hour-slot", "", (event) => {
             const start = minuteAt(event);
-            ctx.createTask(day, time(start), time(Math.min(layout.TIMELINE_LAST_MINUTE, start + 60)));
+            ctx.createTask(day, time(start), time(Math.min(DAY_END, start + 60)));
           });
           slot.dataset.time = time(hour * 60);
           slot.setAttribute("aria-label", `Новая задача · ${ctx.formatLongDate(day)} · ${time(hour * 60)}`);

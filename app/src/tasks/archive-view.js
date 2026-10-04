@@ -11,6 +11,13 @@
       : "all";
     if (ctx.els?.archivePeriodFilter) ctx.els.archivePeriodFilter.value = period;
 
+    function saveChange(undo) {
+      if (ctx.saveState() !== false) return true;
+      ctx.restoreState(undo);
+      ctx.render();
+      return false;
+    }
+
     ctx.els?.archiveSelectAll?.addEventListener("change", () => {
       selectedKeys.clear();
       if (ctx.els.archiveSelectAll.checked) visibleEntries.forEach((entry) => selectedKeys.add(entryKey(entry)));
@@ -127,20 +134,22 @@
       restoreButton.type = "button";
       restoreButton.textContent = "Вернуть в задачи";
       restoreButton.addEventListener("click", async () => {
+        const state = ctx.getState();
         const choice = await ctx.confirmAction({
           title: "Куда вернуть задачу?",
           message: `«${entry.task.title}» была завершена ${ctx.formatLongDate(entry.dateKey)}. Можно вернуть ее на исходный день или перенести в сегодняшний план.`,
           confirmLabel: "На сегодня",
           secondaryLabel: "На исходную дату",
         });
-        if (!choice) return;
+        if (!choice || ctx.getState() !== state) return;
         const undo = ctx.createUndoSnapshot();
         entry.task.completed[entry.dateKey] = false;
+        entry.task.updatedAt = new Date().toISOString();
         if (choice !== "secondary") {
-          ctx.postponeTask(entry.task, entry.dateKey, ctx.toDateKey(new Date()));
+          ctx.postponeTask(entry.task, entry.dateKey, ctx.toDateKey(new Date()), { undo });
           return;
         }
-        ctx.saveState();
+        if (!saveChange(undo)) return;
         ctx.render();
         ctx.showToast("Задача возвращена в план", { undo });
       });
@@ -177,18 +186,20 @@
     async function restoreSelected() {
       const entries = selectedEntries();
       if (!entries.length) return;
+      const state = ctx.getState();
       const confirmed = await ctx.confirmAction({
         title: "Вернуть задачи в план?",
         message: `Задачи будут снова открыты на исходных датах. Выбрано: ${entries.length}.`,
         confirmLabel: "Вернуть",
       });
-      if (!confirmed) return;
+      if (!confirmed || ctx.getState() !== state) return;
       const undo = ctx.createUndoSnapshot();
       entries.forEach((entry) => {
         entry.task.completed[entry.dateKey] = false;
+        entry.task.updatedAt = new Date().toISOString();
       });
+      if (!saveChange(undo)) return;
       selectedKeys.clear();
-      ctx.saveState();
       ctx.render();
       ctx.showToast(`Возвращено задач: ${entries.length}`, { undo });
     }
@@ -196,23 +207,25 @@
     async function deleteSelected() {
       const entries = selectedEntries();
       if (!entries.length) return;
+      const state = ctx.getState();
       const confirmed = await ctx.confirmAction({
         title: "Удалить записи из архива?",
         message: `Будет удалено записей: ${entries.length}. Повторяющиеся серии сохранятся.`,
         confirmLabel: "Удалить",
         tone: "danger",
       });
-      if (!confirmed) return;
+      if (!confirmed || ctx.getState() !== state) return;
       const undo = ctx.createUndoSnapshot();
       const deletedTaskIds = removeArchiveEntries(entries);
       deletedTaskIds.forEach(ctx.deleteTask);
+      if (!saveChange(undo)) return;
       selectedKeys.clear();
-      ctx.saveState();
       ctx.render();
       ctx.showToast(`Удалено записей: ${entries.length}`, { undo });
     }
 
     async function deleteEntry(entry) {
+      const state = ctx.getState();
       const confirmed = await ctx.confirmAction({
         title: "Удалить запись из архива?",
         message: entry.task.repeat === "none"
@@ -221,11 +234,11 @@
         confirmLabel: "Удалить",
         tone: "danger",
       });
-      if (!confirmed) return;
+      if (!confirmed || ctx.getState() !== state) return;
       const undo = ctx.createUndoSnapshot();
       removeArchiveEntries([entry]).forEach(ctx.deleteTask);
+      if (!saveChange(undo)) return;
       selectedKeys.delete(entryKey(entry));
-      ctx.saveState();
       ctx.render();
       ctx.showToast("Запись удалена из архива", { undo });
     }

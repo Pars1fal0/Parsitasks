@@ -60,7 +60,7 @@ const { chromium } = require("playwright-core");
     await habit("check").locator(".check-button").click();
     check("failed checkbox reverts instead of claiming completion", !(await habit("check").locator(".check-button").getAttribute("class")).includes("is-checked"), await page.locator("#appToast").innerText());
     await closeToast();
-    await habit("water").getByRole("button", { name: "Увеличить Вода", exact: true }).click();
+    await habit("water").getByRole("button", { name: "Вода: добавить 100 мл", exact: true }).click();
     check("failed numeric habit restores its previous value", (await habit("water").locator('input[type="number"]').inputValue()) === "300", await habit("water").innerText());
     await closeToast();
     await page.locator("#openHabitForm").click();

@@ -3,6 +3,9 @@ const { installDom } = require("./dom-test-utils.cjs");
 
 function loadDomModules() {
   installDom();
+  const taskPaneTabs = document.createElement("div");
+  taskPaneTabs.className = "task-pane-tabs";
+  document.body.appendChild(taskPaneTabs);
   global.RhythmHeatmapView = { createHeatmapView: () => ({ renderHeatmap() {} }) };
   global.RhythmActivityCharts = { createActivityCharts: () => ({ render() {} }) };
   delete require.cache[require.resolve("../app/src/tasks/archive-view.js")];
@@ -116,6 +119,8 @@ module.exports = [
         fillHabitForm() {},
         formatHabitRepeat: () => "daily",
         getActiveDate: () => "2026-07-02",
+        todayKey: () => "2026-07-02",
+        habitStatusOnDate: () => "missed",
         habitStreak: () => 4,
         render() {},
         renderDailyPulse() {},
@@ -157,6 +162,8 @@ module.exports = [
         fillHabitForm() {},
         formatHabitRepeat: () => "daily",
         getActiveDate: () => "2026-07-02",
+        todayKey: () => "2026-07-02",
+        habitStatusOnDate: () => "missed",
         habitStreak: () => 0,
         render() {},
         renderDailyPulse() {},
@@ -198,6 +205,8 @@ module.exports = [
         fillHabitForm() {},
         formatHabitRepeat: () => "daily",
         getActiveDate: () => "2026-07-02",
+        todayKey: () => "2026-07-02",
+        habitStatusOnDate: () => "missed",
         habitStreak: () => 0,
         render() {},
         renderDailyPulse() {},
@@ -231,6 +240,8 @@ module.exports = [
         fillHabitForm() {},
         formatHabitRepeat: () => "daily",
         getActiveDate: () => "2026-07-02",
+        todayKey: () => "2026-07-02",
+        habitStatusOnDate: () => "missed",
         habitStreak: () => 0,
         render: () => {
           rendered = true;
@@ -263,6 +274,7 @@ module.exports = [
     fn() {
       const { tasks } = loadDomModules();
       const task = { categoryId: "", completed: {}, id: "task-1", priority: "high", repeat: "none", time: "09:00", title: "Missed call" };
+      const state = { tasks: [task] };
       let deletedId = "";
       let saved = false;
       let rendered = false;
@@ -272,6 +284,7 @@ module.exports = [
         overduePanel: document.createElement("section"),
       };
       const view = tasks.createTasksView({
+        getState: () => state,
         createUndoSnapshot: () => ({}),
         deleteTask: (taskId) => {
           deletedId = taskId;

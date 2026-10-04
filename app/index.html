@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
     <link rel="manifest" href="manifest.webmanifest">
     <script src="src/auth/auth-gate.js?v=1"></script>
-    <script src="src/platform/shell-version.js?v=3"></script>
+    <script src="src/platform/shell-version.js?v=4"></script>
     <link rel="stylesheet" href="assets/styles/styles.css?v=45">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
     <link rel="stylesheet" href="assets/styles/study.css?v=6">
@@ -475,17 +475,17 @@
                     <div class="form-grid">
                       <label id="taskDeadlineTimeField">
                         Время в плане
-                        <input id="taskTime" type="time" step="300">
+                        <input id="taskTime" type="time" step="60">
                       </label>
                     </div>
                     <div class="form-grid" id="taskBlockTimeFields" hidden>
                       <label>
                         Начало
-                        <input id="taskStartTime" type="time" step="300">
+                        <input id="taskStartTime" type="time" step="60">
                       </label>
                       <label>
                         Конец
-                        <input id="taskEndTime" type="time" step="300">
+                        <input id="taskEndTime" type="time" step="60">
                       </label>
                     </div>
                     <div class="time-presets" aria-label="Быстрый выбор времени">
@@ -2114,7 +2114,7 @@
     <script src="src/core/workspace-local.js?v=1" defer></script>
     <script src="src/core/storage.js?v=1" defer></script>
     <script src="src/core/navigation-state.js?v=2" defer></script>
-    <script src="src/tasks/archive-view.js?v=4" defer></script>
+    <script src="src/tasks/archive-view.js?v=5" defer></script>
     <script src="src/ui/disclosure-menus.js?v=2" defer></script>
     <script src="src/core/app-events.js?v=5" defer></script>
     <script src="src/calendar/heatmap-view.js?v=3" defer></script>
@@ -2125,10 +2125,10 @@
     <script src="src/ui/confirm-dialog.js?v=4" defer></script>
     <script src="src/ui/form-dialog.js?v=1" defer></script>
     <script src="src/tasks/categories.js?v=7" defer></script>
-    <script src="src/goals/goal-checkpoint-editor.js?v=2" defer></script>
+    <script src="src/goals/goal-checkpoint-editor.js?v=3" defer></script>
     <script src="src/ui/global-search.js?v=3" defer></script>
     <script src="src/goals/goals-view.js?v=11" defer></script>
-    <script src="src/habits/habit-form.js?v=6" defer></script>
+    <script src="src/habits/habit-form.js?v=7" defer></script>
     <script src="src/habits/habits-view.js?v=8" defer></script>
     <script src="src/habits/habit-freeze-dialog.js?v=1" defer></script>
     <script src="src/settings/import-export.js?v=6" defer></script>
@@ -2137,25 +2137,25 @@
     <script src="src/platform/notifications.js?v=3" defer></script>
     <script src="src/tasks/overdue-controller.js?v=4" defer></script>
     <script src="src/tasks/task-schedule.js?v=1" defer></script>
-    <script src="src/tasks/task-form.js?v=13" defer></script>
-    <script src="src/tasks/tasks-view.js?v=19" defer></script>
+    <script src="src/tasks/task-form.js?v=15" defer></script>
+    <script src="src/tasks/tasks-view.js?v=20" defer></script>
     <script src="src/tasks/task-moves.js?v=9" defer></script>
-    <script src="src/tasks/task-state.js?v=5" defer></script>
+    <script src="src/tasks/task-state.js?v=6" defer></script>
     <script src="src/settings/settings-sync.js?v=1" defer></script>
     <script src="src/settings/settings-transfer.js?v=2" defer></script>
     <script src="src/sync/save-status.js?v=2" defer></script>
     <script src="src/settings/settings-controller.js?v=9" defer></script>
     <script src="src/settings/workspace-guide.js?v=1" defer></script>
-    <script src="src/timeline/timeline-layout.js?v=1" defer></script>
+    <script src="src/timeline/timeline-layout.js?v=2" defer></script>
     <script src="src/timeline/timeline-menu.js?v=5" defer></script>
     <script src="src/timeline/timeline-drag.js?v=3" defer></script>
-    <script src="src/timeline/timeline-view.js?v=11" defer></script>
-    <script src="src/timeline/timeline-controller.js?v=8" defer></script>
-    <script src="src/calendar/calendar-schedule.js?v=6" defer></script>
+    <script src="src/timeline/timeline-view.js?v=12" defer></script>
+    <script src="src/timeline/timeline-controller.js?v=9" defer></script>
+    <script src="src/calendar/calendar-schedule.js?v=7" defer></script>
     <script src="src/core/daily-pulse.js?v=1" defer></script>
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=4" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=64" defer></script>
+    <script src="src/core/app.js?v=66" defer></script>
   </body>
 </html>
