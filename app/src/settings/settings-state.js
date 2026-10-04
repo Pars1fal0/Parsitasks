@@ -8,7 +8,8 @@
     }
 
     function normalizeAccentPreference(value) {
-      return ["emerald", "blue", "orange", "violet"].includes(value) ? value : "emerald";
+      const colors = global.RhythmAccentColors || require("./accent-colors.js");
+      return colors.normalize(value);
     }
 
     function normalizeNotificationSetting(value) {

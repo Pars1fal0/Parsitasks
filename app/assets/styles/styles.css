@@ -229,6 +229,7 @@ button:disabled {
 }
 
 .ui-icon {
+  display: block;
   width: 18px;
   height: 18px;
   flex: 0 0 auto;
@@ -236,7 +237,7 @@ button:disabled {
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-width: 2;
+  stroke-width: 1.8;
 }
 
 .ambient-grid {
@@ -2254,6 +2255,8 @@ body.has-floating-task-form::before {
 }
 
 .journal-editor-toolbar button {
+  display: grid;
+  place-items: center;
   min-width: 34px;
   min-height: 32px;
   border: 0;
@@ -5085,6 +5088,16 @@ body.has-floating-task-form::before {
   outline: 0;
 }
 
+.timeline-menu-button .ui-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.timeline-task.is-tiny-block .timeline-menu-button .ui-icon {
+  width: 12px;
+  height: 12px;
+}
+
 .timeline-task-menu {
   position: absolute;
   top: calc(100% + 8px);
@@ -5632,6 +5645,8 @@ body.has-floating-task-form::before {
 }
 
 .timeline-scale-control button {
+  display: grid;
+  place-items: center;
   min-width: 36px;
 }
 

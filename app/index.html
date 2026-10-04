@@ -10,72 +10,80 @@
     <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
     <link rel="manifest" href="manifest.webmanifest">
     <script src="src/auth/auth-gate.js?v=1"></script>
-    <script src="src/platform/shell-version.js?v=2"></script>
-    <link rel="stylesheet" href="assets/styles/styles.css?v=44">
+    <script src="src/platform/shell-version.js?v=3"></script>
+    <link rel="stylesheet" href="assets/styles/styles.css?v=45">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
     <link rel="stylesheet" href="assets/styles/study.css?v=6">
     <link rel="stylesheet" href="assets/styles/notes.css?v=1">
     <link rel="stylesheet" href="assets/styles/goals.css?v=2">
     <link rel="stylesheet" href="assets/styles/calendar-goals.css?v=1">
-    <link rel="stylesheet" href="assets/styles/board.css?v=2">
+    <link rel="stylesheet" href="assets/styles/board.css?v=3">
     <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=5">
     <link rel="stylesheet" href="assets/styles/workspace-guide.css?v=1">
     <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=7">
   <link rel="stylesheet" href="assets/styles/activity-charts.css?v=1">
+    <link rel="stylesheet" href="assets/styles/settings-appearance.css?v=1">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
     <svg class="icon-sprite" aria-hidden="true">
-      <symbol id="icon-nav-tasks" viewBox="0 0 24 24"><rect x="3" y="3" width="6" height="6" rx="1.5"/><path d="m3 17 2 2 4-4M13 6h8M13 17h8"/></symbol>
-      <symbol id="icon-nav-habits" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4M3 11V8a2 2 0 0 1 2-2h16M7 22l-4-4 4-4M21 13v3a2 2 0 0 1-2 2H3"/></symbol>
-      <symbol id="icon-nav-calendar" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01M16 18h.01"/></symbol>
-      <symbol id="icon-nav-study" viewBox="0 0 24 24"><path d="m2 10 10-6 10 6-10 6-10-6ZM6 12.4V18c4 2.7 8 2.7 12 0v-5.6M22 10v7"/></symbol>
-      <symbol id="icon-nav-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
-      <symbol id="icon-archive" viewBox="0 0 24 24"><path d="M4 7h16v13H4V7Z"/><path d="M3 4h18v3H3V4Z"/><path d="M9 11h6"/></symbol>
-      <symbol id="icon-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z"/><path d="M10 21h4"/></symbol>
-      <symbol id="icon-board" viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Z"/><path d="M8 8h4v4H8V8ZM14 8h2M14 12h2M8 16h8"/></symbol>
-      <symbol id="icon-bring-front" viewBox="0 0 24 24"><path d="M9 9h11v11H9V9Z"/><path d="M4 4h11v11H4V4Z"/></symbol>
-      <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2Z"/><path d="M8 2v4M16 2v4M3 10h18"/></symbol>
-      <symbol id="icon-category" viewBox="0 0 24 24"><path d="M4 5h7v7H4V5ZM13 5h7v7h-7V5ZM4 14h7v5H4v-5ZM13 14h7v5h-7v-5Z"/></symbol>
-      <symbol id="icon-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
-      <symbol id="icon-close" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></symbol>
+      <!-- Lucide 1.52.0; license: assets/vendor/lucide.LICENSE.txt -->
+      <symbol id="icon-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+      <symbol id="icon-zoom-in" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/></symbol>
+      <symbol id="icon-zoom-out" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/></symbol>
+      <symbol id="icon-heading-1" viewBox="0 0 24 24"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="m17 12 3-2v8"/></symbol>
+      <symbol id="icon-heading-2" viewBox="0 0 24 24"><path d="M4 12h8"/><path d="M4 18V6"/><path d="M12 18V6"/><path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1"/></symbol>
+      <symbol id="icon-bold" viewBox="0 0 24 24"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/></symbol>
+      <symbol id="icon-nav-tasks" viewBox="0 0 24 24"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></symbol>
+      <symbol id="icon-nav-habits" viewBox="0 0 24 24"><path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/></symbol>
+      <symbol id="icon-nav-calendar" viewBox="0 0 24 24"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M8 13h.01"/><path d="M12 13h.01"/><path d="M16 13h.01"/><path d="M8 17h.01"/><path d="M12 17h.01"/><path d="M16 17h.01"/></symbol>
+      <symbol id="icon-nav-study" viewBox="0 0 24 24"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></symbol>
+      <symbol id="icon-nav-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+      <symbol id="icon-archive" viewBox="0 0 24 24"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></symbol>
+      <symbol id="icon-bell" viewBox="0 0 24 24"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></symbol>
+      <symbol id="icon-board" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></symbol>
+      <symbol id="icon-bring-front" viewBox="0 0 24 24"><rect x="8" y="8" width="8" height="8" rx="2"/><path d="M4 10a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2"/><path d="M14 20a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2"/></symbol>
+      <symbol id="icon-calendar" viewBox="0 0 24 24"><path d="M8 2v3"/><path d="M16 2v3"/><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></symbol>
+      <symbol id="icon-category" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
       <symbol id="icon-chevron-left" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
       <symbol id="icon-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
-      <symbol id="icon-clock" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/><path d="M12 7v5l3 2"/></symbol>
-      <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></symbol>
-      <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/><path d="m13 7 4 4"/></symbol>
-      <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/></symbol>
-      <symbol id="icon-flame" viewBox="0 0 24 24"><path d="M12 22c4 0 7-3 7-7 0-4-3-7-4-12-4 3-7 6-7 10 0 2 1 4 3 5-1-4 1-6 3-8 0 4 2 5 2 8 0 2-2 4-4 4Z"/></symbol>
-      <symbol id="icon-grip" viewBox="0 0 24 24"><path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01"/></symbol>
-      <symbol id="icon-habit" viewBox="0 0 24 24"><path d="M7 12a5 5 0 0 1 10 0v6H7v-6Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></symbol>
-      <symbol id="icon-snowflake" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9 5l3 3 3-3M9 19l3-3 3 3M4 10l4 1-1-4M20 14l-4-1 1 4M7 17l1-4-4 1M17 7l-1 4 4-1"/></symbol>
-      <symbol id="icon-heat" viewBox="0 0 24 24"><path d="M4 4h4v4H4V4ZM10 4h4v4h-4V4ZM16 4h4v4h-4V4ZM4 10h4v4H4v-4ZM10 10h4v4h-4v-4ZM16 10h4v4h-4v-4ZM4 16h4v4H4v-4ZM10 16h4v4h-4v-4ZM16 16h4v4h-4v-4Z"/></symbol>
-      <symbol id="icon-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></symbol>
-      <symbol id="icon-hand" viewBox="0 0 24 24"><path d="M8 11V6a2 2 0 0 1 4 0v5"/><path d="M12 10V5a2 2 0 0 1 4 0v6"/><path d="M16 10V7a2 2 0 0 1 4 0v7c0 5-3 8-8 8h-1c-3 0-5-2-6-4l-2-4a2 2 0 0 1 3-2l2 2V8a2 2 0 0 1 4 0"/></symbol>
-      <symbol id="icon-image" viewBox="0 0 24 24"><path d="M4 5h16v14H4V5Z"/><path d="m4 16 5-5 4 4 2-2 5 5"/><path d="M15 9h.01"/></symbol>
-      <symbol id="icon-frame" viewBox="0 0 24 24"><path d="M4 4h16v16H4V4Z"/><path d="M8 4v4H4M16 4v4h4M8 20v-4H4M16 20v-4h4"/></symbol>
-      <symbol id="icon-group" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4"/><path d="M8 8h8v8H8V8Z"/></symbol>
-      <symbol id="icon-journal" viewBox="0 0 24 24"><path d="M5 3h13a2 2 0 0 1 2 2v16H7a3 3 0 0 1-3-3V4a1 1 0 0 1 1-1Z"/><path d="M8 3v18M11 8h6M11 12h6"/></symbol>
+      <symbol id="icon-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+      <symbol id="icon-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
+      <symbol id="icon-edit" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/></symbol>
+      <symbol id="icon-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="icon-flame" viewBox="0 0 24 24"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/></symbol>
+      <symbol id="icon-grip" viewBox="0 0 24 24"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></symbol>
+      <symbol id="icon-habit" viewBox="0 0 24 24"><path d="m2 9 3-3 3 3"/><path d="M13 18H7a2 2 0 0 1-2-2V6"/><path d="m22 15-3 3-3-3"/><path d="M11 6h6a2 2 0 0 1 2 2v10"/></symbol>
+      <symbol id="icon-snowflake" viewBox="0 0 24 24"><path d="m10 20-1.25-2.5L6 18"/><path d="M10 4 8.75 6.5 6 6"/><path d="m14 20 1.25-2.5L18 18"/><path d="m14 4 1.25 2.5L18 6"/><path d="m17 21-3-6h-4"/><path d="m17 3-3 6 1.5 3"/><path d="M2 12h6.5L10 9"/><path d="m20 10-1.5 2 1.5 2"/><path d="M22 12h-6.5L14 15"/><path d="m4 10 1.5 2L4 14"/><path d="m7 21 3-6-1.5-3"/><path d="m7 3 3 6h4"/></symbol>
+      <symbol id="icon-heat" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></symbol>
+      <symbol id="icon-history" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+      <symbol id="icon-hand" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></symbol>
+      <symbol id="icon-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+      <symbol id="icon-frame" viewBox="0 0 24 24"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></symbol>
+      <symbol id="icon-group" viewBox="0 0 24 24"><path d="M3 7V5c0-1.1.9-2 2-2h2"/><path d="M17 3h2c1.1 0 2 .9 2 2v2"/><path d="M21 17v2c0 1.1-.9 2-2 2h-2"/><path d="M7 21H5c-1.1 0-2-.9-2-2v-2"/><rect width="7" height="5" x="7" y="7" rx="1"/><rect width="7" height="5" x="10" y="12" rx="1"/></symbol>
+      <symbol id="icon-journal" viewBox="0 0 24 24"><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9.5 8h5"/><path d="M9.5 12H16"/><path d="M9.5 16H14"/></symbol>
       <symbol id="icon-nutrition" viewBox="0 0 24 24"><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 1 4 4 4 7h-4"/></symbol>
-      <symbol id="icon-more" viewBox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01"/></symbol>
-      <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M8 3h8l-1 6 3 4v2H6v-2l3-4-1-6ZM12 15v6"/></symbol>
+      <symbol id="icon-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+      <symbol id="icon-pin" viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></symbol>
       <symbol id="icon-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
-      <symbol id="icon-pointer" viewBox="0 0 24 24"><path d="m5 3 14 9-7 2-3 7L5 3Z"/></symbol>
-      <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
-      <symbol id="icon-redo" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 0-15-6.7"/><path d="M21 4v5h-5"/></symbol>
-      <symbol id="icon-rotate" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></symbol>
-      <symbol id="icon-send-back" viewBox="0 0 24 24"><path d="M4 4h11v11H4V4Z"/><path d="M9 9h11v11H9V9Z"/></symbol>
-      <symbol id="icon-search" viewBox="0 0 24 24"><path d="m21 21-4.3-4.3"/><path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z"/></symbol>
-      <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1A2 2 0 0 1 4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1A2 2 0 0 1 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3 1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1A2 2 0 0 1 19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.1a2 2 0 0 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></symbol>
-      <symbol id="icon-skip" viewBox="0 0 24 24"><path d="M7 4v16"/><path d="m11 7 5 5-5 5"/><path d="M18 5v14"/></symbol>
-      <symbol id="icon-tasks" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12"/><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"/></symbol>
-      <symbol id="icon-study" viewBox="0 0 24 24"><path d="M3 5.5c3-1.4 6-1.4 9 .2 3-1.6 6-1.6 9-.2v14c-3-1.4-6-1.4-9 .2-3-1.6-6-1.6-9-.2v-14ZM12 5.7v14"/></symbol>
-      <symbol id="icon-target" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/><path d="M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/><path d="M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/></symbol>
-      <symbol id="icon-text" viewBox="0 0 24 24"><path d="M5 5h14M12 5v14M8 19h8"/></symbol>
-      <symbol id="icon-duplicate" viewBox="0 0 24 24"><path d="M8 8h11v11H8V8Z"/><path d="M5 16H4V4h12v1"/></symbol>
-      <symbol id="icon-lock" viewBox="0 0 24 24"><path d="M6 10h12v10H6V10Z"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></symbol>
-      <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/></symbol>
-      <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 4h14"/></symbol>
+      <symbol id="icon-pointer" viewBox="0 0 24 24"><path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z"/></symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+      <symbol id="icon-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/></symbol>
+      <symbol id="icon-rotate" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="icon-send-back" viewBox="0 0 24 24"><rect x="14" y="14" width="8" height="8" rx="2"/><rect x="2" y="2" width="8" height="8" rx="2"/><path d="M7 14v1a2 2 0 0 0 2 2h1"/><path d="M14 7h1a2 2 0 0 1 2 2v1"/></symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></symbol>
+      <symbol id="icon-settings" viewBox="0 0 24 24"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="icon-skip" viewBox="0 0 24 24"><path d="M10.029 4.285A2 2 0 0 0 7 6v12a2 2 0 0 0 3.029 1.715l9.997-5.998a2 2 0 0 0 .003-3.432z"/><path d="M3 4v16"/></symbol>
+      <symbol id="icon-tasks" viewBox="0 0 24 24"><path d="M13 5h8"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="m3 17 2 2 4-4"/><rect x="3" y="4" width="6" height="6" rx="1"/></symbol>
+      <symbol id="icon-study" viewBox="0 0 24 24"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></symbol>
+      <symbol id="icon-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+      <symbol id="icon-text" viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/></symbol>
+      <symbol id="icon-duplicate" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+      <symbol id="icon-lock" viewBox="0 0 24 24"><circle cx="12" cy="16" r="1"/><rect x="3" y="10" width="18" height="12" rx="2"/><path d="M7 10V7a5 5 0 0 1 10 0v3"/></symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24"><path d="M10 11v6"/><path d="M14 11v6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+      <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></symbol>
     </svg>
 
     <div class="ambient-grid" aria-hidden="true"></div>
@@ -428,7 +436,7 @@
                     <span class="metric-label">Планирование</span>
                     <h2 id="taskFormHeading">Новая задача</h2>
                   </div>
-                  <button class="icon-button subtle" id="closeTaskForm" type="button" aria-label="Закрыть форму">×</button>
+                  <button class="icon-button subtle" id="closeTaskForm" type="button" aria-label="Закрыть форму" title="Закрыть форму"><svg class="ui-icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
                 </div>
                 <form id="taskForm" class="stack-form">
                   <input type="hidden" id="taskId">
@@ -628,9 +636,9 @@
                 <svg class="ui-icon"><use href="#icon-target"></use></svg><span>К задаче</span>
               </button>
               <div class="segmented-control timeline-scale-control" aria-label="Масштаб времени">
-                <button type="button" data-timeline-scale="compact" title="Компактный масштаб">−</button>
+                <button type="button" data-timeline-scale="compact" title="Компактный масштаб" aria-label="Компактный масштаб"><svg class="ui-icon" aria-hidden="true"><use href="#icon-zoom-out"></use></svg></button>
                 <button class="is-active" type="button" data-timeline-scale="comfortable" title="Обычный масштаб">1:1</button>
-                <button type="button" data-timeline-scale="large" title="Увеличенный масштаб">+</button>
+                <button type="button" data-timeline-scale="large" title="Увеличенный масштаб" aria-label="Увеличенный масштаб"><svg class="ui-icon" aria-hidden="true"><use href="#icon-zoom-in"></use></svg></button>
               </div>
               <span class="task-counter" id="timelineSummary" aria-live="polite" aria-atomic="true">0 по времени · 0 без времени</span>
             </div>
@@ -686,7 +694,7 @@
                     <span class="metric-label">Настройка</span>
                     <h2 id="habitFormHeading">Новая привычка</h2>
                   </div>
-                  <button class="icon-button subtle" id="closeHabitForm" type="button" aria-label="Закрыть форму">×</button>
+                  <button class="icon-button subtle" id="closeHabitForm" type="button" aria-label="Закрыть форму" title="Закрыть форму"><svg class="ui-icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
                 </div>
                 <form id="habitForm" class="stack-form">
                   <input type="hidden" id="habitId">
@@ -821,7 +829,7 @@
                     <span class="metric-label">План</span>
                     <h2 id="goalFormHeading">Новая цель</h2>
                   </div>
-                  <button class="icon-button subtle" id="closeGoalForm" type="button" aria-label="Закрыть форму">×</button>
+                  <button class="icon-button subtle" id="closeGoalForm" type="button" aria-label="Закрыть форму" title="Закрыть форму"><svg class="ui-icon" aria-hidden="true"><use href="#icon-close"></use></svg></button>
                 </div>
                 <form id="goalForm" class="stack-form">
                   <input type="hidden" id="goalId">
@@ -1210,10 +1218,10 @@
               <section class="panel journal-panel">
                 <button class="journal-prompt" id="journalPrompt" type="button"></button>
                 <div class="journal-editor-toolbar" role="toolbar" aria-label="Форматирование записи">
-                  <button type="button" data-journal-format="body" title="Обычный текст" aria-label="Обычный текст">Текст</button>
-                  <button type="button" data-journal-format="h1" title="Заголовок первого уровня" aria-label="Заголовок первого уровня">H1</button>
-                  <button type="button" data-journal-format="h2" title="Заголовок второго уровня" aria-label="Заголовок второго уровня">H2</button>
-                  <button type="button" data-journal-format="bold" title="Полужирный" aria-label="Полужирный"><strong>B</strong></button>
+                  <button type="button" data-journal-format="body" title="Обычный текст" aria-label="Обычный текст"><svg class="ui-icon" aria-hidden="true"><use href="#icon-text"></use></svg></button>
+                  <button type="button" data-journal-format="h1" title="Заголовок первого уровня" aria-label="Заголовок первого уровня"><svg class="ui-icon" aria-hidden="true"><use href="#icon-heading-1"></use></svg></button>
+                  <button type="button" data-journal-format="h2" title="Заголовок второго уровня" aria-label="Заголовок второго уровня"><svg class="ui-icon" aria-hidden="true"><use href="#icon-heading-2"></use></svg></button>
+                  <button type="button" data-journal-format="bold" title="Полужирный" aria-label="Полужирный"><svg class="ui-icon" aria-hidden="true"><use href="#icon-bold"></use></svg></button>
                 </div>
                 <div id="journalText" class="journal-text-editor" contenteditable="true" role="textbox" aria-label="Запись в дневнике за выбранный день" aria-multiline="true" data-placeholder="Что произошло сегодня?" spellcheck="true"></div>
                 <div class="journal-editor-footer">
@@ -1264,7 +1272,7 @@
               </details>
               <span class="board-toolbar-separator" aria-hidden="true"></span>
               <button class="icon-button" id="boardUndo" type="button" aria-label="Отменить" title="Отменить" disabled>
-                <svg class="ui-icon"><use href="#icon-rotate"></use></svg>
+                <svg class="ui-icon" aria-hidden="true"><use href="#icon-undo"></use></svg>
               </button>
               <button class="icon-button" id="boardRedo" type="button" aria-label="Повторить" title="Повторить" disabled>
                 <svg class="ui-icon"><use href="#icon-redo"></use></svg>
@@ -1561,6 +1569,7 @@
                 <span>
                   <strong>Цвет интерфейса</strong>
                 </span>
+                <div class="accent-palette-controls">
                 <div class="accent-picker" role="radiogroup" aria-label="Цвет интерфейса">
                   <label class="accent-option is-emerald">
                     <input type="radio" name="accentPreference" value="emerald">
@@ -1582,6 +1591,20 @@
                     <span class="accent-swatch" aria-hidden="true"></span>
                     <span>Фиолетовый</span>
                   </label>
+                  <label class="accent-option is-rose" title="Розовый"><input type="radio" name="accentPreference" value="rose"><span class="accent-swatch" aria-hidden="true"></span><span>Розовый</span></label>
+                  <label class="accent-option is-cyan" title="Бирюзовый"><input type="radio" name="accentPreference" value="cyan"><span class="accent-swatch" aria-hidden="true"></span><span>Бирюзовый</span></label>
+                  <label class="accent-option is-amber" title="Золотистый"><input type="radio" name="accentPreference" value="amber"><span class="accent-swatch" aria-hidden="true"></span><span>Золотистый</span></label>
+                  <label class="accent-option is-lime" title="Лаймовый"><input type="radio" name="accentPreference" value="lime"><span class="accent-swatch" aria-hidden="true"></span><span>Лаймовый</span></label>
+                </div>
+                <form class="accent-custom" id="customAccentForm">
+                  <label class="custom-accent-label" for="customAccentPicker">Свой цвет</label>
+                  <div class="custom-accent-inputs">
+                    <input type="color" id="customAccentPicker" value="#27c6a5" aria-label="Выбрать свой цвет">
+                    <input type="text" id="customAccentHex" value="#27c6a5" maxlength="7" spellcheck="false" autocomplete="off" aria-label="HEX-код цвета" placeholder="#27c6a5">
+                    <button type="submit" class="icon-button" title="Применить цвет" aria-label="Применить цвет"><svg class="ui-icon" aria-hidden="true"><use href="#icon-check"></use></svg></button>
+                  </div>
+                  <small id="customAccentError" role="alert"></small>
+                </form>
                 </div>
               </fieldset>
               <label class="settings-row">
@@ -1940,7 +1963,7 @@
           </div>
         </div>
         <details class="task-actions task-more">
-          <summary class="icon-button subtle" aria-label="Еще действия">...</summary>
+          <summary class="icon-button subtle" aria-label="Еще действия" title="Еще действия"><svg class="ui-icon" aria-hidden="true"><use href="#icon-more"></use></svg></summary>
           <div class="task-more-menu">
             <button class="ghost-button compact-button postpone-tomorrow-menu" type="button">На завтра</button>
             <button class="ghost-button compact-button postpone-week" type="button">На следующую неделю</button>
@@ -2023,7 +2046,7 @@
             <p class="habit-streak"></p>
           </div>
           <details class="habit-actions habit-more">
-            <summary class="icon-button subtle" aria-label="Действия с привычкой">...</summary>
+            <summary class="icon-button subtle" aria-label="Действия с привычкой" title="Действия с привычкой"><svg class="ui-icon" aria-hidden="true"><use href="#icon-more"></use></svg></summary>
             <div class="habit-more-menu">
               <button class="habit-menu-action edit-habit" type="button"><svg class="ui-icon"><use href="#icon-edit"></use></svg>Изменить</button>
               <button class="habit-menu-action freeze-habit" type="button"><svg class="ui-icon"><use href="#icon-snowflake"></use></svg>Заморозить…</button>
@@ -2050,7 +2073,8 @@
     <script src="src/sync/device-sync-controller.js?v=1" defer></script>
     <script src="src/sync/sync-history.js?v=1" defer></script>
     <script src="src/sync/sync-diagnostics.js?v=1" defer></script>
-    <script src="src/settings/settings-state.js?v=4" defer></script>
+    <script src="src/settings/accent-colors.js?v=1" defer></script>
+    <script src="src/settings/settings-state.js?v=5" defer></script>
     <script src="src/settings/profile-settings.js?v=2" defer></script>
     <script src="src/auth/hosted-config.js?v=2" defer></script>
     <script src="src/board/board-model.js?v=6" defer></script>
@@ -2105,7 +2129,7 @@
     <script src="src/ui/global-search.js?v=3" defer></script>
     <script src="src/goals/goals-view.js?v=11" defer></script>
     <script src="src/habits/habit-form.js?v=6" defer></script>
-    <script src="src/habits/habits-view.js?v=7" defer></script>
+    <script src="src/habits/habits-view.js?v=8" defer></script>
     <script src="src/habits/habit-freeze-dialog.js?v=1" defer></script>
     <script src="src/settings/import-export.js?v=6" defer></script>
     <script src="src/platform/reminder-policy.js?v=1" defer></script>
@@ -2114,24 +2138,24 @@
     <script src="src/tasks/overdue-controller.js?v=4" defer></script>
     <script src="src/tasks/task-schedule.js?v=1" defer></script>
     <script src="src/tasks/task-form.js?v=13" defer></script>
-    <script src="src/tasks/tasks-view.js?v=18" defer></script>
+    <script src="src/tasks/tasks-view.js?v=19" defer></script>
     <script src="src/tasks/task-moves.js?v=9" defer></script>
     <script src="src/tasks/task-state.js?v=5" defer></script>
     <script src="src/settings/settings-sync.js?v=1" defer></script>
     <script src="src/settings/settings-transfer.js?v=2" defer></script>
     <script src="src/sync/save-status.js?v=2" defer></script>
-    <script src="src/settings/settings-controller.js?v=8" defer></script>
+    <script src="src/settings/settings-controller.js?v=9" defer></script>
     <script src="src/settings/workspace-guide.js?v=1" defer></script>
     <script src="src/timeline/timeline-layout.js?v=1" defer></script>
-    <script src="src/timeline/timeline-menu.js?v=4" defer></script>
+    <script src="src/timeline/timeline-menu.js?v=5" defer></script>
     <script src="src/timeline/timeline-drag.js?v=3" defer></script>
     <script src="src/timeline/timeline-view.js?v=11" defer></script>
     <script src="src/timeline/timeline-controller.js?v=8" defer></script>
-    <script src="src/calendar/calendar-schedule.js?v=5" defer></script>
+    <script src="src/calendar/calendar-schedule.js?v=6" defer></script>
     <script src="src/core/daily-pulse.js?v=1" defer></script>
     <script src="src/core/view-renderer.js?v=2" defer></script>
     <script src="src/core/app-shell-controller.js?v=4" defer></script>
     <script src="src/ui/toast.js?v=2" defer></script>
-    <script src="src/core/app.js?v=63" defer></script>
+    <script src="src/core/app.js?v=64" defer></script>
   </body>
 </html>

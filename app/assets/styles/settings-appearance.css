@@ -1,0 +1,56 @@
+#settingsView .settings-grid { max-width: 860px; }
+#settingsView .settings-primary-group { margin-bottom: 16px; border-block: 1px solid var(--line); }
+#settingsView .settings-primary-group > .settings-summary { min-height: 64px; padding: 16px 20px; background: var(--surface-soft); }
+#settingsView .settings-primary-group[open] > .settings-summary { background: var(--surface-elevated); box-shadow: inset 3px 0 var(--teal); }
+#settingsView .settings-section-icon { flex: 0 0 22px; width: 22px; height: 22px; color: var(--muted); }
+#settingsView .settings-primary-group[open] > .settings-summary .settings-section-icon { color: var(--teal); }
+#settingsView .settings-group-body { min-width: 0; padding: 8px 24px 24px 54px; }
+#settingsView .settings-primary-group:not([open]) > .settings-group-body { display: none; }
+#settingsView .settings-block { padding-block: 20px 8px; }
+#settingsView .settings-block + .settings-block { margin-top: 12px; border-top: 1px solid var(--line-strong); }
+#settingsView .settings-block-title { margin: 0 0 8px; font-size: 15px; line-height: 1.5; font-weight: 700; color: var(--text-strong); }
+#settingsView .settings-row { padding-block: 14px; gap: 20px; border-color: var(--line); }
+#settingsView .settings-row strong { font-weight: 500; }
+#settingsView .settings-block .settings-row:last-child { border-bottom: 0; }
+#settingsView .settings-subsection { margin-top: 16px; padding-left: 16px; border: 0; border-left: 2px solid var(--line-strong); }
+#settingsView .settings-subsection > .settings-summary { min-height: 48px; padding: 10px 0; }
+#settingsView .settings-subsection[open] > .settings-summary h2 { color: var(--teal); }
+#settingsView .settings-subsection > .settings-summary::after { width: 6px; height: 6px; }
+#settingsView .accent-settings-row { grid-template-columns: minmax(120px, 1fr) minmax(0, 360px); align-items: start; }
+#settingsView .accent-settings-row > span { padding-top: 14px; }
+#settingsView .accent-palette-controls { display: grid; min-width: 0; gap: 16px; }
+#settingsView .accent-picker { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 1px; }
+#settingsView .accent-option { display: grid; place-items: center; min-height: 44px; padding: 5px; border: 0; background: transparent; border-radius: 50%; }
+#settingsView .accent-option > span:last-child { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+#settingsView .accent-swatch { width: 28px; height: 28px; border: 0; box-shadow: inset 0 0 0 1px rgb(128 128 128 / 25%); transition: outline-color 150ms; }
+#settingsView .accent-option:has(input:checked) { background: transparent; }
+#settingsView .accent-option:has(input:checked) .accent-swatch { outline: 2px solid var(--text); outline-offset: 3px; }
+#settingsView .accent-option:hover .accent-swatch { outline: 2px solid var(--muted); outline-offset: 3px; }
+#settingsView .accent-option:has(input:checked):hover .accent-swatch { outline-color: var(--text); }
+#settingsView .accent-option.is-rose .accent-swatch { background: #f58bb4; }
+#settingsView .accent-option.is-cyan .accent-swatch { background: #53cedd; }
+#settingsView .accent-option.is-amber .accent-swatch { background: #e5c454; }
+#settingsView .accent-option.is-lime .accent-swatch { background: #afce65; }
+#settingsView .accent-custom { display: grid; gap: 8px; margin: 0; }
+#settingsView .custom-accent-label { margin: 0; font-size: 12px; font-weight: 500; color: var(--muted); }
+#settingsView .accent-custom.is-custom .custom-accent-label { color: var(--teal); }
+#settingsView .custom-accent-inputs { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; gap: 8px; }
+#settingsView .custom-accent-inputs .icon-button { width: 44px; height: 44px; min-height: 44px; padding: 10px; }
+#settingsView #customAccentPicker { width: 44px; height: 44px; padding: 5px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface-input); cursor: pointer; }
+#customAccentPicker::-webkit-color-swatch-wrapper { padding: 0; }
+#customAccentPicker::-webkit-color-swatch { border: 0; border-radius: 3px; }
+#customAccentPicker::-moz-color-swatch { border: 0; border-radius: 3px; }
+#settingsView #customAccentHex { width: 100%; min-width: 0; min-height: 44px; font: 14px/1.5 Consolas, monospace; }
+#settingsView #customAccentHex[aria-invalid="true"] { border-color: var(--coral); }
+#settingsView #customAccentError { color: var(--coral); font-size: 12px; line-height: 1.5; }
+#settingsView #customAccentError:empty { display: none; }
+@media (max-width: 680px) {
+  #settingsView .settings-primary-group > .settings-summary { padding: 14px 12px; min-height: 58px; }
+  #settingsView .settings-group-body { padding: 4px 12px 20px; }
+  #settingsView .settings-row { gap: 12px; }
+  #settingsView .accent-settings-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  #settingsView .accent-settings-row > span { padding-top: 0; }
+  #settingsView .accent-picker { grid-template-columns: repeat(4, 44px); justify-content: start; gap: 4px 8px; }
+  #settingsView .settings-subsection { padding-left: 12px; }
+  #settingsView #customAccentHex { font-size: 16px; }
+}

@@ -238,7 +238,8 @@
         const summary = document.createElement("summary");
         summary.className = "icon-button";
         summary.setAttribute("aria-label", `Действия с задачей «${task.title}»`);
-        summary.textContent = "...";
+        summary.title = "Действия с задачей";
+        summary.appendChild(createIcon("more"));
         const content = document.createElement("div");
         content.className = "task-more-menu";
         const edit = createButton("ghost-button compact-button", "Изменить");
@@ -310,7 +311,7 @@
         acknowledge.textContent = "Не выполнять";
         actions.className = "historical-task-actions";
         const more = document.createElement("details"); more.className = "task-more";
-        const trigger = document.createElement("summary"); trigger.className = "icon-button"; trigger.textContent = "…"; trigger.setAttribute("aria-label", `Действия с задачей «${task.title}»`);
+        const trigger = document.createElement("summary"); trigger.className = "icon-button"; trigger.appendChild(createIcon("more")); trigger.title = "Действия с задачей"; trigger.setAttribute("aria-label", `Действия с задачей «${task.title}»`);
         const menu = document.createElement("div"); menu.className = "task-more-menu"; menu.append(createSubtaskAction(task, dateKey, more), later, done, open, acknowledge); more.append(trigger, menu);
         actions.append(today, more);
         if (selectionMode) row.append(createSelection(task, dateKey));
@@ -745,7 +746,8 @@
         more.className = "overdue-more";
         moreSummary.className = "overdue-more-trigger";
         moreSummary.setAttribute("aria-label", "Еще действия");
-        moreSummary.textContent = "...";
+        moreSummary.title = "Еще действия";
+        moreSummary.appendChild(createIcon("more"));
         moreMenu.className = "overdue-more-menu";
         moreMenu.append(chooseDateButton, goButton, acknowledgeButton, deleteButton);
         if (deleteFutureButton) moreMenu.appendChild(deleteFutureButton);
@@ -888,6 +890,7 @@
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
       svg.classList.add("ui-icon");
+      svg.setAttribute("aria-hidden", "true");
       use.setAttribute("href", `#icon-${name}`);
       svg.appendChild(use);
       return svg;

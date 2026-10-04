@@ -59,6 +59,10 @@ jobs:
         run: npm run test:onboarding
       - name: Verify account preferences across isolated devices
         run: npm run test:settings-sync
+      - name: Verify accent palette and settings layout
+        run: npm run test:appearance
+      - name: Verify button icons on desktop and mobile
+        run: npm run test:icons
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

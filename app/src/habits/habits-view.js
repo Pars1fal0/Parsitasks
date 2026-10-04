@@ -86,7 +86,13 @@
         row.className = "habit-number-row";
         decrement.type = "button";
         decrement.className = "habit-stepper";
-        decrement.textContent = "-";
+        const decrementIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const decrementUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        decrementIcon.classList.add("ui-icon");
+        decrementIcon.setAttribute("aria-hidden", "true");
+        decrementUse.setAttribute("href", "#icon-minus");
+        decrementIcon.appendChild(decrementUse);
+        decrement.appendChild(decrementIcon);
         decrement.setAttribute("aria-label", `Уменьшить ${habitTitle}`);
         input.type = "number";
         input.min = "0";

@@ -14,7 +14,14 @@
       button.setAttribute("aria-haspopup", "menu");
       button.setAttribute("aria-expanded", "false");
       button.setAttribute("aria-label", `Действия для задачи ${entry.title}`);
-      button.textContent = "...";
+      button.title = "Действия с задачей";
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      icon.classList.add("ui-icon");
+      icon.setAttribute("aria-hidden", "true");
+      use.setAttribute("href", "#icon-more");
+      icon.appendChild(use);
+      button.appendChild(icon);
 
       menu.className = "timeline-task-menu";
       menu.setAttribute("role", "menu");

@@ -3300,11 +3300,13 @@ function applyThemePreference() {
   const resolvedTheme = themePreference === "system" ? (prefersLight ? "light" : "dark") : themePreference;
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.dataset.themePreference = themePreference;
+  window.RhythmAccentColors.apply(document.documentElement, accentPreference, resolvedTheme);
   if (els.themePreference) els.themePreference.value = themePreference;
 }
 
 function applySettingsPreferences() {
   document.documentElement.dataset.accent = accentPreference;
+  window.RhythmAccentColors.apply(document.documentElement, accentPreference, document.documentElement.dataset.theme);
   document.documentElement.dataset.density = densityPreference;
   navigationController.apply();
   navigationController.renderControls();

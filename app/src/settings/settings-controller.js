@@ -32,6 +32,29 @@
       danger.append(deleteAccount);
       account.append(danger);
       grid.replaceChildren(...primary);
+      const icons = new Map([[appearance, "settings"], [reminders, "bell"], [account, "archive"], [help, "search"]]);
+      primary.forEach((group) => {
+        const summary = group.querySelector(":scope > summary");
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        icon.setAttribute("class", "ui-icon settings-section-icon"); icon.setAttribute("aria-hidden", "true");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use"); use.setAttribute("href", `#icon-${icons.get(group)}`);
+        icon.append(use); summary.prepend(icon);
+        const body = document.createElement("div"); body.className = "settings-group-body";
+        body.append(...[...group.children].filter((node) => node !== summary)); group.append(body);
+      });
+      const appearanceBody = appearance.querySelector(".settings-group-body");
+      [["Оформление", ["themePreference", "accentPreference", "densityPreference"]],
+        ["Время и календарь", ["timeFormat", "firstDayOfWeek", "timeZoneSetting"]]].reverse().forEach(([title, fields]) => {
+        const block = document.createElement("section"); block.className = "settings-block";
+        const heading = document.createElement("h3"); heading.className = "settings-block-title"; heading.textContent = title;
+        block.append(heading);
+        fields.forEach((name) => {
+          const input = name === "accentPreference" ? appearance.querySelector(".accent-settings-row") : appearance.querySelector(`#${name}`)?.closest(".settings-row");
+          if (input) block.append(input);
+        });
+        appearanceBody.prepend(block);
+      });
+      document.querySelectorAll(".accent-option").forEach((label) => { label.title = label.lastElementChild.textContent; });
     }
 
     function bindEvents() {
@@ -52,6 +75,25 @@
           if (input.checked) ctx.updateSetting("accentPreference", input.value);
         });
       });
+      const customForm = document.querySelector("#customAccentForm");
+      const picker = document.querySelector("#customAccentPicker");
+      const hex = document.querySelector("#customAccentHex");
+      const error = document.querySelector("#customAccentError");
+      customForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex.value.trim())) {
+          error.textContent = "Введите HEX-код: #AABBCC или #ABC";
+          hex.setAttribute("aria-invalid", "true"); hex.focus(); return;
+        }
+        error.textContent = ""; hex.removeAttribute("aria-invalid");
+        ctx.updateSetting("accentPreference", global.RhythmAccentColors.normalize(hex.value));
+        syncControls();
+      });
+      picker.addEventListener("change", () => {
+        error.textContent = ""; hex.removeAttribute("aria-invalid");
+        ctx.updateSetting("accentPreference", picker.value); syncControls();
+      });
+      hex.addEventListener("input", () => { error.textContent = ""; hex.removeAttribute("aria-invalid"); });
       ctx.els.themePreference?.addEventListener("change", () => ctx.updateSetting("themePreference", ctx.els.themePreference.value));
       ctx.els.notificationSetting?.addEventListener("change", () => ctx.updateSetting("notificationSetting", ctx.els.notificationSetting.value));
       const quietEnabled = document.querySelector("#quietHoursEnabled");
@@ -78,6 +120,14 @@
       ctx.els.accentPreferences?.forEach((input) => {
         input.checked = input.value === settings.accentPreference;
       });
+      const chosen = global.RhythmAccentColors.presets[settings.accentPreference] || global.RhythmAccentColors.normalize(settings.accentPreference);
+      setValue(document.querySelector("#customAccentPicker"), chosen);
+      const hex = document.querySelector("#customAccentHex");
+      if (document.activeElement !== hex) {
+        setValue(hex, chosen.toUpperCase());
+        hex.removeAttribute("aria-invalid"); document.querySelector("#customAccentError").textContent = "";
+      }
+      document.querySelector("#customAccentForm").classList.toggle("is-custom", settings.accentPreference.startsWith("#"));
       setValue(ctx.els.themePreference, settings.themePreference);
       setValue(ctx.els.notificationSetting, settings.notificationSetting);
       const quiet = settings.quietHours || { enabled: false, start: "22:00", end: "08:00" };

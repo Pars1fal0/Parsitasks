@@ -331,7 +331,16 @@
 
       const agenda = element("section", "calendar-selected-agenda");
       const agendaHeading = element("div", "calendar-agenda-heading");
-      agendaHeading.append(element("h3", "", ctx.formatLongDate(date)), button("icon-button", "+", () => ctx.createTask(date)));
+      const addTask = button("icon-button", "", () => ctx.createTask(date));
+      const addIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const addUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      addIcon.classList.add("ui-icon");
+      addIcon.setAttribute("aria-hidden", "true");
+      addUse.setAttribute("href", "#icon-plus");
+      addIcon.appendChild(addUse);
+      addTask.appendChild(addIcon);
+      addTask.title = "Добавить задачу на выбранный день";
+      agendaHeading.append(element("h3", "", ctx.formatLongDate(date)), addTask);
       agendaHeading.lastChild.setAttribute("aria-label", "Добавить задачу на выбранный день");
       agenda.append(agendaHeading);
       selectedModel.timedTasks.forEach((entry) => agenda.append(agendaRow(entry, date)));
