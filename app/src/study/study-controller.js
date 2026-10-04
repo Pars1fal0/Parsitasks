@@ -260,7 +260,7 @@
         suggestedTime = "";
         deadlineTimeEdited = false;
         homeworkForm.elements.id.value = "";
-        homeworkForm.elements.date.value = ctx.getActiveDate();
+        homeworkForm.elements.date.value = localDateKey(new Date());
         draftOwner = local.owner();
         const restored = homeworkDraft.restore();
         deadlineTimeEdited = Boolean(restored);
@@ -273,7 +273,7 @@
       viewedDateKey = ctx.getActiveDate();
       viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
       if (!local.read("study-homework-draft") && !homeworkForm.elements.id.value && !homeworkForm.elements.title.value) {
-        homeworkForm.elements.date.value = ctx.getActiveDate();
+        homeworkForm.elements.date.value = localDateKey(new Date());
       }
       renderHomework(state);
       syncWeekCycleForm(state.studyWeekCycle);
@@ -284,7 +284,7 @@
       const open = (state.tasks || []).filter((task) => task.studySubjectId && task.completed?.[task.date || task.dueDate] !== true).length;
       root.querySelector("#studySummary").textContent = open ? `${open} ${plural(open, "задание", "задания", "заданий")} ${open === 1 ? "ждёт" : "ждут"} выполнения`
         : state.tasks.some((task) => task.studySubjectId) ? "Все домашние задания выполнены" : "Домашних заданий пока нет";
-      if (!homeworkForm.elements.id.value && !homeworkForm.elements.date.value) homeworkForm.elements.date.value = ctx.getActiveDate();
+      if (!homeworkForm.elements.id.value && !homeworkForm.elements.date.value) homeworkForm.elements.date.value = localDateKey(new Date());
       if (ctx.getUserId() && ctx.getUserId() !== statusUserId && !busy) refreshStatus();
     }
 
@@ -562,7 +562,7 @@
       homeworkForm.reset(); homeworkForm.elements.id.value = "";
       suggestedTime = "";
       deadlineTimeEdited = false;
-      homeworkForm.elements.date.value = ctx.getActiveDate();
+      homeworkForm.elements.date.value = localDateKey(new Date());
       root.querySelector("#studyDeadlineSuggestion").textContent = "";
       draftStatus.textContent = "";
       discardDraftButton.hidden = true;
@@ -574,7 +574,8 @@
       if (homeworkForm.elements.id.value) return;
       const subjectId = homeworkForm.elements.subjectId.value;
       const state = ctx.getState();
-      const nextDate = studyModel.nextLessonDate(state.studyLessons, subjectId, ctx.getActiveDate(), state.studyWeekCycle);
+      const referenceDate = localDateKey(new Date());
+      const nextDate = studyModel.nextLessonDate(state.studyLessons, subjectId, referenceDate, state.studyWeekCycle);
       const hint = root.querySelector("#studyDeadlineSuggestion");
       if (nextDate) {
         homeworkForm.elements.date.value = nextDate;
@@ -585,7 +586,7 @@
           suggestedTime = homeworkForm.elements.time.value;
         }
         const kind = lesson?.lessonType === "practice" ? "практика" : lesson?.lessonType === "lecture" ? "лекция" : "пара";
-        hint.textContent = `Следующая ${kind}: ${shortDate(nextDate)}${lesson?.startTime ? ` в ${lesson.startTime}` : ""} · отсчёт от ${shortDate(ctx.getActiveDate())}`;
+        hint.textContent = `Следующая ${kind}: ${shortDate(nextDate)}${lesson?.startTime ? ` в ${lesson.startTime}` : ""} · отсчёт от сегодня, ${shortDate(referenceDate)}`;
       } else {
         if (!deadlineTimeEdited && homeworkForm.elements.time.value === suggestedTime) homeworkForm.elements.time.value = "";
         suggestedTime = "";

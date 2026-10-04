@@ -83,23 +83,24 @@ const { _electron: electron } = require("playwright-core");
       await page.locator("#taskChecklistInput").fill(title); await page.locator("#taskChecklistInput").press("Enter");
     }
     await page.locator("#taskForm button[type=submit]").click();
-    await page.locator(".task-checklist summary").click();
-    await page.locator(".task-checklist label").filter({ hasText: "Документы" }).locator("input").check();
-    await page.locator(".task-checklist label").filter({ hasText: "Зарядка" }).locator("input").check();
-    assert.match(await page.locator(".task-checklist summary").innerText(), /2 из 2/);
+    const dayChecklist = page.locator("#taskList .task-checklist");
+    await dayChecklist.locator("summary").click();
+    await dayChecklist.locator("label").filter({ hasText: "Документы" }).locator("input").check();
+    await dayChecklist.locator("label").filter({ hasText: "Зарядка" }).locator("input").check();
+    assert.match(await dayChecklist.locator("summary").innerText(), /2 из 2/);
     assert.equal((await state()).tasks[0].completed["2026-09-28"], undefined);
     await navigate("habits"); await navigate("tasks");
-    assert.match(await page.locator(".task-checklist summary").innerText(), /2 из 2/);
+    assert.match(await dayChecklist.locator("summary").innerText(), /2 из 2/);
     await day("2026-09-29");
-    assert.match(await page.locator(".task-checklist summary").innerText(), /0 из 2/);
-    await page.locator(".task-checklist summary").click();
-    await page.locator(".task-checklist input").first().check();
+    assert.match(await dayChecklist.locator("summary").innerText(), /0 из 2/);
+    await dayChecklist.locator("summary").click();
+    await dayChecklist.locator("input").first().check();
     await page.reload(); await page.waitForSelector("#pageTitle");
-    assert.match(await page.locator(".task-checklist summary").innerText(), /1 из 2/);
-    await page.locator(".task-checklist summary").click();
-    await page.locator(".task-checklist input").first().uncheck();
+    assert.match(await dayChecklist.locator("summary").innerText(), /1 из 2/);
+    await dayChecklist.locator("summary").click();
+    await dayChecklist.locator("input").first().uncheck();
     await day("2026-09-28");
-    assert.match(await page.locator(".task-checklist summary").innerText(), /2 из 2/);
+    assert.match(await dayChecklist.locator("summary").innerText(), /2 из 2/);
     await page.locator("#taskList .task-more summary").click();
     await page.locator("#taskList .edit-task").click();
     await page.locator("#taskChecklistEditorList .goal-checkpoint-grip").first().press("ArrowDown");
@@ -108,7 +109,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#taskRepeatEditScope").getByText("Всю серию", { exact: true }).click();
     assert.equal(await page.locator('#taskRepeatEditScope input[value="series"]').isChecked(), true);
     await page.locator("#taskForm button[type=submit]").click();
-    assert.match(await page.locator(".task-checklist summary").innerText(), /2 из 2/);
+    assert.match(await dayChecklist.locator("summary").innerText(), /2 из 2/);
 
     for (const theme of ["light", "dark"]) {
       await navigate("settings");
@@ -117,7 +118,7 @@ const { _electron: electron } = require("playwright-core");
       await page.setViewportSize({ width: 390, height: 844 });
       for (const view of ["tasks", "habits"]) {
         await navigate(view);
-        if (view === "tasks") await page.locator(".task-checklist summary").click();
+        if (view === "tasks") await dayChecklist.locator("summary").click();
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), true);
         if (process.env.CAPTURE_WEEKLY) await page.screenshot({ path: path.join(os.tmpdir(), `parsitasks-weekly-${view}-${theme}.png`), animations: "disabled" });
       }

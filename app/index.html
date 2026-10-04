@@ -11,16 +11,16 @@
     <link rel="manifest" href="manifest.webmanifest">
     <script src="src/auth/auth-gate.js?v=1"></script>
     <script src="src/platform/shell-version.js?v=2"></script>
-    <link rel="stylesheet" href="assets/styles/styles.css?v=42">
+    <link rel="stylesheet" href="assets/styles/styles.css?v=44">
     <link rel="stylesheet" href="assets/styles/disclosure-menus.css?v=1">
     <link rel="stylesheet" href="assets/styles/study.css?v=6">
     <link rel="stylesheet" href="assets/styles/notes.css?v=1">
     <link rel="stylesheet" href="assets/styles/goals.css?v=1">
     <link rel="stylesheet" href="assets/styles/calendar-goals.css?v=1">
     <link rel="stylesheet" href="assets/styles/board.css?v=1">
-    <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=1">
+    <link rel="stylesheet" href="assets/styles/workspace-ux.css?v=2">
     <link rel="stylesheet" href="assets/styles/workspace-guide.css?v=1">
-  <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=1">
+  <link rel="stylesheet" href="assets/styles/daily-workspace.css?v=2">
   <link rel="stylesheet" href="assets/styles/activity-charts.css?v=1">
   </head>
   <body>
@@ -590,12 +590,12 @@
                     </div>
                   </fieldset>
                   <div class="goal-checkpoint-editor">
-                    <div class="goal-checkpoint-heading"><strong>Шаги задачи</strong></div>
+                    <div class="goal-checkpoint-heading"><strong>Подзадачи</strong></div>
                     <div class="goal-checkpoint-list" id="taskChecklistEditorList"></div>
-                    <small id="taskChecklistEmpty" class="muted">Пунктов пока нет</small>
+                    <small id="taskChecklistEmpty" class="muted">Подзадач пока нет</small>
                     <div class="goal-checkpoint-add">
-                      <input id="taskChecklistInput" type="text" maxlength="120" placeholder="Новый шаг" aria-label="Новый шаг задачи">
-                      <button class="icon-button" id="addTaskChecklistItem" type="button" title="Добавить шаг" aria-label="Добавить шаг"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button>
+                      <input id="taskChecklistInput" type="text" maxlength="120" placeholder="Новая подзадача" aria-label="Новая подзадача">
+                      <button class="icon-button" id="addTaskChecklistItem" type="button" title="Добавить подзадачу" aria-label="Добавить подзадачу"><svg class="ui-icon"><use href="#icon-plus"></use></svg></button>
                     </div>
                   </div>
                     </div>
@@ -1954,6 +1954,7 @@
             <input class="postpone-date-input" type="date" aria-label="Дата переноса">
             <button class="ghost-button compact-button restore-overdue-task" type="button" hidden>Вернуть в просроченные</button>
             <button class="ghost-button compact-button edit-task" type="button">Изменить</button>
+            <button class="ghost-button compact-button create-subtask" type="button">Создать подзадачу</button>
             <button class="ghost-button compact-button duplicate-task" type="button">Дублировать</button>
             <button class="ghost-button compact-button exclude-task" type="button">Пропустить этот день</button>
             <button class="ghost-button compact-button danger-button delete-task" type="button">Удалить</button>
@@ -1961,6 +1962,24 @@
         </details>
       </article>
     </template>
+
+    <dialog class="task-subtask-dialog" id="taskSubtaskDialog" aria-labelledby="taskSubtaskHeading">
+      <form>
+        <h2 id="taskSubtaskHeading">Новая подзадача</h2>
+        <p class="task-subtask-parent"></p>
+        <label>Название<input name="title" type="text" maxlength="120" required autocomplete="off"></label>
+        <fieldset hidden>
+          <legend>Для каких выполнений</legend>
+          <label class="task-subtask-scope"><input name="scope" type="radio" value="occurrence" checked><span data-subtask-occurrence></span></label>
+          <label class="task-subtask-scope"><input name="scope" type="radio" value="following"><span data-subtask-following></span></label>
+        </fieldset>
+        <p class="task-subtask-message" role="alert"></p>
+        <div class="form-actions">
+          <button class="ghost-button" type="button" data-subtask-cancel>Отмена</button>
+          <button class="primary-button" type="submit">Создать</button>
+        </div>
+      </form>
+    </dialog>
 
     <dialog class="habit-freeze-dialog" id="habitFreezeDialog" aria-labelledby="habitFreezeHeading">
       <form id="habitFreezeForm">
@@ -2058,6 +2077,7 @@
     <script src="src/habits/habit-freeze.js?v=1" defer></script>
     <script src="src/habits/habit-schedule.js?v=1" defer></script>
     <script src="src/tasks/task-checklist.js?v=1" defer></script>
+    <script src="src/tasks/task-subtasks.js?v=1" defer></script>
     <script src="src/integrations/mcp-activity.js?v=2" defer></script>
     <script src="src/integrations/mcp-activity-controller.js?v=1" defer></script>
     <script src="src/platform/pwa-controller.js?v=1" defer></script>

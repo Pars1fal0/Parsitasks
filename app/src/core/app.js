@@ -613,6 +613,11 @@ const tasksView = window.RhythmTasksView.createTasksView({
   excludeTaskDate,
   excludedTasksForDate,
   fillTaskForm,
+  openSubtaskDialog: async (task, dateKey) => {
+    const previousState = state;
+    if (!(await confirmDiscardOpenForms()) || state !== previousState) return;
+    subtaskController.open(task, dateKey);
+  },
   formatLongDate,
   formatTime,
   formatTaskRepeat,
@@ -1264,6 +1269,14 @@ const taskFormController = window.RhythmTaskForm.createTaskForm({
       state.tasks.push(task);
     }
   },
+});
+
+const subtaskController = window.RhythmTaskSubtasks.createSubtaskDialog({
+  getState: () => state, createId, createUndoSnapshot, saveState, showToast, formatLongDate,
+  restoreState: restoreFailedSave,
+  render: renderTaskSurfaces,
+  today: () => toDateKey(new Date()),
+  expandChecklist: (taskId, dateKey) => tasksView.expandChecklist(taskId, dateKey),
 });
 
 const habitFormController = window.RhythmHabitForm.createHabitForm({

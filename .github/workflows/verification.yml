@@ -47,6 +47,8 @@ jobs:
         run: npm run test:minimal
       - name: Verify full-day calendar and interactive activity charts
         run: npm run test:calendar-activity
+      - name: Verify subtasks, palettes, compact layout and homework dates
+        run: npm run test:requested-polish
       - name: Verify habits and timeline rollback after storage failures
         run: npm run test:save-failures
       - name: Verify storage failure and backup recovery

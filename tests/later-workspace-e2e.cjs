@@ -65,13 +65,13 @@ const { _electron: electron } = require("playwright-core");
     await page.locator("#laterTaskPanel[open]").waitFor();
     assert.notEqual(await page.locator("#laterTaskPanel").getAttribute("open"), null);
     const parked = page.locator('#laterTaskList [data-task-id="partial"]');
-    await parked.locator("details > summary").click();
+    await parked.locator(".task-more > summary").click();
     await parked.getByRole("button", { name: "Изменить", exact: true }).click();
     await page.locator("#taskDeferred").uncheck();
     await page.locator("#taskDate").fill(dates.today);
     await page.locator('#taskForm button[type="submit"]').click();
     assert.equal((await state()).tasks.find((task) => task.id === "partial").checklistLogs[dates.today].step.done, true);
-    assert.equal(await partial.locator(".task-checklist summary").innerText(), "Шаги: 1 из 1");
+    assert.equal(await partial.locator(".task-checklist summary").innerText(), "Подзадачи: 1 из 1");
 
     await page.locator("#taskSelectMode").click();
     assert.equal(await page.locator("#taskBulkForm").isVisible(), true);

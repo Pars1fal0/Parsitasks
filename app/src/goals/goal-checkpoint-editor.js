@@ -3,6 +3,7 @@
     let steps = [];
     let draggedId = "";
     const itemLabel = ctx.itemLabel || "Этап";
+    const removeLabel = ctx.removeLabel || `Удалить ${itemLabel.toLocaleLowerCase("ru-RU")}`;
     const itemsLabel = ctx.itemsLabel || "Этапы цели";
 
     function setSteps(value = []) {
@@ -140,8 +141,8 @@
 
       remove.className = "icon-button subtle goal-checkpoint-remove";
       remove.type = "button";
-      remove.title = `Удалить ${itemLabel.toLocaleLowerCase("ru-RU")}`;
-      remove.setAttribute("aria-label", `Удалить ${itemLabel.toLocaleLowerCase("ru-RU")} ${step.title}`);
+      remove.title = removeLabel;
+      remove.setAttribute("aria-label", `${removeLabel} ${step.title}`);
       remove.appendChild(createIcon("trash"));
       remove.addEventListener("click", () => removeStep(step.id));
 

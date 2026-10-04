@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.34.1",
+  "version": "0.34.2",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",
@@ -21,6 +21,7 @@
     "test:audit": "node tests/persona-regressions-e2e.cjs",
     "test:minimal": "node tests/minimal-workspace-e2e.cjs",
     "test:calendar-activity": "node tests/calendar-activity-e2e.cjs",
+    "test:requested-polish": "node tests/requested-polish-e2e.cjs",
     "test:save-failures": "node tests/save-failure-workspaces-e2e.cjs",
     "test:settings-sync": "node tests/account-preferences-e2e.cjs",
     "verify:production": "node scripts/check-production.cjs",

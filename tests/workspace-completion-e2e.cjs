@@ -17,6 +17,8 @@ const { _electron: electron } = require("playwright-core");
     await page.locator(`#${view}View`).waitFor({ state: "visible" });
   };
   try {
+    // This scenario edits a single weekly list, so tomorrow must stay in the same week.
+    await page.clock.install({ time: new Date("2026-10-07T10:00:00+04:00") });
     await require("./navigation-fixture.cjs").enableAllSections(page);
     const dates = await page.evaluate(() => {
       const day = (offset) => { const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };

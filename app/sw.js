@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v106-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v108-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -51,6 +51,7 @@ const APP_SHELL = [
   "src/habits/habit-freeze.js",
   "src/habits/habit-schedule.js",
   "src/tasks/task-checklist.js",
+  "src/tasks/task-subtasks.js",
   "src/habits/habit-freeze-dialog.js",
   "src/integrations/mcp-activity.js",
   "src/integrations/mcp-activity-controller.js",

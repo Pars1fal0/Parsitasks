@@ -68,6 +68,7 @@ body:is([data-view="tasks"], [data-view="habits"], [data-view="overview"]) .side
 #overviewView > .toolbar { gap: 12px; flex-wrap: wrap; }
 #overviewView > .toolbar > :first-child { display: none; }
 #overviewView .calendar-toolbar-actions { width: 100%; justify-content: space-between; }
+#overviewView .overview-mode-control { flex: 0 0 auto; margin-left: auto; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 #overviewView .overview-grid { display: block; }
 #overviewView .week-board-panel { display: none !important; }
 #overviewView[data-mode="day"] [data-overview-panel] { display: none; }
@@ -139,6 +140,23 @@ body:is([data-view="tasks"], [data-view="habits"], [data-view="overview"]) .side
   .calendar-time-grid { grid-template-columns: 42px repeat(var(--calendar-days), 128px); min-width: calc(42px + var(--calendar-days) * 128px); }
   .calendar-time-grid.is-day { grid-template-columns: 42px minmax(0, 1fr); }
 }
+@media (min-width: 901px) {
+  :root[data-density="compact"] .app-shell { grid-template-columns: 232px minmax(0, 1fr); }
+  :root[data-density="compact"] .workspace { width: 100%; margin: 0; padding: 20px 12px; }
+  :root[data-density="compact"] #tasksView .task-item,
+  :root[data-density="compact"] #habitsView .habit-item { padding-block: 10px; }
+  :root[data-density="compact"] .calendar-insights { margin-top: 16px; }
+}
+.task-subtask-dialog { width: min(460px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--text); background: var(--surface-elevated); box-shadow: var(--shadow-lift); }
+.task-subtask-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.task-subtask-dialog h2 { font-size: 20px; margin-bottom: 8px; }
+.task-subtask-parent { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; margin-bottom: 16px; }
+.task-subtask-dialog fieldset { margin: 16px 0; border: 0; padding: 0; }
+.task-subtask-dialog legend { font-size: 13px; margin-bottom: 8px; }
+.task-subtask-scope { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.task-subtask-scope input { width: 18px; height: 18px; margin: 0; accent-color: var(--teal); }
+.task-subtask-message { margin: 12px 0; font-size: 13px; color: var(--danger); overflow-wrap: anywhere; }
+.task-subtask-dialog .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 @media (prefers-reduced-motion: reduce) {
   #tasksView .drag-handle, #habitsView .habit-drag-handle { transition: none; }
 }

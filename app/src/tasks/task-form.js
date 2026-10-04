@@ -27,7 +27,7 @@
     if (scopePanel && extraPanel) extraPanel.before(scopePanel);
     deferredControl?.addEventListener("change", () => setDeferred(deferredControl.checked));
     const checklistEditor = global.RhythmGoalCheckpointEditor?.createGoalCheckpointEditor({
-      createId: ctx.createId, itemLabel: "Пункт", itemsLabel: "Пункты", maxItems: 50, showToast: ctx.showToast,
+      createId: ctx.createId, itemLabel: "Подзадача", itemsLabel: "Подзадачи", removeLabel: "Удалить подзадачу", maxItems: 50, showToast: ctx.showToast,
       els: {
         goalCheckpointInput: ctx.els.taskForm.querySelector("#taskChecklistInput"),
         goalCheckpointList: ctx.els.taskForm.querySelector("#taskChecklistEditorList"),

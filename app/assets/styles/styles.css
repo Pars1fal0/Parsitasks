@@ -1,13 +1,14 @@
 :root {
   color-scheme: dark;
   --font-sans: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-  --bg: #0c0f0f;
-  --bg-2: #121615;
-  --sidebar: #101413;
-  --surface: #171b1a;
-  --surface-elevated: #1b201f;
-  --surface-soft: #121716;
-  --surface-input: #0f1312;
+  --bg: color-mix(in srgb, var(--teal) 2%, #0d0f11);
+  --bg-2: color-mix(in srgb, var(--teal) 3%, #121416);
+  --sidebar: color-mix(in srgb, var(--teal) 4%, #101214);
+  --surface: color-mix(in srgb, var(--teal) 2%, #17191b);
+  --surface-elevated: color-mix(in srgb, var(--teal) 3%, #1b1e20);
+  --surface-soft: color-mix(in srgb, var(--teal) 3%, #121517);
+  --surface-input: color-mix(in srgb, var(--teal) 2%, #0f1113);
+  --logo-filter: none;
   --text: #e5eeeb;
   --text-strong: #f8fffc;
   --text-soft: #b7c5c0;
@@ -88,6 +89,7 @@ html:not([data-auth-ready]) body {
 }
 
 :root[data-accent="blue"] {
+  --logo-filter: hue-rotate(75deg);
   --teal: #5aa7ff;
   --teal-deep: #7bb8ff;
   --button-primary: #1769b0;
@@ -97,6 +99,7 @@ html:not([data-auth-ready]) body {
 }
 
 :root[data-accent="orange"] {
+  --logo-filter: hue-rotate(235deg);
   --teal: #ff9b45;
   --teal-deep: #ffad68;
   --button-primary: #a84f0c;
@@ -106,6 +109,7 @@ html:not([data-auth-ready]) body {
 }
 
 :root[data-accent="violet"] {
+  --logo-filter: hue-rotate(125deg);
   --teal: #a78bfa;
   --teal-deep: #baa6ff;
   --button-primary: #6d49bf;
@@ -371,7 +375,7 @@ select:focus-visible {
   flex-direction: column;
   gap: var(--space-6);
   border-right: 1px solid var(--line);
-  background: rgba(15, 23, 21, 0.96);
+  background: var(--sidebar);
   color: var(--text);
   padding: 24px 18px;
 }
@@ -388,6 +392,7 @@ select:focus-visible {
 }
 
 .brand-mark {
+  filter: var(--logo-filter);
   display: block;
   width: 42px;
   height: 42px;
@@ -733,7 +738,7 @@ select:focus-visible {
 
 .primary-button:hover {
   transform: translateY(-1px);
-  background: #066451;
+  background: color-mix(in srgb, var(--button-primary) 85%, black);
   box-shadow: 0 12px 26px rgb(var(--accent-strong-rgb) / 22%);
 }
 
@@ -3608,7 +3613,7 @@ body.has-floating-task-form::before {
   width: 30px;
   height: 30px;
   place-items: center;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--teal);
   border-radius: 50%;
   background: var(--surface);
   color: #ffffff;
@@ -3624,8 +3629,8 @@ body.has-floating-task-form::before {
 }
 
 .check-button.is-checked {
-  border-color: var(--success);
-  background: var(--success);
+  border-color: var(--button-primary);
+  background: var(--button-primary);
 }
 
 .check-button.is-checked::after {
@@ -5159,7 +5164,7 @@ body.has-floating-task-form::before {
 .timeline-task small {
   overflow: hidden;
   min-width: 0;
-  color: var(--muted);
+  color: var(--text-soft);
   font-size: 12px;
   font-weight: 610;
   text-overflow: ellipsis;
@@ -6670,7 +6675,7 @@ body.has-floating-task-form::before {
     gap: 6px;
     border: 1px solid var(--line);
     border-radius: 14px;
-    background: rgba(15, 23, 21, 0.985);
+    background: var(--sidebar);
     box-shadow: var(--shadow-lift);
     padding: 4px;
   }

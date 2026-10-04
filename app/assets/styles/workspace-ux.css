@@ -239,7 +239,7 @@ body[data-view="journal"].notes-mode .date-control { border: 0; padding: 0; back
 body[data-view="study"]:not(.study-schedule-mode) .date-control { border: 0; padding: 0; background: transparent; }
 body:is([data-view="goals"], [data-view="board"], [data-view="archive"], [data-view="settings"]) .date-control { display: flex; width: auto; align-self: flex-end; padding: 0; border: 0; background: transparent; }
 body:is([data-view="goals"], [data-view="board"], [data-view="archive"], [data-view="settings"]) .date-control > :not(.global-search-button) { display: none; }
-#overviewView[data-mode="year"] .study-layer-toggle { display: none; }
+#overviewView[data-mode="year"] .study-layer-toggle { visibility: hidden; pointer-events: none; }
 #habitsView .habit-item { padding: 16px 18px; min-height: 0; }
 #habitsView .split-layout > .main-panel { background: transparent; border: 0; padding: 0; box-shadow: none; }
 #habitsView .habit-item h3 { font-size: 16px; font-weight: 650; line-height: 1.45; }

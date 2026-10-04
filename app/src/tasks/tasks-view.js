@@ -208,6 +208,7 @@
           const priority = document.createElement("span"); priority.className = `task-meta-chip priority-${task.priority}`; priority.textContent = ctx.priorityLabels[task.priority]; meta.append(priority);
         }
         identity.append(title, meta);
+        appendChecklist(identity, task, task.deferredFromDate || task.dueDate || ctx.toDateKey(new Date()));
         const today = ctx.toDateKey(new Date());
         row.classList.toggle("is-due-overdue", Boolean(task.dueDate && task.dueDate < today));
         row.classList.toggle("is-due-soon", Boolean(task.dueDate && task.dueDate >= today && task.dueDate <= ctx.addDays(today, 1)));
@@ -239,7 +240,7 @@
         const remove = createButton("ghost-button compact-button danger-button", "Удалить");
         edit.addEventListener("click", () => { menu.open = false; ctx.fillTaskForm(task); });
         remove.addEventListener("click", () => { menu.open = false; deleteTaskWithScope(task, null); });
-        content.append(edit, remove);
+        content.append(edit, createSubtaskAction(task, null, menu), remove);
         menu.append(summary, content);
         actions.append(schedule, date, menu);
         row.append(identity, actions);
@@ -300,11 +301,12 @@
         const meta = document.createElement("div"); meta.className = "task-meta";
         renderBacklogMeta(meta, task);
         content.append(meta);
+        appendChecklist(content, task, dateKey);
         acknowledge.textContent = "Не выполнять";
         actions.className = "historical-task-actions";
         const more = document.createElement("details"); more.className = "task-more";
         const trigger = document.createElement("summary"); trigger.className = "icon-button"; trigger.textContent = "…"; trigger.setAttribute("aria-label", `Действия с задачей «${task.title}»`);
-        const menu = document.createElement("div"); menu.className = "task-more-menu"; menu.append(later, done, open, acknowledge); more.append(trigger, menu);
+        const menu = document.createElement("div"); menu.className = "task-more-menu"; menu.append(createSubtaskAction(task, dateKey, more), later, done, open, acknowledge); more.append(trigger, menu);
         actions.append(today, more);
         if (selectionMode) row.append(createSelection(task, dateKey));
         row.append(content, actions);
@@ -362,41 +364,8 @@
       renderTaskMeta(meta, task);
       priority.hidden = (task.priority || "medium") === "medium";
       meta.append(priority);
-      if (task.checklist?.length) {
-        const details = document.createElement("details");
-        const summary = document.createElement("summary");
-        const list = document.createElement("div");
-        details.className = "task-checklist";
-        const expansionKey = `${task.id}:${activeDate}`;
-        details.open = expandedChecklists.has(expansionKey);
-        details.addEventListener("toggle", () => {
-          if (!details.isConnected) return;
-          if (details.open) expandedChecklists.add(expansionKey);
-          else expandedChecklists.delete(expansionKey);
-        });
-        const update = () => { const progress = global.RhythmTaskChecklist.progress(task, activeDate); summary.textContent = `Шаги: ${progress.done} из ${progress.total}`; };
-        update();
-        task.checklist.forEach((item) => {
-          const label = document.createElement("label");
-          const checkbox = document.createElement("input");
-          const text = document.createElement("span");
-          checkbox.type = "checkbox";
-          checkbox.checked = task.checklistLogs?.[activeDate]?.[item.id]?.done === true;
-          text.textContent = item.title;
-          checkbox.addEventListener("change", () => {
-            const undo = ctx.createUndoSnapshot();
-            const previous = global.RhythmTaskChecklist.normalizeLogs(task.checklistLogs);
-            global.RhythmTaskChecklist.setDone(task, activeDate, item.id, checkbox.checked);
-            if (ctx.saveState() === false) { task.checklistLogs = previous; checkbox.checked = !checkbox.checked; }
-            else ctx.showToast(checkbox.checked ? "Пункт выполнен" : "Отметка пункта снята", { undo });
-            update();
-          });
-          label.append(checkbox, text);
-          list.append(label);
-        });
-        details.append(summary, list);
-        node.querySelector(".task-content").append(details);
-      }
+      appendChecklist(node.querySelector(".task-content"), task, activeDate);
+      node.querySelector(".create-subtask").addEventListener("click", () => { node.querySelector(".task-more").open = false; ctx.openSubtaskDialog(task, activeDate); });
       const linkedNotes = ctx.getNotesForTask?.(task.id) || [];
       if (linkedNotes.length) {
         const openNotes = document.createElement("button");
@@ -504,6 +473,59 @@
       });
 
       return node;
+    }
+
+    function createSubtaskAction(task, dateKey, menu) {
+      const button = createButton("ghost-button compact-button create-subtask", "Создать подзадачу");
+      button.addEventListener("click", () => { menu.open = false; ctx.openSubtaskDialog(task, dateKey); });
+      return button;
+    }
+
+    function appendChecklist(container, task, dateKey) {
+      if (!task.checklist?.length) return;
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      const list = document.createElement("div");
+      details.className = "task-checklist";
+      details.dataset.checklistTaskId = task.id;
+      details.dataset.checklistDate = dateKey;
+      const expansionKey = `${task.id}:${dateKey}`;
+      details.open = expandedChecklists.has(expansionKey);
+      details.addEventListener("toggle", () => {
+        if (!details.isConnected) return;
+        if (details.open) expandedChecklists.add(expansionKey);
+        else expandedChecklists.delete(expansionKey);
+      });
+      const update = () => { const progress = global.RhythmTaskChecklist.progress(task, dateKey); summary.textContent = `Подзадачи: ${progress.done} из ${progress.total}`; };
+      update();
+      task.checklist.forEach((item) => {
+        const label = document.createElement("label");
+        const checkbox = document.createElement("input");
+        const text = document.createElement("span");
+        checkbox.type = "checkbox";
+        checkbox.checked = task.checklistLogs?.[dateKey]?.[item.id]?.done === true;
+        text.textContent = item.title;
+        checkbox.addEventListener("change", () => {
+          const undo = ctx.createUndoSnapshot();
+          const previous = global.RhythmTaskChecklist.normalizeLogs(task.checklistLogs);
+          const previousUpdatedAt = task.updatedAt;
+          const previousDeferredFromDate = task.deferredFromDate;
+          if (task.date === null && !task.deferredFromDate) task.deferredFromDate = dateKey;
+          global.RhythmTaskChecklist.setDone(task, dateKey, item.id, checkbox.checked);
+          if (ctx.saveState() === false) { task.checklistLogs = previous; task.updatedAt = previousUpdatedAt; task.deferredFromDate = previousDeferredFromDate; checkbox.checked = !checkbox.checked; }
+          else ctx.showToast(checkbox.checked ? "Подзадача выполнена" : "Отметка подзадачи снята", { undo });
+          update();
+        });
+        label.append(checkbox, text); list.append(label);
+      });
+      details.append(summary, list); container.append(details);
+    }
+
+    function expandChecklist(taskId, dateKey) {
+      expandedChecklists.add(`${taskId}:${dateKey}`);
+      document.querySelectorAll(".task-checklist").forEach((node) => {
+        if (node.dataset.checklistTaskId === taskId && node.dataset.checklistDate === dateKey) node.open = true;
+      });
     }
 
     function attachTaskAccessibleMove(node, task, handle) {
@@ -827,6 +849,7 @@
     }
 
     return {
+      expandChecklist,
       createTaskNode,
       renderExcludedTasks,
       renderOverdueTasks,
