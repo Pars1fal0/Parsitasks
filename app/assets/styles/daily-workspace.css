@@ -133,7 +133,7 @@ body[data-view="archive"] #pageTitle { font-size: 30px; line-height: 1.2; font-w
 #overviewView .calendar-schedule[hidden] { display: none; }
 .calendar-schedule-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .calendar-schedule-period { font-size: 14px; font-weight: 600; line-height: 1.5; }
-.calendar-time-scroll { position: relative; overflow: auto; height: min(60dvh, 600px); min-height: 240px; overscroll-behavior: contain; scrollbar-color: var(--line-strong) var(--surface); border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
+.calendar-time-scroll { position: relative; overflow: auto; height: min(78dvh, 960px); min-height: 480px; overscroll-behavior: contain; scrollbar-color: var(--line-strong) var(--surface); border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
 .calendar-time-grid { display: grid; grid-template-columns: 48px repeat(var(--calendar-days), minmax(128px, 1fr)); min-width: calc(48px + var(--calendar-days) * 128px); width: 100%; position: relative; }
 .calendar-time-grid.is-day { grid-template-columns: 48px minmax(0, 1fr); min-width: 0; }
 .calendar-hour-rail { position: sticky; left: 0; z-index: 6; background: var(--bg); }
@@ -195,7 +195,7 @@ body[data-view="archive"] #pageTitle { font-size: 30px; line-height: 1.2; font-w
 .calendar-task-check { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; margin: 12px; padding: 0; cursor: pointer; }
 .calendar-agenda-row { display: flex; gap: 4px; align-items: center; min-width: 0; }
 .calendar-agenda-row :is(.calendar-agenda-task, .calendar-deadline) { flex: 1; min-width: 0; }
-.calendar-untimed { margin-bottom: 12px; border-block: 1px solid var(--line); padding-block: 8px; }
+.calendar-untimed { margin-top: 20px; border-block: 1px solid var(--line); padding-block: 8px; }
 .calendar-untimed h3 { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .calendar-untimed-list { max-height: 156px; overflow-y: auto; overscroll-behavior: contain; }
 .calendar-untimed .calendar-schedule-agenda-item:last-child { border-bottom: 0; }
@@ -218,7 +218,7 @@ body[data-view="archive"] #pageTitle { font-size: 30px; line-height: 1.2; font-w
   #overviewView .overview-mode-control { flex: 1 1 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); order: -1; }
   #overviewView .overview-mode-control > button { font-size: 12px; padding-inline: 5px; min-height: 44px; }
   .calendar-schedule-period { font-size: 13px; }
-  .calendar-time-scroll { height: 52dvh; }
+  .calendar-time-scroll { height: 72dvh; min-height: 420px; }
   #overviewView .calendar-period-metrics { grid-template-columns: 1fr; gap: 12px; }
   .calendar-agenda-open { grid-template-columns: 76px minmax(0, 1fr); font-size: 13px; }
   .calendar-untimed-list { max-height: 112px; }

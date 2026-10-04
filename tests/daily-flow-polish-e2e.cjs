@@ -46,6 +46,21 @@ const { chromium } = require("playwright-core");
     assert.ok(await page.locator(".calendar-untimed").isVisible());
     assert.match(await page.locator(".calendar-untimed").innerText(), /Дело без времени/);
     assert.match(await page.locator(".calendar-untimed").innerText(), /Сдать отчёт/);
+    const calendarSpace = async () => {
+      await page.waitForFunction(() => {
+        const node = document.querySelector(".calendar-time-scroll");
+        return node?.clientHeight >= (innerWidth <= 680 ? 420 : 700);
+      });
+      const size = await page.locator(".calendar-time-scroll").evaluate((node) => ({ width: innerWidth, height: node.clientHeight, min: parseFloat(getComputedStyle(node).minHeight) }));
+      assert.ok(size.height >= (size.width <= 680 ? 420 : 700), "calendar viewport is not squeezed by the header: " + JSON.stringify(size));
+      assert.ok(await page.locator(".calendar-untimed").evaluate((node) => Boolean(node.compareDocumentPosition(document.querySelector(".calendar-time-scroll")) & Node.DOCUMENT_POSITION_PRECEDING)), "untimed tasks follow the timeline");
+    };
+    await calendarSpace();
+    await page.locator("#activeDate").fill("2026-10-02"); await page.locator("#activeDate").dispatchEvent("change");
+    assert.equal(await page.locator(".calendar-time-event.is-lesson").count(), 1);
+    assert.equal(await page.locator(".calendar-selected-agenda").count(), 0, "a lesson-only timed schedule needs no repeated agenda");
+    assert.match(await page.locator(".calendar-untimed").innerText(), /Ежедневная задача/, "untimed tasks stay available on study days");
+    await page.locator("#activeDate").fill("2026-10-04"); await page.locator("#activeDate").dispatchEvent("change");
     await page.locator('.calendar-untimed [data-agenda-task-id="plain"] input').check();
     assert.equal((await stored()).tasks.find((task) => task.id === "plain").completed["2026-10-04"], true);
     await page.locator(".toast-close").click();
@@ -208,11 +223,17 @@ const { chromium } = require("playwright-core");
     const accent = await page.evaluate(() => ({ theme: getComputedStyle(document.documentElement).getPropertyValue("--teal").trim(), button: getComputedStyle(document.querySelector(".board-add-trigger")).backgroundColor }));
     assert.notEqual(accent.button, "rgb(8, 121, 105)");
     await go("calendar/day");
+    await calendarSpace();
     await page.screenshot({ path: path.join(captures, "calendar-desktop.png") });
     for (const width of [390, 320]) {
       await page.setViewportSize({ width, height: 850 });
+      await calendarSpace();
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: path.join(captures, `calendar-${width}.png`) });
+      await go("calendar/week");
+      await calendarSpace();
+      await page.screenshot({ path: path.join(captures, `calendar-week-${width}.png`) });
+      await go("calendar/day");
     }
     assert.deepEqual(errors, []);
     console.log(`Daily flow checks passed. Captures: ${captures}`);

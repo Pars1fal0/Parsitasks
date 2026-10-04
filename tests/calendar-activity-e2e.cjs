@@ -126,7 +126,7 @@ const axePath = require.resolve("axe-core/axe.min.js");
     await fits();
     await page.locator(".calendar-time-scroll").scrollIntoViewIfNeeded();
     const mobileSchedule = await page.locator(".calendar-time-scroll").boundingBox();
-    assert.ok(mobileSchedule.height < 500, "scroll viewport adapts to mobile header and bottom navigation");
+    assert.ok(mobileSchedule.height >= 600, "mobile timeline keeps a generous viewport instead of shrinking below the header");
     const selectedHeading = await page.locator(".calendar-time-heading.is-selected").boundingBox();
     assert.ok(selectedHeading.x >= mobileSchedule.x && selectedHeading.x + selectedHeading.width <= mobileSchedule.x + mobileSchedule.width + 1, "selected weekday stays visible after returning from statistics on mobile");
     await page.screenshot({ path: path.join(captures, "week-mobile.png") });

@@ -249,25 +249,12 @@
       root.append(toolbar);
       const selectedModel = models[dates.indexOf(date)];
       const due = ctx.getState().tasks.filter((task) => task.dueDate === date);
-      if (selectedModel.unscheduledTasks.length || due.length) {
-        const untimed = element("section", "calendar-untimed");
-        untimed.setAttribute("aria-label", "Дела без времени и сроки выбранного дня");
-        untimed.append(element("h3", "", "Без времени и сроки"));
-        const list = element("div", "calendar-untimed-list");
-        due.forEach((task) => list.append(agendaRow({ task, done: ctx.isTaskDone(task, task.date || date), timeLabel: `Сдать${task.dueTime ? ` ${task.dueTime}` : ""}` }, date, true)));
-        selectedModel.unscheduledTasks.forEach((entry) => list.append(agendaRow(entry, date)));
-        untimed.append(list); root.append(untimed);
-      }
       const scroller = element("div", "calendar-time-scroll");
       scroller.tabIndex = 0;
       scroller.setAttribute("aria-label", mode === "day" ? "Часы дня" : "Часы недели");
       scroller.addEventListener("scroll", hidePreview, { passive: true });
       root.append(scroller);
-      // A quarter-hour must fit a readable title; preserve the viewed time on resize.
-      const navigation = global.innerWidth <= 900 ? document.querySelector(".nav-tabs")?.getBoundingClientRect().height || 72 : 0;
-      const top = scroller.getBoundingClientRect().top + global.scrollY;
-      const availableHeight = Math.max(240, global.innerHeight - top - navigation - 20);
-      scroller.style.height = `${Math.min(scroller.clientHeight || 528, availableHeight)}px`;
+      // Keep the hour scale readable; CSS owns the viewport height independently of the page header.
       hourHeight = Math.max(HOUR_HEIGHT, ((scroller.clientHeight || 528) - 48) / 12);
       root.style.setProperty("--calendar-hour-height", `${hourHeight}px`);
       const grid = element("div", `calendar-time-grid is-${mode}`);
@@ -330,6 +317,17 @@
       scroller.dataset.period = key;
       renderedWidth = global.innerWidth;
 
+      if (selectedModel.unscheduledTasks.length || due.length) {
+        const untimed = element("section", "calendar-untimed");
+        untimed.setAttribute("aria-label", "Дела без времени и сроки выбранного дня");
+        untimed.append(element("h3", "", "Без времени и сроки"));
+        const list = element("div", "calendar-untimed-list");
+        due.forEach((task) => list.append(agendaRow({ task, done: ctx.isTaskDone(task, task.date || date), timeLabel: `Сдать${task.dueTime ? ` ${task.dueTime}` : ""}` }, date, true)));
+        selectedModel.unscheduledTasks.forEach((entry) => list.append(agendaRow(entry, date)));
+        untimed.append(list); root.append(untimed);
+      }
+
+      const timedTasks = selectedModel.timedTasks.filter((entry) => !entry.task.studyEvent);
       const agenda = element("section", "calendar-selected-agenda");
       const agendaHeading = element("div", "calendar-agenda-heading");
       const addTask = button("icon-button", "", () => ctx.createTask(date));
@@ -344,9 +342,9 @@
       agendaHeading.append(element("h3", "", ctx.formatLongDate(date)), addTask);
       agendaHeading.lastChild.setAttribute("aria-label", "Добавить задачу на выбранный день");
       agenda.append(agendaHeading);
-      selectedModel.timedTasks.forEach((entry) => agenda.append(agendaRow(entry, date)));
+      timedTasks.forEach((entry) => agenda.append(agendaRow(entry, date)));
       if (!selectedModel.timedTasks.length && !selectedModel.unscheduledTasks.length && !due.length) agenda.append(element("p", "muted", "На этот день пока ничего нет"));
-      root.append(agenda);
+      if (timedTasks.length || (!selectedModel.timedTasks.length && !selectedModel.unscheduledTasks.length && !due.length)) root.append(agenda);
       const gaps = freeIntervals(selectedModel.timedTasks).filter((gap) => gap.end - gap.start >= 45);
       if (gaps.length) {
         const available = element("details", "calendar-free-time");
