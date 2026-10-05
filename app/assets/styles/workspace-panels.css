@@ -45,7 +45,14 @@ body:is([data-view="goals"], [data-view="journal"], [data-view="board"]) #pageTi
 #journalView .notes-list-title { font-weight: 550; line-height: 1.5; }
 #journalView .notes-list-meta { font-size: 12px; }
 #journalView .notes-form { padding: 0 0 20px 24px; gap: 16px; }
-#journalView .notes-form-top { padding: 0 0 12px; background: var(--bg); }
+#journalView .notes-form-top { display: grid; grid-template-columns: minmax(0, 1fr) auto 44px auto; grid-template-rows: repeat(2, minmax(22px, auto)); align-items: center; gap: 0 8px; padding: 0 0 12px; background: var(--bg); }
+#journalView .notes-form-top .notes-updated { grid-column: 1; grid-row: 1; min-width: 0; line-height: 1.5; color: var(--text-soft); }
+#journalView .notes-form-top #noteStatus { grid-column: 1; grid-row: 2; min-width: 0; margin: 0; line-height: 1.5; }
+#journalView .notes-form-top .note-save { grid-column: 2; grid-row: 1 / 3; min-height: 44px; height: 44px; margin: 0; white-space: nowrap; transform: none; box-shadow: none; }
+#journalView .notes-form-top .notes-pin-toggle { grid-column: 3; grid-row: 1 / 3; position: relative; width: 44px; height: 44px; margin: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+#journalView .notes-form-top .notes-pin-toggle:has(input:checked) { border-color: var(--teal); background: var(--teal-soft); color: var(--teal); }
+#journalView .notes-form-top .notes-pin-toggle:has(input:focus-visible) { outline: 2px solid var(--teal); outline-offset: 2px; }
+#journalView .notes-form-top .notes-delete { grid-column: 4; grid-row: 1 / 3; width: 44px; height: 44px; margin: 0; }
 #journalView .notes-title-input { font-size: 22px; font-weight: 600; border-bottom: 0; padding: 4px 0; }
 #journalView .notes-body-input { line-height: 1.7; min-height: 36dvh; }
 #journalView .note-reading-controls { gap: 4px; margin: 0; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -119,10 +126,20 @@ body:is([data-view="goals"], [data-view="journal"], [data-view="board"]) #pageTi
   #journalView .notes-form { padding: 0 0 16px; }
   #journalView .notes-sidebar { min-height: 0; }
   #journalView .notes-filters { padding-right: 0; }
-  #journalView .notes-form-top { gap: 6px; }
+  #journalView .notes-form-top { column-gap: 6px; }
   #journalView .notes-updated { font-size: 11px; }
 }
 @media (max-width: 680px) {
+  #journalView .notes-form-top { grid-template-columns: 44px minmax(0, 1fr) 44px 44px 44px; grid-template-rows: 44px auto; row-gap: 6px; }
+  #journalView .notes-form-top:has(#noteDelete[hidden]) { grid-template-columns: 44px minmax(0, 1fr) 44px 44px; }
+  #journalView .notes-form-top .notes-back { grid-column: 1; grid-row: 1; }
+  #journalView .notes-form-top .notes-updated { display: block; grid-column: 2; grid-row: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #journalView .notes-form-top #noteStatus { grid-column: 1 / -1; grid-row: 2; }
+  #journalView .notes-form-top .note-save { grid-column: 3; grid-row: 1; width: 44px; padding: 0; }
+  #journalView .notes-form-top .note-save > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #journalView .notes-form-top .notes-pin-toggle { grid-column: 4; grid-row: 1; }
+  #journalView .notes-form-top .notes-delete { grid-column: 5; grid-row: 1; }
+  #journalView .notes-form.is-reading .notes-form-top .notes-pin-toggle { grid-column: 3; }
   body:is([data-view="goals"], [data-view="journal"], [data-view="board"]) #pageTitle { font-size: 28px; }
   #goalsView .goal-item { padding: 14px; }
   #goalsView .goal-metrics { gap: 8px 16px; margin-bottom: 16px; }
