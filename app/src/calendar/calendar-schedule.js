@@ -3,6 +3,13 @@
   const HOUR_HEIGHT = 96;
   const DAY_END = 23 * 60 + 59;
   const DRAG_TYPE = "application/x-parsitasks-calendar";
+  const MOBILE_HOUR_HEIGHT = 72;
+  const ZOOM_STORAGE = "parsitasks-calendar-touch-scale";
+
+  function zoomHeight(value) { return Math.max(48, Math.min(192, Number(value) || MOBILE_HOUR_HEIGHT)); }
+  function anchoredScroll(scrollTop, oldHeight, newHeight, anchorY, headerHeight = 48) {
+    return Math.max(0, (scrollTop + anchorY - headerHeight) / oldHeight * newHeight + headerHeight - anchorY);
+  }
 
   function freeIntervals(entries, start = 480, end = 1320) {
     const occupied = entries.filter((entry) => entry.isTimeBlock)
@@ -38,6 +45,15 @@
     let renderedWidth = 0;
     let fullMobileWeek = false;
     let interactivePreview = false;
+    let touchBusy = false;
+    let suppressClickUntil = 0;
+    let mobileHourHeight = MOBILE_HOUR_HEIGHT;
+    let disposeTouch = () => {};
+    let menuController;
+    const layerToggle = document.querySelector("#overviewView .study-layer-toggle");
+    const layerHome = layerToggle?.parentElement;
+    const layerSibling = layerToggle?.nextSibling;
+    try { mobileHourHeight = zoomHeight(global.localStorage?.getItem(ZOOM_STORAGE)); } catch { /* Device preference is optional. */ }
     const mobile = () => global.matchMedia?.("(max-width: 680px)")?.matches;
     const preview = element("div", "calendar-event-preview");
     preview.id = "calendarEventPreview";
@@ -45,6 +61,7 @@
     preview.hidden = true;
     document.body.append(preview);
     let previewOwner = null;
+    let previewScroll = null;
     function hidePreview() {
       preview.hidden = true;
       interactivePreview = false;
@@ -52,9 +69,10 @@
       preview.setAttribute("role", "tooltip");
       previewOwner?.removeAttribute("aria-describedby");
       previewOwner = null;
+      previewScroll = null;
     }
-    function showPreview(node, open, entry) {
-      if (!node.classList.contains("is-short")) return;
+    function showPreview(node, open, entry, force = false) {
+      if (!force && !node.classList.contains("is-short")) return;
       hidePreview();
       preview.replaceChildren(element("strong", "", entry.title), element("span", "", open.querySelector("small").textContent));
       preview.hidden = false;
@@ -63,10 +81,12 @@
       preview.style.left = `${Math.max(12, Math.min(global.innerWidth - size.width - 12, anchor.left))}px`;
       preview.style.top = `${anchor.bottom + size.height + 20 <= global.innerHeight ? anchor.bottom + 8 : Math.max(12, anchor.top - size.height - 8)}px`;
       previewOwner = open;
+      const scroller = root.querySelector(".calendar-time-scroll");
+      previewScroll = scroller ? { top: scroller.scrollTop, left: scroller.scrollLeft } : null;
       open.setAttribute("aria-describedby", preview.id);
     }
     function showEventActions(node, open, entry, date) {
-      showPreview(node, open, entry);
+      showPreview(node, open, entry, true);
       interactivePreview = true;
       preview.classList.add("is-interactive");
       preview.setAttribute("role", "dialog");
@@ -85,6 +105,7 @@
       icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", "#icon-close"); icon.append(use); close.append(icon);
       actions.append(close);
       preview.append(actions);
+      if (entry.task.studyEvent) preview.append(element("span", "", [entry.task.studyEvent.teacher, entry.task.studyEvent.room].filter(Boolean).join(" · ")));
       const bounds = preview.getBoundingClientRect();
       preview.style.left = `${Math.max(12, Math.min(node.getBoundingClientRect().left, global.innerWidth - bounds.width - 12))}px`;
       preview.style.top = `${Math.max(12, Math.min(parseFloat(preview.style.top), global.innerHeight - bounds.height - 12))}px`;
@@ -108,6 +129,8 @@
     }
     global.addEventListener("resize", () => {
       if (root.hidden) return;
+      if (touchBusy) return;
+      if (renderedWidth === global.innerWidth) { fitMobileViewport(); return; }
       if (!resizing) {
         global.cancelAnimationFrame(resizeFrame);
         resizeFrame = global.requestAnimationFrame(() => { render(lastMode); centerSelection(); });
@@ -115,6 +138,120 @@
       }
       centerSelection();
     });
+
+    root.addEventListener("click", (event) => {
+      if (touchBusy || (event.detail && performance.now() < suppressClickUntil)) { event.preventDefault(); event.stopImmediatePropagation(); }
+    }, true);
+
+    function fitMobileViewport() {
+      const scroller = root.querySelector(".calendar-time-scroll");
+      if (mobile() && scroller) root.style.setProperty("--calendar-mobile-top", `${Math.max(12, scroller.getBoundingClientRect().top)}px`);
+    }
+
+    function setZoom(next, anchorY) {
+      const scroller = root.querySelector(".calendar-time-scroll");
+      if (!scroller) return;
+      const oldHeight = hourHeight;
+      const nextHeight = zoomHeight(next);
+      const top = anchoredScroll(scroller.scrollTop, oldHeight, nextHeight, anchorY ?? scroller.clientHeight / 2);
+      hourHeight = nextHeight; mobileHourHeight = nextHeight;
+      root.style.setProperty("--calendar-hour-height", `${nextHeight}px`);
+      root.querySelectorAll(".calendar-time-event").forEach((node) => {
+        const start = Number(node.dataset.startMinute);
+        const height = blockHeight(start, start + Number(node.dataset.visualDuration));
+        sizeCard(node, height);
+        node.style.top = `${Math.min(start / 60 * nextHeight, 24 * nextHeight - height)}px`;
+      });
+      root.querySelectorAll(".calendar-now-line").forEach((node) => { node.style.top = `${Number(node.dataset.minute) / 60 * nextHeight}px`; });
+      scroller.scrollTop = top;
+      scrollHour = top / nextHeight;
+      const label = root.querySelector(".calendar-zoom-value");
+      if (label) label.textContent = `${Math.round(nextHeight / MOBILE_HOUR_HEIGHT * 100)}%`;
+    }
+
+    function saveZoom() {
+      try { global.localStorage?.setItem(ZOOM_STORAGE, String(mobileHourHeight)); } catch { /* Keep the gesture usable when storage is unavailable. */ }
+    }
+
+    function bindTouch(scroller) {
+      let pinch = null, contact = null, moving = null, holdTimer, autoFrame;
+      const distance = (touches) => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+      const midpoint = (touches) => (touches[0].clientY + touches[1].clientY) / 2 - scroller.getBoundingClientRect().top;
+      const clearHold = () => { clearTimeout(holdTimer); holdTimer = null; };
+      const restoreMove = () => {
+        global.cancelAnimationFrame(autoFrame);
+        if (moving) { moving.node.classList.remove("is-touch-moving"); moving.node.style.top = moving.top; moving.label.textContent = moving.timeLabel; }
+        moving = null;
+      };
+      const moveCard = (y) => {
+        if (!moving) return;
+        moving.y = y;
+        const delta = (y - contact.y + scroller.scrollTop - contact.scroll) / hourHeight * 60;
+        moving.minute = Math.max(0, Math.min(1440 - moving.duration, Math.round((moving.start + delta) / 15) * 15));
+        moving.node.style.top = `${moving.minute / 60 * hourHeight}px`;
+        moving.label.textContent = `${time(moving.minute)}–${time(Math.min(DAY_END, moving.minute + moving.duration))}`;
+      };
+      const autoScroll = () => {
+        if (!moving) return;
+        const bounds = scroller.getBoundingClientRect();
+        const delta = moving.y < bounds.top + 90 ? -6 : moving.y > bounds.bottom - 60 ? 6 : 0;
+        if (delta) { scroller.scrollTop += delta; moveCard(moving.y); }
+        autoFrame = global.requestAnimationFrame(autoScroll);
+      };
+      const start = (event) => {
+        if (!mobile()) return;
+        if (event.touches.length >= 2) {
+          event.preventDefault(); clearHold(); restoreMove(); hidePreview(); touchBusy = true;
+          const y = midpoint(event.touches);
+          pinch = { distance: Math.max(1, distance(event.touches)), height: hourHeight, scroll: scroller.scrollTop, y };
+          return;
+        }
+        if (touchBusy) { event.preventDefault(); return; }
+        const touch = event.touches[0];
+        contact = { x: touch.clientX, y: touch.clientY, scroll: scroller.scrollTop };
+        const card = event.target.closest?.(".calendar-time-event:not(.is-lesson)");
+        if (!card || event.target.closest?.(".calendar-event-check, .calendar-event-resize")) return;
+        holdTimer = setTimeout(() => {
+          const startMinute = Number(card.dataset.startMinute);
+          moving = { node: card, top: card.style.top, start: startMinute, minute: startMinute,
+            duration: Number(card.dataset.visualDuration), label: card.querySelector(".calendar-event-open small"), y: contact.y };
+          moving.timeLabel = moving.label.textContent;
+          card.classList.add("is-touch-moving"); hidePreview(); touchBusy = true; autoScroll();
+        }, 450);
+      };
+      const move = (event) => {
+        if (!mobile()) return;
+        if (pinch && event.touches.length >= 2) {
+          event.preventDefault();
+          const y = midpoint(event.touches);
+          // Anchor to the initial content point, so successive frames cannot accumulate drift.
+          setZoom(pinch.height * distance(event.touches) / pinch.distance, y);
+          scroller.scrollTop = anchoredScroll(pinch.scroll, pinch.height, hourHeight, pinch.y) + pinch.y - y;
+          return;
+        }
+        if (moving) { event.preventDefault(); moveCard(event.touches[0].clientY); return; }
+        if (touchBusy) { event.preventDefault(); return; }
+        if (contact && Math.hypot(event.touches[0].clientX - contact.x, event.touches[0].clientY - contact.y) > 8) {
+          clearHold(); suppressClickUntil = performance.now() + 350;
+        }
+      };
+      const end = (event) => {
+        clearHold();
+        if (touchBusy) { if (event.cancelable) event.preventDefault(); suppressClickUntil = performance.now() + 450; }
+        if (pinch) { saveZoom(); pinch = null; }
+        if (moving) {
+          const result = moving;
+          restoreMove();
+          if (event.type !== "touchcancel" && result.minute !== result.start) ctx.scheduleTask(result.node.dataset.eventId, result.node.dataset.date, result.node.dataset.date, time(result.minute));
+        }
+        if (!event.touches.length) { contact = null; touchBusy = false; }
+      };
+      scroller.addEventListener("touchstart", start, { passive: false });
+      scroller.addEventListener("touchmove", move, { passive: false });
+      scroller.addEventListener("touchend", end, { passive: false });
+      scroller.addEventListener("touchcancel", end, { passive: false });
+      return () => { clearHold(); restoreMove(); touchBusy = false; };
+    }
 
     function element(tag, className, text) {
       const node = document.createElement(tag);
@@ -142,7 +279,7 @@
     }
 
     function attachDrag(node, task, date) {
-      node.draggable = true;
+      node.draggable = !mobile();
       node.addEventListener("dragstart", (event) => {
         if (event.target.closest?.(".calendar-event-check")) { event.preventDefault(); return; }
         dragged = { taskId: task.id, date };
@@ -184,6 +321,8 @@
       const height = blockHeight(entry.minutes, entry.minutes + entry.visualDuration);
       sizeCard(node, height);
       node.dataset.date = date;
+      node.dataset.startMinute = entry.minutes;
+      node.dataset.visualDuration = entry.visualDuration;
       node.style.top = `${Math.min(entry.minutes / 60 * hourHeight, 24 * hourHeight - height)}px`;
       node.style.left = `calc(${entry.columnIndex / entry.columnCount * 100}% + 3px)`;
       node.style.width = `calc(${100 / entry.columnCount}% - 6px)`;
@@ -214,7 +353,7 @@
         node.append(check);
       }
       const open = button("calendar-event-open", "", () => {
-        if (!resizing && mobile() && node.classList.contains("is-short")) { showEventActions(node, open, entry, date); return; }
+        if (!resizing && mobile()) { showEventActions(node, open, entry, date); return; }
         hidePreview();
         if (!resizing) lesson ? ctx.openLesson(lesson, date) : ctx.editTask(task, date);
       });
@@ -276,6 +415,10 @@
     }
 
     function render(mode) {
+      disposeTouch();
+      menuController?.abort();
+      menuController = new AbortController();
+      if (layerHome && layerToggle.parentElement !== layerHome) layerHome.insertBefore(layerToggle, layerSibling);
       hidePreview();
       root.hidden = !["day", "week"].includes(mode);
       if (root.hidden) return;
@@ -306,6 +449,32 @@
         if (currentColumn) scroller.scrollLeft = Math.max(0, currentColumn.parentElement.offsetLeft - 48);
       });
       controls.append(nowButton);
+      if (mobile()) {
+        const menu = element("details", "calendar-touch-options");
+        const toggle = element("summary", "icon-button");
+        toggle.setAttribute("aria-label", "Настройки календаря и масштаб часов"); toggle.title = "Настройки календаря и масштаб часов";
+        const toggleIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const toggleUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        toggleIcon.classList.add("ui-icon"); toggleIcon.setAttribute("aria-hidden", "true"); toggleUse.setAttribute("href", "#icon-settings"); toggleIcon.append(toggleUse); toggle.append(toggleIcon);
+        const options = element("div", "calendar-touch-options-panel");
+        options.append(element("span", "", "Масштаб часов"));
+        const zoom = element("div", "calendar-touch-zoom");
+        const zoomButton = (symbol, label, change) => {
+          const control = button("icon-button", "", () => { setZoom(change()); saveZoom(); });
+          const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+          icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", `#icon-${symbol}`); icon.append(use); control.append(icon);
+          control.setAttribute("aria-label", label); control.title = label; return control;
+        };
+        const value = button("calendar-zoom-value", `${Math.round(mobileHourHeight / MOBILE_HOUR_HEIGHT * 100)}%`, () => { setZoom(MOBILE_HOUR_HEIGHT); saveZoom(); });
+        value.setAttribute("aria-label", "Сбросить масштаб часов"); value.title = "Сбросить масштаб часов";
+        zoom.append(zoomButton("minus", "Уменьшить масштаб часов", () => hourHeight / 1.25), value, zoomButton("plus", "Увеличить масштаб часов", () => hourHeight * 1.25));
+        options.append(zoom);
+        if (layerToggle) options.append(layerToggle);
+        menu.append(toggle, options); controls.append(menu);
+        document.addEventListener("pointerdown", (event) => { if (!menu.contains(event.target)) menu.open = false; }, { signal: menuController.signal });
+        document.addEventListener("keydown", (event) => { if (event.key === "Escape" && menu.open) { menu.open = false; toggle.focus(); } }, { signal: menuController.signal });
+      }
       if (mode === "week" && mobile()) {
         const overview = button("ghost-button compact-button", fullMobileWeek ? "Выбранный день" : "Все дни", () => { fullMobileWeek = !fullMobileWeek; render(mode); });
         overview.setAttribute("aria-pressed", String(fullMobileWeek)); controls.append(overview);
@@ -336,10 +505,13 @@
       const scroller = element("div", "calendar-time-scroll");
       scroller.tabIndex = 0;
       scroller.setAttribute("aria-label", mode === "day" ? "Часы дня" : "Часы недели");
-      scroller.addEventListener("scroll", hidePreview, { passive: true });
+      scroller.addEventListener("scroll", () => {
+        if (!interactivePreview || !previewScroll || scroller.scrollTop !== previewScroll.top || scroller.scrollLeft !== previewScroll.left) hidePreview();
+      }, { passive: true });
       root.append(scroller);
       // Keep the hour scale readable; CSS owns the viewport height independently of the page header.
-      hourHeight = Math.max(HOUR_HEIGHT, ((scroller.clientHeight || 528) - 48) / 12);
+      fitMobileViewport();
+      hourHeight = mobile() ? mobileHourHeight : Math.max(HOUR_HEIGHT, ((scroller.clientHeight || 528) - 48) / 12);
       root.style.setProperty("--calendar-hour-height", `${hourHeight}px`);
       const grid = element("div", `calendar-time-grid is-${mode}${mode === "week" && mobile() && !fullMobileWeek ? " is-compact-week" : ""}`);
       grid.style.setProperty("--calendar-days", dates.length);
@@ -388,12 +560,14 @@
         const line = models[index].nowLine;
         if (line) {
           const now = element("div", "calendar-now-line");
+          now.dataset.minute = (line.hour + line.offsetPercent / 100) * 60;
           now.style.top = `${(line.hour + line.offsetPercent / 100) * hourHeight}px`;
           now.setAttribute("aria-hidden", "true"); hours.append(now);
         }
         column.append(hours); grid.append(column);
       });
       scroller.append(grid);
+      disposeTouch = bindTouch(scroller);
       scroller.scrollTop = scrollHour * hourHeight; scroller.scrollLeft = scrollLeft;
       if (mode === "week" && (key !== existing?.dataset.period || renderedWidth !== global.innerWidth)) {
         const selectedColumn = scroller.querySelectorAll(".calendar-time-column")[dates.indexOf(date)];
@@ -442,7 +616,7 @@
     }
     return { render };
   }
-  const api = { createCalendarSchedule, freeIntervals, quarterMinute };
+  const api = { createCalendarSchedule, freeIntervals, quarterMinute, zoomHeight, anchoredScroll };
   global.RhythmCalendarSchedule = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

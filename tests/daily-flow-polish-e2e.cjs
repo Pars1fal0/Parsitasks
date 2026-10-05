@@ -49,10 +49,16 @@ const { chromium } = require("playwright-core");
     const calendarSpace = async () => {
       await page.waitForFunction(() => {
         const node = document.querySelector(".calendar-time-scroll");
-        return node?.clientHeight >= (innerWidth <= 680 ? 420 : 700);
+        return node?.clientHeight >= (innerWidth <= 680 ? 280 : 700)
+          && (innerWidth > 680 || (Boolean(document.querySelector(".calendar-touch-options"))
+            && node.getBoundingClientRect().bottom <= innerHeight - 64));
       });
-      const size = await page.locator(".calendar-time-scroll").evaluate((node) => ({ width: innerWidth, height: node.clientHeight, min: parseFloat(getComputedStyle(node).minHeight) }));
-      assert.ok(size.height >= (size.width <= 680 ? 420 : 700), "calendar viewport is not squeezed by the header: " + JSON.stringify(size));
+      await page.locator(".calendar-time-scroll").waitFor({ state: "visible" });
+      const size = await page.locator(".calendar-time-scroll").evaluate((node) => ({ width: innerWidth, height: node.clientHeight, min: parseFloat(getComputedStyle(node).minHeight), bottom: node.getBoundingClientRect().bottom, viewport: innerHeight }));
+      assert.ok(size.height >= (size.width <= 680 ? 280 : 700), "calendar viewport has useful working space: " + JSON.stringify(size));
+      if (size.width <= 680) {
+        assert.ok(size.bottom <= size.viewport - 64, "mobile grid fits above bottom tabs rather than extending behind them: " + JSON.stringify(size));
+      }
       assert.ok(await page.locator(".calendar-untimed").evaluate((node) => Boolean(node.compareDocumentPosition(document.querySelector(".calendar-time-scroll")) & Node.DOCUMENT_POSITION_PRECEDING)), "untimed tasks follow the timeline");
     };
     await calendarSpace();

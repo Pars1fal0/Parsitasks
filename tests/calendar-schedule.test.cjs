@@ -1,8 +1,17 @@
 const assert = require("node:assert/strict");
-const { freeIntervals, quarterMinute } = require("../app/src/calendar/calendar-schedule.js");
+const { freeIntervals, quarterMinute, zoomHeight, anchoredScroll } = require("../app/src/calendar/calendar-schedule.js");
 const { buildHash, parseHash } = require("../app/src/core/navigation-state.js");
 
 module.exports = [
+  { name: "calendar touch zoom bounds and keeps the same hour under the fingers", fn() {
+    assert.equal(zoomHeight(10), 48);
+    assert.equal(zoomHeight(500), 192);
+    assert.equal(zoomHeight("invalid"), 72);
+    const before = 700, anchor = 240, oldHeight = 72, nextHeight = 120;
+    const after = anchoredScroll(before, oldHeight, nextHeight, anchor);
+    assert.equal((before + anchor - 48) / oldHeight, (after + anchor - 48) / nextHeight);
+    assert.equal(anchoredScroll(0, 192, 48, 200), 0);
+  } },
   { name: "calendar clicks and drops use the quarter hour under the pointer", fn() {
     assert.equal(quarterMinute(9.75 * 96 + 1, 96), 585);
     assert.equal(quarterMinute(9.25 * 96, 96), 555);

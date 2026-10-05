@@ -75,6 +75,8 @@ jobs:
         run: npm run test:workspace-panels
       - name: Verify cross-tab edits, mobile calendar and failed Drive metadata saves
         run: npm run test:audit-fixes
+      - name: Verify calendar pinch, one-finger scrolling and long-press scheduling
+        run: npm run test:calendar-touch
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website
