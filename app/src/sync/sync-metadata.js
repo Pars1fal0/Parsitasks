@@ -1,5 +1,5 @@
 (function (global) {
-  const TASK_DATE_FIELDS = ["completed", "acknowledgedOverdue", "excludedDates", "notified"];
+  const TASK_DATE_FIELDS = ["completed", "acknowledgedOverdue", "excludedDates", "notified", "workNotified"];
   const ENTITY_FIELDS = {
     tasks: [
       "title", "date", "deferredFromDate", "time", "scheduleMode", "startTime", "endTime", "categoryId", "priority",
@@ -16,7 +16,7 @@
       "assetId", "remotePath", "mime", "name", "sourceType", "sourceId", "backgroundColor",
     ],
     journalEntries: ["date", "text", "revisions"],
-    notes: ["title", "body", "pinned", "subjectId", "taskId"],
+    notes: ["title", "body", "bodyBaseUpdatedAt", "pinned", "subjectId", "taskId"],
     nutritionFoods: ["name", "unit", "calories", "nutritionKnown", "protein", "fat", "carbs", "source", "approximate"],
     nutritionMeals: ["date", "type", "time", "title", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "status", "notes"],
     nutritionTemplates: ["title", "type", "time", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "notes"],
@@ -28,11 +28,21 @@
 
   function createSyncMetadataTracker(options = {}) {
     const now = options.now || (() => new Date().toISOString());
+    let lastChangedAt = 0;
 
     function trackChanges(previousState = {}, nextState = {}) {
       const meta = normalizeSyncMeta(nextState.syncMeta);
-      const changedAt = now();
+      const latestVersion = (value) => value && typeof value === "object"
+        ? Object.values(value).reduce((latest, child) => Math.max(latest, latestVersion(child)), 0) : Date.parse(value || "") || 0;
+      lastChangedAt = Math.max(Date.parse(now()), lastChangedAt + 1, latestVersion(meta) + 1,
+        latestVersion(previousState.syncMeta) + 1, latestVersion(previousState.tombstones) + 1, latestVersion(nextState.tombstones) + 1);
+      const changedAt = new Date(lastChangedAt).toISOString();
       trackEntityFields(previousState, nextState, meta, changedAt);
+      Object.keys(ENTITY_FIELDS).forEach((type) => {
+        changedKeys(previousState.tombstones?.[type], nextState.tombstones?.[type]).forEach((id) => {
+          (meta.deletions[type] ||= {})[id] = changedAt;
+        });
+      });
       trackTaskFields(previousState.tasks, nextState.tasks, meta, changedAt);
       trackHabitLogs(previousState.habits, nextState.habits, meta, changedAt);
       trackTaskOrder(previousState.taskOrder, nextState.taskOrder, meta, changedAt);
@@ -117,6 +127,7 @@
   function normalizeSyncMeta(value = {}) {
     return {
       entityFields: normalizeEntityFields(value.entityFields),
+      deletions: normalizeNestedTimestampMap(value.deletions, 2),
       taskFields: normalizeNestedTimestampMap(value.taskFields, 3),
       habitLogs: normalizeNestedTimestampMap(value.habitLogs, 2),
       taskOrder: normalizeTimestampMap(value.taskOrder),
@@ -128,6 +139,13 @@
 
   function pruneSyncMeta(value = {}, state = {}) {
     const meta = normalizeSyncMeta(value);
+    const cutoff = Date.now() - 2 * 365 * 86400000;
+    Object.keys(meta.deletions).forEach((type) => {
+      if (!Object.hasOwn(ENTITY_FIELDS, type)) { delete meta.deletions[type]; return; }
+      Object.keys(meta.deletions[type]).forEach((id) => {
+        if (Date.parse(meta.deletions[type][id]) < cutoff) delete meta.deletions[type][id];
+      });
+    });
     const ids = {
       tasks: new Set(idsOf(state.tasks)),
       habits: new Set(idsOf(state.habits)),
@@ -206,7 +224,10 @@
   }
 
   function sameValue(left, right) {
-    return JSON.stringify(left) === JSON.stringify(right);
+    if (Object.is(left, right)) return true;
+    if (!left || !right || typeof left !== "object" || typeof right !== "object" || Array.isArray(left) !== Array.isArray(right)) return false;
+    const keys = Object.keys(left);
+    return keys.length === Object.keys(right).length && keys.every((key) => Object.hasOwn(right, key) && sameValue(left[key], right[key]));
   }
 
   function validTimestamp(value) {
@@ -217,7 +238,7 @@
     return JSON.parse(JSON.stringify(value));
   }
 
-  const api = { ENTITY_FIELDS, TASK_DATE_FIELDS, clone, createSyncMetadataTracker, normalizeSyncMeta, pruneSyncMeta };
+  const api = { ENTITY_FIELDS, TASK_DATE_FIELDS, clone, sameValue, createSyncMetadataTracker, normalizeSyncMeta, pruneSyncMeta };
   global.RhythmSyncMetadata = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

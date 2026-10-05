@@ -30,6 +30,10 @@
       platform: snapshot.desktop === true ? "desktop" : "web",
       online: snapshot.online === true,
       localSaveError: snapshot.localSaveError === true,
+      storage: {
+        bytes: Number.isSafeInteger(snapshot.storage?.bytes) && snapshot.storage.bytes >= 0 ? snapshot.storage.bytes : null,
+        durationMs: typeof snapshot.storage?.durationMs === "number" && Number.isFinite(snapshot.storage.durationMs) && snapshot.storage.durationMs >= 0 ? snapshot.storage.durationMs : null,
+      },
       sync: {
         projectConfigured: sync.projectConfigured === true,
         authenticated: sync.authenticated === true,

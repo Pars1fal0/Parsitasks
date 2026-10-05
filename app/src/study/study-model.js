@@ -66,17 +66,27 @@
     return weekType === "all" || weekParity(dateKey, cycle) === weekType;
   }
 
-  function nextLessonDate(lessons, subjectId, afterDateKey, cycle) {
+  function nextLessonDate(lessons, subjectId, afterDateKey, cycle, currentTime = "") {
+    return nextLessonOccurrence(lessons, subjectId, afterDateKey, cycle, currentTime)?.date || "";
+  }
+
+  function nextLessonOccurrence(lessons, subjectId, afterDateKey, cycle, currentTime = "") {
     const after = parseDateKey(afterDateKey);
     if (!after) return "";
     const relevant = lessons.filter((lesson) => lesson.subjectId === subjectId && (cycle?.anchorMonday || !lesson.weekType || lesson.weekType === "all"));
     if (!relevant.length) return "";
     for (const preferredType of ["practice", "other"]) {
-      for (let offset = 1; offset <= 366; offset++) {
+      for (let offset = currentTime ? 0 : 1; offset <= 366; offset++) {
         const candidate = new Date(after);
         candidate.setUTCDate(candidate.getUTCDate() + offset);
         const key = candidate.toISOString().slice(0, 10);
-        if (relevant.some((lesson) => (preferredType === "practice" ? lesson.lessonType === "practice" : lesson.lessonType !== "practice") && lessonOccursOnDate(lesson, key, cycle))) return key;
+        const upcoming = relevant.filter((lesson) => (preferredType === "practice" ? lesson.lessonType === "practice" : lesson.lessonType !== "practice") && lessonOccursOnDate(lesson, key, cycle))
+          .map((lesson) => {
+            const overrides = lesson.exceptions?.[key] || Object.values(lesson.exceptions || {}).find((entry) => !entry.cancelled && entry.date === key) || {};
+            return { ...lesson, ...overrides, date: key };
+          }).filter((lesson) => offset !== 0 || lesson.startTime > currentTime)
+          .sort((a, b) => a.startTime.localeCompare(b.startTime));
+        if (upcoming.length) return upcoming[0];
       }
     }
     return "";
@@ -158,7 +168,7 @@
 
   function timestamp(value) { return Number.isFinite(Date.parse(value)) ? value : new Date().toISOString(); }
 
-  const api = { eventsForDate, isHomeworkVisible, lessonOccursOnDate, mondayKey, nextLessonDate, normalizeFiles, normalizeLessons, normalizeSubjects, normalizeTaskStudy, normalizeWeekCycle, weekParity };
+  const api = { eventsForDate, isHomeworkVisible, lessonOccursOnDate, mondayKey, nextLessonDate, nextLessonOccurrence, normalizeFiles, normalizeLessons, normalizeSubjects, normalizeTaskStudy, normalizeWeekCycle, weekParity };
   global.RhythmStudyModel = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

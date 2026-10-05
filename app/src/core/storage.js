@@ -13,10 +13,21 @@
     const appName = options.appName || "Parsitasks";
     const schemaVersion = options.schemaVersion || 1;
     let lastBackupAt = 0;
+    let lastSave = { bytes: 0, durationMs: 0 };
 
     function loadState() {
+      return readSnapshot().state;
+    }
+
+    function readSnapshot() {
       const state = readJson(keys.state, null);
-      return isState(state) ? state : null;
+      if (!isState(state)) return { state: null, owner: loadUiState().remoteSyncAccountId || "" };
+      const { _localOwner, ...document } = state;
+      return { state: document, owner: _localOwner ?? loadUiState().remoteSyncAccountId ?? "" };
+    }
+
+    function getOwner() {
+      return readSnapshot().owner;
     }
 
     function loadStateWithRecovery() {
@@ -26,7 +37,8 @@
         if (!raw) return { state: null, status: "empty" };
         const state = JSON.parse(raw);
         if (!isState(state)) throw new Error("Invalid stored state");
-        return { state, status: "ok" };
+        const { _localOwner, ...document } = state;
+        return { state: document, status: "ok" };
       } catch (error) {
         try {
           if (raw) storage.setItem(keys.corruptState, raw);
@@ -49,8 +61,11 @@
         ...state,
         schemaVersion: saveOptions.schemaVersion || schemaVersion,
       };
-      const previousState = loadState();
-      writeJson(keys.state, nextState);
+      const previousState = !saveOptions.skipBackup && Date.now() - lastBackupAt >= 60000 ? loadState() : null;
+      const started = global.performance?.now?.() || Date.now();
+      const encoded = JSON.stringify({ ...nextState, _localOwner: Object.hasOwn(saveOptions, "owner") ? saveOptions.owner || "" : getOwner() });
+      storage.setItem(keys.state, encoded);
+      lastSave = { bytes: new TextEncoder().encode(encoded).byteLength, durationMs: Math.round(((global.performance?.now?.() || Date.now()) - started) * 100) / 100 };
 
       if (!saveOptions.skipBackup && previousState && typeof previousState === "object") {
         createBackup({
@@ -137,10 +152,13 @@
 
     return {
       keys,
+      getOwner,
+      getDiagnostics: () => ({ ...lastSave }),
       createBackup,
       createImportSafetyBackup,
       loadBackup,
       loadState,
+      readSnapshot,
       loadStateWithRecovery,
       loadUiState,
       saveState,

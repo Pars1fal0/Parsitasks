@@ -37,6 +37,7 @@ export function createSupabaseStateStore(options) {
       const snapshot = await read();
       const mutation = await mutator(snapshot.state);
       if (!mutation?.changed) return { ...mutation, saved: false };
+      if (new TextEncoder().encode(JSON.stringify(mutation.state)).byteLength > 4 * 1024 * 1024) throw new Error("Превышен лимит данных Parsitasks (4 МБ). Изменение не сохранено.");
       const clientUpdatedAt = new Date().toISOString();
       const payload = {
         state: mutation.state,

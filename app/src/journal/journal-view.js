@@ -13,6 +13,9 @@
     let monthAnchor = "";
     let saveTimer = null;
     let promptIndex = 0;
+    const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId, tabScoped: true });
+    let pendingOwner = local?.owner() || "local";
+    const draftKey = (date) => `journal-draft:${date}`;
 
     function bindEvents() {
       ctx.els.journalText?.addEventListener("input", handleInput);
@@ -35,15 +38,18 @@
     function render() {
       const date = ctx.getActiveDate();
       const entry = ctx.getEntry(date);
+      const owner = local?.owner() || "local";
+      if (pendingOwner !== owner) { if (saveTimer) global.clearTimeout(saveTimer); saveTimer = null; pendingDate = ""; pendingOwner = owner; }
+      const draft = local?.read(draftKey(date));
       if (!monthAnchor || monthAnchor.slice(0, 7) !== date.slice(0, 7)) monthAnchor = date;
       ctx.els.journalDate.textContent = ctx.formatLongDate(date);
       if (document.activeElement !== ctx.els.journalText || pendingDate !== date) {
-        editorApi.writeText(ctx.els.journalText, entry?.text || "");
+        editorApi.writeText(ctx.els.journalText, typeof draft?.text === "string" ? draft.text.slice(0, ctx.maxLength) : entry?.text || "");
       }
       pendingDate = date;
       renderCount();
       renderPrompt(entry);
-      renderStatus(entry?.updatedAt ? `Сохранено ${ctx.formatTime(entry.updatedAt)}` : "Запись сохранится автоматически");
+      renderStatus(draft ? "Восстановлен несохранённый черновик" : entry?.updatedAt ? `Сохранено ${ctx.formatTime(entry.updatedAt)}` : "Запись сохранится автоматически");
       renderCalendar();
       renderSearchResults();
       renderHistory(entry);
@@ -51,11 +57,13 @@
 
     function handleInput() {
       pendingDate = ctx.getActiveDate();
+      pendingOwner = local?.owner() || "local";
       const text = editorText();
       if (text.length > ctx.maxLength) editorApi.writeText(ctx.els.journalText, text.slice(0, ctx.maxLength));
       renderCount();
       renderPrompt({ text: editorText() });
       renderStatus("Сохраняю...");
+      local?.write(draftKey(pendingDate), { text: editorText() });
       if (saveTimer) global.clearTimeout(saveTimer);
       saveTimer = global.setTimeout(flush, 550);
     }
@@ -63,8 +71,15 @@
     function flush() {
       if (saveTimer) global.clearTimeout(saveTimer);
       saveTimer = null;
+      if (pendingOwner !== (local?.owner() || "local")) return false;
       const date = pendingDate || ctx.getActiveDate();
       const result = ctx.saveEntry(date, editorText());
+      if (result?.saved === false) {
+        const stored = local?.write(draftKey(date), { text: editorText() });
+        renderStatus(stored ? "Не удалось сохранить запись · черновик оставлен на устройстве" : "Не удалось сохранить запись · не закрывай страницу");
+        return false;
+      }
+      local?.remove(draftKey(date));
       const entry = result?.entry || ctx.getEntry(date);
       renderStatus(entry?.updatedAt ? `Сохранено ${ctx.formatTime(entry.updatedAt)}` : "Запись сохранится автоматически");
       if (result?.changed) {
@@ -72,6 +87,7 @@
         renderSearchResults();
         renderHistory(entry);
       }
+      return true;
     }
 
     function renderCalendar() {
@@ -94,7 +110,7 @@
         button.setAttribute("aria-label", ctx.formatLongDate(day.date));
         if (day.date === activeDate) button.setAttribute("aria-current", "date");
         button.addEventListener("click", () => {
-          flush();
+          if (flush() === false) return;
           monthAnchor = day.date;
           ctx.setActiveDate(day.date);
         });
@@ -124,7 +140,7 @@
         button.append(textNode("strong", ctx.formatLongDate(entry.date)));
         button.append(textNode("span", excerpt(entry.text)));
         button.addEventListener("click", () => {
-          flush();
+          if (flush() === false) return;
           monthAnchor = entry.date;
           ctx.setActiveDate(entry.date);
         });
@@ -146,10 +162,13 @@
         button.append(textNode("strong", `Версия от ${ctx.formatDateTime(revision.savedAt)}`));
         button.append(textNode("span", excerpt(revision.text)));
         button.addEventListener("click", async () => {
+          if (flush() === false) return;
+          const owner = local?.owner() || "local";
           const confirmed = await ctx.confirmRestore?.(revision.savedAt);
-          if (confirmed === false) return;
+          if (confirmed === false || owner !== (local?.owner() || "local") || entry.date !== ctx.getActiveDate()) return;
           const result = ctx.restoreRevision(entry.date, revision.savedAt);
           if (!result?.changed) return;
+          local?.remove(draftKey(entry.date));
           editorApi.writeText(ctx.els.journalText, result.entry.text);
           render();
           ctx.showToast?.("Предыдущая версия восстановлена");

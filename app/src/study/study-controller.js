@@ -29,6 +29,12 @@
     let focusedMaterialId = "";
     let suggestedTime = "";
     let deadlineTimeEdited = false;
+    let pendingUpload = null;
+    let uploadOwner = "";
+    function pendingMaterial() {
+      if (uploadOwner !== local.owner()) { uploadOwner = local.owner(); pendingUpload = local.read("study-upload-pending"); }
+      return pendingUpload;
+    }
     const periodControls = element("div", "study-period-controls");
     const periodSelect = element("select");
     periodSelect.setAttribute("aria-label", "Учебный период");
@@ -99,8 +105,8 @@
       const saveError = element("small", "form-save-error"); saveError.setAttribute("role", "alert");
       form.insertBefore(saveError, form.querySelector('.study-form-actions, button[type="submit"]'));
       formErrors.set(form, saveError);
-      dialog.id = `${form.id}Dialog`;
-      const heading = form.querySelector("h3"); heading.id ||= `${form.id}Title`;
+      dialog.id = `${form.getAttribute("id")}Dialog`;
+      const heading = form.querySelector("h3"); heading.id ||= `${form.getAttribute("id")}Title`;
       dialog.setAttribute("aria-labelledby", heading.id);
       const close = element("button", "icon-button study-dialog-close"); close.type = "button";
       close.setAttribute("aria-label", "Закрыть форму");
@@ -237,7 +243,9 @@
     }
 
     async function api(path, options = {}) {
+      const owner = ctx.getUserId();
       const token = await ctx.getAccessToken();
+      if (owner !== ctx.getUserId()) throw new Error("Аккаунт изменился. Повтори действие в нужном аккаунте.");
       if (!token) throw new Error("Войдите в аккаунт Parsitasks");
       const origin = global.location.protocol === "file:" ? BASE_URL : global.location.origin;
       const response = await fetch(`${origin}/api/google-drive/${path}`, {
@@ -245,6 +253,7 @@
         headers: { Authorization: `Bearer ${token}`, ...(options.body && !(options.body instanceof Blob) ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) },
       });
       const data = await response.json().catch(() => null);
+      if (owner !== ctx.getUserId()) throw new Error("Аккаунт изменился. Ответ Google Drive не применён.");
       if (!response.ok) throw new Error(data?.message || "Google Drive недоступен");
       return data || {};
     }
@@ -283,7 +292,11 @@
       disconnectButton.hidden = !connected;
       connectButton.disabled = busy || !ctx.getUserId() || !configured;
       disconnectButton.disabled = busy;
-      materialForm.querySelector('button[type="submit"]').disabled = busy || !connected;
+      const pending = pendingMaterial();
+      materialForm.elements.file.required = !pending;
+      materialForm.querySelector('button[type="submit"]').disabled = busy || (!connected && !pending);
+      materialForm.querySelector('button[type="submit"]').textContent = pending ? "Сохранить загруженный файл" : "Загрузить файл";
+      if (pending && !busy) root.querySelector("#studyUploadStatus").textContent = `«${pending.name}» уже в Drive. Осталось сохранить карточку файла.`;
     }
 
     function setTab(next) {
@@ -483,12 +496,14 @@
       event.preventDefault();
       const anchorMonday = weekCycleForm.elements.anchorMonday.value;
       if (studyModel.mondayKey(anchorMonday) !== anchorMonday) { ctx.showToast("Выбери дату понедельника"); return; }
+      const previous = ctx.getState().studyWeekCycle;
       ctx.getState().studyWeekCycle = studyModel.normalizeWeekCycle({
         anchorMonday,
         anchorParity: weekCycleForm.elements.anchorParity.value,
         updatedAt: new Date().toISOString(),
       });
-      ctx.saveState(); ctx.render(); ctx.showToast("Цикл недель сохранён");
+      if (ctx.saveState() === false) { ctx.getState().studyWeekCycle = previous; return; }
+      ctx.render(); ctx.showToast("Цикл недель сохранён");
     }
 
     function renderSubjects(state) {
@@ -647,13 +662,14 @@
       if (homeworkForm.elements.id.value) return;
       const subjectId = homeworkForm.elements.subjectId.value;
       const state = ctx.getState();
-      const referenceDate = localDateKey(new Date());
-      const nextDate = studyModel.nextLessonDate(state.studyLessons, subjectId, referenceDate, state.studyWeekCycle);
+      const now = new Date();
+      const referenceDate = localDateKey(now);
+      const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const lesson = studyModel.nextLessonOccurrence(state.studyLessons, subjectId, referenceDate, state.studyWeekCycle, time);
+      const nextDate = lesson?.date || "";
       const hint = root.querySelector("#studyDeadlineSuggestion");
       if (nextDate) {
         homeworkForm.elements.date.value = nextDate;
-        const lesson = studyModel.eventsForDate(state, nextDate).find((item) => item.subjectId === subjectId && item.lessonType === "practice")
-          || studyModel.eventsForDate(state, nextDate).find((item) => item.subjectId === subjectId);
         if (!deadlineTimeEdited && (!homeworkForm.elements.time.value || homeworkForm.elements.time.value === suggestedTime)) {
           homeworkForm.elements.time.value = lesson?.startTime || "";
           suggestedTime = homeworkForm.elements.time.value;
@@ -669,12 +685,17 @@
 
     async function uploadMaterial(event) {
       event.preventDefault();
+      if (busy) return;
+      const pending = pendingMaterial();
+      if (pending) { saveUploadedMaterial(pending); return; }
       const file = materialForm.elements.file.files?.[0];
       if (!file || busy) return;
       if (!connected) { ctx.showToast("Сначала подключите Google Drive"); return; }
       if (file.size > 5 * 1024 * 1024 * 1024) { ctx.showToast("Файл больше 5 ГБ"); return; }
       const progress = root.querySelector("#studyUploadProgress");
       const status = root.querySelector("#studyUploadStatus");
+      const owner = local.owner();
+      const subjectId = materialForm.elements.subjectId.value;
       busy = true; progress.hidden = false; progress.value = 0; status.textContent = "Подготовка загрузки..."; renderDrive();
       try {
         const start = await api("upload-start", { method: "POST", body: JSON.stringify({ name: file.name, mime: file.type || "application/octet-stream", size: file.size }) });
@@ -682,6 +703,7 @@
         let uploaded;
         let stalled = 0;
         while (offset < file.size) {
+          if (owner !== local.owner()) throw new Error("Аккаунт изменился. Загрузка остановлена.");
           const end = Math.min(file.size, offset + start.chunkSize) - 1;
           try {
             uploaded = await api("upload-chunk", { method: "PUT", body: file.slice(offset, end + 1), headers: { "X-Upload-Session": start.session, "Content-Range": `bytes ${offset}-${end}/${file.size}` } });
@@ -708,10 +730,28 @@
         }
         if (!uploaded?.complete || !uploaded.file?.id) throw new Error("Загрузка не была завершена");
         const now = new Date().toISOString();
-        ctx.getState().studyFiles.push({ id: ctx.createId(), googleId: uploaded.file.id, name: uploaded.file.name || file.name, mime: uploaded.file.mime || file.type, size: uploaded.file.size || file.size, subjectId: materialForm.elements.subjectId.value, url: uploaded.file.url, createdAt: now, updatedAt: now });
-        materialForm.reset(); formDialogs.get(materialForm).close(); ctx.saveState(); ctx.render(); ctx.showToast("Файл загружен в Google Drive");
+        if (owner !== local.owner()) throw new Error("Аккаунт изменился во время загрузки. Файл остался в Google Drive исходного аккаунта.");
+        const record = { id: ctx.createId(), googleId: uploaded.file.id, name: uploaded.file.name || file.name, mime: uploaded.file.mime || file.type, size: uploaded.file.size || file.size, subjectId, url: uploaded.file.url, createdAt: now, updatedAt: now };
+        pendingUpload = record; uploadOwner = owner;
+        local.write("study-upload-pending", record);
+        saveUploadedMaterial(record);
       } catch (error) { status.textContent = error.message; ctx.showToast(error.message); }
       finally { busy = false; renderDrive(); }
+    }
+
+    function saveUploadedMaterial(record) {
+      const state = ctx.getState();
+      const previous = state.studyFiles;
+      if (!state.studyFiles.some((item) => item.googleId === record.googleId)) state.studyFiles = [...state.studyFiles, record];
+      if (ctx.saveState() === false) {
+        state.studyFiles = previous;
+        root.querySelector("#studyUploadStatus").textContent = "Файл уже в Drive. Повтори сохранение карточки, загружать файл заново не нужно.";
+        renderDrive(); return false;
+      }
+      local.remove("study-upload-pending");
+      pendingUpload = null;
+      materialForm.reset(); formDialogs.get(materialForm).close(); ctx.render(); ctx.showToast("Файл сохранён");
+      return true;
     }
 
     async function handleAction(event) {
@@ -746,7 +786,7 @@
       }
       if (button.dataset.studyDelete) {
         if (!await confirmDelete("Удалить задание?", "Задание исчезнет и из общего списка задач.")) return;
-        ctx.deleteTask(button.dataset.studyDelete); ctx.saveState(); ctx.render(); return;
+        ctx.deleteTask(button.dataset.studyDelete); ctx.render(); return;
       }
       if (button.dataset.studyLessonEdit) {
         const lesson = state.studyLessons.find((item) => item.id === button.dataset.studyLessonEdit);
@@ -790,7 +830,6 @@
       if (button.dataset.studyFileDelete) {
         if (!await confirmDelete("Убрать материал из Parsitasks?", "В Google Drive файл останется. Вложения с этим файлом исчезнут из домашних заданий.")) return;
         const id = button.dataset.studyFileDelete;
-        state.tasks.forEach((task) => { task.studyFileIds = (task.studyFileIds || []).filter((fileId) => fileId !== id); });
         removeEntity("studyFiles", id);
       }
     }
@@ -813,10 +852,23 @@
 
     function removeEntity(type, id) {
       const state = ctx.getState();
+      const previous = JSON.parse(JSON.stringify({ entities: state[type], tombstones: state.tombstones[type], tasks: state.tasks }));
+      if (type === "studyFiles") state.tasks.forEach((task) => {
+        if (task.studyFileIds?.includes(id)) {
+          task.studyFileIds = task.studyFileIds.filter((fileId) => fileId !== id);
+          task.updatedAt = new Date().toISOString();
+        }
+      });
       state.tombstones[type] ||= {};
       state.tombstones[type][id] = new Date().toISOString();
       state[type] = state[type].filter((item) => item.id !== id);
-      ctx.saveState(); ctx.render();
+      if (ctx.saveState() === false) {
+        state[type] = previous.entities;
+        state.tombstones[type] = previous.tombstones || {};
+        state.tasks = previous.tasks;
+        ctx.render(); return false;
+      }
+      ctx.render(); return true;
     }
 
     function confirmDelete(title, message = "") { return ctx.confirmAction({ title, message, confirmText: "Удалить", danger: true }); }

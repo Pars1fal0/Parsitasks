@@ -29,8 +29,36 @@
     ctx.els.navTabs = nav.querySelectorAll(".nav-tab[data-view]");
     document.documentElement.classList.add("navigation-custom");
     const container = document.querySelector("#navigationPreferences");
+    const hint = document.createElement("div"); hint.className = "nav-icon-hint"; hint.id = "navIconHint"; hint.hidden = true; hint.setAttribute("role", "tooltip");
+    document.body.append(hint);
+    let hintOwner = null;
+    let hintTimer;
+    let pressed = false;
+    function hideHint() { clearTimeout(hintTimer); hint.hidden = true; hintOwner?.removeAttribute("aria-describedby"); hintOwner = null; }
+    function showHint(button) {
+      hideHint(); hintOwner = button;
+      hint.textContent = button.getAttribute("aria-label") || button.title;
+      hint.hidden = false;
+      const anchor = button.getBoundingClientRect(); const bounds = hint.getBoundingClientRect();
+      hint.style.left = `${Math.max(8, Math.min(innerWidth - bounds.width - 8, anchor.left + (anchor.width - bounds.width) / 2))}px`;
+      hint.style.top = `${Math.max(8, anchor.top - bounds.height - 8)}px`;
+      button.setAttribute("aria-describedby", hint.id);
+    }
+    [...direct, nav.querySelector(".nav-more-summary")].forEach((button) => {
+      button.addEventListener("pointerdown", (event) => {
+        pressed = false; hideHint();
+        if (event.pointerType === "touch") hintTimer = setTimeout(() => { pressed = true; showHint(button); }, 500);
+      });
+      button.addEventListener("pointerup", () => { clearTimeout(hintTimer); if (pressed) hintTimer = setTimeout(hideHint, 1500); });
+      button.addEventListener("pointercancel", () => { pressed = false; hideHint(); });
+      button.addEventListener("click", (event) => { if (pressed) { event.preventDefault(); event.stopImmediatePropagation(); pressed = false; } else hideHint(); }, true);
+      button.addEventListener("focus", () => { if (button.matches(":focus-visible") && matchMedia("(max-width: 900px)").matches) showHint(button); });
+      button.addEventListener("blur", hideHint);
+    });
+    global.addEventListener("resize", hideHint);
 
     function apply() {
+      hideHint();
       const prefs = normalize(ctx.getPreferences());
       const primary = ["tasks", "habits", "overview", "study"];
       const pins = prefs.mobile.filter((view) => view !== "timeline");

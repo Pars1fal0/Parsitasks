@@ -1,6 +1,6 @@
 (function (global) {
   function createWorkspaceLocal(options = {}) {
-    const storage = options.storage || global.localStorage;
+    const storage = options.storage || (options.tabScoped ? global.sessionStorage || global.localStorage : global.localStorage);
     let reportedError = false;
 
     function owner() { return options.getUserId?.() || "local"; }

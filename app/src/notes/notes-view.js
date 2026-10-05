@@ -33,7 +33,8 @@
         : els.noteBody.value.slice(els.noteBody.selectionStart, els.noteBody.selectionEnd).trim();
       createTaskButton.disabled = !selectedText;
     }
-    const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId,
+    const legacyDrafts = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId });
+    const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId, tabScoped: true,
       onError: () => { els.noteStatus.textContent = "Черновик не сохранён. Сохрани заметку перед закрытием."; } });
     const draftKey = (id = selectedId) => `note-draft:${id || "new"}`;
 
@@ -81,7 +82,14 @@
       if (local && draftOwner !== local.owner()) { resetSelection(); draftOwner = local.owner(); restorePending = true; }
       if (restorePending && mode === "notes") {
         restorePending = false;
-        const id = local?.read("note-active-draft");
+        let id = local?.read("note-active-draft");
+        if (id === null || id === undefined) {
+          const legacyId = legacyDrafts?.read("note-active-draft");
+          const draft = legacyId !== null && legacyId !== undefined ? legacyDrafts.read(draftKey(legacyId)) : null;
+          if (draft && local?.write(draftKey(legacyId), draft) && local.write("note-active-draft", legacyId)) {
+            id = legacyId; legacyDrafts.remove(draftKey(legacyId)); legacyDrafts.remove("note-active-draft");
+          }
+        }
         if (id !== null && id !== undefined) restoreDraft(id);
       }
       document.body.classList.toggle("notes-mode", mode === "notes");
@@ -230,27 +238,29 @@
       event.preventDefault();
       const state = ctx.getState();
       const existing = currentNote();
+      const conflict = existing && loadedUpdatedAt && existing.updatedAt !== loadedUpdatedAt;
       const title = model.cleanTitle(els.noteTitle.value);
       if (!title) {
         els.noteTitle.focus();
         ctx.showToast("Укажи название заметки");
         return;
       }
-      const now = new Date().toISOString();
+      const now = new Date(Math.max(Date.now(), (Date.parse(existing?.updatedAt) || 0) + 1)).toISOString();
       const note = model.normalizeNote({
-        id: existing?.id || ctx.createId(),
-        title,
+        id: !conflict && existing?.id || ctx.createId(),
+        title: conflict ? `${title} · моя версия` : title,
         body: els.noteBody.value,
         pinned: els.notePinned.checked,
         subjectId: els.noteSubjectId.value,
         taskId: els.noteTaskId.value,
         createdAt: existing?.createdAt || now,
         updatedAt: now,
+        bodyBaseUpdatedAt: conflict ? "" : loadedUpdatedAt,
       });
       if (!note) return;
       const undo = ctx.createUndoSnapshot();
       state.notes ||= [];
-      if (existing) Object.assign(existing, note);
+      if (existing && !conflict) Object.assign(existing, note);
       else state.notes.push(note);
       delete state.tombstones?.notes?.[note.id];
       const saved = ctx.saveState();
@@ -270,10 +280,10 @@
       if (saved !== false) formSnapshot = captureForm();
       els.noteDelete.hidden = false;
       els.noteUpdatedAt.textContent = `Изменена ${formatDate(note.updatedAt)}`;
-      els.noteStatus.textContent = saved === false ? "Не сохранено локально" : "Сохранено";
+      els.noteStatus.textContent = conflict ? "Сохранена отдельная версия: исходная заметка изменена в другой вкладке или на другом устройстве." : "Сохранено";
       renderList();
       els.notesWorkspace.classList.add("is-editing");
-      if (saved !== false) ctx.showToast(existing ? "Заметка обновлена" : "Заметка создана", { undo });
+      if (saved !== false) ctx.showToast(conflict ? "Заметка изменилась на другом устройстве. Твой текст сохранён отдельной заметкой." : existing ? "Заметка обновлена" : "Заметка создана", { undo });
     }
 
     async function deleteNote() {
@@ -408,6 +418,7 @@
       selectedId = note?.id || ""; creating = !note;
       fillEditor(note || null);
       const fields = draft.fields;
+      if (draft.baseUpdatedAt) loadedUpdatedAt = draft.baseUpdatedAt;
       els.noteTitle.value = fields.title || ""; els.noteBody.value = fields.body || "";
       els.notePinned.checked = fields.pinned === true;
       els.noteSubjectId.value = fields.subjectId || "";

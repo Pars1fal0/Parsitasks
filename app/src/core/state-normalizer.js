@@ -122,6 +122,7 @@
               acknowledgedOverdue: config.normalizeTaskFlags(task.acknowledgedOverdue),
               excludedDates: config.normalizeTaskFlags(task.excludedDates),
               notified: pruneOldNotificationFlags(config.normalizeTaskFlags(task.notified)),
+              workNotified: pruneOldNotificationFlags(config.normalizeTaskFlags(task.workNotified)),
               checklist: config.normalizeTaskChecklist?.(task.checklist, config.createId) || [],
               checklistLogs: config.normalizeTaskChecklistLogs?.(task.checklistLogs) || {},
               createdAt: task.createdAt || new Date().toISOString(),

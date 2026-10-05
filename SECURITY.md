@@ -8,6 +8,12 @@ The application is local-first. Tasks and the Supabase session are stored on the
 
 ## Production checklist
 
+For the 0.34.11 reliability changes, apply `database/20261005-reliability.sql`
+before deploying the Worker. Validate it against a disposable Supabase project
+first. `npm run test:sql-reliability` executes the migration in disposable PostgreSQL
+with synthetic roles and accounts. It does not prove live Supabase RLS isolation,
+provider configuration, backup restoration, or production migration status.
+
 1. Run the current `database/supabase-schema.sql` once in the production Supabase SQL Editor after every security migration.
 2. Set `SUPABASE_PUBLISHABLE_KEY` in Cloudflare Workers. The legacy `SUPABASE_ANON_KEY` remains supported temporarily. Never use `SUPABASE_SECRET_KEY`, `sb_secret_...`, or `service_role`.
 3. In Supabase Auth, enable email confirmation, require at least eight password characters, enable leaked-password protection, and configure CAPTCHA before opening public registration broadly.
@@ -25,6 +31,14 @@ The application is local-first. Tasks and the Supabase session are stored on the
 - optimistic concurrency, deletion tombstones, safety backups, and account-switch isolation;
 - MCP bearer-token verification, explicit destructive confirmations, request throttling, and action history;
 - dependency audit and automated security regression tests.
+
+The migration replaces per-instance MCP counters with an atomic,
+authenticated-only database RPC (120 requests per account per minute). The
+counter table has no client grants. A failed limiter check fails closed with
+503. It also bounds state writes and throttles automatic state snapshots to
+one per five minutes, retaining at most 30 versions and 16 MiB of snapshot JSON
+per account. These are application quotas, not a substitute for infrastructure
+rate limits, billing alerts, or tested backup restoration.
 
 ## Residual risks
 

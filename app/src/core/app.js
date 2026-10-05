@@ -53,6 +53,9 @@ const stateController = window.RhythmStateController.createStateController({
   normalizeState,
   schemaVersion: SCHEMA_VERSION,
   storage,
+  getOwner: () => remoteAuth.getSession()?.user?.id || remoteSyncAccountId || "",
+  mergeStates: window.RhythmStateMerge.mergeStates,
+  sameValue: window.RhythmSyncMetadata.sameValue,
   trackChanges: (previous, next) => syncMetadataTracker.trackChanges(previous, next),
 });
 let state = stateController.getState();
@@ -901,6 +904,7 @@ async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime) {
   Object.assign(moved, { scheduleMode: "block", startTime: minutesToTime(Math.max(0, end - duration)),
     endTime: minutesToTime(end), time: minutesToTime(end), updatedAt: new Date().toISOString() });
   delete moved.notified?.[targetDate];
+  delete moved.workNotified?.[targetDate];
   if (saveState() === false) { restoreFailedSave(undo); render(); return false; }
   activeDate = targetDate;
   saveUiState();
@@ -985,9 +989,11 @@ const journalView = window.RhythmJournalView.createJournalView({
   getActiveDate: () => activeDate,
   getEntry: (dateKey) => window.RhythmJournalModel.journalEntryForDate(state.journalEntries, dateKey),
   getEntries: () => state.journalEntries,
+  getUserId: () => remoteAuth.getSession()?.user?.id || "",
   getFirstDayOfWeek: () => firstDayOfWeek,
   maxLength: window.RhythmJournalModel.MAX_JOURNAL_LENGTH,
   restoreRevision: (dateKey, savedAt) => {
+    const previous = state.journalEntries;
     const result = window.RhythmJournalModel.restoreJournalRevision(
       state.journalEntries,
       dateKey,
@@ -996,20 +1002,21 @@ const journalView = window.RhythmJournalView.createJournalView({
     );
     if (!result.changed) return result;
     state.journalEntries = result.entries;
-    saveState();
+    if (saveState() === false) { state.journalEntries = previous; return { changed: false, saved: false }; }
     return result;
   },
   searchEntries: window.RhythmJournalModel.searchJournalEntries,
   saveEntry: (dateKey, text) => {
+    const previous = state.journalEntries;
     const result = window.RhythmJournalModel.upsertJournalEntry(
       state.journalEntries,
       { date: dateKey, text },
-      { createId },
+      { createId, forceRevision: true },
     );
     if (!result.changed) return result;
     state.journalEntries = result.entries;
     if (result.entry) delete state.tombstones?.journalEntries?.[result.entry.id];
-    saveState();
+    if (saveState() === false) { state.journalEntries = previous; return { ...result, saved: false }; }
     return result;
   },
   setActiveDate: (dateKey) => {
@@ -1400,6 +1407,7 @@ const remoteSyncWorkflow = window.RhythmRemoteSyncController.createRemoteSyncWor
   latestIsoDate,
   mergeStates: window.RhythmStateMerge.mergeStates,
   remoteSync,
+  statesEqual: (left, right) => window.RhythmSyncMetadata.sameValue(normalizeState(left), normalizeState(right)),
   recordSyncEvent: (type, detail) => {
     syncHistory.record(type, detail);
     syncHistory.render(els.remoteSyncHistory, formatBackupDate);
@@ -1616,6 +1624,7 @@ const workspaceGuide = window.RhythmWorkspaceGuide.createWorkspaceGuide({
     desktop: Boolean(window.rhythmDesktop),
     online: navigator.onLine !== false,
     localSaveError: Boolean(localStorageError),
+    storage: storage.getDiagnostics(),
     sync: {
       ...remoteSyncWorkflow.getStatus(),
       enabled: remoteSyncEnabled === "on",
@@ -1776,6 +1785,29 @@ seedIfEmpty();
 init();
 
 async function init() {
+  window.addEventListener("storage", (event) => {
+    if (event.key !== storage.keys.state || !event.newValue) return;
+    try {
+      const incoming = JSON.parse(event.newValue);
+      const owner = incoming._localOwner ?? storage.getOwner();
+      if (owner !== (remoteAuth.getSession()?.user?.id || remoteSyncAccountId || "")) {
+        localStorageError = "В другой вкладке сменился аккаунт · обнови эту страницу";
+        renderSaveStatus();
+        return;
+      }
+      delete incoming._localOwner;
+      state = stateController.receiveExternal(incoming);
+      // Repair a simultaneous write without starting a storage-event loop.
+      if (!window.RhythmSyncMetadata.sameValue(state, normalizeState(storage.loadState()))) {
+        if (saveState({ skipChangeTracking: true, skipBackup: true })) scheduleRemotePush();
+      }
+      applyAccountPreferences();
+      render();
+      syncDesktopReminders();
+    } catch (error) {
+      console.warn("Could not reconcile another tab", error);
+    }
+  });
   document.querySelectorAll("[data-study-layer]").forEach((input) => {
     input.checked = showStudyEvents;
     input.addEventListener("change", () => {
@@ -2002,6 +2034,7 @@ function excludeTaskDate(task, dateKey) {
   task.updatedAt = new Date().toISOString();
   delete task.completed?.[dateKey];
   delete task.notified?.[dateKey];
+  delete task.workNotified?.[dateKey];
   if (Array.isArray(state.taskOrder[dateKey])) {
     state.taskOrder[dateKey] = state.taskOrder[dateKey].filter((id) => id !== task.id);
   }
@@ -2050,7 +2083,7 @@ function stopTaskSeries(task, dateKey) {
   const cutoff = addDays(dateKey, -1);
   task.repeatUntil = cutoff;
   task.updatedAt = new Date().toISOString();
-  [task.completed, task.acknowledgedOverdue, task.excludedDates, task.notified].forEach((flags) => {
+  [task.completed, task.acknowledgedOverdue, task.excludedDates, task.notified, task.workNotified].forEach((flags) => {
     Object.keys(flags || {}).forEach((key) => {
       if (key >= dateKey) delete flags[key];
     });
@@ -3659,8 +3692,12 @@ function saveState(options = {}) {
   try {
     state = stateController.saveState(state, options);
     localStorageError = "";
-  } catch {
+  } catch (error) {
     localStateUpdatedAt = options.localUpdatedAt || new Date().toISOString();
+    if (error.message === "Workspace changed in another tab") {
+      localStorageError = "В другой вкладке сменился аккаунт · обнови эту страницу";
+      renderSaveStatus(); showToast(localStorageError); return false;
+    }
     if (!options.skipRemote) scheduleRemotePush();
     syncDesktopReminders();
     localStorageError = "Локальное хранилище заполнено · экспортируй данные";
@@ -3738,6 +3775,7 @@ function icon(name) {
 
 function createUndoSnapshot() {
   return {
+    userId: remoteAuth.getSession()?.user?.id || "",
     activeDate,
     activeView,
     state: JSON.stringify(state),
@@ -3745,12 +3783,16 @@ function createUndoSnapshot() {
 }
 
 function restoreFailedSave(snapshot) {
+  if (Object.hasOwn(snapshot, "userId") && snapshot.userId !== (remoteAuth.getSession()?.user?.id || "")) return false;
   replaceState(JSON.parse(snapshot.state));
   syncDesktopReminders();
 }
 
 function restoreUndoSnapshot(snapshot) {
   if (!snapshot?.state) return;
+  if (Object.hasOwn(snapshot, "userId") && snapshot.userId !== (remoteAuth.getSession()?.user?.id || "")) {
+    showToast("Аккаунт изменился. Отмена действия другого аккаунта недоступна."); return false;
+  }
   const previous = createUndoSnapshot();
   let saved = false;
   const rollback = () => {
@@ -3760,7 +3802,8 @@ function restoreUndoSnapshot(snapshot) {
     render();
   };
   try {
-    replaceState(JSON.parse(snapshot.state));
+    const before = JSON.parse(snapshot.state);
+    replaceState(snapshot.afterState ? window.RhythmStateMerge.undoChanges(before, JSON.parse(snapshot.afterState), state) : before);
     activeDate = normalizeDateKey(snapshot.activeDate, toDateKey(new Date()));
     activeView = snapshot.activeView || "tasks";
     if (saveState() === false) {
@@ -3778,6 +3821,7 @@ function restoreUndoSnapshot(snapshot) {
 }
 
 function showToast(message, options = {}) {
+  if (options.undo?.state && !options.undo.afterState) options.undo.afterState = JSON.stringify(state);
   toastController.showToast(message, options);
 }
 

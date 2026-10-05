@@ -28,10 +28,10 @@ import { authenticateSupabaseRequest, createSupabaseStateStore } from "./supabas
 import { handleGoogleCalendarRequest } from "./google-calendar.mjs";
 import { handleGoogleDriveRequest } from "./google-drive.mjs";
 import { reportRequestFailure } from "./request-error.mjs";
+import { consumeRequestLimit } from "./request-limit.mjs";
 
 const OAUTH_SCOPES = ["openid", "email"];
 const OAUTH_SECURITY = [{ type: "oauth2", scopes: OAUTH_SCOPES }];
-const requestWindows = new Map();
 
 export default {
   async fetch(request, env, ctx) {
@@ -106,10 +106,13 @@ async function handleMcp(request, env, ctx) {
     anonKey: supabasePublicKey(env),
   });
   if (!auth) return unauthorizedResponse(request);
-  if (request.method === "POST" && !allowMcpRequest(auth.user.id)) {
-    return jsonResponse(
-      { error: "rate_limited", message: "Слишком много команд. Повтори через минуту." },
-      { status: 429, headers: { "Retry-After": "60" } },
+  if (request.method === "POST") {
+    let limit;
+    try { limit = await consumeRequestLimit(env, auth); }
+    catch { return jsonResponse({ error: "request_limiter_unavailable", message: "Сервис команд временно недоступен. Администратору нужно проверить миграцию ограничения запросов." }, { status: 503, headers: { "Retry-After": "60" } }); }
+    if (!limit.allowed) return jsonResponse(
+      { error: "rate_limited", message: "Слишком много команд. Повтори позже." },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } },
     );
   }
 
@@ -677,22 +680,6 @@ async function readTool(context, selector) {
     const result = selector(snapshot.state);
     return toolResult(result, JSON.stringify(result));
   });
-}
-
-function allowMcpRequest(userId) {
-  const now = Date.now();
-  const current = requestWindows.get(userId);
-  if (!current || now - current.startedAt >= 60_000) {
-    requestWindows.set(userId, { count: 1, startedAt: now });
-    return true;
-  }
-  current.count += 1;
-  if (requestWindows.size > 1000) {
-    for (const [id, window] of requestWindows) {
-      if (now - window.startedAt >= 60_000) requestWindows.delete(id);
-    }
-  }
-  return current.count <= 120;
 }
 
 async function safeTool(operation) {

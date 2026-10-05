@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.34.10",
+  "version": "0.34.11",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",
@@ -31,6 +31,9 @@
     "test:archive": "node tests/archive-polish-e2e.cjs",
     "test:task-editor": "node tests/task-editor-calendar-e2e.cjs",
     "test:workspace-panels": "node tests/workspace-panels-e2e.cjs",
+    "test:audit-fixes": "node tests/audit-fixes-e2e.cjs",
+    "test:sql-reliability": "node tests/sql-reliability.cjs",
+    "benchmark:state": "node scripts/benchmark-state.cjs",
     "verify:production": "node scripts/check-production.cjs",
     "check:availability": "node scripts/check-availability.cjs",
     "release:prepare": "node scripts/release-candidate.cjs prepare",
@@ -98,6 +101,7 @@
     }
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@supabase/supabase-js": "^2.110.7",
     "agents": "^0.17.4",

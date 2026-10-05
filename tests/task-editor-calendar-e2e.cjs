@@ -124,6 +124,7 @@ const { chromium } = require("playwright-core");
     const shortBox = await event("short").boundingBox();
     assert.ok(shortBox.height <= 25, "the completion control must not stretch a quarter-hour task");
     await event("short").locator(".calendar-event-open").click();
+    await page.locator("#calendarEventPreview.is-interactive").getByRole("button", { name: "Изменить", exact: true }).click();
     await page.locator("#closeTaskForm").click(); await closed();
     await page.setViewportSize({ width: 1440, height: 1000 });
     await go("timeline");

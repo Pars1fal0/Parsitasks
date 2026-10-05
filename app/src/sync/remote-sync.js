@@ -47,6 +47,11 @@
         client_updated_at: clientUpdatedAt,
       };
       const conflictColumn = "user_id";
+      const stateBytes = new TextEncoder().encode(JSON.stringify(body.state)).byteLength;
+      const uiBytes = new TextEncoder().encode(JSON.stringify(body.ui_state)).byteLength;
+      if (stateBytes > 4 * 1024 * 1024 || uiBytes > 256 * 1024) {
+        throw Object.assign(new Error("Объём данных превышает лимит синхронизации. Экспортируй JSON и освободи место, локальные записи сохранены."), { code: "workspace-too-large" });
+      }
       const expectedUpdatedAt = String(payload.expectedUpdatedAt || "").trim();
       const expectMissing = payload.expectMissing === true;
       const updateFilter = expectedUpdatedAt

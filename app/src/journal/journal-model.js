@@ -165,6 +165,7 @@
     journalEntryForDate,
     normalizeJournalEntries,
     normalizeJournalText,
+    normalizeRevisions,
     restoreJournalRevision,
     searchJournalEntries,
     upsertJournalEntry,

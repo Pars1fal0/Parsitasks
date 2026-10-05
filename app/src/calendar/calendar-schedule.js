@@ -36,6 +36,9 @@
     let lastMode = "week";
     let resizeFrame;
     let renderedWidth = 0;
+    let fullMobileWeek = false;
+    let interactivePreview = false;
+    const mobile = () => global.matchMedia?.("(max-width: 680px)")?.matches;
     const preview = element("div", "calendar-event-preview");
     preview.id = "calendarEventPreview";
     preview.setAttribute("role", "tooltip");
@@ -44,6 +47,9 @@
     let previewOwner = null;
     function hidePreview() {
       preview.hidden = true;
+      interactivePreview = false;
+      preview.classList.remove("is-interactive");
+      preview.setAttribute("role", "tooltip");
       previewOwner?.removeAttribute("aria-describedby");
       previewOwner = null;
     }
@@ -59,6 +65,34 @@
       previewOwner = open;
       open.setAttribute("aria-describedby", preview.id);
     }
+    function showEventActions(node, open, entry, date) {
+      showPreview(node, open, entry);
+      interactivePreview = true;
+      preview.classList.add("is-interactive");
+      preview.setAttribute("role", "dialog");
+      preview.setAttribute("aria-label", entry.title);
+      const actions = element("div", "calendar-preview-actions");
+      if (!entry.task.studyEvent) actions.append(button("primary-button compact-button", entry.done ? "Вернуть в работу" : "Выполнить", () => {
+        hidePreview(); ctx.toggleTaskDone(entry.task.id, date);
+      }));
+      actions.append(button("ghost-button compact-button", "Изменить", () => {
+        hidePreview(); entry.task.studyEvent ? ctx.openLesson(entry.task.studyEvent, date) : ctx.editTask(entry.task, date);
+      }));
+      const close = button("icon-button", "", () => { hidePreview(); open.focus({ preventScroll: true }); });
+      close.setAttribute("aria-label", "Закрыть"); close.title = "Закрыть";
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", "#icon-close"); icon.append(use); close.append(icon);
+      actions.append(close);
+      preview.append(actions);
+      const bounds = preview.getBoundingClientRect();
+      preview.style.left = `${Math.max(12, Math.min(node.getBoundingClientRect().left, global.innerWidth - bounds.width - 12))}px`;
+      preview.style.top = `${Math.max(12, Math.min(parseFloat(preview.style.top), global.innerHeight - bounds.height - 12))}px`;
+    }
+    document.addEventListener("pointerdown", (event) => {
+      if (interactivePreview && !preview.contains(event.target) && !previewOwner?.contains(event.target)) hidePreview();
+    });
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") hidePreview(); });
     function blockHeight(start, end) {
       return Math.max(2, (Math.min(1440, end) - start) / 60 * hourHeight - 1);
     }
@@ -180,6 +214,7 @@
         node.append(check);
       }
       const open = button("calendar-event-open", "", () => {
+        if (!resizing && mobile() && node.classList.contains("is-short")) { showEventActions(node, open, entry, date); return; }
         hidePreview();
         if (!resizing) lesson ? ctx.openLesson(lesson, date) : ctx.editTask(task, date);
       });
@@ -189,9 +224,9 @@
       if (lesson) open.append(element("small", "", [lesson.typeLabel, lesson.room].filter(Boolean).join(" · ")));
       node.append(open);
       open.addEventListener("mouseenter", () => showPreview(node, open, entry));
-      open.addEventListener("mouseleave", () => { if (document.activeElement !== open) hidePreview(); });
-      open.addEventListener("focus", () => showPreview(node, open, entry));
-      open.addEventListener("blur", hidePreview);
+      open.addEventListener("mouseleave", () => { if (!interactivePreview && document.activeElement !== open) hidePreview(); });
+      open.addEventListener("focus", () => { if (!interactivePreview) showPreview(node, open, entry); });
+      open.addEventListener("blur", (event) => { if (!interactivePreview || !preview.contains(event.relatedTarget)) hidePreview(); });
       if (!lesson) {
         attachDrag(node, task, date);
         if (entry.isTimeBlock) {
@@ -271,10 +306,33 @@
         if (currentColumn) scroller.scrollLeft = Math.max(0, currentColumn.parentElement.offsetLeft - 48);
       });
       controls.append(nowButton);
+      if (mode === "week" && mobile()) {
+        const overview = button("ghost-button compact-button", fullMobileWeek ? "Выбранный день" : "Все дни", () => { fullMobileWeek = !fullMobileWeek; render(mode); });
+        overview.setAttribute("aria-pressed", String(fullMobileWeek)); controls.append(overview);
+      }
       toolbar.append(period, controls);
       root.append(toolbar);
       const selectedModel = models[dates.indexOf(date)];
       const due = ctx.getState().tasks.filter((task) => task.dueDate === date);
+      if (selectedModel.unscheduledTasks.length || due.length) {
+        const jump = button("calendar-untimed-jump", [selectedModel.unscheduledTasks.length ? `Без времени · ${selectedModel.unscheduledTasks.length}` : "", due.length ? `Сроки · ${due.length}` : ""].filter(Boolean).join(" · "), () => {
+          const section = root.querySelector(".calendar-untimed"); section?.scrollIntoView({ block: "start", behavior: "smooth" }); section?.focus({ preventScroll: true });
+        });
+        controls.prepend(jump);
+      }
+      if (mode === "week" && mobile()) {
+        const strip = element("nav", "calendar-week-strip"); strip.setAttribute("aria-label", "Дни недели и занятость");
+        dates.forEach((day, index) => {
+          const count = models[index].timedTasks.length + models[index].unscheduledTasks.length;
+          const dueCount = ctx.getState().tasks.filter((task) => task.dueDate === day).length;
+          const item = button(`calendar-week-strip-day${day === date ? " is-selected" : ""}`, "", () => ctx.selectDate(day));
+          item.append(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))), element("strong", "", String(new Date(`${day}T12:00:00`).getDate())), element("span", "", count ? `${count}` : "—"));
+          item.classList.toggle("has-deadlines", dueCount > 0); item.setAttribute("aria-pressed", String(day === date));
+          item.setAttribute("aria-label", `${ctx.formatLongDate(day)}: ${count} дел и занятий, ${dueCount} сроков сдачи`);
+          strip.append(item);
+        });
+        root.append(strip);
+      }
       const scroller = element("div", "calendar-time-scroll");
       scroller.tabIndex = 0;
       scroller.setAttribute("aria-label", mode === "day" ? "Часы дня" : "Часы недели");
@@ -283,7 +341,7 @@
       // Keep the hour scale readable; CSS owns the viewport height independently of the page header.
       hourHeight = Math.max(HOUR_HEIGHT, ((scroller.clientHeight || 528) - 48) / 12);
       root.style.setProperty("--calendar-hour-height", `${hourHeight}px`);
-      const grid = element("div", `calendar-time-grid is-${mode}`);
+      const grid = element("div", `calendar-time-grid is-${mode}${mode === "week" && mobile() && !fullMobileWeek ? " is-compact-week" : ""}`);
       grid.style.setProperty("--calendar-days", dates.length);
       const rail = element("div", "calendar-hour-rail");
       const corner = element("div", "calendar-time-corner"); corner.setAttribute("aria-hidden", "true");
@@ -292,6 +350,7 @@
       grid.append(rail);
       dates.forEach((day, index) => {
         const column = element("div", "calendar-time-column");
+        column.classList.toggle("is-selected", day === date);
         const heading = button(`calendar-time-heading${day === date ? " is-selected" : ""}${day === ctx.todayKey() ? " is-today" : ""}`, ctx.formatShortDate(day), () => ctx.selectDate(day));
         heading.prepend(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))));
         heading.setAttribute("aria-label", ctx.formatLongDate(day));
@@ -345,6 +404,7 @@
 
       if (selectedModel.unscheduledTasks.length || due.length) {
         const untimed = element("section", "calendar-untimed");
+        untimed.tabIndex = -1;
         untimed.setAttribute("aria-label", "Дела без времени и сроки выбранного дня");
         untimed.append(element("h3", "", "Без времени и сроки"));
         const list = element("div", "calendar-untimed-list");

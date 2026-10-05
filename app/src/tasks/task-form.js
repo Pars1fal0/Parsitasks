@@ -107,6 +107,7 @@
         acknowledgedOverdue: existing?.acknowledgedOverdue || {},
         excludedDates: existing?.excludedDates || {},
         notified: { ...(existing?.notified || {}) },
+        workNotified: { ...(existing?.workNotified || {}) },
         checklist,
         checklistLogs: existing?.checklistLogs || {},
         createdAt: existing?.createdAt || new Date().toISOString(),
@@ -134,6 +135,8 @@
       }
       const repeatEditScope = getRepeatEditScope();
       const notificationChanged = Boolean(existing && notificationScheduleChanged(existing, task));
+      const workChanged = existing && ["date", "scheduleMode", "startTime", "endTime", "time", "reminderOffset"].some((field) => String(existing[field] || "") !== String(task[field] || ""));
+      const dueChanged = existing && ["dueDate", "dueTime", "dueReminderOffset"].some((field) => String(existing[field] || "") !== String(task[field] || ""));
       const savedTask = isRecurringEdit
         ? ctx.updateRecurringTask(existing, task, editingOccurrenceDate || ctx.getActiveDate(), repeatEditScope)
         : (ctx.upsertTask(task), task);
@@ -142,6 +145,7 @@
           currentDate: editingOccurrenceDate || task.date,
           previousDate,
           scope: isRecurringEdit ? repeatEditScope : "occurrence",
+          fields: task.dueDate ? [...(workChanged ? ["workNotified"] : []), ...(dueChanged ? ["notified"] : [])] : ["notified", "workNotified"],
         });
       }
       if (ctx.saveState() === false) {
@@ -310,15 +314,16 @@
     }
 
     function clearStaleNotificationFlags(task, options = {}) {
-      task.notified ||= {};
-      if (options.scope === "series") {
-        Object.keys(task.notified).forEach((dateKey) => {
-          if (!options.currentDate || dateKey >= options.currentDate) delete task.notified[dateKey];
-        });
-        return;
-      }
-      delete task.notified[options.currentDate];
-      delete task.notified[options.previousDate];
+      (options.fields || ["notified", "workNotified"]).forEach((field) => {
+        task[field] ||= {};
+        if (options.scope === "series") {
+          Object.keys(task[field]).forEach((dateKey) => {
+            if (!options.currentDate || dateKey >= options.currentDate) delete task[field][dateKey];
+          });
+        } else {
+          delete task[field][options.currentDate]; delete task[field][options.previousDate];
+        }
+      });
     }
 
     ctx.els.taskRepeatEditScope?.addEventListener("change", (event) => {

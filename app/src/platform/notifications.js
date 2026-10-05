@@ -24,7 +24,7 @@
       if (kind === "habit") {
         if (!global.RhythmHabitSchedule.shouldRemind(entity, dateKey)) return null;
       } else if (ctx.isTaskDone(entity, dateKey)) return null;
-      const base = kind === "habit" ? habitReminderDate(entity, dateKey) : getReminderDate(entity, dateKey);
+      const base = kind === "habit" ? habitReminderDate(entity, dateKey) : getReminderDate(entity, dateKey, kind === "task-work" ? "work" : undefined);
       if (!base) return null;
       const snooze = activeSnooze(kind, entity.id, dateKey, queue);
       return { entity, dateKey, kind, snooze, at: allowed(snooze ? new Date(snooze.until) : base) };
@@ -44,7 +44,7 @@
       const reminders = [];
       dates.forEach((date) => {
         const tasks = ctx.tasksForDate ? ctx.tasksForDate(date) : (state.tasks || []).filter((task) => ctx.taskOccursOn(task, date));
-        tasks.forEach((task) => { const item = reminderFor(task, date, "task", queue); if (item) reminders.push(item); });
+        tasks.forEach((task) => { const item = reminderFor(task, date, task.dueDate ? "task-work" : "task", queue); if (item) reminders.push(item); });
         (state.habits || []).forEach((habit) => {
           const item = reminderFor(habit, date, "habit", queue);
           if (item && (date >= ctx.toDateKey(now) || item.snooze || item.at >= new Date(now.getTime() - 86400000))) reminders.push(item);
@@ -69,15 +69,16 @@
         const values = snoozes(); values[reminderKey(kind, entity.id, dateKey)] = { ...entry, delivered: true };
         local?.write("reminder-snoozes", values);
       }
-      entity.notified ||= {};
-      entity.notified[dateKey] = true;
+      const field = kind === "task-work" ? "workNotified" : "notified";
+      entity[field] ||= {};
+      entity[field][dateKey] = true;
       ctx.saveState();
     }
 
     function snoozeReminder(kind, id, dateKey, choice) {
-      if (!["task", "habit"].includes(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
+      if (!["task", "task-work", "habit"].includes(kind) || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) return false;
       const entity = ctx.getState()[kind === "habit" ? "habits" : "tasks"].find((item) => item.id === id);
-      if (!entity || (kind === "task" && !ctx.taskOccursOn(entity, dateKey) && !(entity.date === null && entity.dueDate === dateKey)) || !reminderFor(entity, dateKey, kind)) {
+      if (!entity || (kind !== "habit" && !ctx.taskOccursOn(entity, dateKey) && !(entity.date === null && entity.dueDate === dateKey)) || !reminderFor(entity, dateKey, kind)) {
         renderCenter(); ctx.showToast?.("Это событие больше не требует напоминания"); return false;
       }
       const until = allowed(global.RhythmReminderPolicy.snoozeUntil(nowDate(), choice)).toISOString();
@@ -102,7 +103,7 @@
       global.navigator?.serviceWorker?.addEventListener("message", (event) => { if (event.data?.type === "open-reminders") openCenter(); });
       desktop()?.onReminderClicked?.(openCenter);
       desktop()?.onReminderDelivered?.((payload) => {
-        const kind = payload.habitId ? "habit" : "task";
+        const kind = payload.habitId ? "habit" : payload.reminderKind === "task-work" ? "task-work" : "task";
         const entity = ctx.getState()[kind === "habit" ? "habits" : "tasks"].find((item) => item.id === (payload.habitId || payload.taskId));
         if (entity) markDelivered(entity, payload.dateKey, kind);
         if (document.querySelector("#reminderDialog")?.open) renderCenter();
@@ -129,8 +130,9 @@
         permissionButton.textContent = enabled ? "Разрешить уведомления" : "Включить напоминания";
         permissionButton.disabled = !desktop() && !("Notification" in global);
       }
-      document.querySelector("#reminderStatus").textContent = ctx.getNotificationsEnabled?.() === false ? "Напоминания на паузе"
-        : quiet?.enabled ? `Тихие часы: ${quiet.start}–${quiet.end}` : "Тихие часы выключены";
+      document.querySelector("#reminderStatus").textContent = (ctx.getNotificationsEnabled?.() === false ? "Напоминания на паузе"
+        : quiet?.enabled ? `Тихие часы: ${quiet.start}–${quiet.end}` : "Тихие часы выключены")
+        + (desktop() ? " · Работают при закрытом окне, пока приложение запущено." : " · В браузере работают только при открытой вкладке. Закрытая вкладка уведомления не отправляет.");
       const entries = collectReminders();
       if (!entries.length) { const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "На ближайшие дни напоминаний нет"; list.append(empty); }
       entries.forEach((item) => {
@@ -138,8 +140,8 @@
         row.dataset.reminderId = item.entity.id;
         const title = document.createElement("strong"); title.textContent = item.kind === "habit" ? ctx.habitTitleOnDate?.(item.entity, item.dateKey) || item.entity.title : item.entity.title;
         const detail = document.createElement("small");
-        const occurrence = ctx.parseDate(item.entity.dueDate || item.dateKey).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-        detail.textContent = `${item.kind === "habit" ? "Привычка за" : item.entity.dueDate ? "Сдать до" : "Задача за"} ${occurrence} · ${item.snooze ? "Отложено: " : item.entity.notified?.[item.dateKey] ? "Отправлено: " : ""}${item.at.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+        const occurrence = ctx.parseDate(item.kind === "task-work" ? item.dateKey : item.entity.dueDate || item.dateKey).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+        detail.textContent = `${item.kind === "habit" ? "Привычка за" : item.kind === "task-work" ? "Начать работу" : item.entity.dueDate ? "Сдать до" : "Задача за"} ${occurrence} · ${item.snooze ? "Отложено: " : wasDelivered(item) ? "Отправлено: " : ""}${item.at.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
         const actions = document.createElement("div"); actions.className = "feature-row-actions";
         const select = document.createElement("select"); select.setAttribute("aria-label", `Отложить: ${title.textContent}`);
         [["10", "10 минут"], ["30", "30 минут"], ["60", "1 час"], ["tomorrow", "Завтра, 09:00"]].forEach(([value, text]) => select.add(new Option(text, value)));
@@ -155,32 +157,39 @@
       if (desktop()) return;
       const now = nowDate();
       if (allowed(now) > now) return;
-      collectReminders(1).forEach(({ entity, dateKey, kind, at, snooze }) => {
-        if (at > now || (entity.notified?.[dateKey] && !snooze)) return;
+      collectReminders(1).forEach((item) => {
+        const { entity, dateKey, kind, at, snooze } = item;
+        if (at > now || (wasDelivered(item) && !snooze)) return;
         deliverNotification(entity, dateKey, kind);
       });
     }
 
     async function deliverNotification(task, dateKey, kind = "task") {
-      const tag = `${kind === "habit" ? "habit-" : ""}${task.id}-${dateKey}`;
-      if (pendingNotifications.has(tag)) return;
-      pendingNotifications.add(tag);
+      const owner = ctx.getUserId?.() || "";
+      const sameOwner = () => (ctx.getUserId?.() || "") === owner;
+      const tag = `${kind === "task" ? "" : `${kind}-`}${task.id}-${dateKey}`;
+      const pendingKey = JSON.stringify([owner, tag]);
+      if (pendingNotifications.has(pendingKey)) return;
+      pendingNotifications.add(pendingKey);
       try {
         const options = { body: kind === "habit" ? ctx.habitTitleOnDate?.(task, dateKey) || task.title : task.title,
           icon: "assets/icons/icon-192.png",
-          data: { dateKey, [kind === "habit" ? "habitId" : "taskId"]: task.id, url: kind === "habit" ? "/app#habits" : "/app#tasks" }, tag };
+          data: { dateKey, reminderKind: kind, [kind === "habit" ? "habitId" : "taskId"]: task.id, url: kind === "habit" ? "/app#habits" : "/app#tasks" }, tag };
         if (!desktop() && global.navigator?.serviceWorker) {
           const registration = await global.navigator.serviceWorker.getRegistration?.();
+          if (!sameOwner()) return;
           if (registration?.showNotification) await registration.showNotification("Parsitasks", options);
           else { const notification = new Notification("Parsitasks", options); notification.onclick = openCenter; }
         } else {
           const notification = new Notification("Parsitasks", options); notification.onclick = openCenter;
         }
-        markDelivered(task, dateKey, kind);
+        const current = sameOwner() && (ctx.getState
+          ? ctx.getState()[kind === "habit" ? "habits" : "tasks"]?.find((item) => item.id === task.id) : task);
+        if (current) markDelivered(current, dateKey, kind);
       } catch {
         // Keep the reminder pending in state so a later check can try again.
       } finally {
-        pendingNotifications.delete(tag);
+        pendingNotifications.delete(pendingKey);
       }
     }
 
@@ -237,13 +246,14 @@
         desktop().syncReminders({ generatedAt: now.toISOString(), reminders: [] });
         return;
       }
-      const reminders = collectReminders(60).filter((item) => (!item.entity.notified?.[item.dateKey] || item.snooze)
+      const reminders = collectReminders(60).filter((item) => (!wasDelivered(item) || item.snooze)
         && (item.kind !== "habit" || item.dateKey >= ctx.toDateKey(now) || item.snooze || ctx.toDateKey(item.at) >= ctx.toDateKey(now))).map(({ entity, dateKey, kind, at, snooze }) => ({
         id: `${kind}-${entity.id}-${dateKey}:${at.toISOString()}`,
         [kind === "habit" ? "habitId" : "taskId"]: entity.id,
+        reminderKind: kind,
         title: kind === "habit" ? ctx.habitTitleOnDate?.(entity, dateKey) || entity.title : entity.title,
         dateKey, reminderAt: at.toISOString(),
-        dueAt: kind === "habit" || snooze ? at.toISOString() : getDueDate(entity, dateKey).toISOString(),
+        dueAt: kind === "habit" || snooze ? at.toISOString() : getDueDate(entity, dateKey, kind === "task-work" ? "work" : undefined).toISOString(),
         category: kind === "habit" ? "Привычка" : ctx.getCategory(entity.categoryId)?.name || "",
         priority: entity.priority,
       }));
@@ -270,9 +280,14 @@
       return date;
     }
 
-    function getDueDate(task, dateKey) {
-      const [hours, minutes] = (ctx.cleanTimeValue(task.dueDate ? task.dueTime : task.time) || "09:00").split(":").map(Number);
-      const date = ctx.parseDate(task.dueDate || dateKey);
+    function wasDelivered(item) {
+      return item.entity[item.kind === "task-work" ? "workNotified" : "notified"]?.[item.dateKey] === true;
+    }
+
+    function getDueDate(task, dateKey, type) {
+      const due = task.dueDate && type !== "work";
+      const [hours, minutes] = (ctx.cleanTimeValue(due ? task.dueTime : type === "work" && task.scheduleMode === "block" ? task.startTime : task.time) || "09:00").split(":").map(Number);
+      const date = ctx.parseDate(due ? task.dueDate : dateKey);
       date.setHours(hours || 0, minutes || 0, 0, 0);
       return date;
     }
@@ -290,14 +305,15 @@
       return date;
     }
 
-    function getReminderDate(task, dateKey) {
-      const reminderTime = task.dueDate ? ctx.cleanTimeValue(task.dueTime)
+    function getReminderDate(task, dateKey, type) {
+      const due = task.dueDate && type !== "work";
+      const reminderTime = due ? ctx.cleanTimeValue(task.dueTime)
         : task.scheduleMode === "block" ? ctx.cleanTimeValue(task.startTime) : ctx.cleanTimeValue(task.time);
-      const reminderOffset = task.dueDate ? task.dueReminderOffset : task.reminderOffset;
+      const reminderOffset = due ? task.dueReminderOffset : task.reminderOffset;
       if (!reminderTime || reminderOffset === "none") return null;
       const offset = Number(reminderOffset || 0);
       if (!Number.isFinite(offset)) return null;
-      const reminder = ctx.parseDate(task.dueDate || dateKey);
+      const reminder = ctx.parseDate(due ? task.dueDate : dateKey);
       const [hours, minutes] = reminderTime.split(":").map(Number);
       reminder.setHours(hours, minutes, 0, 0);
       reminder.setMinutes(reminder.getMinutes() - offset);

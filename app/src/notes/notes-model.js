@@ -18,6 +18,7 @@
       taskId: String(value.taskId || "").trim().slice(0, 160),
       createdAt,
       updatedAt: validTimestamp(value.updatedAt) || createdAt,
+      bodyBaseUpdatedAt: validTimestamp(value.bodyBaseUpdatedAt) || "",
     };
   }
 

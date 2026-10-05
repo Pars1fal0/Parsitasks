@@ -1197,6 +1197,7 @@ function normalizeReminderSnapshot(payload) {
       dueAt,
       taskId: String(reminder?.taskId || "").slice(0, 240),
       habitId: String(reminder?.habitId || "").slice(0, 240),
+      reminderKind: ["task-work", "habit"].includes(reminder?.reminderKind) ? reminder.reminderKind : "task",
       dateKey: /^\d{4}-\d{2}-\d{2}$/.test(reminder?.dateKey) ? reminder.dateKey : "",
     }];
   });
@@ -1319,7 +1320,7 @@ function checkReminders() {
 function reminderBody(reminder) {
   const due = new Date(reminder.dueAt);
   const time = due.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  const parts = [`до ${time}`];
+  const parts = [`${reminder.reminderKind === "task-work" ? "начать в" : "до"} ${time}`];
   if (reminder.category) parts.push(reminder.category);
   return parts.join(" · ");
 }

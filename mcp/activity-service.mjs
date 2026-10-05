@@ -187,7 +187,7 @@ function touchUndoMetadata(state, patch, now, previousState) {
       });
       if (type === "tasks") {
         const previous = previousState.tasks?.find((item) => item.id === entity.id);
-        ["completed", "acknowledgedOverdue", "excludedDates", "notified"].forEach((field) => {
+        ["completed", "acknowledgedOverdue", "excludedDates", "notified", "workNotified"].forEach((field) => {
           new Set([...Object.keys(entity[field] || {}), ...Object.keys(previous?.[field] || {})]).forEach((date) => {
             (((state.syncMeta.taskFields[entity.id] ||= {})[field] ||= {}))[date] = now;
           });

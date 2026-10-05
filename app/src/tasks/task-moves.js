@@ -34,6 +34,7 @@
     delete task.completed?.[sourceDateKey];
     delete task.acknowledgedOverdue?.[sourceDateKey];
     delete task.notified?.[sourceDateKey];
+    delete task.workNotified?.[sourceDateKey];
     removeTaskFromOrder(state, task.id, sourceDateKey);
     if (wasDone) task.completed[targetDateKey] = true;
     task.updatedAt = new Date().toISOString();
@@ -46,6 +47,7 @@
     delete task.completed?.[sourceDateKey];
     delete task.acknowledgedOverdue?.[sourceDateKey];
     delete task.notified?.[sourceDateKey];
+    delete task.workNotified?.[sourceDateKey];
     removeTaskFromOrder(state, task.id, sourceDateKey);
     task.updatedAt = new Date().toISOString();
 
@@ -236,6 +238,7 @@
     nextSeries.acknowledgedOverdue = {};
     nextSeries.excludedDates = {};
     nextSeries.notified = {};
+    nextSeries.workNotified = {};
     nextSeries.checklistLogs = {};
     nextSeries.updatedAt = new Date().toISOString();
     return nextSeries;
@@ -249,6 +252,7 @@
     delete task.completed?.[dateKey];
     delete task.acknowledgedOverdue?.[dateKey];
     delete task.notified?.[dateKey];
+    delete task.workNotified?.[dateKey];
     task.updatedAt = now;
 
     const occurrence = {
@@ -292,6 +296,7 @@
       acknowledgedOverdue: takeFlagsFrom(task, "acknowledgedOverdue", dateKey),
       excludedDates: takeFlagsFrom(task, "excludedDates", dateKey),
       notified: takeFlagsFrom(task, "notified", dateKey),
+      workNotified: takeFlagsFrom(task, "workNotified", dateKey),
       createdAt: now,
       updatedAt: now,
     };
@@ -313,6 +318,7 @@
     delete task.completed?.[dateKey];
     delete task.acknowledgedOverdue?.[dateKey];
     delete task.notified?.[dateKey];
+    delete task.workNotified?.[dateKey];
     task.updatedAt = now;
 
     const occurrence = {
@@ -361,6 +367,7 @@
       acknowledgedOverdue: takeFlagsFrom(task, "acknowledgedOverdue", dateKey),
       excludedDates: takeFlagsFrom(task, "excludedDates", dateKey),
       notified: takeFlagsFrom(task, "notified", dateKey),
+      workNotified: takeFlagsFrom(task, "workNotified", dateKey),
       createdAt: now,
       updatedAt: now,
     };

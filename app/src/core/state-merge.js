@@ -5,6 +5,7 @@
   const habitConfigHistory = global.RhythmHabitConfigHistory || require("../habits/habit-config-history.js");
   const habitFreeze = global.RhythmHabitFreeze || require("../habits/habit-freeze.js");
   const taskChecklist = global.RhythmTaskChecklist || require("../tasks/task-checklist.js");
+  const journalModel = global.RhythmJournalModel || require("../journal/journal-model.js");
   const TASK_DATE_FIELDS = syncMetadata.TASK_DATE_FIELDS;
   const ENTITY_FIELDS = syncMetadata.ENTITY_FIELDS;
 
@@ -12,7 +13,7 @@
     const localMeta = syncMetadata.normalizeSyncMeta(localState.syncMeta);
     const remoteMeta = syncMetadata.normalizeSyncMeta(remoteState.syncMeta);
     const syncMeta = mergeSyncMeta(localMeta, remoteMeta);
-    const tombstones = mergeTombstones(localState.tombstones, remoteState.tombstones);
+    const tombstones = mergeTombstones(localState.tombstones, remoteState.tombstones, localMeta, remoteMeta);
     const tasks = withoutDeleted(
       mergeEntities(localState.tasks, remoteState.tasks, (local, remote) => mergeTask(local, remote, localMeta, remoteMeta)),
       tombstones.tasks,
@@ -35,17 +36,17 @@
     );
     const journalEntries = withoutDeleted(
       mergeEntities(localState.journalEntries, remoteState.journalEntries, (local, remote) =>
-        mergeEntityFields(
+        mergeJournal(
           local,
           remote,
           chooseNewest(local, remote),
-          ENTITY_FIELDS.journalEntries,
           localMeta.entityFields.journalEntries?.[local.id],
           remoteMeta.entityFields.journalEntries?.[remote.id],
         )),
       tombstones.journalEntries,
     );
     const notes = mergeSimpleEntities(localState.notes, remoteState.notes, "notes", localMeta, remoteMeta, tombstones.notes);
+    preserveNoteConflicts(notes, localState.notes, remoteState.notes, tombstones.notes);
     const nutritionFoods = mergeSimpleEntities(
       localState.nutritionFoods,
       remoteState.nutritionFoods,
@@ -141,6 +142,33 @@
     );
   }
 
+  function mergeJournal(local, remote, base, localVersions, remoteVersions) {
+    const merged = mergeEntityFields(local, remote, base, ENTITY_FIELDS.journalEntries, localVersions, remoteVersions);
+    merged.revisions = journalModel.normalizeRevisions([
+      ...(local.revisions || []), ...(remote.revisions || []),
+      ...(local.text && local.text !== merged.text ? [{ text: local.text, savedAt: local.updatedAt || local.createdAt }] : []),
+      ...(remote.text && remote.text !== merged.text ? [{ text: remote.text, savedAt: remote.updatedAt || remote.createdAt }] : []),
+    ]);
+    return merged;
+  }
+
+  function preserveNoteConflicts(merged, local = [], remote = [], tombstones = {}) {
+    const remoteById = mapById(remote);
+    for (const note of local || []) {
+      const other = remoteById.get(note.id);
+      if (!other || tombstones[note.id] || !note.bodyBaseUpdatedAt || note.bodyBaseUpdatedAt !== other.bodyBaseUpdatedAt
+        || note.body === other.body) continue;
+      const winner = merged.find((item) => item.id === note.id);
+      const losing = winner?.body === note.body ? other : note;
+      let hash = 2166136261;
+      for (const character of `${losing.id}:${losing.updatedAt}:${losing.body}`) hash = Math.imul(hash ^ character.charCodeAt(0), 16777619);
+      const id = `conflict-${(hash >>> 0).toString(16)}-${note.id.slice(0, 100)}`;
+      if (!tombstones[id] && !merged.some((item) => item.id === id)) {
+        merged.push({ ...clone(losing), id, title: `${losing.title} · другая версия`.slice(0, 120), bodyBaseUpdatedAt: "" });
+      }
+    }
+  }
+
   function mergeProfile(local = {}, remote = {}) {
     const localUpdatedAt = String(local?.updatedAt || "");
     const remoteUpdatedAt = String(remote?.updatedAt || "");
@@ -163,7 +191,7 @@
     const byDate = new Map();
     entries.forEach((entry) => {
       const current = byDate.get(entry.date);
-      if (!current || timestampOf(entry) >= timestampOf(current)) byDate.set(entry.date, entry);
+      byDate.set(entry.date, current ? mergeJournal(current, entry, chooseNewest(current, entry)) : entry);
     });
     return [...byDate.values()].sort((left, right) => String(left.date).localeCompare(String(right.date)));
   }
@@ -334,16 +362,22 @@
     return Number.isFinite(timestamp) ? timestamp : 0;
   }
 
-  function mergeTombstones(local = {}, remote = {}) {
+  function mergeTombstones(local = {}, remote = {}, localMeta, remoteMeta) {
     const result = {
       tasks: {}, habits: {}, goals: {}, boardItems: {}, journalEntries: {}, notes: {}, categories: {},
       nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
       studySubjects: {}, studyLessons: {}, studyFiles: {},
     };
     Object.keys(result).forEach((type) => {
-      const ids = new Set([...Object.keys(local?.[type] || {}), ...Object.keys(remote?.[type] || {})]);
+      const ids = new Set([...Object.keys(local?.[type] || {}), ...Object.keys(remote?.[type] || {}),
+        ...Object.keys(localMeta.deletions?.[type] || {}), ...Object.keys(remoteMeta.deletions?.[type] || {})]);
       ids.forEach((id) => {
-        result[type][id] = latestTimestamp(local?.[type]?.[id], remote?.[type]?.[id]);
+        // A versioned removal of a tombstone is an undo, not a missing deletion.
+        const localTime = Math.max(timestampValue(localMeta.deletions?.[type]?.[id]), timestampValue(local?.[type]?.[id]));
+        const remoteTime = Math.max(timestampValue(remoteMeta.deletions?.[type]?.[id]), timestampValue(remote?.[type]?.[id]));
+        const value = remoteTime > localTime ? remote?.[type]?.[id] : localTime > remoteTime ? local?.[type]?.[id]
+          : latestTimestamp(local?.[type]?.[id], remote?.[type]?.[id]);
+        if (value) result[type][id] = value;
       });
     });
     return result;
@@ -352,6 +386,7 @@
   function mergeSyncMeta(local, remote) {
     return {
       entityFields: mergeTimestampTree(local.entityFields, remote.entityFields),
+      deletions: mergeTimestampTree(local.deletions, remote.deletions),
       taskFields: mergeTimestampTree(local.taskFields, remote.taskFields),
       habitLogs: mergeTimestampTree(local.habitLogs, remote.habitLogs),
       taskOrder: mergeTimestampTree(local.taskOrder, remote.taskOrder),
@@ -431,6 +466,55 @@
     return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
   }
 
-  global.RhythmStateMerge = { mergeStates };
-  if (typeof module !== "undefined" && module.exports) module.exports = { mergeStates };
+  function undoChanges(before, after, current, now = new Date().toISOString()) {
+    const same = syncMetadata.sameValue;
+    function invert(old, applied, latest) {
+      if (same(old, applied)) return clone(latest);
+      if (isPlainObject(old) && isPlainObject(applied) && isPlainObject(latest)) {
+        const result = clone(latest);
+        new Set([...Object.keys(old), ...Object.keys(applied)]).forEach((key) => {
+          const value = invert(old[key], applied[key], latest[key]);
+          if (value === undefined) delete result[key]; else result[key] = value;
+        });
+        return result;
+      }
+      return clone(same(latest, applied) ? old : latest);
+    }
+    const result = clone(current);
+    const removed = [];
+    const restored = [];
+    Object.keys(ENTITY_FIELDS).forEach((type) => {
+      const old = mapById(before[type]); const applied = mapById(after[type]); const latest = mapById(current[type]);
+      new Set([...old.keys(), ...applied.keys()]).forEach((id) => {
+        const previous = old.get(id); const next = applied.get(id); const live = latest.get(id);
+        if (same(previous, next)) return;
+        if (!previous && same(live, next)) { latest.delete(id); removed.push([type, id]); return; }
+        if (!next) {
+          if (!live && same(current.tombstones?.[type]?.[id], after.tombstones?.[type]?.[id])) {
+            latest.set(id, clone(previous)); restored.push([type, id]);
+          }
+          return;
+        }
+        if (previous && live) {
+          const reverted = invert(previous, next, live);
+          if (!same(reverted, live)) reverted.updatedAt = new Date(Math.max(Date.parse(now), timestampOf(live) + 1)).toISOString();
+          latest.set(id, reverted);
+        }
+      });
+      const order = same(idsOf(current[type]), idsOf(after[type])) ? [...new Set([...idsOf(before[type]), ...latest.keys()])] : [...latest.keys()];
+      result[type] = order.filter((id) => latest.has(id)).map((id) => latest.get(id));
+    });
+    Object.keys(before).forEach((key) => {
+      if (Object.hasOwn(ENTITY_FIELDS, key) || ["syncMeta", "schemaVersion", "tombstones"].includes(key)) return;
+      const value = invert(before[key], after[key], current[key]);
+      if (value === undefined) delete result[key]; else result[key] = value;
+    });
+    result.tombstones = invert(before.tombstones || {}, after.tombstones || {}, current.tombstones || {});
+    removed.forEach(([type, id]) => { (result.tombstones[type] ||= {})[id] = now; });
+    restored.forEach(([type, id]) => { delete result.tombstones[type]?.[id]; });
+    return result;
+  }
+
+  global.RhythmStateMerge = { mergeStates, undoChanges };
+  if (typeof module !== "undefined" && module.exports) module.exports = { mergeStates, undoChanges };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -100,6 +100,10 @@
           assertCurrent(operation);
           mergedRemote ||= preparation.merged;
           pushedAt = new Date().toISOString();
+          if (preparation.unchanged) {
+            pushed = { skipped: true, row: { updated_at: preparation.expectedUpdatedAt } };
+            break;
+          }
           try {
             pushed = await ctx.remoteSync.pushState(getOperationConfig(), {
               clientUpdatedAt: pushedAt,
@@ -118,8 +122,8 @@
         ctx.setSyncMeta({ lastPushedAt: snapshotVersion(pushed) || pushedAt });
         if (pendingVersion === pushVersion) setPending(false);
         else queuedPush = true;
-        ctx.recordSyncEvent?.("push");
-        if (manual) ctx.showToast(mergedRemote ? "Данные устройств объединены и сохранены" : "Данные сохранены в БД");
+        if (!pushed?.skipped) ctx.recordSyncEvent?.("push");
+        if (manual) ctx.showToast(pushed?.skipped ? "Данные уже синхронизированы" : mergedRemote ? "Данные устройств объединены и сохранены" : "Данные сохранены в БД");
       } catch (error) {
         if (!isCurrent(operation)) return { cancelled: true };
         lastError = ctx.describeError(error);
@@ -143,6 +147,7 @@
         expectMissing: false,
         expectedUpdatedAt: remoteSnapshot.updatedAt || remoteSnapshot.row?.updated_at || "",
         merged: Boolean(shouldMerge),
+        unchanged: Boolean(ctx.statesEqual?.(ctx.getState(), remoteSnapshot.state)) && Object.keys(remoteSnapshot.uiState || {}).length === 0,
       };
     }
 
