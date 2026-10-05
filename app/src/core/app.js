@@ -1,7 +1,5 @@
-﻿const SCHEMA_VERSION = 26;
-const VALID_PRIORITIES = ["high", "medium", "low"];
-const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"];
-const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
+﻿const documentState = window.RhythmDocumentState;
+const SCHEMA_VERSION = documentState.SCHEMA_VERSION;
 const VALID_BACKUP_SCHEDULES = ["0", "5", "15", "30", "60"];
 const VALID_VIEWS = ["tasks", "timeline", "habits", "goals", "overview", "study", "nutrition", "journal", "board", "archive", "settings"];
 
@@ -34,8 +32,6 @@ const {
   toTimeValue,
 } = appUtils;
 
-const dataNormalizers = window.RhythmDataNormalizers.createDataNormalizers({ normalizeDateKey });
-const { normalizeHabitLogs, normalizeTaskFlags, normalizeTaskOrder } = dataNormalizers;
 const syncMetadataTracker = window.RhythmSyncMetadata.createSyncMetadataTracker();
 
 const storage = window.RhythmStorage.createLocalStorageAdapter({
@@ -48,49 +44,6 @@ const settingsState = window.RhythmSettingsState.createSettingsState({
   validBackupSchedules: VALID_BACKUP_SCHEDULES,
 });
 const profileSettings = window.RhythmProfileSettings;
-const stateNormalizer = window.RhythmStateNormalizer.createStateNormalizer({
-  schemaVersion: SCHEMA_VERSION,
-  validPriorities: VALID_PRIORITIES,
-  cleanText,
-  cleanTimeValue,
-  createId,
-  normalizeDateKey,
-  normalizeHabitLogs,
-  normalizeTaskChecklist: window.RhythmTaskChecklist.normalizeItems,
-  normalizeTaskChecklistLogs: window.RhythmTaskChecklist.normalizeLogs,
-  normalizeHabitFreezeDays: window.RhythmHabitFreeze.normalizeFreezeDays,
-  normalizeHabitRepeat,
-  normalizeHabitConfigHistory: window.RhythmHabitConfigHistory.normalizeHabitConfigHistory,
-  normalizeHabitAvailabilityHistory: window.RhythmHabitConfigHistory.normalizeHabitAvailabilityHistory,
-  normalizeHabitTitleHistory: window.RhythmHabitTitleHistory.normalizeHabitTitleHistory,
-  normalizeReminderOffset,
-  normalizeMcpActivity: window.RhythmMcpActivity.normalizeActivity,
-  normalizeBoardItems: window.RhythmBoardModel.normalizeItems,
-  normalizeJournalEntries: window.RhythmJournalModel.normalizeJournalEntries,
-  normalizeNotes: window.RhythmNotesModel.normalizeNotes,
-  normalizeLinkedTaskIds: window.RhythmGoalActivity.normalizeLinkedTaskIds,
-  normalizeTaskTargets: window.RhythmGoalActivity.normalizeTaskTargets,
-  normalizeHabitTargets: window.RhythmGoalActivity.normalizeHabitTargets,
-  normalizeNutritionFood: window.RhythmNutritionModel.normalizeFood,
-  normalizeNutritionMeal: window.RhythmNutritionModel.normalizeMeal,
-  normalizeNutritionSettings: window.RhythmNutritionModel.normalizeSettings,
-  normalizeNutritionTemplate: window.RhythmNutritionModel.normalizeTemplate,
-  normalizeProfile: profileSettings.normalizeProfile,
-  pruneTombstones: window.RhythmTombstoneRetention.pruneTombstones,
-  normalizeSyncMeta: window.RhythmSyncMetadata.normalizeSyncMeta,
-  pruneSyncMeta: window.RhythmSyncMetadata.pruneSyncMeta,
-  normalizeTaskFlags,
-  normalizeTaskOrder,
-  normalizeStudySubjects: window.RhythmStudyModel.normalizeSubjects,
-  normalizeStudyLessons: window.RhythmStudyModel.normalizeLessons,
-  normalizeStudyFiles: window.RhythmStudyModel.normalizeFiles,
-  normalizeStudyWeekCycle: window.RhythmStudyModel.normalizeWeekCycle,
-  normalizeTaskStudy: window.RhythmStudyModel.normalizeTaskStudy,
-  randomCategoryColor,
-  recurrence: window.RhythmRecurrence,
-  sanitizeColor,
-  toDateKey,
-});
 
 const initialUiState = storage.loadUiState();
 const initialRoute = window.RhythmNavigationState.parseHash(window.location.hash);
@@ -3046,7 +2999,7 @@ function formatTaskRepeat(task) {
 }
 
 function normalizeHabitRepeat(value) {
-  return VALID_HABIT_REPEATS.includes(value) ? value : "daily";
+  return documentState.normalizeHabitRepeat(value);
 }
 
 function formatHabitRepeat(habit) {
@@ -3692,14 +3645,8 @@ function normalizeQuickCategoryName(value) {
   return name.charAt(0).toLocaleUpperCase("ru-RU") + name.slice(1);
 }
 
-function normalizeReminderOffset(value, hasTime = true) {
-  const offset = String(value ?? (hasTime ? "15" : "none"));
-  if (VALID_REMINDER_OFFSETS.includes(offset)) return offset;
-  return hasTime ? "15" : "none";
-}
-
 function normalizeState(raw) {
-  return stateNormalizer.normalizeState(raw);
+  return documentState.normalizeState(raw);
 }
 
 function replaceState(nextState) {

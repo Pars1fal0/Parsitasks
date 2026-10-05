@@ -1,5 +1,6 @@
 import { recordMcpActivity, undoMcpActivity } from "./activity-service.mjs";
 import { getTodayOverview, normalizeCustomRepeat, taskScheduledOn } from "./task-service.mjs";
+import documentState from "../app/src/core/document-state.js";
 import goalActivity from "../app/src/goals/goal-activity.js";
 import habitSchedule from "../app/src/habits/habit-schedule.js";
 import taskChecklist from "../app/src/tasks/task-checklist.js";
@@ -445,37 +446,9 @@ function assertOccurrence(task, date) {
 }
 
 function prepareState(state) {
-  const next = clone(state);
-  next.schemaVersion = Math.max(17, Number(next.schemaVersion) || 0);
-  next.tasks = Array.isArray(next.tasks) ? next.tasks : [];
-  next.habits = Array.isArray(next.habits) ? next.habits : [];
-  next.goals = Array.isArray(next.goals) ? next.goals : [];
-  next.journalEntries = Array.isArray(next.journalEntries) ? next.journalEntries : [];
-  next.nutritionFoods = Array.isArray(next.nutritionFoods) ? next.nutritionFoods : [];
-  next.nutritionMeals = Array.isArray(next.nutritionMeals) ? next.nutritionMeals : [];
-  next.nutritionTemplates = Array.isArray(next.nutritionTemplates) ? next.nutritionTemplates : [];
-  next.categories = Array.isArray(next.categories) ? next.categories : [];
-  next.taskOrder = next.taskOrder && typeof next.taskOrder === "object" ? next.taskOrder : {};
-  next.tombstones = next.tombstones && typeof next.tombstones === "object"
-    ? next.tombstones
-    : {
-      tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
-      nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
-    };
-  next.tombstones.tasks ||= {};
-  next.syncMeta = next.syncMeta && typeof next.syncMeta === "object" ? next.syncMeta : {};
-  next.syncMeta.entityFields ||= {
-    tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
-    nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
-  };
-  next.syncMeta.taskFields ||= {};
-  next.syncMeta.habitLogs ||= {};
-  next.syncMeta.taskOrder ||= {};
-  next.syncMeta.goalSteps ||= {};
-  next.syncMeta.goalStepOrder ||= {};
-  next.mcpActivity = Array.isArray(next.mcpActivity) ? next.mcpActivity : [];
+  const next = documentState.ensureDocumentShape(clone(state));
   next.tasks.forEach((task) => {
-    task.excludedDates ||= {};
+    if (task && typeof task === "object") task.excludedDates ||= {};
   });
   return next;
 }

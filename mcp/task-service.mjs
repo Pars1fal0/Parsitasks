@@ -2,6 +2,7 @@ import recurrence from "../app/src/tasks/recurrence.js";
 import habitSchedule from "../app/src/habits/habit-schedule.js";
 import taskChecklist from "../app/src/tasks/task-checklist.js";
 import goalActivity from "../app/src/goals/goal-activity.js";
+import documentState from "../app/src/core/document-state.js";
 
 export const normalizeCustomRepeat = recurrence.normalizeCustomRepeat;
 
@@ -10,32 +11,7 @@ const REPEATS = new Set(["none", "daily", "every2days", "every3days", "weekdays"
 const CATEGORY_COLORS = ["#19b394", "#4f8cff", "#f59e0b", "#e96b75", "#8b7cf6", "#2ca6a4"];
 
 export function createEmptyState() {
-  return {
-    schemaVersion: 17,
-    defaultsSeeded: false,
-    profile: { timeZone: "Europe/Moscow" },
-    tasks: [],
-    habits: [],
-    goals: [],
-    journalEntries: [],
-    studySubjects: [],
-    studyLessons: [],
-    studyFiles: [],
-    nutritionFoods: [],
-    nutritionMeals: [],
-    nutritionTemplates: [],
-    nutritionSettings: { targets: { calories: 0, protein: 0, fat: 0, carbs: 0 }, paused: false, updatedAt: "" },
-    googleCalendarLinks: {},
-    categories: [],
-    taskOrder: {},
-    mcpActivity: [],
-    tombstones: {
-      tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
-      nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
-      studySubjects: {}, studyLessons: {}, studyFiles: {},
-    },
-    syncMeta: emptySyncMeta(),
-  };
+  return documentState.createEmptyState();
 }
 
 export function getTodayOverview(state, dateKey) {
@@ -467,38 +443,7 @@ function normalizeReminder(value) {
 
 function ensureStateShape(state) {
   if (!state || typeof state !== "object" || Array.isArray(state)) throw new Error("Состояние приложения повреждено");
-  state.schemaVersion = Math.max(17, Number(state.schemaVersion) || 0);
-  state.profile = state.profile && typeof state.profile === "object" ? state.profile : {};
-  state.profile.timeZone = normalizeTimeZone(state.profile.timeZone);
-  state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
-  state.habits = Array.isArray(state.habits) ? state.habits : [];
-  state.goals = Array.isArray(state.goals) ? state.goals : [];
-  state.journalEntries = Array.isArray(state.journalEntries) ? state.journalEntries : [];
-  state.studySubjects = Array.isArray(state.studySubjects) ? state.studySubjects : [];
-  state.studyLessons = Array.isArray(state.studyLessons) ? state.studyLessons : [];
-  state.studyFiles = Array.isArray(state.studyFiles) ? state.studyFiles : [];
-  state.nutritionFoods = Array.isArray(state.nutritionFoods) ? state.nutritionFoods : [];
-  state.nutritionMeals = Array.isArray(state.nutritionMeals) ? state.nutritionMeals : [];
-  state.nutritionTemplates = Array.isArray(state.nutritionTemplates) ? state.nutritionTemplates : [];
-  state.nutritionSettings = state.nutritionSettings && typeof state.nutritionSettings === "object"
-    ? state.nutritionSettings
-    : { targets: { calories: 0, protein: 0, fat: 0, carbs: 0 }, paused: false, updatedAt: "" };
-  state.categories = Array.isArray(state.categories) ? state.categories : [];
-  state.taskOrder = state.taskOrder && typeof state.taskOrder === "object" ? state.taskOrder : {};
-  state.mcpActivity = Array.isArray(state.mcpActivity) ? state.mcpActivity : [];
-  state.tombstones = state.tombstones && typeof state.tombstones === "object"
-    ? state.tombstones
-    : {
-      tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
-      nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
-    };
-  [
-    "tasks", "habits", "goals", "journalEntries", "categories",
-    "nutritionFoods", "nutritionMeals", "nutritionTemplates",
-  ].forEach((type) => {
-    state.tombstones[type] ||= {};
-  });
-  state.syncMeta = normalizeSyncMeta(state.syncMeta);
+  documentState.ensureDocumentShape(state);
 }
 
 function normalizeTimeZone(value) {
@@ -509,28 +454,6 @@ function normalizeTimeZone(value) {
   } catch {
     return "Europe/Moscow";
   }
-}
-
-function normalizeSyncMeta(value) {
-  const source = value && typeof value === "object" ? value : {};
-  return {
-    entityFields: source.entityFields && typeof source.entityFields === "object"
-      ? source.entityFields
-      : {
-        tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
-        nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
-      },
-    taskFields: source.taskFields && typeof source.taskFields === "object" ? source.taskFields : {},
-    habitLogs: source.habitLogs && typeof source.habitLogs === "object" ? source.habitLogs : {},
-    taskOrder: source.taskOrder && typeof source.taskOrder === "object" ? source.taskOrder : {},
-    habitOrderUpdatedAt: source.habitOrderUpdatedAt || "",
-    goalSteps: source.goalSteps && typeof source.goalSteps === "object" ? source.goalSteps : {},
-    goalStepOrder: source.goalStepOrder && typeof source.goalStepOrder === "object" ? source.goalStepOrder : {},
-  };
-}
-
-function emptySyncMeta() {
-  return normalizeSyncMeta({});
 }
 
 function categoryMap(state) {
