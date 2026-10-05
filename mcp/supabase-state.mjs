@@ -1,4 +1,5 @@
 import { createEmptyState } from "./task-service.mjs";
+import documentState from "../app/src/core/document-state.js";
 
 export function createSupabaseStateStore(options) {
   const fetchFn = options.fetch || fetch;
@@ -39,7 +40,7 @@ export function createSupabaseStateStore(options) {
       const clientUpdatedAt = new Date().toISOString();
       const payload = {
         state: mutation.state,
-        schema_version: Number(mutation.state?.schemaVersion) || 14,
+        schema_version: Number(mutation.state?.schemaVersion) || documentState.SCHEMA_VERSION,
         client_updated_at: clientUpdatedAt,
       };
 

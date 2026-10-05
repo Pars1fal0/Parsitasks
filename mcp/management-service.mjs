@@ -1,6 +1,7 @@
 import { recordMcpActivity } from "./activity-service.mjs";
 import { getTodayOverview, taskScheduledOn, tasksForDate } from "./task-service.mjs";
 import { getDayBrief, updateTaskCommand } from "./write-service.mjs";
+import documentState from "../app/src/core/document-state.js";
 
 const HABIT_REPEATS = new Set(["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"]);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -573,37 +574,7 @@ function normalizeCustomRepeat(value) {
 }
 
 function prepareState(state) {
-  const next = clone(state);
-  [
-    "tasks", "habits", "goals", "journalEntries", "categories", "mcpActivity",
-    "nutritionFoods", "nutritionMeals", "nutritionTemplates",
-  ].forEach((key) => {
-    next[key] = Array.isArray(next[key]) ? next[key] : [];
-  });
-  next.taskOrder = next.taskOrder && typeof next.taskOrder === "object" ? next.taskOrder : {};
-  next.tombstones = next.tombstones && typeof next.tombstones === "object"
-    ? next.tombstones
-    : {
-      tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
-      nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
-    };
-  [
-    "tasks", "habits", "goals", "journalEntries", "categories",
-    "nutritionFoods", "nutritionMeals", "nutritionTemplates",
-  ].forEach((type) => {
-    next.tombstones[type] ||= {};
-  });
-  next.syncMeta = next.syncMeta && typeof next.syncMeta === "object" ? next.syncMeta : {};
-  next.syncMeta.entityFields ||= {
-    tasks: {}, habits: {}, goals: {}, journalEntries: {}, categories: {},
-    nutritionFoods: {}, nutritionMeals: {}, nutritionTemplates: {},
-  };
-  next.syncMeta.taskFields ||= {};
-  next.syncMeta.habitLogs ||= {};
-  next.syncMeta.taskOrder ||= {};
-  next.syncMeta.goalSteps ||= {};
-  next.syncMeta.goalStepOrder ||= {};
-  return next;
+  return documentState.ensureDocumentShape(clone(state));
 }
 
 function markEntityFields(state, type, id, fields, now) {

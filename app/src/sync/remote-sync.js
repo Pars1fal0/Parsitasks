@@ -6,6 +6,12 @@
     const maxClockSkewMs = Math.max(60_000, Number(options.maxClockSkewMs) || 10 * 60_000);
     const requestTimeoutMs = Math.max(100, Math.min(60_000, Number(options.requestTimeoutMs) || 30_000));
 
+    function currentSchemaVersion() {
+      const api = global.RhythmDocumentState
+        || (typeof require === "function" ? require("../core/document-state.js") : null);
+      return api.SCHEMA_VERSION;
+    }
+
     function normalizeConfig(config = {}) {
       return {
         enabled: config.enabled === true,
@@ -37,7 +43,7 @@
         user_id: normalized.userId,
         state: payload.state || {},
         ui_state: payload.uiState || {},
-        schema_version: payload.schemaVersion || payload.state?.schemaVersion || 1,
+        schema_version: payload.schemaVersion || payload.state?.schemaVersion || currentSchemaVersion(),
         client_updated_at: clientUpdatedAt,
       };
       const conflictColumn = "user_id";
