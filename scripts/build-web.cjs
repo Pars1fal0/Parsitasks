@@ -16,6 +16,22 @@ function listFiles(directory, prefix = "") {
     });
 }
 
+function stampAssetUrls(html, version) {
+  if (!/^[a-f0-9]{12}$/.test(version)) throw new Error("Invalid asset version");
+  return html.replace(/<link\b[^>]*>|<script\b[^>]*>/g, (tag) => {
+    const stylesheet = tag.startsWith("<link") && /\brel="stylesheet"/.test(tag);
+    const script = tag.startsWith("<script") && /\bsrc="/.test(tag);
+    if (!stylesheet && !script) return tag;
+    return tag.replace(/\b(href|src)="([^"]+)"/, (attribute, name, url) => {
+      if (/^(?:data:|https?:|#)/.test(url)) return attribute;
+      const asset = url.split("?")[0];
+      if (!/\.(?:js|css)$/.test(asset)) return attribute;
+      return `${name}="${asset}?v=${version}"`;
+    });
+  });
+}
+
+function buildWeb() {
 const files = listFiles(appSource);
 if (!files.includes("sw.js")) throw new Error("Missing app/sw.js");
 
@@ -36,6 +52,8 @@ for (const file of files) {
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   if (file === "sw.js") {
     fs.writeFileSync(destination, fs.readFileSync(source, "utf8").replaceAll("__BUILD_HASH__", buildHash), "utf8");
+  } else if (file.endsWith(".html")) {
+    fs.writeFileSync(destination, stampAssetUrls(fs.readFileSync(source, "utf8"), buildHash), "utf8");
   } else {
     fs.copyFileSync(source, destination);
   }
@@ -65,3 +83,8 @@ fs.writeFileSync(path.join(output, "release.json"), JSON.stringify({
   buildHash, sourceRevision, assets,
 }, null, 2), "utf8");
 console.log(`web build ok - ${files.length + 2} files - cache ${buildHash}`);
+}
+
+module.exports = { stampAssetUrls };
+
+if (require.main === module) buildWeb();

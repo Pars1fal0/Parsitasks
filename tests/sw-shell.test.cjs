@@ -22,6 +22,39 @@ module.exports = [
       const buildScript = fs.readFileSync(path.join(root, "scripts", "build-web.cjs"), "utf8");
       assert.match(buildScript, /replaceAll\("__BUILD_HASH__", buildHash\)/);
       assert.match(buildScript, /createHash\("sha256"\)/);
+      assert.match(buildScript, /stampAssetUrls\(fs\.readFileSync\(source, "utf8"\), buildHash\)/);
+    },
+  },
+  {
+    name: "web build stamps one cache version onto local scripts and stylesheets",
+    fn() {
+      const { stampAssetUrls } = require("../scripts/build-web.cjs");
+      const root = path.resolve(__dirname, "..");
+      const version = "abc123def456";
+      for (const file of ["index.html", "auth.html", "landing.html", "oauth-consent.html"]) {
+        const html = fs.readFileSync(path.join(root, "app", file), "utf8");
+        assert.doesNotMatch(html, /\?v=/, `${file} must not keep a manual cache version`);
+        const stamped = stampAssetUrls(html, version);
+        const assets = [...html.matchAll(/<(?:script|link)\b[^>]*>/g)].flatMap((match) => {
+          const tag = match[0];
+          const stylesheet = tag.startsWith("<link") && /\brel="stylesheet"/.test(tag);
+          const script = tag.startsWith("<script") && /\bsrc="/.test(tag);
+          if (!stylesheet && !script) return [];
+          const url = tag.match(/\b(?:href|src)="([^"]+)"/)?.[1] || "";
+          const asset = url.split("?")[0];
+          if (/^(?:data:|https?:|#)/.test(url) || !/\.(?:js|css)$/.test(asset)) return [];
+          return [asset];
+        });
+        assert.ok(assets.length > 0, `${file} should reference a local script or stylesheet`);
+        for (const asset of assets) {
+          assert.match(stamped, new RegExp(`${asset.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\?v=${version}(?=")`));
+        }
+        assert.doesNotMatch(stamped, /\?v=(?!abc123def456)/);
+      }
+      const untouched = stampAssetUrls('<script src="https://example.test/app.js"></script><link rel="icon" href="assets/icons/icon-32.png">', version);
+      assert.match(untouched, /https:\/\/example\.test\/app\.js"/);
+      assert.match(untouched, /assets\/icons\/icon-32\.png"/);
+      assert.throws(() => stampAssetUrls('<script src="app.js"></script>', "short"), /Invalid asset version/);
     },
   },
   {
