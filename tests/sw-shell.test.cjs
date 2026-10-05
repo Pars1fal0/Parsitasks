@@ -4,15 +4,29 @@ const path = require("node:path");
 
 module.exports = [
   {
-    name: "pre-caches every script required by the application shell",
+    name: "pre-caches every script and stylesheet required by the application shell",
     fn() {
       const root = path.resolve(__dirname, "..");
-      const html = ["index.html", "auth.html", "landing.html"]
-        .map((file) => fs.readFileSync(path.join(root, "app", file), "utf8"))
-        .join("\n");
+      const pages = ["index.html", "auth.html", "landing.html", "oauth-consent.html"];
+      const htmlByPage = Object.fromEntries(pages.map((file) => [
+        file,
+        fs.readFileSync(path.join(root, "app", file), "utf8"),
+      ]));
       const serviceWorker = fs.readFileSync(path.join(root, "app", "sw.js"), "utf8");
-      const scripts = [...html.matchAll(/<script src="([^"?]+)(?:\?[^" ]*)?"/g)].map((match) => match[1]);
-      scripts.forEach((script) => assert.match(serviceWorker, new RegExp(`"${script.replace(".", "\\.")}"`), `${script} is missing from APP_SHELL`));
+      const shell = serviceWorker.match(/const APP_SHELL = \[([\s\S]*?)\];/)?.[1] || "";
+      const shellEntries = new Set([...shell.matchAll(/"([^"]+)"/g)].map((match) => match[1]));
+      const scripts = [...[htmlByPage["index.html"], htmlByPage["auth.html"], htmlByPage["landing.html"]].join("\n")
+        .matchAll(/<script src="([^"?]+)(?:\?[^" ]*)?"/g)].map((match) => match[1]);
+      scripts.forEach((script) => assert.equal(shellEntries.has(script), true, `${script} is missing from APP_SHELL`));
+      for (const [file, html] of Object.entries(htmlByPage)) {
+        const stylesheets = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)]
+          .map((match) => match[1].split("?")[0].replace(/^\//, ""));
+        stylesheets.forEach((stylesheet) => assert.equal(
+          shellEntries.has(stylesheet),
+          true,
+          `${stylesheet} from ${file} is missing from APP_SHELL`,
+        ));
+      }
     },
   },
   {
