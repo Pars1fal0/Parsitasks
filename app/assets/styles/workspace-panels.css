@@ -1,0 +1,137 @@
+:is(#goalsView, #journalView, #boardView) .toolbar { gap: 12px; margin-bottom: 16px; }
+:is(#goalsView, #journalView, #boardView) :is(.primary-button, .ghost-button, .icon-button, select, input:not([type="checkbox"]):not([type="color"]):not([type="hidden"])) { border-radius: 6px; }
+:is(#goalsView, #journalView, #boardView) :is(.primary-button, .ghost-button) { font-size: 13px; font-weight: 550; }
+body:is([data-view="goals"], [data-view="journal"], [data-view="board"]) #pageTitle { font-size: 30px; line-height: 1.2; font-weight: 650; }
+
+#goalsView .goal-metrics { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 20px; padding: 12px 0; border-block: 1px solid var(--line); }
+#goalsView .goal-metric { display: flex; flex-direction: row; align-items: baseline; justify-content: start; min-height: 0; gap: 8px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+#goalsView .goal-metric .metric-label { font-size: 12px; font-weight: 450; text-transform: none; letter-spacing: 0; color: var(--muted); }
+#goalsView .goal-metric strong { font-size: 16px; line-height: 1.5; font-weight: 600; font-variant-numeric: tabular-nums; }
+#goalsView .goal-metric-alert strong { color: var(--coral); }
+#goalsView .goal-metric-done strong { color: var(--teal); }
+#goalsView .goal-list { gap: 12px; }
+#goalsView .goal-item { padding: 16px 18px; border-radius: 6px; background: var(--surface); box-shadow: none; }
+#goalsView .goal-item:hover { transform: none; background: var(--surface); }
+#goalsView .goal-item.is-overdue { border-left: 3px solid var(--coral); }
+#goalsView .goal-item.is-done { background: var(--surface); }
+#goalsView .goal-head { gap: 12px; }
+#goalsView .goal-head h3 { font-size: 16px; font-weight: 600; line-height: 1.5; }
+#goalsView .goal-meta { font-size: 12px; font-weight: 450; margin-top: 4px; }
+#goalsView .goal-status-pill { display: inline-flex; align-items: center; gap: 5px; background: transparent; border: 0; padding: 4px 0; font-weight: 500; }
+#goalsView .goal-status-pill::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+#goalsView .goal-progress-head { font-weight: 450; }
+#goalsView .goal-progress-head strong { font-weight: 600; font-variant-numeric: tabular-nums; }
+#goalsView .goal-progress-bar { height: 4px; }
+#goalsView .goal-next-step { font-weight: 450; line-height: 1.5; }
+#goalsView .goal-next-step span { font-size: 12px; font-weight: 450; text-transform: none; letter-spacing: 0; }
+#goalsView .goal-details { padding-top: 0; }
+#goalsView .goal-details > summary { min-height: 40px; padding: 10px 0; font-weight: 500; }
+#goalsView :is(.goal-step, .goal-activity-row) { min-height: 40px; background: transparent; font-weight: 450; }
+#goalsView :is(.goal-step:hover, .goal-activity-row:hover:not(:disabled)) { background: var(--surface-elevated); }
+#goalFormPanel { padding: 20px; border-radius: 8px; background: var(--surface); box-shadow: none; }
+#goalFormPanel h2 { font-size: 20px; font-weight: 650; line-height: 1.3; }
+#goalForm label { font-size: 12px; font-weight: 550; }
+#goalForm .goal-checkpoint-editor { border: 0; border-top: 1px solid var(--line); padding: 16px 0 0; border-radius: 0; background: transparent; }
+#goalForm .goal-checkpoint-heading { flex-wrap: wrap; font-size: 13px; font-weight: 550; }
+#goalForm .goal-link-heading { font-weight: 550; }
+#goalForm .form-actions { padding-top: 12px; border-top: 1px solid var(--line); }
+
+#journalView .notes-tabs button { padding-inline: 12px; font-size: 13px; font-weight: 500; }
+#journalView .notes-workspace { border: 0; border-radius: 0; background: transparent; }
+#journalView .notes-sidebar { background: transparent; }
+#journalView .notes-filters { padding: 0 16px 16px 0; }
+#journalView .notes-count { padding: 12px 16px 8px 0; }
+#journalView .notes-list-item { padding: 14px 14px 14px 12px; border-left-width: 2px; }
+#journalView .notes-list-title { font-weight: 550; line-height: 1.5; }
+#journalView .notes-list-meta { font-size: 12px; }
+#journalView .notes-form { padding: 0 0 20px 24px; gap: 16px; }
+#journalView .notes-form-top { padding: 0 0 12px; background: var(--bg); }
+#journalView .notes-title-input { font-size: 22px; font-weight: 600; border-bottom: 0; padding: 4px 0; }
+#journalView .notes-body-input { line-height: 1.7; min-height: 36dvh; }
+#journalView .note-reading-controls { gap: 4px; margin: 0; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+#journalView .note-reading-controls > button { background: transparent; border-color: transparent; min-height: 36px; }
+#journalView .note-reading-controls > button[aria-pressed="true"] { background: var(--surface-elevated); color: var(--text); }
+#journalView .note-reading-controls > #noteCreateTask { margin-left: auto; color: var(--text-soft); }
+#journalView .notes-relations label { font-weight: 500; }
+#journalView .notes-relations-disclosure { border-top: 1px solid var(--line); padding-top: 8px; }
+#journalView .notes-relations-disclosure > summary { min-height: 40px; padding: 10px 0; color: var(--muted); font-size: 13px; cursor: pointer; }
+#journalView .notes-relations { padding-top: 8px; border-top: 0; }
+#journalView .notes-empty { padding-left: 0; }
+#journalView .notes-placeholder strong { font-size: 16px; font-weight: 550; }
+
+#boardView .board-heading { justify-content: flex-end; margin-bottom: 12px; }
+#boardView .board-heading p { display: none; }
+#boardView .board-save-status { font-size: 12px; color: var(--muted); }
+#boardView .board-space-controls { gap: 6px; margin-bottom: 12px; }
+#boardView .board-space-controls > select { min-width: 0; max-width: min(300px, 100%); min-height: 40px; font-size: 13px; }
+#boardView .board-space-controls > :is(button, .icon-button) { min-height: 40px; }
+#boardView .board-stage { border-color: var(--line); border-radius: 6px; background-color: var(--surface-input); background-image: radial-gradient(circle, var(--line-strong) 1px, transparent 1px); }
+#boardView .board-stage.is-grid-hidden { background-image: none; }
+#boardView :is(.board-toolbar, .board-selection-toolbar, .board-zoom-controls, .board-area-nav) { border-color: var(--line-strong); border-radius: 6px; background: var(--surface-elevated); color: var(--text); box-shadow: var(--shadow-soft); }
+#boardView :is(.board-toolbar, .board-selection-toolbar, .board-zoom-controls) .icon-button { border-color: transparent; color: var(--text-soft); background: transparent; }
+#boardView :is(.board-toolbar, .board-selection-toolbar, .board-zoom-controls) .icon-button:is(:hover, :focus-visible) { border-color: var(--line); color: var(--text); background: var(--surface-input); }
+#boardView :is(.board-toolbar, .board-selection-toolbar) .icon-button:is(.is-active, [aria-pressed="true"]) { color: var(--teal); background: var(--teal-soft); border-color: transparent; }
+#boardView .board-toolbar-separator { background: var(--line); }
+#boardView .board-zoom-controls > span { color: var(--muted); font-variant-numeric: tabular-nums; }
+#boardView .board-add-trigger { font-weight: 550; background: var(--button-primary); color: #fff; }
+#boardView .board-add-trigger:hover, #boardView .board-add-menu[open] .board-add-trigger { background: color-mix(in srgb, var(--button-primary) 82%, #000); }
+#boardView :is(.board-add-options, .board-source-picker) { background: var(--surface-elevated); color: var(--text); border-color: var(--line-strong); box-shadow: var(--shadow-lift); }
+#boardView .board-add-options button { color: var(--text); }
+#boardView .board-add-options button:is(:hover, :focus-visible) { background: var(--surface-input); }
+#boardView .board-picker-head strong { font-size: 16px; font-weight: 600; }
+#boardView .board-picker-head .icon-button { color: var(--text-soft); }
+#boardView :is(.board-picker-search input, .board-source-picker select, .board-font-size-control input) { background: var(--surface-input); color: var(--text); border-color: var(--line); }
+#boardView :is(.board-picker-search .ui-icon, .board-picker-results, .board-source-result small) { color: var(--muted); }
+#boardView .board-source-result strong { color: var(--text); font-weight: 550; }
+#boardView .board-source-result:is(:hover, :focus-visible) { border-color: var(--line-strong); background: var(--surface-input); }
+#boardView .board-empty { color: var(--muted); }
+#boardView .board-empty :is(strong, .ui-icon) { color: var(--text); }
+#boardView .board-empty strong { font-weight: 600; }
+#boardView .board-empty-actions button { border-color: var(--line); background: var(--surface); color: var(--text); font-weight: 500; }
+#boardView .board-empty-actions button:is(:hover, :focus-visible) { border-color: var(--teal); background: var(--surface-elevated); }
+#boardView .board-empty-actions button:first-child { background: var(--button-primary); border-color: var(--button-primary); color: #fff; }
+#boardView :is(.board-color-swatch, .board-link-swatch) { border-color: var(--surface-elevated); outline-color: var(--line-strong); }
+#boardView :is(.board-color-swatch, .board-link-swatch):is(.is-active, :focus-visible, :hover) { outline-color: var(--teal); }
+#boardView .board-area-nav select { color: var(--text); }
+#boardView .board-frame-title { color: var(--muted); font-weight: 550; }
+#boardView .board-item.is-editing .board-frame-title { color: var(--text); }
+#boardView .board-text-content:empty::before { color: var(--muted); }
+#boardView .board-linked-card { box-shadow: none; font-weight: 450; }
+#boardView .board-linked-card > strong { font-weight: 600; line-height: 1.4; }
+#boardView .board-linked-top > span:first-child { font-weight: 500; }
+#boardView .board-link-open { background: rgb(0 0 0 / 6%); color: #25302e; font-weight: 500; }
+#boardView .board-link-open:is(:hover, :focus-visible) { background: rgb(0 0 0 / 12%); }
+#boardView .board-linked-card.is-theme-surface { background: var(--surface-elevated); border-color: var(--line-strong); color: var(--text); }
+#boardView .board-linked-card.is-theme-surface :is(.board-link-status, p) { color: var(--muted); }
+#boardView .board-linked-card.is-theme-surface .board-linked-top > span:first-child { color: var(--teal); font-weight: 500; }
+#boardView .board-linked-card.is-theme-surface .board-link-open { background: var(--surface-input); color: var(--text); font-weight: 500; }
+#boardView .board-linked-card.is-theme-surface .board-link-open:is(:hover, :focus-visible) { background: var(--teal-soft); color: var(--teal); }
+#boardView .board-linked-card.is-theme-surface.is-done { border-color: var(--teal); }
+#boardView .board-linked-card.is-theme-surface.is-overdue { border-color: var(--coral); }
+#boardView .board-linked-card.is-theme-surface.is-overdue .board-link-status { color: var(--coral); }
+#boardView .board-card-list { gap: 12px; }
+#boardView .board-list-card { border-radius: 6px; background: var(--surface); box-shadow: none; }
+#boardView .board-list-card h3 { font-size: 15px; font-weight: 550; margin-bottom: 8px; }
+#boardView .board-list-card p { font-size: 13px; line-height: 1.5; }
+#boardView .board-list-card .board-list-text { font-size: 15px; line-height: 1.65; }
+
+@media (max-width: 760px) {
+  #journalView .notes-form { padding: 0 0 16px; }
+  #journalView .notes-sidebar { min-height: 0; }
+  #journalView .notes-filters { padding-right: 0; }
+  #journalView .notes-form-top { gap: 6px; }
+  #journalView .notes-updated { font-size: 11px; }
+}
+@media (max-width: 680px) {
+  body:is([data-view="goals"], [data-view="journal"], [data-view="board"]) #pageTitle { font-size: 28px; }
+  #goalsView .goal-item { padding: 14px; }
+  #goalsView .goal-metrics { gap: 8px 16px; margin-bottom: 16px; }
+  #goalsView .goal-head { display: grid; grid-template-columns: minmax(0, 1fr) 40px; gap: 6px 8px; }
+  #goalsView .goal-identity { grid-column: 1; grid-row: 1; }
+  #goalsView .goal-head-controls { display: contents; }
+  #goalsView .goal-status-pill { grid-column: 1; grid-row: 2; }
+  #goalsView .goal-menu { grid-column: 2; grid-row: 1; }
+  #goalsView .goal-menu-trigger { width: 40px; min-height: 40px; }
+  #journalView .note-reading-controls > #noteCreateTask { margin-left: 0; }
+  #boardView .board-space-controls > select { flex: 1 1 140px; }
+}

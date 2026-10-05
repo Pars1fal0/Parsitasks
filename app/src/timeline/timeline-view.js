@@ -166,6 +166,24 @@
       top.append(time, title);
       main.append(top, meta);
       if (!Number.isFinite(entry.minutes) && ctx.moveTaskTime) card.appendChild(createUnscheduledDragHandle(entry));
+      if (!study) {
+        const check = document.createElement("button");
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        check.type = "button";
+        check.className = "timeline-task-check";
+        check.setAttribute("aria-label", `${entry.done ? "Вернуть в работу" : "Выполнить"}: ${entry.title}`);
+        check.setAttribute("aria-pressed", String(entry.done));
+        check.title = entry.done ? "Вернуть в работу" : "Выполнить задачу";
+        icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true");
+        use.setAttribute("href", "#icon-check"); icon.append(use); check.append(icon);
+        check.addEventListener("pointerdown", (event) => event.stopPropagation());
+        check.addEventListener("click", (event) => {
+          event.stopPropagation();
+          ctx.toggleTaskDone?.(entry.task.id);
+        });
+        card.append(check);
+      }
       card.append(main);
       if (!study && Number.isFinite(entry.minutes) && ctx.createTaskAtTime) card.appendChild(createNeighborButton(entry));
       if (actions) card.append(actions);

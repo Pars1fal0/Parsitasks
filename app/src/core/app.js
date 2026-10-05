@@ -1192,6 +1192,7 @@ const nutritionView = window.RhythmNutritionView.createNutritionView({
 
 const taskFormController = window.RhythmTaskForm.createTaskForm({
   els,
+  afterClose: closeFloatingTaskForm,
   restoreState: (snapshot) => { replaceState(JSON.parse(snapshot.state)); render(); },
   getDefaultCategoryId: () => state.categories.some((category) => category.id === taskCategoryFilter)
     ? taskCategoryFilter : "",
@@ -1205,10 +1206,6 @@ const taskFormController = window.RhythmTaskForm.createTaskForm({
       clearTaskFilters();
       saveUiState();
       renderTasks();
-    }
-    if (activeView === "timeline") {
-      els.taskFormPanel.classList.add("is-collapsed");
-      closeFloatingTaskForm();
     }
   },
   cleanText,
@@ -2208,6 +2205,9 @@ async function openBoardSource(type, id) {
     const list = document.querySelector(type === "subject" ? "#studySubjectList" : "#studyMaterialList");
     const field = type === "subject" ? "studySubjectId" : "studyFileId";
     const row = [...(list?.children || [])].find((item) => item.dataset[field] === id);
+    for (let parent = row?.parentElement; parent; parent = parent.parentElement) {
+      if (parent.tagName === "DETAILS") parent.open = true;
+    }
     row?.scrollIntoView({ block: "center" });
     row?.querySelector("a, button")?.focus({ preventScroll: true });
   });

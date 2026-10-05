@@ -1,5 +1,5 @@
 const CACHE_PREFIX = "rhythm-day-";
-const CACHE_NAME = `${CACHE_PREFIX}app-v120-__BUILD_HASH__`;
+const CACHE_NAME = `${CACHE_PREFIX}app-v121-__BUILD_HASH__`;
 const APP_SHELL = [
   "./",
   "landing.html",
@@ -20,6 +20,7 @@ const APP_SHELL = [
   "assets/styles/daily-workspace.css",
   "assets/styles/activity-charts.css",
   "assets/styles/settings-appearance.css",
+  "assets/styles/workspace-panels.css",
   "assets/vendor/chart.js",
   "src/calendar/activity-charts.js",
   "assets/styles/disclosure-menus.css",

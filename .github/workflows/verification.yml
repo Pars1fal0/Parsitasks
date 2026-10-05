@@ -67,6 +67,10 @@ jobs:
         run: npm run test:task-recovery
       - name: Verify archive layout, shared checkboxes and stable background
         run: npm run test:archive
+      - name: Verify task editor closure and calendar completion
+        run: npm run test:task-editor
+      - name: Verify goals, notes and board panels across themes and viewports
+        run: npm run test:workspace-panels
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

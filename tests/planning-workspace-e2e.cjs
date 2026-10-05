@@ -80,7 +80,7 @@ const { _electron: electron } = require("playwright-core");
     await page.locator('#goalForm button[type="submit"]').click();
     assert.equal((await stored()).goals.find((goal) => goal.title === "Три дня чтения").taskTargets[0].targetCount, 3);
     await go("tasks"); await page.locator("#openTaskForm").click(); await page.locator("#taskTitle").fill("Разовый план со сроком");
-    await page.locator("#taskExtraFields > summary").click();
+    await page.locator("#taskDueSection > summary").click();
     await page.locator("#taskDueDate").fill(dates.due); await page.locator("#taskDueTime").fill("16:00");
     await page.locator("#taskDueReminder").selectOption("60");
     await page.locator('#taskForm button[type="submit"]').click();

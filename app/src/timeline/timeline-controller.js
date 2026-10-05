@@ -254,8 +254,9 @@
       ctx.els.taskReminder.value = "15";
       ctx.syncTaskScheduleMode();
       ctx.syncTaskTimePresets();
-      const extra = ctx.els.taskFormPanel.querySelector("#taskExtraFields");
-      if (extra) extra.open = true;
+      const workPanel = ctx.els.taskFormPanel.querySelector("#taskWorkFields");
+      if (workPanel) workPanel.open = true;
+      ctx.els.taskForm.dispatchEvent(new Event("input", { bubbles: true }));
       ctx.markFormPristine?.(ctx.els.taskForm);
       ctx.els.taskFormPanel.classList.remove("is-collapsed");
       ctx.els.taskTitle.focus();

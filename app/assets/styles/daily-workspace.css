@@ -147,12 +147,25 @@ body[data-view="archive"] #pageTitle { font-size: 30px; line-height: 1.2; font-w
 .calendar-time-day { position: relative; height: calc(24 * var(--calendar-hour-height, 64px)); }
 .calendar-hour-slot { display: block; width: 100%; height: var(--calendar-hour-height, 64px); min-height: 0; padding: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
 .calendar-hour-slot:hover, .calendar-hour-slot:focus-visible, .calendar-hour-slot.is-drop-target { background: color-mix(in srgb, var(--teal) 8%, var(--bg)); box-shadow: inset 0 0 0 1px var(--teal); }
-.calendar-time-event { --event-color: var(--teal); position: absolute; z-index: 2; min-height: 2px; background: color-mix(in srgb, var(--event-color) 13%, var(--surface-elevated)); border: 1px solid color-mix(in srgb, var(--event-color) 30%, var(--line)); border-left: 3px solid var(--event-color); border-radius: 4px; }
+.calendar-time-event { --event-color: var(--teal); position: absolute; display: flex; z-index: 2; min-height: 2px; background: color-mix(in srgb, var(--event-color) 13%, var(--surface-elevated)); border: 1px solid color-mix(in srgb, var(--event-color) 30%, var(--line)); border-left: 3px solid var(--event-color); border-radius: 4px; }
 .calendar-time-event.is-lesson { --event-color: var(--violet); }
 .calendar-time-event.is-time-marker { --event-color: var(--coral); }
 .calendar-time-event.is-done { opacity: .55; }
 .calendar-time-event.is-dragging { opacity: .4; }
-.calendar-event-open { display: flex; flex-direction: column; align-items: start; width: 100%; height: 100%; min-height: 0; padding: 5px 6px; border: 0; border-radius: 3px; background: transparent; color: var(--text); overflow: hidden; text-align: left; cursor: pointer; }
+.calendar-event-open { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: start; width: 100%; height: 100%; min-height: 0; padding: 5px 6px; border: 0; border-radius: 3px; background: transparent; color: var(--text); overflow: hidden; text-align: left; cursor: pointer; }
+.calendar-event-check, .timeline-task-check { display: grid; place-items: center; flex: 0 0 28px; width: 28px; min-height: 0; padding: 0; border: 0; background: transparent; color: var(--teal); cursor: pointer; border-radius: 3px; }
+.calendar-event-check::before, .timeline-task-check::before { content: ""; grid-area: 1 / 1; width: 16px; height: 16px; border: 1.5px solid var(--muted); border-radius: 50%; }
+.calendar-event-check .ui-icon, .timeline-task-check .ui-icon { grid-area: 1 / 1; width: 12px; height: 12px; opacity: 0; color: #fff; }
+.calendar-event-check[aria-pressed="true"]::before, .timeline-task-check[aria-pressed="true"]::before { border-color: var(--button-primary); background: var(--button-primary); }
+.calendar-event-check[aria-pressed="true"] .ui-icon, .timeline-task-check[aria-pressed="true"] .ui-icon { opacity: 1; }
+.calendar-event-check:hover::before, .timeline-task-check:hover::before { border-color: var(--teal); }
+.calendar-event-check:focus-visible, .timeline-task-check:focus-visible { outline: 2px solid var(--teal); outline-offset: -1px; }
+.calendar-event-check:disabled { opacity: .5; cursor: wait; }
+.calendar-time-event:not(.is-lesson) .calendar-event-resize { left: 28px; width: calc(100% - 28px); }
+.timeline-task-check { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); height: min(28px, 100%); z-index: 6; }
+.timeline-task:has(.timeline-task-check) .timeline-task-main { padding-left: 28px; }
+.timeline-task.is-unscheduled:has(.timeline-task-check) .timeline-task-main { padding-left: 48px; }
+.timeline-task.is-unscheduled .timeline-task-check { left: 24px; }
 .calendar-event-open small { max-width: 100%; font-size: 10px; line-height: 1.4; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 0 auto; }
 .calendar-event-open strong { font-size: 12px; line-height: 1.45; font-weight: 550; width: 100%; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: normal; }
 .calendar-time-event.is-short .calendar-event-open { justify-content: center; padding-block: 2px; }
@@ -246,6 +259,39 @@ body[data-view="archive"] #pageTitle { font-size: 30px; line-height: 1.2; font-w
   #tasksView .drag-handle, #habitsView .habit-drag-handle { transition: none; }
 }
 .calendar-schedule-controls { display: flex; align-items: center; gap: 8px; }
+#taskFormPanel { padding: 20px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line); }
+#taskFormPanel .panel-heading { margin-bottom: 20px; }
+#taskFormPanel h2 { font-size: 20px; line-height: 1.3; font-weight: 650; }
+#taskForm { gap: 16px; }
+#taskForm label { font-size: 12px; font-weight: 550; gap: 6px; }
+#taskForm :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="color"]), select) { min-width: 0; width: 100%; min-height: 42px; font-size: 14px; font-weight: 450; background: var(--surface-input); border-radius: 6px; }
+#taskForm .task-title-field input { font-size: 16px; min-height: 46px; }
+#taskForm .task-date-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; }
+#taskForm .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#taskForm .task-defer-toggle { margin: 0; font-weight: 450; white-space: nowrap; }
+#taskForm .task-form-section { display: block; padding: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+#taskForm .task-form-section > summary { display: grid; grid-template-columns: 18px minmax(0, 1fr) 16px; align-items: center; column-gap: 10px; min-height: 48px; padding: 10px 0; font-size: 13px; font-weight: 550; color: var(--text); cursor: pointer; list-style: none; }
+#taskForm .task-form-section > summary::-webkit-details-marker { display: none; }
+#taskForm .task-form-section > summary > .ui-icon { width: 18px; height: 18px; color: var(--muted); }
+#taskForm .task-form-section > summary > .task-section-chevron { grid-column: 3; grid-row: 1; width: 16px; height: 16px; transition: transform 160ms ease; }
+#taskForm .task-form-section[open] > summary > .task-section-chevron { transform: rotate(180deg); }
+#taskForm .task-form-section > summary:is(:hover, :focus-visible) { color: var(--teal); }
+#taskForm .task-form-section > summary:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 4px; }
+#taskForm :is(.task-section-value, .task-settings-summary) { grid-column: 2; grid-row: 2; color: var(--muted); font-size: 12px; font-weight: 450; overflow-wrap: anywhere; }
+#taskForm :is(.task-section-value, .task-settings-summary):empty { display: none; }
+#taskForm .task-section-body { margin: 0; padding: 2px 0 16px; }
+#taskForm .task-form-section:not([open]) > .task-section-body { display: none; }
+#taskForm .task-due-fields { padding: 0; border: 0; gap: 12px; }
+#taskForm .schedule-mode-control { padding: 3px; border-radius: 6px; background: var(--surface-input); }
+#taskForm .schedule-mode-control span { font-size: 12px; font-weight: 500; min-height: 40px; line-height: 1.35; padding: 6px; border-radius: 4px; white-space: normal; text-align: center; }
+#taskForm .schedule-mode-control span::after { content: none; }
+#taskForm .goal-checkpoint-editor { padding: 12px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: transparent; }
+#taskForm .task-inline-category > summary { min-height: 32px; padding: 4px 0; font-size: 12px; }
+#taskFormPanel .form-actions { bottom: -20px; margin: 0 -20px -20px; padding: 12px 20px; gap: 8px; background: var(--surface); backdrop-filter: none; }
+#taskFormPanel .form-actions > button { min-height: 42px; border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) {
+  #taskForm .task-section-chevron { transition: none; }
+}
 #habitsView .habit-item.is-check-habit { grid-template-columns: 30px 44px minmax(0, 1fr); align-items: center; }
 #habitsView .is-check-habit .habit-control { grid-column: 2; grid-row: 1; align-self: start; }
 #habitsView .is-check-habit .habit-main { grid-column: 3; grid-row: 1; min-width: 0; }

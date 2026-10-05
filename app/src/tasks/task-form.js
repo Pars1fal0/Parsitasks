@@ -4,6 +4,8 @@
     const deferredControl = ctx.els.taskForm.querySelector("#taskDeferred");
     const scopePanel = ctx.els.taskRepeatEditScope;
     const extraPanel = ctx.els.taskForm.querySelector("#taskExtraFields");
+    const workPanel = ctx.els.taskForm.querySelector("#taskWorkFields");
+    const duePanel = ctx.els.taskForm.querySelector("#taskDueSection");
     const dueDateField = ctx.els.taskForm.querySelector("#taskDueDate");
     const dueTimeField = ctx.els.taskForm.querySelector("#taskDueTime");
     const dueReminderField = ctx.els.taskForm.querySelector("#taskDueReminder");
@@ -13,16 +15,22 @@
     ctx.els.taskForm.addEventListener("input", updateSettingsSummary);
     ctx.els.taskForm.addEventListener("change", updateSettingsSummary);
     extraPanel.addEventListener("toggle", updateSettingsSummary);
+    ctx.els.taskForm.addEventListener("invalid", (event) => {
+      let section = event.target.closest("details");
+      while (section) { section.open = true; section = section.parentElement.closest("details"); }
+    }, true);
 
     function updateSettingsSummary() {
       const parts = [];
-      if (deferredControl?.checked) parts.push("Позже");
-      if (dueDateField.value) parts.push(`Срок ${dueDateField.value}${dueTimeField.value ? ` · ${dueTimeField.value}` : ""}`);
       if (ctx.els.taskRepeat.value !== "none") parts.push(ctx.els.taskRepeat.selectedOptions[0]?.textContent);
       if (ctx.els.taskCategoryId.value) parts.push(ctx.els.taskCategoryId.selectedOptions[0]?.textContent);
-      if (ctx.getTaskScheduleMode() === "block") parts.push(`${ctx.els.taskStartTime.value}–${ctx.els.taskEndTime.value}`);
-      else if (ctx.getTaskScheduleMode() === "deadline" && ctx.els.taskTime.value) parts.push(`К ${ctx.els.taskTime.value}`);
+      if (ctx.els.taskPriority.value !== "medium") parts.push(ctx.els.taskPriority.selectedOptions[0]?.textContent);
       settingsSummary.textContent = parts.filter(Boolean).join(" · ");
+      ctx.els.taskForm.querySelector("#taskWorkSummary").textContent = ctx.getTaskScheduleMode() === "block"
+        ? [ctx.els.taskStartTime.value, ctx.els.taskEndTime.value].filter(Boolean).join("–")
+        : ctx.getTaskScheduleMode() === "deadline" ? ctx.els.taskTime.value : "";
+      ctx.els.taskForm.querySelector("#taskDueSummary").textContent = dueDateField.value
+        ? `${formatDate(dueDateField.value)}${dueTimeField.value ? ` · ${dueTimeField.value}` : ""}` : "";
     }
     if (scopePanel && extraPanel) extraPanel.before(scopePanel);
     deferredControl?.addEventListener("change", () => setDeferred(deferredControl.checked));
@@ -188,7 +196,9 @@
       setDeferred(task.date === null);
       const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
       if (extra) extra.open = Boolean(task.categoryId || task.priority === "high" || task.priority === "low"
-        || task.repeat !== "none" || task.time || task.dueDate || task.date === null || task.checklist?.length);
+        || task.repeat !== "none" || task.checklist?.length);
+      workPanel.open = ctx.getTaskScheduleMode() !== "none";
+      duePanel.open = Boolean(dueDateField.value);
       ctx.markFormPristine?.(ctx.els.taskForm);
       ctx.els.taskTitle.focus();
       updateSettingsSummary();
@@ -226,9 +236,12 @@
       syncRepeatEditScope(false);
       const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
       if (extra) extra.open = false;
+      workPanel.open = false;
+      duePanel.open = false;
       setDeferred(false);
       ctx.markFormPristine?.(ctx.els.taskForm);
       updateSettingsSummary();
+      if (options.open === false) ctx.afterClose?.();
     }
 
     function setDeferred(value) {

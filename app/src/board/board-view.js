@@ -254,6 +254,7 @@
       const detail = document.createElement("p");
       const open = document.createElement("button");
       card.className = `board-linked-card is-${source?.tone || "neutral"}`;
+      card.classList.toggle("is-theme-surface", !item.backgroundColor || item.backgroundColor.toLowerCase() === "#ffffff");
       card.style.setProperty("--board-link-bg", item.backgroundColor || "#ffffff");
       kind.textContent = source?.typeLabel || "Объект";
       status.className = "board-link-status";
@@ -382,7 +383,7 @@
       content.dataset.placeholder = "Введите текст";
       content.style.fontSize = `${item.fontSize}px`;
       content.style.fontWeight = String(item.fontWeight);
-      content.style.color = item.color;
+      content.style.color = !item.color || item.color.toLowerCase() === "#17191d" ? "var(--text)" : item.color;
       content.setAttribute("aria-label", "Текстовый объект");
       content.addEventListener("dblclick", (event) => {
         event.preventDefault();

@@ -110,6 +110,7 @@
     function attachDrag(node, task, date) {
       node.draggable = true;
       node.addEventListener("dragstart", (event) => {
+        if (event.target.closest?.(".calendar-event-check")) { event.preventDefault(); return; }
         dragged = { taskId: task.id, date };
         event.dataTransfer.setData(DRAG_TYPE, JSON.stringify(dragged));
         event.dataTransfer.effectAllowed = "move";
@@ -153,6 +154,31 @@
       node.style.left = `calc(${entry.columnIndex / entry.columnCount * 100}% + 3px)`;
       node.style.width = `calc(${100 / entry.columnCount}% - 6px)`;
       if (entry.categoryColor) node.style.setProperty("--event-color", entry.categoryColor);
+      if (!lesson) {
+        const check = button("calendar-event-check", "", async (event) => {
+          event.stopPropagation();
+          hidePreview();
+          if (resizing) return;
+          check.disabled = true;
+          try {
+            await ctx.toggleTaskDone(task.id, date);
+          } finally {
+            check.disabled = false;
+          }
+          [...root.querySelectorAll(".calendar-time-event")].find((card) => card.dataset.eventId === task.id && card.dataset.date === date)
+            ?.querySelector(".calendar-event-check")?.focus({ preventScroll: true });
+        });
+        check.setAttribute("aria-label", `${entry.done ? "Вернуть в работу" : "Выполнить"}: ${task.title}`);
+        check.setAttribute("aria-pressed", String(entry.done));
+        check.title = entry.done ? "Вернуть в работу" : "Выполнить задачу";
+        check.draggable = false;
+        check.addEventListener("pointerdown", (event) => event.stopPropagation());
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true");
+        use.setAttribute("href", "#icon-check"); icon.append(use); check.append(icon);
+        node.append(check);
+      }
       const open = button("calendar-event-open", "", () => {
         hidePreview();
         if (!resizing) lesson ? ctx.openLesson(lesson, date) : ctx.editTask(task, date);

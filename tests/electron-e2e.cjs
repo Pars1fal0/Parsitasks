@@ -379,6 +379,8 @@ const { _electron: electron } = require("playwright-core");
 
     await page.locator(".nav-more-summary").click();
     await page.locator('.nav-more-menu .nav-tab[data-view="board"]').click();
+    assert.equal(await page.locator("#boardCardList").isVisible(), true, "mobile board opens a readable card list");
+    await page.getByRole("button", { name: "Полотно", exact: true }).click();
     await page.waitForTimeout(100);
     const boardContentVisible = await page.locator(".board-item").first().evaluate((node) => {
       const item = node.getBoundingClientRect();
@@ -436,6 +438,7 @@ const { _electron: electron } = require("playwright-core");
     assert.ok(taskActionBox && mobileNavBox && taskActionBox.y >= 0 && taskActionBox.y + taskActionBox.height < mobileNavBox.y,
       "new task action must be visible above mobile navigation");
     await page.locator("#openTaskForm").click();
+    await page.locator("#taskWorkFields > summary").click();
     const scheduleModesFit = await page.locator(".schedule-mode-control").evaluate((node) =>
       node.scrollWidth <= node.clientWidth + 1,
     );
