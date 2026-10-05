@@ -31,11 +31,12 @@
         const candidate = extractImportState(parsed);
         const importedState = ctx.normalizeState(candidate);
         const counts = [["tasks", "задач"], ["habits", "привычек"], ["notes", "заметок"], ["goals", "целей"], ["studySubjects", "предметов"], ["studyLessons", "занятий"], ["studyFiles", "ссылок на файлы"], ["boardItems", "объектов доски"], ["journalEntries", "записей дневника"], ["categories", "категорий"]]
-          .map(([field, label]) => `${label}: ${importedState[field]?.length || 0}`).join(" · ");
+          .map(([field, label]) => ({ label, value: importedState[field]?.length || 0 }));
         const exported = Number.isFinite(Date.parse(parsed.exportedAt)) ? new Date(parsed.exportedAt).toLocaleString("ru-RU") : "не указана";
         if (ctx.getUserId?.() !== owner) return;
         const confirmed = await ctx.confirmAction?.({ title: "Заменить данные из файла?",
-          message: `Дата копии: ${exported}\n${counts}\n\nВсе текущие данные будут заменены. Перед заменой сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.`,
+          message: "Все текущие данные будут заменены. Сначала сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.",
+          details: [{ label: "Дата копии", value: exported }, ...counts],
           confirmLabel: "Заменить данные", tone: "danger" });
         if (confirmed !== true || ctx.getUserId?.() !== owner) return;
         const undo = ctx.createUndoSnapshot();

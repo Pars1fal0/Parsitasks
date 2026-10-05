@@ -182,6 +182,7 @@
       ctx.els.goalDueDate.value = goal.dueDate || "";
       ctx.checkpointEditor.setSteps(goal.steps || []);
       setLinks(goal);
+      setLinkDisclosures();
       ctx.els.goalFormHeading.textContent = "Редактировать цель";
       ctx.els.resetGoalForm.textContent = "Отмена";
       ctx.els.goalFormPanel.classList.remove("is-collapsed");
@@ -196,9 +197,16 @@
       ctx.els.goalDueDate.value = "";
       ctx.checkpointEditor.setSteps();
       setLinks();
+      setLinkDisclosures();
       ctx.els.goalFormHeading.textContent = "Новая цель";
       ctx.els.resetGoalForm.textContent = "Очистить";
       ctx.markFormPristine?.(ctx.els.goalForm);
+    }
+
+    function setLinkDisclosures() {
+      ctx.els.goalForm.querySelectorAll("details.goal-link-section").forEach((section) => {
+        section.open = !global.matchMedia?.("(max-width: 680px)")?.matches;
+      });
     }
 
     function setLinks(goal = {}) {

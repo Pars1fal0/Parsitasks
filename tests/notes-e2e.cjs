@@ -34,6 +34,7 @@ const { _electron: electron } = require("playwright-core");
     assert.ok(task);
 
     await page.locator("#studyHomeworkFilter").selectOption(subjectId);
+    await page.locator(".study-period-menu > summary").click();
     await page.locator("#studyOpenNotes").click();
     assert.equal(await page.locator("#journalView").isVisible(), true);
     assert.equal(await page.locator("#activeDate").isVisible(), false);

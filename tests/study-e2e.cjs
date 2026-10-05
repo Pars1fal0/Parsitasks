@@ -32,6 +32,7 @@ const { _electron: electron } = require("playwright-core");
       const key = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
       return window.RhythmStudyModel.mondayKey(key);
     });
+    await page.locator(".study-period-menu > summary").click();
     await page.locator(".study-cycle-details > summary").click();
     await page.locator('#studyWeekCycleForm [name="anchorMonday"]').fill(currentMonday);
     await page.locator('#studyWeekCycleForm [name="anchorParity"]').selectOption("even");

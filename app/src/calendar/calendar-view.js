@@ -16,6 +16,12 @@
     const legend = document.createElement("div"); legend.className = "calendar-month-legend";
     [["is-events", "Дела и занятия"], ["is-deadlines", "Сроки сдачи"]].forEach(([className, label]) => { const item = document.createElement("span"); item.className = className; item.textContent = label; legend.append(item); });
     ctx.els.monthGrid?.after(legend, agenda);
+    const monthJump = document.createElement("button"); monthJump.type = "button";
+    monthJump.className = "ghost-button compact-button calendar-month-jump";
+    monthJump.textContent = "К делам дня";
+    monthJump.addEventListener("click", () => { agenda.scrollIntoView({ block: "start", behavior: "smooth" }); agenda.focus({ preventScroll: true }); });
+    agenda.tabIndex = -1;
+    ctx.els.monthGrid?.closest(".month-panel")?.querySelector(".panel-heading")?.after(monthJump);
     ctx.els.weekBoardGrid?.after(legend.cloneNode(true));
 
     function deadlines(dateKey) { return ctx.getState().tasks.filter((task) => task.dueDate === dateKey); }
@@ -56,6 +62,8 @@
       const activeDate = ctx.getActiveDate();
       const week = ctx.getWeekDates(activeDate);
       const mode = ctx.els.views?.overview?.dataset.mode || "week";
+      const metrics = grid?.querySelector(".calendar-period-metrics");
+      if (metrics) mode === "year" ? grid.prepend(metrics) : grid.append(metrics);
       const period = overviewPeriod(mode, activeDate, week, ctx);
       ctx.renderSchedule?.(mode);
       let taskDone = 0;

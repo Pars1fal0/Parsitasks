@@ -10,6 +10,7 @@
       cancelLabel = "Отмена",
       confirmLabel = "Подтвердить",
       message = "",
+      details = [],
       secondaryLabel = "",
       tone = "default",
       title = "Подтвердить действие?",
@@ -28,6 +29,16 @@
       }
       ctx.els.confirmTitle.textContent = title;
       ctx.els.confirmMessage.textContent = message;
+      ctx.els.confirmModal.querySelector(".confirm-details")?.remove();
+      if (Array.isArray(details) && details.length) {
+        const list = document.createElement("dl"); list.className = "confirm-details";
+        details.slice(0, 20).forEach((item) => {
+          const label = document.createElement("dt"); label.textContent = String(item.label || "");
+          const value = document.createElement("dd"); value.textContent = String(item.value ?? "");
+          list.append(label, value);
+        });
+        ctx.els.confirmMessage.after(list);
+      }
       ctx.els.confirmCancel.textContent = cancelLabel;
       ctx.els.confirmSecondary.textContent = secondaryLabel;
       ctx.els.confirmSecondary.hidden = !secondaryLabel;

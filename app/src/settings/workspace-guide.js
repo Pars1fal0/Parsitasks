@@ -54,6 +54,7 @@
     const form = doc.querySelector("#workspaceSetupForm");
     const error = doc.querySelector("#workspaceSetupError");
     const local = global.RhythmWorkspaceLocal.createWorkspaceLocal({ getUserId: ctx.getUserId });
+    doc.querySelector("#tasksView .quick-task-disclosure")?.after(banner);
     let openedOwner = "";
     let returnFocus = null;
 
@@ -95,6 +96,10 @@
       doc.querySelectorAll("[data-workspace-setup]").forEach((button) => button.addEventListener("click", open));
       doc.querySelector("#workspaceSetupDismiss").addEventListener("click", complete);
       doc.querySelector("#workspaceSetupClose").addEventListener("click", () => dialog.close());
+      dialog.addEventListener("cancel", (event) => { event.preventDefault(); dialog.close(); });
+      dialog.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); dialog.close(); }
+      });
       dialog.addEventListener("close", () => {
         if (returnFocus?.isConnected && returnFocus.getClientRects().length) returnFocus.focus({ preventScroll: true });
         else doc.querySelector('#tasksView #quickTaskInput')?.focus({ preventScroll: true });

@@ -44,6 +44,8 @@
     let resizeFrame;
     let renderedWidth = 0;
     let fullMobileWeek = false;
+    let threeMobileDays = false;
+    const eventActions = new Map();
     let interactivePreview = false;
     let touchBusy = false;
     let suppressClickUntil = 0;
@@ -110,6 +112,34 @@
       preview.style.left = `${Math.max(12, Math.min(node.getBoundingClientRect().left, global.innerWidth - bounds.width - 12))}px`;
       preview.style.top = `${Math.max(12, Math.min(parseFloat(preview.style.top), global.innerHeight - bounds.height - 12))}px`;
     }
+    function chooseNearbyEvents(event) {
+      if (!mobile() || !event.detail || event.target.closest?.(".calendar-event-check, .calendar-event-resize")) return;
+      const day = event.target.closest?.(".calendar-time-day");
+      const card = event.target.closest?.(".calendar-time-event");
+      if (!day || (card && !card.classList.contains("is-short"))) return;
+      const candidates = [...eventActions.values()].filter((item) => {
+        if (item.node.parentElement !== day) return false;
+        const rect = item.node.getBoundingClientRect();
+        const padding = item.node.classList.contains("is-short") ? 16 : 0;
+        return event.clientX >= rect.left - 4 && event.clientX <= rect.right + 4
+          && event.clientY >= rect.top - padding && event.clientY <= rect.bottom + padding;
+      }).sort((a, b) => a.entry.minutes - b.entry.minutes);
+      if (!candidates.length) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (candidates.length === 1) {
+        const item = candidates[0]; showEventActions(item.node, item.open, item.entry, item.date); return;
+      }
+      const first = candidates[0];
+      showPreview(first.node, first.open, first.entry, true);
+      interactivePreview = true; preview.classList.add("is-interactive");
+      preview.setAttribute("role", "dialog"); preview.setAttribute("aria-label", "События рядом");
+      preview.replaceChildren(element("strong", "", "События рядом"));
+      candidates.forEach((item) => {
+        const select = button("calendar-event-choice", "", () => showEventActions(item.node, item.open, item.entry, item.date));
+        select.append(element("small", "", item.entry.timeLabel), element("span", "", item.entry.title)); preview.append(select);
+      });
+      const close = button("ghost-button compact-button", "Закрыть", hidePreview); preview.append(close);
+    }
     document.addEventListener("pointerdown", (event) => {
       if (interactivePreview && !preview.contains(event.target) && !previewOwner?.contains(event.target)) hidePreview();
     });
@@ -142,10 +172,11 @@
     root.addEventListener("click", (event) => {
       if (touchBusy || (event.detail && performance.now() < suppressClickUntil)) { event.preventDefault(); event.stopImmediatePropagation(); }
     }, true);
+    root.addEventListener("click", chooseNearbyEvents, true);
 
     function fitMobileViewport() {
       const scroller = root.querySelector(".calendar-time-scroll");
-      if (mobile() && scroller) root.style.setProperty("--calendar-mobile-top", `${Math.max(12, scroller.getBoundingClientRect().top)}px`);
+      if (mobile() && scroller) root.style.setProperty("--calendar-mobile-top", `${Math.max(12, scroller.getBoundingClientRect().top + global.scrollY)}px`);
     }
 
     function setZoom(next, anchorY) {
@@ -362,6 +393,7 @@
       open.append(element("small", "", entry.timeLabel), element("strong", "", task.title));
       if (lesson) open.append(element("small", "", [lesson.typeLabel, lesson.room].filter(Boolean).join(" · ")));
       node.append(open);
+      eventActions.set(node, { node, open, entry, date });
       open.addEventListener("mouseenter", () => showPreview(node, open, entry));
       open.addEventListener("mouseleave", () => { if (!interactivePreview && document.activeElement !== open) hidePreview(); });
       open.addEventListener("focus", () => { if (!interactivePreview) showPreview(node, open, entry); });
@@ -436,6 +468,7 @@
       }
       viewportKey = key;
       root.replaceChildren();
+      eventActions.clear();
       const toolbar = element("div", "calendar-schedule-toolbar");
       const period = element("span", "calendar-schedule-period", mode === "day" ? ctx.formatLongDate(date) : `${ctx.formatShortDate(dates[0])} — ${ctx.formatShortDate(dates[6])}`);
       const controls = element("div", "calendar-schedule-controls");
@@ -470,13 +503,21 @@
         value.setAttribute("aria-label", "Сбросить масштаб часов"); value.title = "Сбросить масштаб часов";
         zoom.append(zoomButton("minus", "Уменьшить масштаб часов", () => hourHeight / 1.25), value, zoomButton("plus", "Увеличить масштаб часов", () => hourHeight * 1.25));
         options.append(zoom);
+        if (mode === "week") {
+          const viewLabel = element("label", "calendar-days-option", "Показать");
+          const viewSelect = element("select"); viewSelect.setAttribute("aria-label", "Количество дней в сетке");
+          [["day", "Выбранный день"], ["three", "3 дня"], ["week", "Всю неделю"]].forEach(([value, label]) => viewSelect.add(new Option(label, value)));
+          viewSelect.value = fullMobileWeek ? "week" : threeMobileDays ? "three" : "day";
+          viewSelect.addEventListener("change", () => { fullMobileWeek = viewSelect.value === "week"; threeMobileDays = viewSelect.value === "three"; render(mode); centerSelection(); });
+          viewLabel.append(viewSelect); options.append(viewLabel);
+        }
         if (layerToggle) options.append(layerToggle);
         menu.append(toggle, options); controls.append(menu);
         document.addEventListener("pointerdown", (event) => { if (!menu.contains(event.target)) menu.open = false; }, { signal: menuController.signal });
         document.addEventListener("keydown", (event) => { if (event.key === "Escape" && menu.open) { menu.open = false; toggle.focus(); } }, { signal: menuController.signal });
       }
       if (mode === "week" && mobile()) {
-        const overview = button("ghost-button compact-button", fullMobileWeek ? "Выбранный день" : "Все дни", () => { fullMobileWeek = !fullMobileWeek; render(mode); });
+        const overview = button("ghost-button compact-button calendar-week-toggle", fullMobileWeek || threeMobileDays ? "Выбранный день" : "Все дни", () => { fullMobileWeek = !(fullMobileWeek || threeMobileDays); threeMobileDays = false; render(mode); });
         overview.setAttribute("aria-pressed", String(fullMobileWeek)); controls.append(overview);
       }
       toolbar.append(period, controls);
@@ -513,7 +554,7 @@
       fitMobileViewport();
       hourHeight = mobile() ? mobileHourHeight : Math.max(HOUR_HEIGHT, ((scroller.clientHeight || 528) - 48) / 12);
       root.style.setProperty("--calendar-hour-height", `${hourHeight}px`);
-      const grid = element("div", `calendar-time-grid is-${mode}${mode === "week" && mobile() && !fullMobileWeek ? " is-compact-week" : ""}`);
+      const grid = element("div", `calendar-time-grid is-${mode}${mode === "week" && mobile() && !fullMobileWeek ? threeMobileDays ? " is-three-days" : " is-compact-week" : ""}`);
       grid.style.setProperty("--calendar-days", dates.length);
       const rail = element("div", "calendar-hour-rail");
       const corner = element("div", "calendar-time-corner"); corner.setAttribute("aria-hidden", "true");
@@ -523,6 +564,8 @@
       dates.forEach((day, index) => {
         const column = element("div", "calendar-time-column");
         column.classList.toggle("is-selected", day === date);
+        const rangeStart = Math.min(4, Math.max(0, dates.indexOf(date) - 1));
+        column.classList.toggle("is-in-range", index >= rangeStart && index < rangeStart + 3);
         const heading = button(`calendar-time-heading${day === date ? " is-selected" : ""}${day === ctx.todayKey() ? " is-today" : ""}`, ctx.formatShortDate(day), () => ctx.selectDate(day));
         heading.prepend(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))));
         heading.setAttribute("aria-label", ctx.formatLongDate(day));
@@ -613,6 +656,7 @@
         gaps.forEach((gap) => list.append(button("ghost-button compact-button", `${time(gap.start)}–${time(gap.end)}`, () => ctx.createTask(date, time(gap.start), time(Math.min(gap.end, gap.start + 60))))));
         available.append(list); root.append(available);
       }
+      global.requestAnimationFrame(fitMobileViewport);
     }
     return { render };
   }

@@ -69,7 +69,11 @@ module.exports = [
         value: "selected",
       };
       const controller = createImportExport({
-        confirmAction: async (preview) => { assert.match(preview.message, /заметок: 1/); return true; },
+        confirmAction: async (preview) => {
+          assert.match(preview.message, /будут заменены/);
+          assert.deepEqual(preview.details.find((row) => row.label === "заметок"), { label: "заметок", value: 1 });
+          return true;
+        },
         createUndoSnapshot: () => ({ state: "{}" }),
         normalizeState: (state) => state,
         replaceState: (state) => { imported = state; },

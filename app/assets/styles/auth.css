@@ -1,21 +1,21 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
   --dark: #0b0e0d;
   --dark-soft: #121816;
-  --paper: #f2f4f0;
-  --paper-deep: #e7ebe5;
-  --ink: #111613;
-  --ink-soft: #57615c;
-  --muted: #5e6963;
-  --line: #ced4cf;
+  --paper: #101716;
+  --paper-deep: #192321;
+  --ink: #edf3f1;
+  --ink-soft: #aebeb8;
+  --muted: #9aaea6;
+  --line: #34443e;
   --line-dark: #303b36;
   --accent: #24b996;
   --accent-hover: #159a7b;
   --accent-light: #d8f4eb;
   --warm: #e7bd68;
-  --danger: #b73b36;
-  --success: #147d65;
-  --focus: #087e65;
+  --danger: #ff9789;
+  --success: #69d4ad;
+  --focus: #27c6a5;
   --radius: 6px;
   font-family: Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
@@ -239,7 +239,7 @@ input {
 }
 
 .auth-panel .eyebrow {
-  color: #08755d;
+  color: var(--success);
 }
 
 .auth-heading > p:last-child {
@@ -264,7 +264,7 @@ input {
   padding: 0 18px;
   border: 1px solid #bfc7c1;
   border-radius: var(--radius);
-  background: #fbfcfa;
+  background: var(--paper-deep);
   color: var(--ink);
   font-weight: 700;
   cursor: pointer;
@@ -277,7 +277,7 @@ input {
 
 .google-button:hover:not(:disabled) {
   border-color: #8f9b94;
-  background: #fff;
+  background: var(--paper-deep);
   transform: translateY(-1px);
 }
 
@@ -286,7 +286,7 @@ input {
   align-items: center;
   gap: 12px;
   margin: 20px 0;
-  color: #66716b;
+  color: var(--muted);
   font-size: 0.75rem;
 }
 
@@ -344,7 +344,7 @@ form {
 form label {
   min-width: 0;
   gap: 7px;
-  color: #353e39;
+  color: var(--ink-soft);
   font-size: 0.84rem;
   font-weight: 680;
 }
@@ -362,7 +362,7 @@ input {
   border: 1px solid #bfc7c1;
   border-radius: var(--radius);
   outline: 0;
-  background: #fbfcfa;
+  background: var(--paper-deep);
   color: var(--ink);
   transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
@@ -385,7 +385,7 @@ input {
   padding: 0 4px;
   border: 0;
   background: transparent;
-  color: #47534d;
+  color: var(--ink-soft);
   font-size: 0.78rem;
   font-weight: 690;
   cursor: pointer;
@@ -397,7 +397,7 @@ input {
 }
 
 input::placeholder {
-  color: #6d7872;
+  color: var(--muted);
 }
 
 input:hover {
@@ -406,7 +406,7 @@ input:hover {
 
 input:focus {
   border-color: var(--focus);
-  background: #fff;
+  background: var(--paper-deep);
   box-shadow: 0 0 0 3px rgb(8 126 101 / 12%);
 }
 

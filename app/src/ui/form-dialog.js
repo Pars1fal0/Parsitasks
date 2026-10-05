@@ -7,11 +7,31 @@
     let returnFocus = null;
 
     panels.forEach((panel) => {
+      const form = panel.querySelector("form");
+      const actions = form?.querySelector(":scope > .form-actions");
+      if (actions) {
+        const body = document.createElement("div"); body.className = "form-scroll-body";
+        [...form.children].filter((child) => child !== actions).forEach((child) => body.append(child));
+        form.prepend(body);
+        const cancel = document.createElement("button");
+        cancel.type = "button"; cancel.className = "ghost-button form-mobile-cancel"; cancel.textContent = "Отмена";
+        cancel.addEventListener("click", () => panel.querySelector('[aria-label="Закрыть форму"]')?.click());
+        actions.append(cancel);
+      }
       new MutationObserver(() => syncPanel(panel)).observe(panel, { attributes: true, attributeFilter: ["class"] });
       panel.addEventListener("keydown", trapKeys);
     });
     backdrop?.addEventListener("click", closeActive);
     compactQuery?.addEventListener?.("change", syncMode);
+    function syncViewport() {
+      const viewport = global.visualViewport;
+      document.documentElement.style.setProperty("--form-viewport-height", `${viewport?.height || global.innerHeight}px`);
+      document.documentElement.style.setProperty("--form-viewport-top", `${viewport?.offsetTop || 0}px`);
+    }
+    global.visualViewport?.addEventListener("resize", syncViewport);
+    global.visualViewport?.addEventListener("scroll", syncViewport);
+    global.addEventListener("resize", syncViewport);
+    syncViewport();
 
     function syncPanel(panel) {
       if (!panel.classList.contains("is-collapsed")) {

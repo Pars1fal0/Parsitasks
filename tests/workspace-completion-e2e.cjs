@@ -91,6 +91,7 @@ const { _electron: electron } = require("playwright-core");
     assert.equal(fromNote.date, null); assert.equal(fromNote.title, "Подготовить презентацию по алгоритмам");
     await go("study"); await page.locator('[data-study-tab="homework"]').click();
     assert.doesNotMatch(await page.locator("#studyHomeworkList").innerText(), /Старый отчёт/);
+    await page.locator(".study-period-menu > summary").click();
     await page.getByRole("button", { name: "История ДЗ", exact: true }).click();
     assert.match(await page.locator("#studyHomeworkList").innerText(), /Старый отчёт/);
     await page.locator('[data-study-tab="schedule"]').click();

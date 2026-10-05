@@ -3,6 +3,7 @@
 
   function createHeatmapView(ctx) {
     const compactQuery = typeof global.matchMedia === "function" ? global.matchMedia("(max-width: 680px)") : null;
+    let inspectedDate = "";
 
     function renderHeatmap() {
       const model = buildHeatmapModel({
@@ -13,6 +14,22 @@
         toDateKey: ctx.toDateKey,
       });
       const tooltipNode = getHeatmapTooltip();
+      let inspector = ctx.els.heatmapGrid.parentElement.querySelector(".heatmap-inspector");
+      if (!inspector) {
+        inspector = document.createElement("div"); inspector.className = "heatmap-inspector";
+        const label = document.createElement("label"); label.textContent = "Подробности за день";
+        const input = document.createElement("input"); input.type = "date"; input.setAttribute("aria-label", "День для статистики");
+        label.append(input);
+        const output = document.createElement("p"); output.setAttribute("role", "status");
+        inspector.append(label, output); ctx.els.heatmapGrid.after(inspector);
+        input.addEventListener("change", () => { inspectedDate = input.value; renderHeatmap(); });
+      }
+      const selected = model.days.find((day) => day.dateKey === inspectedDate) || model.days.at(-1);
+      inspectedDate = selected.dateKey;
+      const dateInput = inspector.querySelector("input");
+      dateInput.min = model.days[0].dateKey; dateInput.max = model.days.at(-1).dateKey; dateInput.value = inspectedDate;
+      const stats = ctx.statsForDate(inspectedDate);
+      inspector.querySelector("p").textContent = `${ctx.formatLongDate(inspectedDate)}: задачи ${stats.taskDone || 0} из ${stats.taskTotal || 0}, привычки ${stats.habitDone || 0} из ${stats.habitTotal || 0}${stats.habitFrozen ? `, заморожено ${stats.habitFrozen}` : ""}`;
 
       ctx.els.heatmapGrid.replaceChildren();
       const slots = [

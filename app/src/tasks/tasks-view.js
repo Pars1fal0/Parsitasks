@@ -580,7 +580,9 @@
         if (result.error) { error.textContent = result.error; return; }
         refreshChecklist(result.id);
       });
-      details.append(summary, list, add); container.append(details);
+      details.append(summary, list, add);
+      const taskRow = container.closest(".task-item");
+      (taskRow || container).append(details);
     }
 
     function expandChecklist(taskId, dateKey) {

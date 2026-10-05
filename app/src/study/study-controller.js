@@ -45,8 +45,8 @@
     archivePeriod.type = "button";
     const periodMenu = element("details", "study-period-menu");
     const periodMenuSummary = element("summary", "icon-button");
-    periodMenuSummary.setAttribute("aria-label", "Управление семестрами");
-    periodMenuSummary.title = "Управление семестрами";
+    periodMenuSummary.setAttribute("aria-label", "Настройки и история учёбы");
+    periodMenuSummary.title = "Настройки и история учёбы";
     const periodMenuIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     periodMenuIcon.classList.add("ui-icon");
     periodMenuIcon.setAttribute("aria-hidden", "true");
@@ -55,9 +55,9 @@
     periodMenuIcon.append(periodMenuUse);
     periodMenuSummary.append(periodMenuIcon);
     const periodMenuActions = element("div", "study-period-menu-actions");
-    periodMenuActions.append(archiveToggle, archivePeriod);
+    periodMenuActions.append(periodSelect, archiveToggle, archivePeriod);
     periodMenu.append(periodMenuSummary, periodMenuActions);
-    periodControls.append(periodSelect, periodMenu);
+    periodControls.append(periodMenu);
     root.querySelector(".study-tabs").after(periodControls);
     const archivedNotice = element("div", "study-archive-notice");
     archivedNotice.hidden = true;
@@ -68,12 +68,18 @@
     const historyToggle = element("button", "ghost-button compact-button", "История ДЗ");
     historyToggle.type = "button";
     historyToggle.setAttribute("aria-pressed", "false");
-    root.querySelector(".study-homework-tools").append(historyToggle);
+    periodMenuActions.append(historyToggle, root.querySelector("#studyOpenNotes"));
+    periodMenuActions.append(weekCycleForm.closest(".study-cycle-details"));
+    const scheduleDate = element("input", "study-schedule-date");
+    scheduleDate.type = "date";
+    scheduleDate.setAttribute("aria-label", "Дата расписания");
+    root.querySelector("#studyCurrentWeek").before(scheduleDate);
     const materialSearch = element("input");
     materialSearch.type = "search";
     materialSearch.placeholder = "Найти материал";
     materialSearch.setAttribute("aria-label", "Поиск материалов");
-    root.querySelector("#studyMaterialList").before(materialSearch);
+    materialSearch.className = "study-material-search";
+    root.querySelector("#studyMaterialFilter").before(materialSearch);
 
     function includesSubject(subject) {
       return Boolean(subject) && Boolean(subject.archived) === archivedView && (semester === "all" || (subject.semester || "") === semester);
@@ -99,7 +105,7 @@
     const fingerprints = new Map();
     const formErrors = new Map();
     let closingForm = false;
-    const fingerprint = (form) => JSON.stringify([...new FormData(form)].map(([key, value]) => [key, value instanceof File ? `${value.name}:${value.size}:${value.lastModified}` : value]));
+    const fingerprint = (form) => JSON.stringify([...new FormData(form)].map(([key, value]) => [key, value instanceof File ? value.name ? `${value.name}:${value.size}:${value.lastModified}` : "" : value]));
     [homeworkForm, lessonForm, subjectForm, materialForm].forEach((form) => {
       const dialog = element("dialog", "study-create-dialog");
       const saveError = element("small", "form-save-error"); saveError.setAttribute("role", "alert");
@@ -162,13 +168,14 @@
 
     function bindEvents() {
       periodSelect.addEventListener("change", () => { semester = periodSelect.value; render(); });
+      scheduleDate.addEventListener("change", () => { if (scheduleDate.value) ctx.setActiveDate(scheduleDate.value); });
       archiveToggle.addEventListener("click", () => { periodMenu.open = false; archivedView = !archivedView; render(); });
       returnToCurrent.addEventListener("click", () => { archivedView = false; render(); });
       archivePeriod.addEventListener("click", () => { periodMenu.open = false; setArchived(ctx.getState().studySubjects.filter(includesSubject), true); });
       periodMenu.addEventListener("keydown", (event) => { if (event.key === "Escape") { periodMenu.open = false; periodMenuSummary.focus(); } });
       document.addEventListener("click", (event) => { if (!periodMenu.contains(event.target)) periodMenu.open = false; });
       document.addEventListener("click", (event) => root.querySelectorAll(".study-row-menu[open]").forEach((menu) => { if (!menu.contains(event.target)) menu.open = false; }));
-      historyToggle.addEventListener("click", () => { homeworkHistory = !homeworkHistory; historyToggle.setAttribute("aria-pressed", String(homeworkHistory)); renderHomework(ctx.getState()); });
+      historyToggle.addEventListener("click", () => { periodMenu.open = false; homeworkHistory = !homeworkHistory; historyToggle.setAttribute("aria-pressed", String(homeworkHistory)); setTab("homework"); renderHomework(ctx.getState()); });
       materialSearch.addEventListener("input", () => { focusedMaterialId = ""; renderMaterials(ctx.getState()); });
       root.querySelectorAll("[data-study-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.studyTab)));
       root.querySelector("#studyHomeworkFilter").addEventListener("change", render);
@@ -184,7 +191,7 @@
       root.querySelectorAll("[data-study-add-subject]").forEach((button) => button.addEventListener("click", () => {
         newSubject(button.dataset.studyAddSubject);
       }));
-      root.querySelector("#studyOpenNotes").addEventListener("click", () => ctx.openNotesForSubject?.(root.querySelector("#studyHomeworkFilter").value));
+      root.querySelector("#studyOpenNotes").addEventListener("click", () => { periodMenu.open = false; ctx.openNotesForSubject?.(root.querySelector("#studyHomeworkFilter").value); });
       root.querySelector("#studyMaterialFilter").addEventListener("change", render);
       root.querySelector("#studyDriveConnect").addEventListener("click", connect);
       root.querySelector("#studyDriveDisconnect").addEventListener("click", disconnect);
@@ -425,6 +432,7 @@
         ? `${WEEKDAYS[new Date(`${viewedDateKey}T00:00:00Z`).getUTCDay()]}, ${shortDate(viewedDateKey)}`
         : `${shortDate(viewedWeekMonday)} – ${shortDate(endOfWeek)}`;
       root.querySelector("#studyWeekLabel").textContent = `${periodLabel} · ${parity ? `${parity === "even" ? "Чётная" : "Нечётная"} неделя` : "Цикл не настроен"}`;
+      scheduleDate.value = viewedDateKey;
       root.querySelectorAll("[data-study-schedule-mode]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.studyScheduleMode === scheduleMode)));
       root.querySelector("#studyCurrentWeek").disabled = scheduleMode === "day"
         ? viewedDateKey === localDateKey(new Date())
@@ -503,6 +511,7 @@
         updatedAt: new Date().toISOString(),
       });
       if (ctx.saveState() === false) { ctx.getState().studyWeekCycle = previous; return; }
+      periodMenu.open = false;
       ctx.render(); ctx.showToast("Цикл недель сохранён");
     }
 

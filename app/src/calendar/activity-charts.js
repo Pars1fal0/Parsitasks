@@ -48,7 +48,7 @@
       const configs = [
         { key: "tasks", title: "Задачи", color: colors.getPropertyValue("--teal").trim(), label: "Выполнено, %", value: (point) => point.taskPercent,
           total: (() => { const scheduled = series.filter((point) => point.taskTotal); return scheduled.length ? `${Math.round(scheduled.reduce((sum, point) => sum + point.taskDone / point.taskTotal * 100, 0) / scheduled.length)}%` : "—"; })(),
-          unit: "в среднем за день", hasData: series.some((point) => point.taskTotal),
+          unit: "средний процент по дням с задачами", hasData: series.some((point) => point.taskTotal),
           detail: (point) => point.taskTotal ? `${point.taskPercent}% · выполнено ${point.taskDone} из ${point.taskTotal}` : "Не было задач" },
         { key: "habits", title: "Привычки по расписанию", color: "#82aaff", label: "Выполнено, %", value: (point) => point.habitPercent,
           total: (() => { const count = series.reduce((sum, point) => sum + point.habitTotal, 0); return count ? `${Math.round(series.reduce((sum, point) => sum + point.habitDone, 0) / count * 100)}%` : "—"; })(),

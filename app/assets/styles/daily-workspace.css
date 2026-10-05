@@ -270,12 +270,17 @@ body[data-view="archive"] #pageTitle { font-size: 30px; line-height: 1.2; font-w
   body[data-view="overview"] .topbar { gap: 4px; margin-bottom: 8px; }
   body[data-view="overview"] .title-block { min-height: 44px; display: flex; align-items: center; padding-right: 50px; }
   body[data-view="overview"] #saveStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .calendar-time-scroll { height: max(280px, calc(100dvh - var(--calendar-mobile-top, 250px) - 76px - env(safe-area-inset-bottom))); min-height: 280px; touch-action: pan-x pan-y; }
+  .calendar-time-scroll { height: max(280px, calc(100dvh - var(--calendar-mobile-top, 250px) - 140px - env(safe-area-inset-bottom))); min-height: 280px; touch-action: pan-x pan-y; }
   .calendar-time-grid { user-select: none; -webkit-user-select: none; }
   .calendar-schedule-toolbar { margin-bottom: 8px; }
   .calendar-schedule-period { display: none; }
-  .calendar-schedule-controls { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap; }
+  .calendar-schedule-controls { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
   .calendar-schedule-controls > button { min-height: 44px; }
+  .calendar-schedule-controls > .calendar-untimed-jump { flex: 1; min-width: 0; padding: 4px 0; text-align: left; line-height: 1.4; }
+  .calendar-schedule-controls > .ghost-button { flex: 0 0 auto; padding-inline: 10px; }
+  .calendar-schedule-controls > .calendar-week-toggle { order: -1; padding-inline: 6px; font-size: 12px; }
+  .calendar-schedule-controls > .calendar-touch-options { flex: 0 0 44px; }
+  .calendar-schedule-controls > .calendar-touch-options > summary { width: 44px; height: 44px; }
   .calendar-week-strip-day { min-height: 52px; padding-block: 3px; }
   .calendar-time-event:not(.is-short) .calendar-event-check { flex-basis: 36px; width: 36px; }
   .calendar-event-preview.is-interactive { left: 8px !important; top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom)); width: calc(100vw - 16px); max-width: none; padding: 16px; border-radius: 8px; box-shadow: 0 -8px 32px rgb(0 0 0 / 35%); }

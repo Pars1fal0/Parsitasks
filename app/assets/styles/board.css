@@ -133,11 +133,22 @@
 @media (max-width: 700px) {
   body[data-view="board"] .sidebar { z-index: 45; }
   .board-stage { height: calc(100dvh - 350px); min-height: 300px; }
+  /* The board pans its world with transforms; native focus scrolling must not move its tools. */
+  #boardView .board-stage { overflow: clip; }
   .board-add-trigger { min-height: 36px; padding: 0 8px; font-size: 12px; }
   .board-source-picker { top: 58px; left: 8px; width: calc(100% - 16px); max-height: min(540px, calc(100% - 86px)); }
   .board-empty-actions { max-width: 270px; }
   .board-area-nav { bottom: 10px; left: 8px; }
-  .board-selection-toolbar.is-link-selection { flex-wrap: wrap; overflow: visible; }
-  .board-selection-toolbar.is-link-selection .board-link-controls { order: -1; width: 100%; }
-  .board-selection-toolbar.is-link-selection .board-link-separator { display: none; }
+  .board-selection-toolbar { flex-wrap: wrap; overflow: visible; min-width: 0; }
+  .board-selection-toolbar .board-object-actions { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: 100%; min-width: 0; }
+  #boardView .board-selection-toolbar .board-object-actions > .icon-button { width: 100%; min-width: 0; height: 44px; padding: 0; }
+  #boardView .board-selection-toolbar .board-text-controls > .icon-button { width: 36px; min-width: 0; padding: 0; }
+  .board-selection-toolbar :is(.board-text-separator, .board-link-separator) { display: none; }
+  .board-selection-toolbar .board-text-controls { display: grid; grid-template-columns: 64px 36px 36px minmax(0, 1fr); width: 100%; min-width: 0; gap: 6px; }
+  .board-selection-toolbar .board-text-controls[hidden] { display: none; }
+  .board-selection-toolbar .board-color-presets { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; padding: 4px 2px; }
+  .board-selection-toolbar .board-color-swatch { width: 100%; max-width: 32px; height: auto; aspect-ratio: 1; justify-self: center; }
+  .board-selection-toolbar .board-custom-color { grid-column: 3; grid-row: 1; }
+  .board-selection-toolbar .board-link-controls { width: 100%; min-width: 0; justify-content: space-between; padding: 6px 2px; }
+  .board-selection-toolbar .board-link-swatch { width: 32px; height: 32px; flex-basis: 32px; }
 }

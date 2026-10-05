@@ -6,6 +6,14 @@
     let filteredEntries = [];
     let visibleLimit = PAGE_SIZE;
     let filterSignature = "";
+    let groupRepeats = global.matchMedia?.("(max-width: 680px)")?.matches === true;
+    const expandedGroups = new Set();
+    const grouping = document.createElement("label"); grouping.className = "archive-grouping-control";
+    const groupInput = document.createElement("input"); groupInput.type = "checkbox"; groupInput.checked = groupRepeats;
+    groupInput.setAttribute("aria-label", "Группировать повторяющиеся задачи");
+    grouping.append(groupInput, document.createTextNode("Повторы вместе"));
+    ctx.els?.archiveBulkBar?.append(grouping);
+    groupInput.addEventListener("change", () => { groupRepeats = groupInput.checked; renderArchive(); });
     let period = ["all", "week", "month", "quarter"].includes(ctx.initialPeriod)
       ? ctx.initialPeriod
       : "all";
@@ -59,7 +67,28 @@
       });
       ctx.els.archiveList.replaceChildren();
       let currentDateKey = "";
+      const groups = new Map();
+      if (groupRepeats) visibleEntries.forEach((entry) => {
+        if (entry.task.repeat === "none") return;
+        if (!groups.has(entry.task.id)) groups.set(entry.task.id, []);
+        groups.get(entry.task.id).push(entry);
+      });
+      const renderedGroups = new Set();
       visibleEntries.forEach((entry) => {
+        const series = groups.get(entry.task.id);
+        if (series?.length > 1) {
+          if (renderedGroups.has(entry.task.id)) return;
+          renderedGroups.add(entry.task.id);
+          const details = document.createElement("details"); details.className = "archive-series";
+          details.open = expandedGroups.has(entry.task.id);
+          details.addEventListener("toggle", () => { if (details.isConnected) details.open ? expandedGroups.add(entry.task.id) : expandedGroups.delete(entry.task.id); });
+          const summary = document.createElement("summary");
+          const title = document.createElement("strong"); title.textContent = entry.task.title;
+          const count = document.createElement("span"); count.textContent = `Выполнений: ${series.length}`;
+          summary.append(title, count); details.append(summary);
+          series.forEach((item) => { details.append(createArchiveDateHeader(item.dateKey), createArchiveNode(item)); });
+          ctx.els.archiveList.append(details); return;
+        }
         if (entry.dateKey !== currentDateKey) {
           currentDateKey = entry.dateKey;
           ctx.els.archiveList.appendChild(createArchiveDateHeader(entry.dateKey));

@@ -37,6 +37,8 @@ const { _electron: electron, chromium } = require("playwright-core");
     await page.locator("#workspaceSetupBanner [data-workspace-setup]").click();
     await page.locator('#workspaceSetupForm [value="study"]').check();
     await page.keyboard.press("Escape");
+    await page.locator("#workspaceSetupDialog").waitFor({ state: "hidden" });
+    await page.waitForFunction(() => document.querySelector("#workspaceSetupBanner [data-workspace-setup]") === document.activeElement);
     assert.deepEqual(await prefs(), initial, "closing the dialog must not apply its draft");
     assert.equal(await page.locator("#workspaceSetupBanner [data-workspace-setup]").evaluate((element) => element === document.activeElement), true);
     await page.locator("#workspaceSetupDismiss").click();
@@ -67,7 +69,7 @@ const { _electron: electron, chromium } = require("playwright-core");
     await page.locator("#supportPreviewButton").click();
     const report = JSON.parse(await page.locator("#supportReportPreview").inputValue());
     assert.equal(report.format, "parsitasks-support-v1"); assert.equal(report.platform, app ? "desktop" : "web");
-    assert.deepEqual(Object.keys(report).sort(), ["format", "localSaveError", "online", "platform", "schemaVersion", "sync", "version"]);
+    assert.deepEqual(Object.keys(report).sort(), ["format", "localSaveError", "online", "platform", "schemaVersion", "storage", "sync", "version"]);
     const downloadedFile = path.join(capture, "diagnostics.json");
     if (app) await app.evaluate(({ BrowserWindow }, filePath) => {
       global.supportDownloadPromise = new Promise((resolve) => {

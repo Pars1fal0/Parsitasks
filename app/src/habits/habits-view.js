@@ -1,6 +1,18 @@
 (function (global) {
   function createHabitsView(ctx) {
     let draggedHabitId = "";
+    function closeNumberMenus(except = null) {
+      if (!global.matchMedia?.("(max-width: 680px)")?.matches) return;
+      ctx.els.habitList.querySelectorAll(".habit-number-more[open]").forEach((menu) => {
+        if (menu !== except) menu.open = false;
+      });
+    }
+    if (ctx.els.habitList) document.addEventListener("click", (event) => closeNumberMenus(event.target.closest(".habit-number-more")));
+    ctx.els.habitList?.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const menu = event.target.closest(".habit-number-more[open]");
+      if (menu) { event.stopPropagation(); menu.open = false; menu.querySelector("summary").focus(); }
+    });
 
     function saveChange(undo) {
       if (ctx.saveState() !== false) return true;
@@ -160,10 +172,25 @@
           button.type = "button";
           button.className = "ghost-button compact-button";
           button.textContent = `+${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-          button.addEventListener("click", () => updateValue(Number(habit.logs[activeDate] || 0) + amount));
+          button.addEventListener("click", () => { updateValue(Number(habit.logs[activeDate] || 0) + amount); closeNumberMenus(); });
           quickAdds.appendChild(button);
         });
-        if (quickAdds.childElementCount) row.appendChild(quickAdds);
+        if (quickAdds.childElementCount) {
+          const more = document.createElement("details"); more.className = "habit-number-more";
+          const summary = document.createElement("summary"); summary.className = "icon-button";
+          summary.setAttribute("aria-label", `Другие прибавления: ${habitTitle}`); summary.title = "Другие прибавления";
+          const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+          icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", "#icon-more"); icon.append(use); summary.append(icon);
+          more.append(summary, quickAdds); row.append(more);
+          const less = document.createElement("button"); less.type = "button";
+          less.className = "ghost-button compact-button habit-extra-decrement";
+          less.textContent = `−${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+          less.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
+          less.addEventListener("click", () => { updateValue(Number(habit.logs[activeDate] || 0) - step); closeNumberMenus(); });
+          quickAdds.prepend(less);
+          more.open = !global.matchMedia?.("(max-width: 680px)")?.matches;
+        }
       } else {
         node.classList.add("is-check-habit");
         const done = habit.logs[activeDate] === true;

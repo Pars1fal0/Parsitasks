@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="assets/styles/activity-charts.css">
     <link rel="stylesheet" href="assets/styles/settings-appearance.css">
     <link rel="stylesheet" href="assets/styles/workspace-panels.css">
+    <link rel="stylesheet" href="assets/styles/mobile-workspace.css">
   </head>
   <body>
     <a class="skip-link" href="#mainWorkspace">Перейти к содержимому</a>
@@ -853,17 +854,17 @@
                       </button>
                     </div>
                   </div>
-                  <div class="goal-link-section">
-                    <div class="goal-link-heading"><span>Задачи</span><small id="goalTaskLinkCount">0 выбрано</small></div>
+                  <details class="goal-link-section" open>
+                    <summary class="goal-link-heading"><span>Задачи</span><small id="goalTaskLinkCount">0 выбрано</small></summary>
                   <input id="goalTaskTargets" type="hidden">
                     <input id="goalTaskSearch" class="goal-link-search" type="search" placeholder="Найти задачу" aria-label="Найти задачу для цели" autocomplete="off">
                     <div id="goalTaskOptions" class="goal-link-options" aria-label="Задачи цели"></div>
-                  </div>
-                  <div class="goal-link-section">
-                    <div class="goal-link-heading"><span>Привычки</span><small id="goalHabitLinkCount">0 выбрано</small></div>
+                  </details>
+                  <details class="goal-link-section" open>
+                    <summary class="goal-link-heading"><span>Привычки</span><small id="goalHabitLinkCount">0 выбрано</small></summary>
                     <input id="goalHabitSearch" class="goal-link-search" type="search" placeholder="Найти привычку" aria-label="Найти привычку для цели" autocomplete="off">
                     <div id="goalHabitOptions" class="goal-link-options" aria-label="Привычки цели"></div>
-                  </div>
+                  </details>
                   <div class="form-actions">
                     <button class="primary-button" type="submit">Сохранить</button>
                     <button class="ghost-button" id="resetGoalForm" type="button">Очистить</button>
@@ -1409,7 +1410,7 @@
                     </div>
                     <div class="study-week-navigation" aria-label="Выбор даты">
                       <button class="icon-button" id="studyPreviousWeek" type="button" aria-label="Предыдущая неделя" title="Предыдущая неделя"><svg class="ui-icon"><use href="#icon-chevron-left"></use></svg></button>
-                      <button class="ghost-button compact-button" id="studyCurrentWeek" type="button">Сегодня</button>
+                      <button class="ghost-button compact-button icon-text-button" id="studyCurrentWeek" type="button" aria-label="Сегодня" title="Сегодня"><svg class="ui-icon" aria-hidden="true"><use href="#icon-target"></use></svg><span>Сегодня</span></button>
                       <button class="icon-button" id="studyNextWeek" type="button" aria-label="Следующая неделя" title="Следующая неделя"><svg class="ui-icon"><use href="#icon-chevron-right"></use></svg></button>
                     </div>
                   </div>
@@ -1457,7 +1458,14 @@
             </div>
             <div class="study-layout">
               <section class="study-main" aria-labelledby="studyMaterialsHeading">
-                <div class="study-section-heading"><h3 class="sr-only" id="studyMaterialsHeading">Материалы</h3><button class="primary-button compact-button icon-text-button" id="studyNewMaterial" type="button"><svg class="ui-icon"><use href="#icon-plus"></use></svg>Загрузить материал</button><select id="studyMaterialFilter" aria-label="Фильтр материалов"><option value="all">Все предметы</option></select></div>
+                <div class="study-section-heading study-material-tools">
+                  <h3 class="sr-only" id="studyMaterialsHeading">Материалы</h3>
+                  <button class="primary-button compact-button icon-text-button" id="studyNewMaterial" type="button" aria-label="Загрузить материал" title="Загрузить материал">
+                    <svg class="ui-icon" aria-hidden="true"><use href="#icon-upload"></use></svg>
+                    <span class="study-material-label-long">Загрузить материал</span><span class="study-material-label-short" aria-hidden="true">Загрузить</span>
+                  </button>
+                  <select id="studyMaterialFilter" aria-label="Фильтр материалов"><option value="all">Все предметы</option></select>
+                </div>
                 <div id="studyMaterialList" class="study-list"></div>
               </section>
               <form id="studyMaterialForm" class="study-form" aria-label="Загрузить материал">
@@ -1505,7 +1513,7 @@
             </div>
           </div>
           <div class="archive-bulk-bar" id="archiveBulkBar" hidden>
-            <label class="archive-select-all"><input id="archiveSelectAll" type="checkbox"> Выбрать видимые</label>
+            <label class="archive-select-all"><input id="archiveSelectAll" type="checkbox"> Выбрать записи</label>
             <span class="archive-bulk-count" id="archiveBulkCount">Выбрано: 0</span>
             <div class="archive-bulk-actions">
               <button class="ghost-button compact-button icon-text-button" id="archiveBulkRestore" type="button"><svg class="ui-icon" aria-hidden="true"><use href="#icon-undo"></use></svg>Вернуть в задачи</button>

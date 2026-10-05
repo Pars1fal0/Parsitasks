@@ -18,6 +18,8 @@
 
     function setReading(next) {
       reading = next;
+      els.noteForm.classList.toggle("is-reading", reading);
+      els.noteTitle.readOnly = reading;
       readView.textContent = els.noteBody.value || "Без текста";
       readView.hidden = !reading;
       els.noteBody.hidden = reading;

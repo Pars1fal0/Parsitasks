@@ -229,6 +229,7 @@ function createElement(tagName) {
 function installDom() {
   const document = {
     body: createElement("body"),
+    addEventListener: (...args) => document.body.addEventListener(...args),
     createElement,
     createElementNS: (_namespace, tagName) => createElement(tagName),
     createTextNode: (text) => new FakeText(text),
