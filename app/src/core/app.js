@@ -1348,10 +1348,11 @@ const importExportController = window.RhythmImportExport.createImportExport({
 });
 
 const settingsTransfer = window.RhythmSettingsTransfer.createSettingsTransfer({
-  applyImportedSettings: (settings) => {
+  applyImportedSettings: (settings, keys = profileSettings.preferenceKeys) => {
     const previousSettings = getUiSettings();
     applyImportedSettings(settings);
-    if (!saveAccountPreferences(profileSettings.preferenceKeys)) {
+    const accountKeys = keys.filter((key) => profileSettings.preferenceKeys.includes(key));
+    if (accountKeys.length && !saveAccountPreferences(accountKeys)) {
       applyImportedSettings(previousSettings);
       saveUiState();
       throw new Error("Не удалось сохранить настройки аккаунта");
@@ -1360,6 +1361,7 @@ const settingsTransfer = window.RhythmSettingsTransfer.createSettingsTransfer({
   confirmAction,
   document,
   els,
+  getOwner: () => JSON.stringify([remoteAuth.getSession()?.user?.id || "", remoteSyncAccountId, authenticatedSyncGeneration]),
   getSettings: getUiSettings,
   render,
   resetPreferences: resetInterfacePreferences,
@@ -3270,8 +3272,14 @@ function updateTimeZone(value) {
     showToast("Укажи часовой пояс в формате Europe/Moscow");
     return;
   }
+  const previous = createUndoSnapshot();
   state.profile = { ...state.profile, timeZone: normalized, updatedAt: new Date().toISOString() };
-  saveState();
+  if (saveState() === false) {
+    restoreFailedSave(previous);
+    settingsController.syncControls();
+    render();
+    return;
+  }
   settingsController.syncControls();
   render();
   showToast(`Часовой пояс: ${normalized}`);
@@ -3280,6 +3288,7 @@ function updateTimeZone(value) {
 function updateJournalPermission(permission, value) {
   if (!["read", "write"].includes(permission)) return;
   const enabled = value !== "off";
+  const previous = createUndoSnapshot();
   state.profile = {
     ...state.profile,
     journalAccess: {
@@ -3289,7 +3298,11 @@ function updateJournalPermission(permission, value) {
     },
     updatedAt: new Date().toISOString(),
   };
-  saveState();
+  if (saveState() === false) {
+    restoreFailedSave(previous);
+    settingsController.syncControls();
+    return;
+  }
   settingsController.syncControls();
   showToast(enabled ? "Доступ ChatGPT разрешён" : "Доступ ChatGPT отключён");
 }

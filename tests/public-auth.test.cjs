@@ -44,7 +44,8 @@ module.exports = [
   {
     name: "asset tools and legacy backup discovery remain reproducible",
     fn() {
-      assert.equal(packageJson.devDependencies.sharp, "^0.35.2");
+      assert.equal(packageJson.devDependencies.sharp, "^0.35.5");
+      assert.equal(packageJson.overrides.sharp, "$sharp");
       assert.match(desktopMain, /path\.dirname\(info\.latest\.path\)/);
       assert.match(desktopMain, /getLegacyFileBackupDir\(\)/);
       assert.match(appHtml, /<img class="brand-mark" src="assets\/icons\/logo\.png" alt="" aria-hidden="true"/);

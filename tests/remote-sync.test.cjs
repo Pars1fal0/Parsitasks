@@ -251,14 +251,16 @@ module.exports = [
       const sync = createRemoteSync({
         fetch: async (url, options) => {
           calls.push({ url, options });
-          return { ok: true, status: 204, text: async () => "" };
+          return { ok: true, status: url.includes("/list/") ? 200 : 204, text: async () => url.includes("/list/") ? "[]" : "" };
         },
       });
       const result = await sync.deleteAccount(authConfig);
       assert.equal(result.ok, true);
-      assert.match(calls[0].url, /rpc\/delete_parsitasks_account$/);
-      assert.equal(calls[0].options.method, "POST");
-      assert.equal(calls[0].options.headers.Authorization, "Bearer user-jwt");
+      assert.match(calls[0].url, /storage\/v1\/object\/list\/board-images$/);
+      assert.equal(JSON.parse(calls[0].options.body).prefix, "user-123");
+      assert.match(calls[1].url, /rpc\/delete_parsitasks_account$/);
+      assert.equal(calls[1].options.method, "POST");
+      assert.equal(calls[1].options.headers.Authorization, "Bearer user-jwt");
     },
   },
   {
@@ -266,9 +268,9 @@ module.exports = [
     async fn() {
       const calls = [];
       const responses = [
-        [{ state: { schemaVersion: 13, tasks: [{ id: "old" }] }, schema_version: 13, created_at: "2026-07-24T10:00:00Z" }],
+        [{ state: { schemaVersion: 13, tasks: [{ id: "old" }] }, schema_version: 13 }],
         [{ state: { tasks: [{ id: "current" }] }, ui_state: {}, updated_at: "2026-07-25T10:00:00Z" }],
-        [{ updated_at: "2026-07-25T10:01:00Z" }],
+        { snapshot: { state: { schemaVersion: 13, tasks: [{ id: "old" }] }, schema_version: 13 }, row: { updated_at: "2026-07-25T10:01:00Z" } },
       ];
       const sync = createRemoteSync({
         fetch: async (url, options = {}) => {
@@ -282,9 +284,9 @@ module.exports = [
       });
       const result = await sync.restoreSnapshot(authConfig, 42);
       assert.equal(result.snapshot.state.tasks[0].id, "old");
-      assert.equal(calls[2].options.method, "PATCH");
-      assert.match(calls[2].url, /updated_at=eq\.2026-07-25T10%3A00%3A00Z/);
-      assert.equal(JSON.parse(calls[2].options.body).state.tasks[0].id, "old");
+      assert.equal(calls[2].options.method, "POST");
+      assert.match(calls[2].url, /rpc\/restore_parsitasks_snapshot$/);
+      assert.deepEqual(JSON.parse(calls[2].options.body), { snapshot_id: "42", expected_updated_at: "2026-07-25T10:00:00Z" });
     },
   },
 ];

@@ -18,6 +18,17 @@ module.exports = [
     },
   },
   {
+    name: "live security probes are scoped to disposable users and cannot create proof tasks",
+    fn() {
+      const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "security-live.cjs"), "utf8");
+      assert.doesNotMatch(source, /writeProofTask|PROOF_TITLE|PARSITASKS_SECURITY_PROOF_WRITE|state\.tasks\.push/);
+      assert.match(source, /user_id=in\.\(/);
+      assert.match(source, /limit=2/);
+      assert.match(source, /AbortSignal\.timeout\(15000\)/);
+      assert.match(source, /Cross-storage probe failed/);
+    },
+  },
+  {
     name: "support report uses an allowlist and excludes workspace content, credentials and free-text errors",
     fn() {
       const source = { version: "0.33.0", schemaVersion: 26, desktop: true, online: true, tasks: [{ title: "private-text" }],

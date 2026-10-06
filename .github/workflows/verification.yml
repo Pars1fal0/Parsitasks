@@ -37,6 +37,8 @@ jobs:
         run: npm test
       - name: Verify database migration on disposable PostgreSQL
         run: npm run test:sql-reliability
+      - name: Verify full database isolation, recovery and account deletion
+        run: npm run test:sql-isolation
       - name: Run lint
         run: npm run lint
       - name: Run UI scenarios
@@ -57,10 +59,14 @@ jobs:
         run: npm run test:save-failures
       - name: Verify storage failure and backup recovery
         run: npm run test:reliability
+      - name: Verify cloud recovery and account deletion with mocked accounts
+        run: npm run test:account-recovery
       - name: Verify setup and private support diagnostics
         run: npm run test:onboarding
       - name: Verify account preferences across isolated devices
         run: npm run test:settings-sync
+      - name: Verify settings imports and persistence failures in isolated profiles
+        run: npm run test:settings-reliability
       - name: Verify accent palette and settings layout
         run: npm run test:appearance
       - name: Verify button icons on desktop and mobile

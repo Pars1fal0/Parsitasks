@@ -5,7 +5,7 @@ const ROOT = path.resolve(__dirname, "..");
 const ENV_FILE = path.join(ROOT, ".security-test.env");
 const APP_BASE_URL = "https://parsitasks.ru";
 const CANARY_TITLE = "PENTEST-CANARY-2026";
-const PROOF_TITLE = "SECURITY TEST: доступ получен";
+const request = (url, init = {}) => fetch(url, { ...init, signal: AbortSignal.timeout(15000), redirect: "error" });
 
 if (process.env.PARSITASKS_LIVE_TEST_ACCOUNTS !== "1") {
   console.error("Live checks require two disposable test accounts. Set PARSITASKS_LIVE_TEST_ACCOUNTS=1 only after selecting them; personal accounts must not be used.");
@@ -33,8 +33,9 @@ async function run() {
   const second = await signIn(config, "B", process.env.PARSITASKS_TEST_B_EMAIL, process.env.PARSITASKS_TEST_B_PASSWORD);
   if (first.userId === second.userId) throw new Error("A and B must be different accounts");
 
-  first.rows = await readRows(config, first);
-  second.rows = await readRows(config, second);
+  const testUserIds = [first.userId, second.userId];
+  first.rows = await readRows(config, first, testUserIds);
+  second.rows = await readRows(config, second, testUserIds);
   first.ownRow = ownRow(first);
   second.ownRow = ownRow(second);
 
@@ -70,10 +71,6 @@ async function run() {
   const crossWrite = await tryCrossAccountWrite(config, attacker, victimRow);
   if (crossWrite.allowed) {
     findings.push("attacker can update the victim state");
-    if (process.env.PARSITASKS_SECURITY_PROOF_WRITE === "1") {
-      await writeProofTask(config, attacker, crossWrite.row || victimRow);
-      console.log(`Proof task created: ${PROOF_TITLE}`);
-    }
   }
 
   const storage = await tryCrossAccountStorage(config, attacker, victim);
@@ -93,14 +90,14 @@ async function run() {
 }
 
 async function publicConfig() {
-  const response = await fetch(`${APP_BASE_URL}/api/public-config`, { headers: { Accept: "application/json" } });
+  const response = await request(`${APP_BASE_URL}/api/public-config`, { headers: { Accept: "application/json" } });
   const body = await readJson(response);
   if (!response.ok || !body?.supabaseUrl || !body?.anonKey) throw remoteError("Public config unavailable", response, body);
   return { anonKey: body.anonKey, supabaseUrl: String(body.supabaseUrl).replace(/\/+$/, "") };
 }
 
 async function signIn(config, label, email, password) {
-  const response = await fetch(`${config.supabaseUrl}/auth/v1/token?grant_type=password`, {
+  const response = await request(`${config.supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: { apikey: config.anonKey, "Content-Type": "application/json" },
     body: JSON.stringify({ email: String(email).trim().toLowerCase(), password: String(password) }),
@@ -110,9 +107,12 @@ async function signIn(config, label, email, password) {
   return { accessToken: body.access_token, label, userId: body.user.id };
 }
 
-async function readRows(config, account) {
-  const response = await fetch(
-    `${config.supabaseUrl}/rest/v1/rhythm_states?select=user_id,user_key,state,client_updated_at,updated_at`,
+async function readRows(config, account, testUserIds) {
+  // Even with broken RLS, restrict diagnostics to the two authorized test accounts.
+  if (testUserIds.length !== 2 || testUserIds.some((id) => !/^[a-f0-9-]{36}$/i.test(id))) throw new Error("Invalid test account IDs");
+  const filter = `user_id=in.(${testUserIds.map(encodeURIComponent).join(",")})`;
+  const response = await request(
+    `${config.supabaseUrl}/rest/v1/rhythm_states?select=user_id,user_key,state,client_updated_at,updated_at&${filter}&limit=2`,
     { headers: authHeaders(config, account) },
   );
   const body = await readJson(response);
@@ -128,7 +128,7 @@ function ownRow(account) {
 
 async function crossRead(config, attacker, victimId, table, select) {
   const query = `select=${encodeURIComponent(select)}&user_id=eq.${encodeURIComponent(victimId)}&limit=5`;
-  const response = await fetch(`${config.supabaseUrl}/rest/v1/${table}?${query}`, {
+  const response = await request(`${config.supabaseUrl}/rest/v1/${table}?${query}`, {
     headers: authHeaders(config, attacker),
   });
   const body = await readJson(response);
@@ -141,7 +141,7 @@ async function tryCrossAccountWrite(config, attacker, victimRow) {
     `user_id=eq.${encodeURIComponent(victimRow.user_id)}`,
     "select=user_id,state,client_updated_at,updated_at",
   ].join("&");
-  const response = await fetch(`${config.supabaseUrl}/rest/v1/rhythm_states?${query}`, {
+  const response = await request(`${config.supabaseUrl}/rest/v1/rhythm_states?${query}`, {
     method: "PATCH",
     headers: { ...authHeaders(config, attacker), Prefer: "return=representation" },
     body: JSON.stringify({ client_updated_at: victimRow.client_updated_at }),
@@ -152,49 +152,6 @@ async function tryCrossAccountWrite(config, attacker, victimRow) {
   return { allowed: Array.isArray(body) && body.length > 0, row: Array.isArray(body) ? body[0] : null };
 }
 
-async function writeProofTask(config, attacker, victimRow) {
-  const state = structuredClone(victimRow.state || {});
-  state.tasks = Array.isArray(state.tasks) ? state.tasks : [];
-  if (state.tasks.some((task) => task?.title === PROOF_TITLE)) return;
-  const now = new Date().toISOString();
-  const date = now.slice(0, 10);
-  const id = `security-proof-${Date.now()}`;
-  state.tasks.push({
-    acknowledgedOverdue: {},
-    categoryId: "",
-    completed: {},
-    createdAt: now,
-    customRepeat: {},
-    date,
-    endTime: "",
-    excludedDates: {},
-    id,
-    movedFromDate: "",
-    notified: {},
-    priority: "high",
-    reminderOffset: "none",
-    repeat: "none",
-    repeatUntil: "",
-    scheduleMode: "none",
-    sourceTaskId: "",
-    startTime: "",
-    time: "",
-    title: PROOF_TITLE,
-    updatedAt: now,
-  });
-  state.taskOrder = state.taskOrder && typeof state.taskOrder === "object" ? state.taskOrder : {};
-  state.taskOrder[date] = [...new Set([...(state.taskOrder[date] || []), id])];
-
-  const query = `user_id=eq.${encodeURIComponent(victimRow.user_id)}&select=user_id`;
-  const response = await fetch(`${config.supabaseUrl}/rest/v1/rhythm_states?${query}`, {
-    method: "PATCH",
-    headers: { ...authHeaders(config, attacker), Prefer: "return=representation" },
-    body: JSON.stringify({ state, client_updated_at: now }),
-  });
-  const body = await readJson(response);
-  if (!response.ok || !Array.isArray(body) || !body.length) throw remoteError("Proof task write failed", response, body);
-}
-
 async function tryCrossAccountStorage(config, attacker, victim) {
   const assetName = `security-probe-${Date.now()}.png`;
   const objectPath = `${victim.userId}/${assetName}`;
@@ -202,14 +159,18 @@ async function tryCrossAccountStorage(config, attacker, victim) {
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
     "base64",
   );
-  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/board-images/${objectPath}`, {
+  const response = await request(`${config.supabaseUrl}/storage/v1/object/board-images/${objectPath}`, {
     method: "POST",
     headers: { ...authHeaders(config, attacker), "Content-Type": "image/png", "x-upsert": "false" },
     body: png,
   });
-  if (!response.ok) return { allowed: false };
+  if (!response.ok) {
+    const body = await readJson(response);
+    if ([401, 403].includes(response.status) || (response.status === 400 && (String(body?.statusCode) === "403" || /row-level security|unauthorized/i.test(String(body?.message || body?.error || ""))))) return { allowed: false };
+    throw remoteError("Cross-storage probe failed", response, body);
+  }
 
-  const cleanup = await fetch(`${config.supabaseUrl}/storage/v1/object/board-images/${objectPath}`, {
+  const cleanup = await request(`${config.supabaseUrl}/storage/v1/object/board-images/${objectPath}`, {
     method: "DELETE",
     headers: authHeaders(config, victim),
   });
@@ -268,8 +229,8 @@ async function readJson(response) {
 }
 
 function remoteError(message, response, body) {
-  const detail = body?.message || body?.msg || body?.error_description || body?.error || response.statusText;
-  return new Error(`${message}: HTTP ${response.status}${detail ? ` - ${detail}` : ""}`);
+  const code = typeof body?.code === "string" && /^[a-zA-Z0-9_-]{1,64}$/.test(body.code) ? ` (${body.code})` : "";
+  return new Error(`${message}: HTTP ${response.status}${code}`);
 }
 
 run().catch((error) => {

@@ -4,6 +4,30 @@ const { createRemoteDataController, snapshotSummaryParts, summarizeSnapshotState
 
 module.exports = [
   {
+    name: "a cloud restore cannot discard local edits made while its request was pending",
+    async fn() {
+      const document = installDom(), select = document.createElement("select");
+      select.value = "7";
+      let state = { tasks: [{ id: "initial" }] }, finish;
+      const pending = new Promise((resolve) => { finish = resolve; });
+      const messages = [];
+      const controller = createRemoteDataController({
+        els: { remoteSnapshotSelect: select }, getConfig: () => ({}), isReady: () => true,
+        confirmAction: async () => true, createUndoSnapshot: () => ({}), createImportSafetyBackup: () => ({ ok: true }),
+        getState: () => state, remoteSync: { restoreSnapshot: () => pending },
+        replaceState: (next) => { state = next; }, saveState: () => { throw new Error("Must not overwrite local edits"); },
+        showToast: (message) => messages.push(message), render() {},
+      });
+      const operation = controller.restoreSelectedSnapshot();
+      await Promise.resolve();
+      state.tasks.push({ id: "created-during-restore" });
+      finish({ snapshot: { state: { tasks: [{ id: "restored" }] } } });
+      await operation;
+      assert.deepEqual(state.tasks.map((task) => task.id), ["initial", "created-during-restore"]);
+      assert.match(messages[0], /новые локальные изменения/);
+    },
+  },
+  {
     name: "describes cloud snapshots with useful entity counts",
     fn() {
       assert.deepEqual(

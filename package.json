@@ -1,6 +1,6 @@
 {
   "name": "rhythm-day",
-  "version": "0.34.15",
+  "version": "0.34.16",
   "private": true,
   "description": "Parsitasks — личное пространство для задач, времени и прогресса",
   "main": "desktop/main.cjs",
@@ -32,6 +32,7 @@
     "test:daily-flow": "node tests/daily-flow-polish-e2e.cjs",
     "test:save-failures": "node tests/save-failure-workspaces-e2e.cjs",
     "test:settings-sync": "node tests/account-preferences-e2e.cjs",
+    "test:settings-reliability": "node tests/settings-reliability-e2e.cjs",
     "test:appearance": "node tests/settings-appearance-e2e.cjs",
     "test:icons": "node tests/icons-e2e.cjs",
     "test:task-recovery": "node tests/task-calendar-recovery-e2e.cjs",
@@ -40,6 +41,8 @@
     "test:workspace-panels": "node tests/workspace-panels-e2e.cjs",
     "test:audit-fixes": "node tests/audit-fixes-e2e.cjs",
     "test:sql-reliability": "node tests/sql-reliability.cjs",
+    "test:sql-isolation": "node tests/sql-account-isolation.cjs",
+    "test:account-recovery": "node tests/account-recovery-e2e.cjs",
     "benchmark:state": "node scripts/benchmark-state.cjs",
     "verify:production": "node scripts/check-production.cjs",
     "check:availability": "node scripts/check-availability.cjs",
@@ -109,7 +112,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@supabase/supabase-js": "^2.110.7",
     "agents": "^0.17.4",
     "axe-core": "^4.12.0",
@@ -118,11 +121,13 @@
     "electron-builder": "26.15.3",
     "esbuild": "^0.28.1",
     "playwright-core": "^1.61.1",
-    "sharp": "^0.35.2",
+    "sharp": "^0.35.5",
     "wrangler": "^4.114.0",
     "zod": "^4.4.3"
   },
   "overrides": {
+    "@modelcontextprotocol/sdk": "$@modelcontextprotocol/sdk",
+    "sharp": "$sharp",
     "app-builder-lib": {
       "@electron/get": "5.1.0"
     },

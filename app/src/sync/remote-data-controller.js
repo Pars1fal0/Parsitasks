@@ -57,11 +57,15 @@
       let localRestored = false;
       try {
         const undo = ctx.createUndoSnapshot();
-        const backup = ctx.createImportSafetyBackup({ state: JSON.stringify(ctx.getState()) });
+        const localCheckpoint = JSON.stringify(ctx.getState());
+        const backup = ctx.createImportSafetyBackup({ state: localCheckpoint });
         if (backup?.ok === false) throw new Error("Не удалось создать safety backup");
         const result = await ctx.remoteSync.restoreSnapshot(ctx.getConfig(), snapshotId);
         if (!isOwner(owner)) return;
         cloudRestored = true;
+        if (JSON.stringify(ctx.getState()) !== localCheckpoint) {
+          throw Object.assign(new Error("Local data changed while restoring"), { code: "local-state-changed" });
+        }
         const previous = ctx.getState();
         ctx.replaceState(result.snapshot.state);
         try {
@@ -82,10 +86,11 @@
         setStatus(`Версия восстановлена · доступно версий: ${versions.snapshots.length}`);
       } catch (error) {
         if (!isOwner(owner)) return;
-        const message = localRestored ? "Версия восстановлена, но список облачных копий не обновился. Повтори загрузку списка"
+        const message = error?.code === "local-state-changed" ? "Облако восстановлено, но появились новые локальные изменения. Они сохранены; выбери объединение при загрузке из облака или повтори восстановление"
+          : localRestored ? "Версия восстановлена, но список облачных копий не обновился. Повтори загрузку списка"
           : cloudRestored ? "Облако восстановлено, но локальную копию записать не удалось. Экспортируй текущие данные и повтори загрузку из облака"
             : "Не удалось восстановить облачную версию";
-        setStatus(`${message} · ${schemaHint(error)}`);
+        setStatus(error?.code === "local-state-changed" ? message : `${message} · ${schemaHint(error)}`);
         ctx.showToast(message);
       } finally {
         setBusy(false);
@@ -114,7 +119,7 @@
       const verificationText = ctx.getUserEmail() || "УДАЛИТЬ";
       const confirmed = await ctx.confirmAction({
         confirmLabel: "Удалить аккаунт",
-        message: "Аккаунт, облачное состояние и все серверные версии будут удалены без возможности восстановления. Локальные данные на этом устройстве останутся.",
+        message: "Аккаунт, облачное состояние, серверные версии и загруженные изображения будут удалены без возможности восстановления. При ошибке часть изображений уже может быть удалена — повтори операцию. Локальные данные и файлы в твоём Google Drive останутся.",
         tone: "danger",
         title: "Удалить аккаунт и облачные данные?",
         verificationLabel: ctx.getUserEmail()
@@ -230,7 +235,8 @@
 
     function schemaHint(error) {
       const text = String(error?.message || "");
-      return /rhythm_state_snapshots|delete_parsitasks_account|404|PGRST/i.test(text)
+      if (/board_files_remaining/i.test(text)) return "Остались изображения в облаке. Повтори удаление аккаунта, чтобы сначала очистить файлы.";
+      return /rhythm_state_snapshots|restore_parsitasks_snapshot|delete_parsitasks_account|404|PGRST/i.test(text)
         ? "Обнови database/supabase-schema.sql в SQL Editor, затем повтори действие"
         : `Ошибка облачных данных: ${text || "неизвестная ошибка"}`;
     }

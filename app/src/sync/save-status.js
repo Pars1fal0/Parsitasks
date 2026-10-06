@@ -42,6 +42,7 @@
 
     function describeRemoteError(error) {
       if (error?.code === "clock-skew") return "проверь дату и время на устройстве";
+      if (error?.code === "client-outdated") return "обнови приложение · облачные данные созданы более новой версией, локальные записи сохранены";
       if (error?.code === "workspace-too-large") return "объём данных превышает лимит облака · локальные записи сохранены, экспортируй JSON";
       if (error?.code === "request-timeout") return "сервер не ответил вовремя · повтори синхронизацию";
       if (error?.code === "local-save-failed") return "нет места на устройстве · экспортируй данные и освободи хранилище";

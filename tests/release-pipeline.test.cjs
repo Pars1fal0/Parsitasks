@@ -23,15 +23,25 @@ function fixture() {
   return { root, directory, write, prepare, verify: (options = {}) => verifyCandidate({ directory, expectedRevision: revision, ...options }) };
 }
 
-function availabilityFixture({ pageStatus = 200, auth = true, anonymousStatus = 401, headers = true } = {}) {
+function availabilityFixture({ pageStatus = 200, auth = true, anonymousStatus = 401, headers = true, providerStatus = 200, databaseStatus = 401, providerUrl = "https://example.supabase.co", publicKey = "sb_publishable_test" } = {}) {
   const requests = [];
   const fetchImpl = async (url, options) => {
     const parsed = new URL(url); requests.push({ route: parsed.pathname, method: options.method, headers: options.headers });
-    assert.equal(parsed.origin, "https://example.test"); assert.equal(parsed.searchParams.get("availability-check"), "1");
+    if (parsed.origin === "https://example.supabase.co") {
+      assert.equal(parsed.searchParams.has("availability-check"), false);
+      assert.equal(options.headers.apikey, publicKey);
+      assert.equal(options.headers.Authorization, undefined);
+      if (parsed.pathname === "/auth/v1/health") return new Response(JSON.stringify({ version: "test", name: "GoTrue" }), { status: providerStatus, headers: { "Content-Type": "application/json" } });
+      assert.equal(parsed.pathname, "/rest/v1/rhythm_states");
+      assert.equal(options.method, "HEAD"); assert.equal(parsed.searchParams.get("limit"), "0");
+      return new Response(null, { status: databaseStatus });
+    }
+    assert.equal(parsed.origin, "https://example.test");
+    assert.equal(parsed.searchParams.get("availability-check"), "1");
     const json = (value) => new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } });
     if (options.method === "HEAD") return new Response(null, { status: pageStatus, headers: { "Content-Type": "text/html", ...(headers ? { "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "script-src 'self'" } : {}) } });
     if (parsed.pathname === "/release.json") return json({ version: "0.33.1", buildHash: "a".repeat(12), sourceRevision: revision });
-    if (parsed.pathname === "/api/public-config") return json({ supabaseUrl: "https://example.supabase.co", anonKey: "sb_publishable_test" });
+    if (parsed.pathname === "/api/public-config") return json({ supabaseUrl: providerUrl, anonKey: publicKey });
     if (parsed.pathname === "/mcp/health") return json({ ok: true, authConfigured: auth });
     return new Response("unauthorized", { status: anonymousStatus });
   };
@@ -85,8 +95,8 @@ module.exports = [
   } },
   { name: "availability checks only public endpoints and never send credentials or write requests", async fn() {
     const f = availabilityFixture(); const result = await checkAvailability({ baseUrl: "https://example.test", fetchImpl: f.fetchImpl });
-    assert.equal(result.ok, true); assert.equal(result.checkedEndpoints, 7);
-    assert.deepEqual(f.requests.map((request) => request.route), ["/", "/auth", "/app", "/release.json", "/api/public-config", "/mcp/health", "/mcp"]);
+    assert.equal(result.ok, true); assert.equal(result.checkedEndpoints, 9);
+    assert.deepEqual(f.requests.map((request) => request.route), ["/", "/auth", "/app", "/release.json", "/api/public-config", "/auth/v1/health", "/rest/v1/rhythm_states", "/mcp/health", "/mcp"]);
     assert.ok(f.requests.every((request) => ["HEAD", "GET"].includes(request.method) && !request.headers.Authorization));
     assert.equal(JSON.stringify(result).includes("sb_publishable"), false);
   } },
@@ -99,6 +109,22 @@ module.exports = [
     const f = availabilityFixture();
     const fetchImpl = (url, options) => new URL(url).pathname === "/release.json" ? new Response(new ReadableStream({ start() {} }), { headers: { "Content-Type": "application/json" } }) : f.fetchImpl(url, options);
     await assert.rejects(checkAvailability({ baseUrl: "https://example.test", fetchImpl, timeoutMs: 5 }), /Availability timeout/);
+  } },
+  { name: "availability detects provider outages without touching account data", async fn() {
+    for (const [options, message] of [[{ providerStatus: 503 }, /Supabase Auth/], [{ databaseStatus: 503 }, /Data API/], [{ databaseStatus: 200 }, /anonymous table access/]]) {
+      const f = availabilityFixture(options);
+      await assert.rejects(checkAvailability({ baseUrl: "https://example.test", fetchImpl: f.fetchImpl }), message);
+    }
+  } },
+  { name: "availability refuses secret keys and credential-bearing provider URLs before contacting them", async fn() {
+    const jwt = (role) => `header.${Buffer.from(JSON.stringify({ role })).toString("base64url")}.signature`;
+    for (const options of [{ publicKey: "sb_secret_private" }, { publicKey: jwt("service_role") }, { publicKey: "garbage" }, { providerUrl: "https://user:password@example.supabase.co" }, { providerUrl: "http://example.supabase.co" }]) {
+      const f = availabilityFixture(options);
+      await assert.rejects(checkAvailability({ baseUrl: "https://example.test", fetchImpl: f.fetchImpl }), /configuration is unavailable/);
+      assert.ok(f.requests.every((request) => !request.route.startsWith("/auth/v1/")));
+    }
+    const f = availabilityFixture({ publicKey: jwt("anon") });
+    assert.equal((await checkAvailability({ baseUrl: "https://example.test", fetchImpl: f.fetchImpl })).ok, true);
   } },
   { name: "availability rejects credentials in the URL and insecure public addresses before fetching", async fn() {
     for (const baseUrl of ["https://user:secret@example.test", "http://example.test", "file:///private"]) await assert.rejects(checkAvailability({ baseUrl, fetchImpl: () => { throw new Error("must not fetch"); } }), /Invalid public|requires HTTPS/);

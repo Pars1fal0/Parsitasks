@@ -46,6 +46,7 @@
         schema_version: payload.schemaVersion || payload.state?.schemaVersion || currentSchemaVersion(),
         client_updated_at: clientUpdatedAt,
       };
+      ensureSupportedSchema(body);
       const conflictColumn = "user_id";
       const stateBytes = new TextEncoder().encode(JSON.stringify(body.state)).byteLength;
       const uiBytes = new TextEncoder().encode(JSON.stringify(body.ui_state)).byteLength;
@@ -95,6 +96,7 @@
       if (!response.ok) throw createRemoteError("pull-failed", response, data);
       const row = Array.isArray(data) ? data[0] : null;
       if (!row) return { ok: true, found: false };
+      ensureSupportedSchema(row);
       return {
         ok: true,
         found: true,
@@ -151,27 +153,45 @@
       if (!response.ok) throw createRemoteError("snapshot-read-failed", response, data);
       const snapshot = Array.isArray(data) ? data[0] : null;
       if (!snapshot?.state) throw new Error("Snapshot is not available");
+      ensureSupportedSchema(snapshot);
       return { ok: true, snapshot };
     }
 
     async function restoreSnapshot(config, snapshotId) {
       const normalized = normalizeConfig(config);
-      const { snapshot } = await getSnapshot(normalized, snapshotId);
+      ensureConfigured(normalized);
+      const id = String(snapshotId || "").trim();
+      if (!/^\d+$/.test(id)) throw new Error("Snapshot is not selected");
+      // Snapshot rows are immutable to clients; validate the chosen schema before any write.
+      await getSnapshot(normalized, id);
       const current = await pullState(normalized);
-      const saved = await pushState(normalized, {
-        state: snapshot.state,
-        schemaVersion: snapshot.schema_version,
-        uiState: current.uiState || {},
-        expectedUpdatedAt: current.updatedAt,
-        expectMissing: !current.found,
+      if (!current.found || !current.updatedAt) throw new Error("Сначала сохрани текущее пространство в облаке");
+      const response = await request(`${normalized.supabaseUrl}/rest/v1/rpc/restore_parsitasks_snapshot`, {
+        method: "POST",
+        headers: supabaseHeaders(normalized),
+        body: JSON.stringify({ snapshot_id: id, expected_updated_at: current.updatedAt }),
       });
-      return { ok: true, snapshot, saved };
+      const data = await readResponse(response);
+      if (!response.ok) {
+        if (data?.code === "40001") throw Object.assign(new Error("Облако изменилось. Загрузи список версий и повтори восстановление."), { code: "sync-conflict", status: 409 });
+        throw createRemoteError("snapshot-restore-failed", response, data);
+      }
+      if (!data?.snapshot?.state || !data?.row?.updated_at) throw new Error("Сервер не подтвердил восстановление версии");
+      return { ok: true, snapshot: data.snapshot, saved: { ok: true, row: data.row } };
+    }
+
+    function ensureSupportedSchema(row) {
+      const version = Math.max(Number(row?.schema_version) || 0, Number(row?.state?.schemaVersion) || 0);
+      if (version > currentSchemaVersion()) {
+        throw Object.assign(new Error("Данные созданы более новой версией Parsitasks. Обнови приложение перед синхронизацией; локальные записи сохранены."), { code: "client-outdated" });
+      }
     }
 
     async function deleteAccount(config) {
       ensureFetch();
       const normalized = normalizeConfig(config);
       ensureConfigured(normalized);
+      await removeAccountImages(normalized);
       const response = await request(`${normalized.supabaseUrl}/rest/v1/rpc/delete_parsitasks_account`, {
         method: "POST",
         headers: supabaseHeaders(normalized),
@@ -180,6 +200,42 @@
       const data = await readResponse(response);
       if (!response.ok) throw createRemoteError("account-delete-failed", response, data);
       return { ok: true };
+    }
+
+    async function removeAccountImages(config) {
+      if (!/^[a-zA-Z0-9_-]+$/.test(config.userId)) throw new Error("Invalid account identity");
+      const folders = [config.userId], files = [];
+      for (let index = 0; index < folders.length; index++) {
+        if (folders.length > 1000) throw new Error("Слишком много папок. Обратись в поддержку перед удалением аккаунта.");
+        const prefix = folders[index];
+        for (let offset = 0; ; offset += 100) {
+          const response = await request(`${config.supabaseUrl}/storage/v1/object/list/board-images`, {
+            method: "POST", headers: supabaseHeaders(config),
+            body: JSON.stringify({ prefix, limit: 100, offset, sortBy: { column: "name", order: "asc" } }),
+          });
+          const rows = await readResponse(response);
+          if (!response.ok) throw createRemoteError("account-storage-list-failed", response, rows);
+          if (!Array.isArray(rows) || rows.length > 100) throw new Error("Сервер не подтвердил список файлов аккаунта");
+          for (const row of rows) {
+            if (typeof row?.name !== "string" || !row.name || /[\/\\\0]/.test(row.name) || [".", ".."].includes(row.name)) throw new Error("Некорректный путь файла. Удаление аккаунта остановлено.");
+            const name = `${prefix}/${row.name}`;
+            if (row.id === null) folders.push(name);
+            else if (typeof row.id === "string" && row.id) files.push(name);
+            else throw new Error("Некорректный список файлов. Удаление аккаунта остановлено.");
+          }
+          if (files.length > 10000 || offset >= 10000) throw new Error("Слишком много файлов. Обратись в поддержку перед удалением аккаунта.");
+          if (rows.length < 100) break;
+        }
+      }
+      // Enumerate first: deleting while paginating would skip later files.
+      for (let index = 0; index < files.length; index += 100) {
+        const response = await request(`${config.supabaseUrl}/storage/v1/object/board-images`, {
+          method: "DELETE", headers: supabaseHeaders(config),
+          body: JSON.stringify({ prefixes: files.slice(index, index + 100) }),
+        });
+        const data = await readResponse(response);
+        if (!response.ok) throw createRemoteError("account-storage-delete-failed", response, data);
+      }
     }
 
     function ensureFetch() {

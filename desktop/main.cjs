@@ -705,7 +705,10 @@ function createWindow() {
         const settingsImportFile = document.querySelector("#settingsImportFile");
         settingsImportFile.files = settingsTransfer.files;
         settingsImportFile.dispatchEvent(new Event("change", { bubbles: true }));
-        await new Promise((resolve) => setTimeout(resolve, 20));
+        const settingsImportDeadline = performance.now() + 5000;
+        while (settingsImportFile.files.length && performance.now() < settingsImportDeadline) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        }
         const settingsImportWorks =
           document.querySelector("#backupSchedule")?.value === "0" &&
           document.querySelector("#densityPreference")?.value === "compact" &&
