@@ -17,6 +17,9 @@ jobs:
     if: vars.PARSITASKS_MONITORING_ENABLED == '1'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -27,4 +30,20 @@ jobs:
         with:
           node-version-file: .node-version
       - name: Check public pages and authentication boundaries
+        id: probe
+        continue-on-error: true
         run: npm run check:availability
+      - name: Confirm failure before raising an incident
+        id: retry
+        if: steps.probe.outcome == 'failure'
+        continue-on-error: true
+        run: npm run check:availability
+      - name: Open one incident or resolve it after recovery
+        if: ${{ !cancelled() && steps.probe.outcome != 'skipped' }}
+        run: node scripts/availability-incident.cjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PARSITASKS_HEALTHY: ${{ steps.probe.outcome == 'success' || steps.retry.outcome == 'success' }}
+      - name: Fail a confirmed outage
+        if: steps.probe.outcome == 'failure' && steps.retry.outcome == 'failure'
+        run: exit 1

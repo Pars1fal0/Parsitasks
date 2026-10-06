@@ -61,6 +61,8 @@ jobs:
         run: npm run test:reliability
       - name: Verify cloud recovery and account deletion with mocked accounts
         run: npm run test:account-recovery
+      - name: Verify password recovery with all Auth requests mocked
+        run: npm run test:auth-recovery
       - name: Verify setup and private support diagnostics
         run: npm run test:onboarding
       - name: Verify account preferences across isolated devices

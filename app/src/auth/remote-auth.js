@@ -1,17 +1,31 @@
 (function (global) {
   const SESSION_KEY = "rhythm-supabase-session-v1";
+  const RECOVERY_KEY = "rhythm-password-recovery-v1";
 
   function createRemoteAuth(options = {}) {
     const fetchFn = options.fetch || global.fetch?.bind(global);
     const storage = options.storage || global.localStorage;
+    const tabStorage = options.sessionStorage || global.sessionStorage;
     const getConfig = options.getConfig || (() => ({}));
     let session = loadSession();
-    let recoveryMode = false;
+    let recoveryMode = loadRecoveryMode();
     let callbackError = "";
     let refreshTimer = null;
     let refreshInFlight = null;
     let sessionVersion = 0;
     const requestTimeoutMs = Math.max(100, Math.min(60_000, Number(options.requestTimeoutMs) || 30_000));
+
+    function loadRecoveryMode() {
+      try {
+        const marker = JSON.parse(tabStorage?.getItem(RECOVERY_KEY) || "null");
+        return Boolean(session && marker?.userId === session.user.id && marker.expiresAt > Date.now());
+      } catch { return false; }
+    }
+
+    function clearRecovery() {
+      recoveryMode = false;
+      try { tabStorage?.removeItem(RECOVERY_KEY); } catch {}
+    }
 
     function loadSession() {
       try {
@@ -78,7 +92,7 @@
       const data = await readResponse(response);
       if (version !== sessionVersion) throw new Error("Состояние входа изменилось. Повтори вход");
       if (!response.ok) throw createAuthError(response, data);
-      if (data.access_token) saveSession(data);
+      if (data.access_token) { clearRecovery(); saveSession(data); }
       return data;
     }
 
@@ -136,6 +150,7 @@
 
     async function signOut() {
       const current = session;
+      clearRecovery();
       saveSession(null);
       if (!current?.access_token) return;
       let config;
@@ -153,12 +168,13 @@
     async function resetPassword(email) {
       const config = requireConfig();
       const redirectTo = getRecoveryRedirectUrl();
-      const response = await request(`${config.supabaseUrl}/auth/v1/recover`, {
+      const url = new URL(`${config.supabaseUrl}/auth/v1/recover`);
+      if (redirectTo) url.searchParams.set("redirect_to", redirectTo);
+      const response = await request(url.href, {
         method: "POST",
         headers: authHeaders(config),
         body: JSON.stringify({
           email: cleanEmail(email),
-          ...(redirectTo ? { redirect_to: redirectTo } : {}),
         }),
       });
       const data = await readResponse(response);
@@ -170,6 +186,7 @@
       requireStrongPassword(password);
       if (!session?.access_token) throw new Error("Ссылка восстановления недействительна или устарела");
       const config = requireConfig();
+      const version = sessionVersion;
       const response = await request(`${config.supabaseUrl}/auth/v1/user`, {
         method: "PUT",
         headers: {
@@ -179,8 +196,9 @@
         body: JSON.stringify({ password }),
       });
       const data = await readResponse(response);
+      if (version !== sessionVersion) throw new Error("Состояние входа изменилось. Повтори вход");
       if (!response.ok) throw createAuthError(response, data);
-      recoveryMode = false;
+      clearRecovery();
       clearCallbackHash();
       return data;
     }
@@ -272,23 +290,34 @@
         return;
       }
       if (!params.get("access_token")) return;
-      const user = userFromAccessToken(params.get("access_token"));
-      if (!user.id) return;
+      const payload = payloadFromAccessToken(params.get("access_token"));
+      const user = { id: String(payload?.sub || ""), email: String(payload?.email || "") };
+      const now = Math.floor(Date.now() / 1000);
+      const duration = Number(params.get("expires_in") || 3600);
+      const expiresAt = Number.isFinite(payload?.exp) ? payload.exp : now + duration;
+      clearCallbackHash();
+      if (!user.id || !Number.isFinite(expiresAt) || expiresAt <= now || !Number.isFinite(duration) || duration <= 0) {
+        callbackError = "Ссылка входа недействительна или устарела. Запросите новую ссылку.";
+        clearRecovery();
+        return;
+      }
       recoveryMode = params.get("type") === "recovery";
       saveSession({
         access_token: params.get("access_token"),
         refresh_token: params.get("refresh_token") || "",
         token_type: params.get("token_type") || "bearer",
-        expires_at: Math.floor(Date.now() / 1000) + Math.max(60, Number(params.get("expires_in") || 3600)),
+        expires_at: Math.min(expiresAt, now + Math.min(duration, 86400)),
         user,
       });
-      if (!recoveryMode) clearCallbackHash();
+      if (recoveryMode) {
+        try { tabStorage?.setItem(RECOVERY_KEY, JSON.stringify({ userId: user.id, expiresAt: session.expires_at * 1000 })); } catch {}
+      } else clearRecovery();
     }
 
     function getRecoveryRedirectUrl() {
       const location = global.location;
       if (!location || !/^https?:$/.test(location.protocol)) return "";
-      return `${location.origin}${location.pathname}`;
+      return `${location.origin}/auth`;
     }
 
     function clearCallbackHash() {
@@ -322,14 +351,14 @@
     return url.href;
   }
 
-  function userFromAccessToken(token) {
+  function payloadFromAccessToken(token) {
     try {
       const encoded = String(token || "").split(".")[1] || "";
       const normalized = encoded.replace(/-/g, "+").replace(/_/g, "/");
       const payload = JSON.parse(decodeURIComponent(escape(global.atob(normalized))));
-      return { id: String(payload.sub || ""), email: String(payload.email || "") };
+      return payload;
     } catch {
-      return { id: "", email: "" };
+      return null;
     }
   }
 

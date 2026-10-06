@@ -1,0 +1,75 @@
+name: Restore Verified Website
+
+on:
+  workflow_dispatch:
+    inputs:
+      verification_run_id:
+        description: Successful master Application Verification run ID with retained artifact
+        required: true
+        type: string
+      confirmation:
+        description: Type ROLLBACK (website only; database security stays in place)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  rollback:
+    if: github.ref == 'refs/heads/master' && inputs.confirmation == 'ROLLBACK'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: https://parsitasks.ru
+    concurrency:
+      group: production-deployment
+      cancel-in-progress: false
+    steps:
+      - name: Checkout current rollback tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Resolve trusted verified artifact
+        id: candidate
+        run: node scripts/resolve-rollback.cjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PARSITASKS_ROLLBACK_RUN_ID: ${{ inputs.verification_run_id }}
+      - name: Download the exact retained artifact
+        run: |
+          node scripts/download-rollback.cjs
+          mkdir .release-candidate
+          unzip -q .rollback-artifact.zip -d .release-candidate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PARSITASKS_ARTIFACT_ID: ${{ steps.candidate.outputs.artifact_id }}
+          PARSITASKS_ARTIFACT_DIGEST: ${{ steps.candidate.outputs.artifact_digest }}
+      - name: Install deployment tools
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - name: Verify restored files without rebuilding old source
+        run: npm run release:verify -- --revision "$ROLLBACK_REVISION"
+        env:
+          ROLLBACK_REVISION: ${{ steps.candidate.outputs.revision }}
+      - name: Deploy retained client and Worker only
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
+          npx --no-install wrangler deploy --config .release-candidate/wrangler.json --no-bundle
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Verify public revision and every asset after rollback
+        run: npm run verify:production -- --revision "$ROLLBACK_REVISION" --wait 600
+        env:
+          ROLLBACK_REVISION: ${{ steps.candidate.outputs.revision }}
+      - name: Check backend availability after rollback
+        run: npm run check:availability

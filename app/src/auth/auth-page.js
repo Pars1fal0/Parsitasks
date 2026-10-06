@@ -135,7 +135,9 @@
         getConfig: () => ({ anonKey: config.anonKey, supabaseUrl: config.supabaseUrl }),
       });
       const callbackError = auth.getCallbackError();
+      if (callbackError) throw new Error(callbackError);
       if (auth.isRecoveryMode()) {
+        if (!await auth.validateSession()) throw new Error("Ссылка восстановления недействительна или устарела");
         document.title = "Новый пароль — Parsitasks";
         elements.standardFlow.hidden = true;
         elements.recoveryFlow.hidden = false;
@@ -301,6 +303,7 @@
     if (/email not confirmed/i.test(message)) return "Сначала подтвердите email по ссылке из письма";
     if (/user already registered/i.test(message)) return "Аккаунт с таким email уже существует";
     if (/rate limit/i.test(message)) return "Слишком много попыток. Подождите и попробуйте снова";
+    if (/expired|otp_expired|invalid.*token|invalid.*link|session missing/i.test(message)) return "Ссылка недействительна или устарела. Запросите новое письмо для восстановления.";
     if (/provider is not enabled|unsupported provider/i.test(message)) return "Вход через Google ещё не включён в настройках сервиса";
     if (/access_denied|cancelled|canceled/i.test(message)) return "Вход через Google отменён";
     return message || "Не удалось выполнить запрос";

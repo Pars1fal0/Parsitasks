@@ -13,6 +13,9 @@ voice-assistant/config.json
 voice-assistant/*.log
 voice-assistant/*.pid
 .security-test.env
+.backup.env
+*.parsibak
+.rollback-artifact.zip
 .dev.vars
 .dev.vars.*
 !.dev.vars.example

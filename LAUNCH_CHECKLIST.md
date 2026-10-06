@@ -90,6 +90,11 @@ checks or this publication as completion of the release gates below.
 
 ## Release Gates Still Open
 
+The owner deferred disposable-account and two-device verification. This is a
+scope decision, not evidence of isolation or synchronization correctness. Other
+operational work and actual remaining dependencies are recorded in
+[OPERATIONS.md](OPERATIONS.md).
+
 | Gate | Required Evidence | Dependency |
 | --- | --- | --- |
 | Real account isolation | A/B cannot read or change each other's state, snapshots or files; restore/delete succeed for owner | Two disposable accounts and staging Supabase |

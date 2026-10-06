@@ -252,6 +252,7 @@ module.exports = [
 
         assert.equal(auth.isRecoveryMode(), true);
         assert.equal(auth.getSession().user.id, "u1");
+        assert.equal(calls.filter((call) => call.history).length, 1);
         await auth.updatePassword("new-secret");
         assert.equal(auth.isRecoveryMode(), false);
         assert.match(calls.find((call) => call.url)?.url || "", /auth\/v1\/user$/);
@@ -263,6 +264,67 @@ module.exports = [
         if (previousHistory === undefined) delete global.history;
         else global.history = previousHistory;
       }
+    },
+  },
+  {
+    name: "recovery marker survives reload without leaving tokens in the URL and is removed after success",
+    async fn() {
+      const location = global.location; const history = global.history;
+      const storage = createStorage(); const sessionStorage = createStorage();
+      const payload = Buffer.from(JSON.stringify({ sub: "recovery-user", exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url");
+      const options = { storage, sessionStorage, getConfig: () => ({ anonKey: "anon", supabaseUrl: "https://demo.supabase.co" }), fetch: async () => ({ ok: true, text: async () => "{}" }) };
+      try {
+        global.location = { hash: `#access_token=header.${payload}.signature&type=recovery`, pathname: "/auth", search: "", protocol: "https:" };
+        global.history = { replaceState() { global.location.hash = ""; } };
+        const first = createRemoteAuth(options);
+        assert.equal(first.isRecoveryMode(), true); assert.equal(global.location.hash, "");
+        const reloaded = createRemoteAuth(options); assert.equal(reloaded.isRecoveryMode(), true);
+        await reloaded.updatePassword("synthetic-password");
+        assert.equal(createRemoteAuth(options).isRecoveryMode(), false);
+      } finally { global.location = location; global.history = history; }
+    },
+  },
+  {
+    name: "expired and malformed callback tokens cannot replace a previously valid session",
+    fn() {
+      const location = global.location; const history = global.history;
+      try {
+        global.history = { replaceState() {} };
+        const payload = Buffer.from(JSON.stringify({ sub: "expired", exp: Math.floor(Date.now() / 1000) - 1 })).toString("base64url");
+        for (const token of [`header.${payload}.signature`, "broken"]) {
+          const storage = createStorage(); storage.setItem(SESSION_KEY, JSON.stringify({ access_token: "existing", user: { id: "current" } }));
+          global.location = { hash: `#access_token=${token}&type=recovery`, pathname: "/auth", search: "" };
+          const auth = createRemoteAuth({ storage, fetch: async () => { throw new Error("must not fetch"); } });
+          assert.equal(auth.getSession().user.id, "current"); assert.equal(auth.isRecoveryMode(), false);
+          assert.match(auth.getCallbackError(), /устарела/);
+        }
+      } finally { global.location = location; global.history = history; }
+    },
+  },
+  {
+    name: "recovery email redirects use the dedicated auth route in the provider query",
+    async fn() {
+      const location = global.location; const calls = [];
+      try {
+        global.location = { origin: "https://parsitasks.ru", pathname: "/app", protocol: "https:", hash: "" };
+        const auth = createRemoteAuth({ storage: createStorage(), getConfig: () => ({ anonKey: "anon", supabaseUrl: "https://demo.supabase.co" }),
+          fetch: async (url, init) => { calls.push({ url, init }); return { ok: true, text: async () => "{}" }; } });
+        await auth.resetPassword("me@example.test");
+        assert.equal(new URL(calls[0].url).searchParams.get("redirect_to"), "https://parsitasks.ru/auth");
+        assert.deepEqual(JSON.parse(calls[0].init.body), { email: "me@example.test" });
+      } finally { global.location = location; }
+    },
+  },
+  {
+    name: "password update cannot announce success after the account signs out while waiting",
+    async fn() {
+      const storage = createStorage(); storage.setItem(SESSION_KEY, JSON.stringify({ access_token: "synthetic", user: { id: "u1" } }));
+      let finish;
+      const auth = createRemoteAuth({ storage, getConfig: () => ({ anonKey: "anon", supabaseUrl: "https://demo.supabase.co" }),
+        fetch: async (url) => url.endsWith("/user") ? new Promise((resolve) => { finish = resolve; }) : { ok: true, text: async () => "{}" } });
+      const pending = auth.updatePassword("synthetic-password");
+      await auth.signOut(); finish({ ok: true, text: async () => "{}" });
+      await assert.rejects(pending, /Состояние входа изменилось/); assert.equal(auth.getSession(), null);
     },
   },
 ];
