@@ -130,7 +130,7 @@
         const check = element("input", "calendar-task-check");
         check.type = "checkbox"; check.checked = entry.done;
         check.setAttribute("aria-label", `Выполнено: ${task.title}`);
-        check.addEventListener("change", () => ctx.toggleTaskDone(task.id, deadline ? task.date || task.dueDate : date));
+        check.addEventListener("change", () => toggleTaskDone(ctx, task.id, deadline ? task.date || task.dueDate : date));
         node.append(check);
       }
       const open = button("calendar-agenda-open", "", () => task.studyEvent ? ctx.openLesson(task.studyEvent, date) : ctx.editTask(task, deadline ? task.date || date : date));
@@ -294,7 +294,7 @@
           slot.addEventListener("drop", (event) => {
             event.preventDefault(); slot.classList.remove("is-drop-target");
             if (!dragged) return;
-            ctx.scheduleTask(dragged.taskId, dragged.date, day, time(minuteAt(event)));
+            scheduleTask(ctx, dragged.taskId, dragged.date, day, time(minuteAt(event)));
             dragged = null;
           });
           hours.append(slot);
@@ -356,7 +356,63 @@
     }
     return { render };
   }
-  const api = { createCalendarSchedule, freeIntervals, quarterMinute };
+
+  async function toggleTaskDone(ctx, taskId, date) {
+    const owner = ctx.getState();
+    if (!(await ctx.confirmDiscardOpenForms()) || ctx.getState() !== owner) { ctx.render(); return false; }
+    const state = ctx.getState();
+    const task = state.tasks.find((item) => item.id === taskId);
+    if (!task || (!ctx.taskOccursOn(task, date) && !(task.date === null && task.repeat === "none" && task.dueDate === date))) { ctx.render(); return false; }
+    const undo = ctx.createUndoSnapshot();
+    const done = ctx.isTaskDone(task, date);
+    task.completed ||= {};
+    task.completed[date] = !done;
+    task.updatedAt = new Date().toISOString();
+    if (ctx.saveState() === false) { ctx.restoreState(undo); ctx.render(); return false; }
+    ctx.render();
+    ctx.showToast(done ? "Задача снова активна" : "Задача выполнена", { undo });
+    return true;
+  }
+
+  async function scheduleTask(ctx, taskId, sourceDate, targetDate, startTime) {
+    const owner = ctx.getState();
+    if (!(await ctx.confirmDiscardOpenForms()) || ctx.getState() !== owner) return false;
+    const state = ctx.getState();
+    const task = state.tasks.find((item) => item.id === taskId);
+    if (!task || !ctx.taskOccursOn(task, sourceDate)) return false;
+    if (sourceDate === targetDate) {
+      ctx.setActiveDate(sourceDate);
+      ctx.saveUiState();
+      const result = await ctx.setTaskTime(taskId, startTime);
+      if (!result) ctx.render();
+      return result;
+    }
+    if (task.repeat !== "none") {
+      const choice = await ctx.confirmAction({ title: "Перенести этот повтор?",
+        message: "На другой день будет перенесено только выбранное выполнение. Остальное расписание останется прежним.",
+        confirmLabel: "Перенести", secondaryLabel: "Отмена" });
+      if (choice !== true || ctx.getState() !== owner) return false;
+    }
+    const undo = ctx.createUndoSnapshot();
+    let moved = task;
+    const moves = global.RhythmTaskMoves || require("../tasks/task-moves.js");
+    moves.postponeTask({ state, task, sourceDateKey: sourceDate, targetDateKey: targetDate,
+      options: { separateOccurrence: true }, helpers: { createId: ctx.createId, taskScheduledOn: ctx.taskScheduledOn } });
+    if (task.repeat !== "none") moved = state.tasks.at(-1);
+    const duration = ctx.isTimeBlock(task) ? ctx.timeToMinutes(task.endTime) - ctx.timeToMinutes(task.startTime) : 60;
+    const end = Math.min(23 * 60 + 59, ctx.timeToMinutes(startTime) + duration);
+    Object.assign(moved, { scheduleMode: "block", startTime: ctx.minutesToTime(Math.max(0, end - duration)),
+      endTime: ctx.minutesToTime(end), time: ctx.minutesToTime(end), updatedAt: new Date().toISOString() });
+    delete moved.notified?.[targetDate];
+    if (ctx.saveState() === false) { ctx.restoreState(undo); ctx.render(); return false; }
+    ctx.setActiveDate(targetDate);
+    ctx.saveUiState();
+    ctx.render();
+    ctx.showToast(`Запланировано на ${ctx.formatLongDate(targetDate)}`, { undo });
+    return true;
+  }
+
+  const api = { createCalendarSchedule, freeIntervals, quarterMinute, toggleTaskDone, scheduleTask };
   global.RhythmCalendarSchedule = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

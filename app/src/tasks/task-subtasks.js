@@ -81,7 +81,30 @@
     dialog.addEventListener("close", () => { form.reset(); message.textContent = ""; openedState = null; taskId = ""; });
     return { open };
   }
-  const api = { appendSubtask, removeSubtask, createSubtaskDialog };
+
+  function saveSubtaskChange({ state, task, dateKey, scope, changes, createId, createUndoSnapshot, saveState, showToast }) {
+    const undo = createUndoSnapshot();
+    const removing = Object.hasOwn(changes, "itemId");
+    let saved;
+    try {
+      const mutate = removing ? removeSubtask : appendSubtask;
+      saved = mutate({ state, task, dateKey, scope, createId, ...changes });
+    } catch (error) { return { error: error.message }; }
+    if (saveState() === false) {
+      // Keep the draft mounted while restoring the original task references.
+      const previous = JSON.parse(undo.state);
+      const original = previous.tasks.find((item) => item.id === task.id);
+      Object.keys(task).forEach((key) => delete task[key]);
+      Object.assign(task, original);
+      state.tasks = previous.tasks.map((item) => item.id === task.id ? task : state.tasks.find((current) => current.id === item.id) || item);
+      state.taskOrder = previous.taskOrder;
+      return { error: "Не удалось сохранить. Попробуйте снова." };
+    }
+    showToast(removing ? "Подзадача удалена" : "Подзадача добавлена", { undo });
+    return { id: saved.id };
+  }
+
+  const api = { appendSubtask, removeSubtask, createSubtaskDialog, saveSubtaskChange };
   global.RhythmTaskSubtasks = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

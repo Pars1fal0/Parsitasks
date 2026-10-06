@@ -82,4 +82,26 @@ module.exports = [
     const before = JSON.stringify(args.state); assert.throws(() => appendSubtask(args), /50/); assert.equal(JSON.stringify(args.state), before);
     args.state.tasks = []; assert.throws(() => appendSubtask(args), /недоступна/);
   } },
+  { name: "saving a subtask reports validation errors and restores the same task when storage fails", fn() {
+    const { saveSubtaskChange } = require("../app/src/tasks/task-subtasks.js");
+    const args = fixture();
+    const toasts = [];
+    let saves = 0;
+    const failed = saveSubtaskChange({ ...args, changes: { title: " " }, createUndoSnapshot: () => ({ state: JSON.stringify(args.state) }), saveState: () => { saves += 1; return true; }, showToast: (message) => toasts.push(message) });
+    assert.match(failed.error, /1 до 120/);
+    assert.equal(saves, 0);
+    assert.equal(toasts.length, 0);
+    assert.equal(args.task.checklist.length, 1);
+
+    const snapshot = JSON.stringify(args.state);
+    const saved = saveSubtaskChange({ ...args, changes: { title: "Второй шаг" }, createUndoSnapshot: () => ({ state: snapshot }), saveState: () => false, showToast: (message) => toasts.push(message) });
+    assert.equal(saved.error, "Не удалось сохранить. Попробуйте снова.");
+    assert.equal(args.state.tasks[0], args.task);
+    assert.deepEqual(args.task.checklist.map((item) => item.id), ["old"]);
+    assert.equal(toasts.length, 0);
+
+    const added = saveSubtaskChange({ ...args, changes: { title: "Второй шаг" }, createUndoSnapshot: () => ({ state: JSON.stringify(args.state) }), saveState: () => true, showToast: (message) => toasts.push(message) });
+    assert.equal(added.id, "parent");
+    assert.equal(toasts[0], "Подзадача добавлена");
+  } },
 ];
