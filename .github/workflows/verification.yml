@@ -77,12 +77,18 @@ jobs:
         run: npm run test:audit-fixes
       - name: Verify calendar pinch, one-finger scrolling and long-press scheduling
         run: npm run test:calendar-touch
+      - name: Verify expanded calendar, Back navigation and touch resizing
+        run: npm run test:calendar-expanded
       - name: Verify mobile forms, study controls and short-event selection
         run: npm run test:mobile-workspace
       - name: Verify study material toolbar and empty upload dialog
         run: npm run test:study-materials
       - name: Mobile board and calendar layout
         run: npm run test:mobile-layout
+      - name: Mobile numeric habit controls and repeated value persistence
+        run: npm run test:habit-numbers
+      - name: Mobile completion and drag target separation
+        run: npm run test:mobile-completion
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

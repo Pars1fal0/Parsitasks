@@ -117,6 +117,7 @@
         increment.textContent = `+${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
         increment.setAttribute("aria-label", `${habitTitle}: добавить ${step} ${habitConfig.unit || ""}`);
         decrement.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
+        decrement.title = `Убрать ${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
         value.textContent = `/ ${goal} ${habitConfig.unit || ""}`;
         track.className = "progress-track";
         track.setAttribute("aria-hidden", "true");
@@ -126,26 +127,30 @@
         row.append(decrement, input, increment, value);
         control.replaceChildren(row, track);
 
+        const getLoggedValue = () => Number(ctx.getState().habits.find((item) => item.id === habit.id)?.logs?.[activeDate] || 0);
         const updateValue = (nextRawValue) => {
+          // Saving can replace normalized state objects without rebuilding the numeric row.
+          const currentHabit = ctx.getState().habits.find((item) => item.id === habit.id);
+          if (!currentHabit) return;
           const parsedValue = Number(nextRawValue || 0);
           if (!Number.isFinite(parsedValue)) return;
           const nextValue = Math.max(0, Math.round(parsedValue * 1000) / 1000);
-          if (nextValue === Number(habit.logs[activeDate] || 0)) {
+          if (nextValue === getLoggedValue()) {
             input.value = String(nextValue);
             return;
           }
           const undo = ctx.createUndoSnapshot();
           if (nextValue > 0) {
-            habit.logs[activeDate] = nextValue;
+            currentHabit.logs[activeDate] = nextValue;
           } else {
-            delete habit.logs[activeDate];
+            delete currentHabit.logs[activeDate];
           }
-          habit.updatedAt = new Date().toISOString();
+          currentHabit.updatedAt = new Date().toISOString();
           if (!saveChange(undo)) return;
           ctx.renderDailyPulse();
           ctx.renderOverviewIfActive?.();
-          node.querySelector(".habit-streak").textContent = habitSubtitle(habit);
-          const loggedValue = Number(habit.logs[activeDate] || 0);
+          node.querySelector(".habit-streak").textContent = habitSubtitle(ctx.getState().habits.find((item) => item.id === habit.id) || currentHabit);
+          const loggedValue = getLoggedValue();
           const nextPercent = Math.min(100, Math.round((loggedValue / goal) * 100));
           fill.style.width = `${nextPercent}%`;
           input.value = String(loggedValue);
@@ -156,8 +161,8 @@
           if (input.validity.badInput) return;
           updateValue(event.target.value);
         });
-        decrement.addEventListener("click", () => updateValue(Number(input.value || 0) - step));
-        increment.addEventListener("click", () => updateValue(Number(input.value || 0) + step));
+        decrement.addEventListener("click", () => updateValue(getLoggedValue() - step));
+        increment.addEventListener("click", () => updateValue(getLoggedValue() + step));
         const quickAdds = document.createElement("div");
         quickAdds.className = "habit-quick-adds";
         quickAdds.setAttribute("role", "group");
@@ -172,7 +177,7 @@
           button.type = "button";
           button.className = "ghost-button compact-button";
           button.textContent = `+${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-          button.addEventListener("click", () => { updateValue(Number(habit.logs[activeDate] || 0) + amount); closeNumberMenus(); });
+          button.addEventListener("click", () => { updateValue(getLoggedValue() + amount); closeNumberMenus(); });
           quickAdds.appendChild(button);
         });
         if (quickAdds.childElementCount) {
@@ -187,7 +192,7 @@
           less.className = "ghost-button compact-button habit-extra-decrement";
           less.textContent = `−${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
           less.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
-          less.addEventListener("click", () => { updateValue(Number(habit.logs[activeDate] || 0) - step); closeNumberMenus(); });
+          less.addEventListener("click", () => { updateValue(getLoggedValue() - step); closeNumberMenus(); });
           quickAdds.prepend(less);
           more.open = !global.matchMedia?.("(max-width: 680px)")?.matches;
         }

@@ -809,6 +809,16 @@ const timelineController = window.RhythmTimelineController.createTimelineControl
 });
 
 const calendarSchedule = window.RhythmCalendarSchedule.createCalendarSchedule({
+  confirmClose: confirmDiscardOpenForms,
+  changeMode: async (mode) => {
+    if (!(await confirmDiscardOpenForms())) return false;
+    overviewMode = mode;
+    appShellController.syncOverviewMode();
+    saveUiState();
+    syncNavigationRoute({ replace: true });
+    renderOverview();
+    return true;
+  },
   toggleTaskDone: toggleCalendarTaskDone,
   getActiveDate: () => activeDate,
   getState: () => state,
