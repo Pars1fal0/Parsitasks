@@ -287,6 +287,10 @@ export function updateGoalCheckpointCommand(state, input, options = {}) {
 }
 
 export function undoMcpCommand(state, input, options = {}) {
+  const activity = state.mcpActivity?.find((item) => item.id === input.actionId);
+  if (activity?.inverse?.entities?.journalEntries && state.profile?.journalAccess?.write === false) {
+    throw new Error("Запись дневника запрещена владельцем аккаунта; это действие нельзя отменить через MCP");
+  }
   return undoMcpActivity(state, String(input.actionId || ""), options.now || new Date().toISOString());
 }
 
@@ -333,9 +337,30 @@ function applyTaskChanges(state, task, input, options, now) {
     changed.push("title");
   }
   if (input.date !== undefined) {
-    task.date = normalizeDate(input.date);
+    const previousDate = task.date;
+    if (input.date === null) {
+      if (task.repeat !== "none") throw new Error("Для переноса в «Позже» сначала отключите повтор выбранного выполнения");
+      task.deferredFromDate = task.date || task.deferredFromDate || "";
+      task.time = ""; task.startTime = ""; task.endTime = ""; task.scheduleMode = "none"; task.reminderOffset = "none";
+      changed.push("deferredFromDate", "time", "startTime", "endTime", "scheduleMode", "reminderOffset");
+    }
+    task.date = input.date === null ? null : normalizeDate(input.date);
     changed.push("date");
-    if (task.deferredFromDate) {
+    if (task.repeat === "none" && previousDate && task.date && task.date !== previousDate) {
+      taskChecklist.moveDate(task, previousDate, task.date);
+      if (task.completed?.[previousDate] === true) {
+        delete task.completed[previousDate]; task.completed[task.date] = true;
+        markTaskDateMeta(state, task.id, "completed", previousDate, now);
+        markTaskDateMeta(state, task.id, "completed", task.date, now);
+      }
+      task.notified = {}; task.workNotified = {};
+      if (Array.isArray(state.taskOrder[previousDate])) {
+        state.taskOrder[previousDate] = state.taskOrder[previousDate].filter((id) => id !== task.id);
+        state.syncMeta.taskOrder[previousDate] = now;
+      }
+      changed.push("checklistLogs", "notified", "workNotified");
+    }
+    if (task.deferredFromDate && task.date !== null) {
       const sourceDate = task.deferredFromDate;
       taskChecklist.moveDate(task, sourceDate, task.date);
       if (task.completed?.[sourceDate] === true) {
@@ -346,6 +371,19 @@ function applyTaskChanges(state, task, input, options, now) {
       changed.push("deferredFromDate", "completed", "checklistLogs");
     }
   }
+  if (input.checklist !== undefined) {
+    task.checklist = taskChecklist.normalizeItems(input.checklist);
+    const ids = new Set(task.checklist.map((item) => item.id));
+    Object.values(task.checklistLogs || {}).forEach((logs) => Object.keys(logs).forEach((id) => { if (!ids.has(id)) delete logs[id]; }));
+    changed.push("checklist", "checklistLogs");
+  }
+  if (input.dueDate !== undefined) {
+    task.dueDate = input.dueDate ? normalizeDate(input.dueDate) : ""; changed.push("dueDate");
+    if (!task.dueDate) { task.dueTime = ""; task.dueReminderOffset = "none"; changed.push("dueTime", "dueReminderOffset"); }
+  }
+  if (input.dueTime !== undefined) { task.dueTime = input.dueTime ? normalizeTime(input.dueTime) : ""; changed.push("dueTime"); }
+  if (input.dueReminderOffset !== undefined) { task.dueReminderOffset = input.dueReminderOffset; changed.push("dueReminderOffset"); }
+  if ((task.dueTime || "") && !task.dueDate) throw new Error("Для времени сдачи нужна дата сдачи");
   if (input.priority !== undefined) {
     if (!PRIORITIES.has(input.priority)) throw new Error("Неизвестный приоритет");
     task.priority = input.priority;

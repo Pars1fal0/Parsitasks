@@ -25,12 +25,13 @@ export function registerManagementTools(server, context, helpers) {
     "get_calendar_range",
     {
       title: "Получить календарь за период",
-      description: "Возвращает задачи и привычки по дням за период до 93 дней.",
+      description: "Возвращает задачи, привычки, учебные занятия и отдельные сроки сдачи по дням за период до 93 дней.",
       inputSchema: {
         from: z.string(),
         to: z.string(),
         includeCompleted: z.boolean().optional(),
         includeHabits: z.boolean().optional(),
+        includeStudy: z.boolean().optional(),
         categoryId: z.string().optional(),
       },
       outputSchema: {
@@ -89,6 +90,7 @@ export function registerManagementTools(server, context, helpers) {
         bestDay: z.record(z.string(), z.unknown()).nullable(),
         activeGoals: z.number(),
         completedGoals: z.number(),
+        daily: z.array(z.record(z.string(), z.unknown())),
       },
       securitySchemes: security,
       annotations: readOnly(),
@@ -161,6 +163,9 @@ export function registerManagementTools(server, context, helpers) {
         startDate: z.string().optional(),
         type: z.enum(["check", "number"]).optional(),
         goal: z.number().positive().optional(),
+        weeklyTarget: z.number().int().min(1).max(7).optional(),
+        numberStep: z.number().positive().max(1000000).optional(),
+        reminderTime: z.string().optional(),
         unit: z.string().max(30).optional(),
         repeat: habitRepeat().optional(),
         customRepeat: customRepeat().optional(),
@@ -192,6 +197,9 @@ export function registerManagementTools(server, context, helpers) {
         title: z.string().min(1).max(200).optional(),
         type: z.enum(["check", "number"]).optional(),
         goal: z.number().positive().optional(),
+        weeklyTarget: z.number().int().min(1).max(7).optional(),
+        numberStep: z.number().positive().max(1000000).optional(),
+        reminderTime: z.string().optional(),
         unit: z.string().max(30).optional(),
         repeat: habitRepeat().optional(),
         customRepeat: customRepeat().optional(),
@@ -387,7 +395,7 @@ function todayForState(state, context) {
 }
 
 function habitRepeat() {
-  return z.enum(["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"]);
+  return z.enum(["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"]);
 }
 
 function customRepeat() {

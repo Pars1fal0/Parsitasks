@@ -2,8 +2,9 @@ import { recordMcpActivity } from "./activity-service.mjs";
 import { getTodayOverview, taskScheduledOn, tasksForDate } from "./task-service.mjs";
 import { getDayBrief, updateTaskCommand } from "./write-service.mjs";
 import documentState from "../app/src/core/document-state.js";
+import studyModel from "../app/src/study/study-model.js";
 
-const HABIT_REPEATS = new Set(["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "custom"]);
+const HABIT_REPEATS = new Set(["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"]);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 export function getCalendarRange(state, input) {
@@ -21,6 +22,11 @@ export function getCalendarRange(state, input) {
       date,
       tasks,
       habits: input.includeHabits === false ? [] : overview.habits,
+      lessons: input.includeStudy === false ? [] : studyModel.eventsForDate(state, date),
+      deadlines: (state.tasks || []).filter((task) => task.dueDate === date
+        && (!categoryId || task.categoryId === categoryId) && (includeCompleted || task.completed?.[task.date || task.dueDate] !== true))
+        .map((task) => ({ taskId: task.id, title: task.title, dueDate: date, dueTime: task.dueTime || "", workDate: task.date,
+          completed: task.completed?.[task.date || task.dueDate] === true, subjectId: task.studySubjectId || "" })),
     };
   });
   return {
@@ -98,6 +104,8 @@ export function getProductivityStats(state, input) {
     bestDay,
     activeGoals: (state.goals || []).filter((goal) => goal.status !== "done").length,
     completedGoals: (state.goals || []).filter((goal) => goal.status === "done").length,
+    daily: daily.map((day) => ({ ...day, taskCompletionRate: percentage(day.tasksCompleted, day.tasksTotal),
+      habitCompletionRate: percentage(day.habitsCompleted, day.habitsTotal) })),
   };
 }
 
@@ -194,6 +202,7 @@ export function createHabitCommand(state, input, options = {}) {
     archivedAt: "",
     archivedFromDate: "",
     logs: {},
+    reminderTime: input.reminderTime ? normalizeTime(input.reminderTime) : "",
     createdAt: now,
     updatedAt: now,
   };
@@ -222,7 +231,7 @@ export function updateHabitCommand(state, input, options = {}) {
     habit.title = habit.titleHistory.at(-1).title;
     changed = true;
   }
-  if (["type", "goal", "unit", "repeat", "customRepeat"].some((field) => input[field] !== undefined)) {
+  if (["type", "goal", "unit", "repeat", "customRepeat", "weeklyTarget", "numberStep"].some((field) => input[field] !== undefined)) {
     const current = effectiveEntry(habit.configHistory, fromDate) || habit;
     const config = normalizeHabitConfig({ ...current, ...input });
     habit.configHistory = upsertDatedEntry(habit.configHistory, { fromDate, ...config, updatedAt: now });
@@ -234,7 +243,13 @@ export function updateHabitCommand(state, input, options = {}) {
       unit: latest.unit,
       goal: latest.goal,
       numberStep: latest.numberStep || 0,
+      weeklyTarget: latest.weeklyTarget || 3,
     });
+    changed = true;
+  }
+  if (input.reminderTime !== undefined) {
+    habit.reminderTime = input.reminderTime ? normalizeTime(input.reminderTime) : "";
+    markEntityFields(nextState, "habits", habit.id, ["reminderTime"], now);
     changed = true;
   }
   if (!changed) throw new Error("Не указано ни одного изменения привычки");
@@ -510,6 +525,7 @@ function normalizeHabitConfig(input) {
     customRepeat,
     unit: type === "number" ? clean(input.unit).slice(0, 30) : "",
     goal,
+    weeklyTarget: Math.max(1, Math.min(7, Math.round(Number(input.weeklyTarget) || 3))),
     ...(type === "number" && Number.isFinite(Number(input.numberStep)) && Number(input.numberStep) > 0 ? { numberStep: Number(input.numberStep) } : {}),
   };
 }
@@ -651,6 +667,12 @@ function normalizeDate(value) {
     || date.getUTCDate() !== Number(match[3])
   ) throw new Error("Указана несуществующая дата");
   return text;
+}
+
+function normalizeTime(value) {
+  const time = String(value || "");
+  if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time)) throw new Error("Время должно быть в формате HH:mm");
+  return time;
 }
 
 function normalizeRequestId(value) {

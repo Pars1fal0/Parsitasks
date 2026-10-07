@@ -1,11 +1,13 @@
 const ENTITY_TYPES = [
   "tasks", "habits", "goals", "journalEntries", "categories",
   "nutritionFoods", "nutritionMeals", "nutritionTemplates",
+  "notes", "boardItems", "studySubjects", "studyLessons", "studyFiles",
 ];
+const GLOBAL_FIELDS = ["profile", "studyWeekCycle", "nutritionSettings"];
 const MAX_ACTIVITY = 100;
 
 export function recordMcpActivity(beforeState, nextState, details, now = new Date().toISOString()) {
-  const inverse = createInversePatch(beforeState, nextState);
+  const inverse = createInversePatch(beforeState, nextState, details.guard === true);
   const activity = {
     id: `mcp-action-${details.requestId}`,
     requestId: details.requestId,
@@ -72,8 +74,16 @@ export function mergeMcpActivity(local, remote) {
   return normalizeMcpActivity([...byId.values()]);
 }
 
-function createInversePatch(beforeState, nextState) {
-  const patch = { entities: {}, taskOrder: {}, tombstones: {} };
+function createInversePatch(beforeState, nextState, guard) {
+  const patch = { entities: {}, taskOrder: {}, tombstones: {}, globals: {}, expectedTaskOrder: {} };
+  GLOBAL_FIELDS.forEach((field) => {
+    if (!same(beforeState?.[field], nextState?.[field])) {
+      patch.globals[field] = { restore: clone(beforeState?.[field] ?? null), expected: clone(nextState?.[field] ?? null) };
+    }
+  });
+  const beforeHabitOrder = (beforeState?.habits || []).map((item) => item.id);
+  const afterHabitOrder = (nextState?.habits || []).map((item) => item.id);
+  if (!same(beforeHabitOrder, afterHabitOrder)) patch.habitOrder = { restore: beforeHabitOrder, expected: afterHabitOrder };
   ENTITY_TYPES.forEach((type) => {
     const before = mapById(beforeState?.[type]);
     const after = mapById(nextState?.[type]);
@@ -87,7 +97,8 @@ function createInversePatch(beforeState, nextState) {
       else removeIds.push(id);
     });
     if (changedBefore.length || removeIds.length) {
-      patch.entities[type] = { restore: changedBefore, removeIds };
+      patch.entities[type] = { restore: changedBefore, removeIds,
+        ...(guard ? { expected: [...changedBefore.map((item) => item.id), ...removeIds].map((id) => ({ id, value: clone(after.get(id) ?? null) })) } : {}) };
     }
   });
 
@@ -98,7 +109,10 @@ function createInversePatch(beforeState, nextState) {
   orderKeys.forEach((dateKey) => {
     const before = beforeState?.taskOrder?.[dateKey];
     const after = nextState?.taskOrder?.[dateKey];
-    if (!same(before, after)) patch.taskOrder[dateKey] = Array.isArray(before) ? [...before] : null;
+    if (!same(before, after)) {
+      patch.taskOrder[dateKey] = Array.isArray(before) ? [...before] : null;
+      if (guard) patch.expectedTaskOrder[dateKey] = Array.isArray(after) ? [...after] : null;
+    }
   });
 
   ENTITY_TYPES.forEach((type) => {
@@ -115,6 +129,7 @@ function createInversePatch(beforeState, nextState) {
 
 function applyInversePatch(state, patch, now) {
   const normalized = normalizeInversePatch(patch);
+  assertPatchCurrent(state, normalized);
   const restoredIds = Object.fromEntries(ENTITY_TYPES.map((type) => [type, new Map()]));
   ENTITY_TYPES.forEach((type) => {
     const tombstoneChanges = normalized.tombstones[type] || {};
@@ -146,6 +161,20 @@ function applyInversePatch(state, patch, now) {
   (state.tasks || []).forEach((task) => {
     if (restoredIds.categories.has(task.categoryId)) task.categoryId = restoredIds.categories.get(task.categoryId);
     if (restoredIds.tasks.has(task.sourceTaskId)) task.sourceTaskId = restoredIds.tasks.get(task.sourceTaskId);
+    if (restoredIds.studySubjects.has(task.studySubjectId)) task.studySubjectId = restoredIds.studySubjects.get(task.studySubjectId);
+    if (restoredIds.notes.has(task.sourceNoteId)) task.sourceNoteId = restoredIds.notes.get(task.sourceNoteId);
+    task.studyFileIds = (task.studyFileIds || []).map((id) => restoredIds.studyFiles.get(id) || id);
+  });
+  remapReferences(state, restoredIds);
+  if (normalized.habitOrder) {
+    const order = normalized.habitOrder.restore.map((id) => restoredIds.habits.get(id) || id);
+    state.habits.sort((a, b) => (order.includes(a.id) ? order.indexOf(a.id) : order.length) - (order.includes(b.id) ? order.indexOf(b.id) : order.length));
+    state.syncMeta ||= {}; state.syncMeta.habitOrderUpdatedAt = now;
+  }
+  Object.entries(normalized.globals).forEach(([field, change]) => {
+    state[field] = clone(change.restore);
+    if (state[field]) state[field].updatedAt = now;
+    if (field === "profile") Object.values(state.profile?.preferences || {}).forEach((entry) => { entry.updatedAt = now; });
   });
 
   state.taskOrder ||= {};
@@ -222,6 +251,7 @@ function normalizeInversePatch(value) {
     entities[type] = {
       restore: Array.isArray(change.restore) ? change.restore.filter((item) => item?.id).map(clone) : [],
       removeIds: Array.isArray(change.removeIds) ? change.removeIds.map(String).filter(Boolean) : [],
+      ...(Array.isArray(change.expected) ? { expected: change.expected.map(clone) } : {}),
     };
   });
   const taskOrder = {};
@@ -237,7 +267,50 @@ function normalizeInversePatch(value) {
       if (id && (timestamp === null || validTimestamp(timestamp))) tombstones[type][id] = timestamp;
     });
   });
-  return { entities, taskOrder, tombstones };
+  const globals = {};
+  GLOBAL_FIELDS.forEach((field) => { if (source.globals?.[field]) globals[field] = clone(source.globals[field]); });
+  const habitOrder = source.habitOrder && Array.isArray(source.habitOrder.restore) && Array.isArray(source.habitOrder.expected) ? clone(source.habitOrder) : null;
+  const expectedTaskOrder = {};
+  Object.entries(source.expectedTaskOrder || {}).forEach(([date, order]) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date) && (order === null || Array.isArray(order))) expectedTaskOrder[date] = clone(order);
+  });
+  return { entities, taskOrder, tombstones, globals, habitOrder, expectedTaskOrder };
+}
+
+function assertPatchCurrent(state, patch) {
+  for (const [date, order] of Object.entries(patch.expectedTaskOrder)) {
+    if (!same(state.taskOrder?.[date] ?? null, order)) throw new Error("Порядок задач изменился после действия. Отмена не применена.");
+  }
+  if (patch.habitOrder && !same((state.habits || []).map((item) => item.id), patch.habitOrder.expected)) throw new Error("Порядок привычек изменился после действия. Отмена не применена.");
+  for (const [type, change] of Object.entries(patch.entities)) {
+    for (const expected of change.expected || []) {
+      if (!same((state[type] || []).find((item) => item.id === expected.id) ?? null, expected.value)) {
+        throw new Error("После этого действия данные изменились. Отмена не применена, чтобы сохранить новые изменения.");
+      }
+    }
+  }
+  for (const [field, change] of Object.entries(patch.globals)) {
+    if (!same(state[field] ?? null, change.expected)) throw new Error("Настройки изменились после действия. Отмена не применена.");
+  }
+}
+
+function remapReferences(state, ids) {
+  for (const lesson of state.studyLessons || []) lesson.subjectId = ids.studySubjects.get(lesson.subjectId) || lesson.subjectId;
+  for (const file of state.studyFiles || []) file.subjectId = ids.studySubjects.get(file.subjectId) || file.subjectId;
+  for (const note of state.notes || []) {
+    note.subjectId = ids.studySubjects.get(note.subjectId) || note.subjectId;
+    note.taskId = ids.tasks.get(note.taskId) || note.taskId;
+  }
+  const types = { task: "tasks", goal: "goals", note: "notes", subject: "studySubjects", material: "studyFiles" };
+  for (const item of state.boardItems || []) {
+    item.boardId = ids.boardItems.get(item.boardId) || item.boardId;
+    item.sourceId = ids[types[item.sourceType]]?.get(item.sourceId) || item.sourceId;
+  }
+  for (const goal of state.goals || []) {
+    goal.linkedTaskIds = (goal.linkedTaskIds || []).map((id) => ids.tasks.get(id) || id);
+    for (const target of goal.taskTargets || []) target.taskId = ids.tasks.get(target.taskId) || target.taskId;
+    for (const target of goal.habitTargets || []) target.habitId = ids.habits.get(target.habitId) || target.habitId;
+  }
 }
 
 function activityTimestamp(item) {

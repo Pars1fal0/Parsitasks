@@ -3,7 +3,9 @@
   const ENTITY_TYPES = [
     "tasks", "habits", "goals", "journalEntries", "categories",
     "nutritionFoods", "nutritionMeals", "nutritionTemplates",
+    "notes", "boardItems", "studySubjects", "studyLessons", "studyFiles",
   ];
+  const GLOBAL_FIELDS = ["profile", "studyWeekCycle", "nutritionSettings"];
 
   function normalizeActivity(value) {
     if (!Array.isArray(value)) return [];
@@ -53,6 +55,20 @@
 
   function applyPatch(state, value, now) {
     const patch = normalizePatch(value);
+    for (const [date, order] of Object.entries(patch.expectedTaskOrder)) {
+      if (JSON.stringify(state.taskOrder?.[date] ?? null) !== JSON.stringify(order)) throw new Error("Порядок задач изменился после действия. Отмена не применена.");
+    }
+    if (patch.habitOrder && JSON.stringify((state.habits || []).map((item) => item.id)) !== JSON.stringify(patch.habitOrder.expected)) throw new Error("Порядок привычек изменился после действия. Отмена не применена.");
+    for (const [type, change] of Object.entries(patch.entities)) {
+      for (const expected of change.expected || []) {
+        if (JSON.stringify((state[type] || []).find((item) => item.id === expected.id) ?? null) !== JSON.stringify(expected.value)) {
+          throw new Error("После этого действия данные изменились. Отмена не применена, чтобы сохранить новые изменения.");
+        }
+      }
+    }
+    for (const [field, change] of Object.entries(patch.globals)) {
+      if (JSON.stringify(state[field] ?? null) !== JSON.stringify(change.expected)) throw new Error("Настройки изменились после действия. Отмена не применена.");
+    }
     const restoredIds = Object.fromEntries(ENTITY_TYPES.map((type) => [type, new Map()]));
     ENTITY_TYPES.forEach((type) => {
       patch.entities[type]?.restore.forEach((entity) => {
@@ -82,6 +98,34 @@
     (state.tasks || []).forEach((task) => {
       if (restoredIds.categories.has(task.categoryId)) task.categoryId = restoredIds.categories.get(task.categoryId);
       if (restoredIds.tasks.has(task.sourceTaskId)) task.sourceTaskId = restoredIds.tasks.get(task.sourceTaskId);
+      task.studySubjectId = restoredIds.studySubjects.get(task.studySubjectId) || task.studySubjectId;
+      task.sourceNoteId = restoredIds.notes.get(task.sourceNoteId) || task.sourceNoteId;
+      task.studyFileIds = (task.studyFileIds || []).map((id) => restoredIds.studyFiles.get(id) || id);
+    });
+    for (const lesson of state.studyLessons || []) lesson.subjectId = restoredIds.studySubjects.get(lesson.subjectId) || lesson.subjectId;
+    for (const file of state.studyFiles || []) file.subjectId = restoredIds.studySubjects.get(file.subjectId) || file.subjectId;
+    for (const note of state.notes || []) {
+      note.subjectId = restoredIds.studySubjects.get(note.subjectId) || note.subjectId;
+      note.taskId = restoredIds.tasks.get(note.taskId) || note.taskId;
+    }
+    const types = { task: "tasks", goal: "goals", note: "notes", subject: "studySubjects", material: "studyFiles" };
+    for (const item of state.boardItems || []) {
+      item.boardId = restoredIds.boardItems.get(item.boardId) || item.boardId;
+      item.sourceId = restoredIds[types[item.sourceType]]?.get(item.sourceId) || item.sourceId;
+    }
+    for (const goal of state.goals || []) {
+      goal.linkedTaskIds = (goal.linkedTaskIds || []).map((id) => restoredIds.tasks.get(id) || id);
+      for (const target of goal.taskTargets || []) target.taskId = restoredIds.tasks.get(target.taskId) || target.taskId;
+      for (const target of goal.habitTargets || []) target.habitId = restoredIds.habits.get(target.habitId) || target.habitId;
+    }
+    if (patch.habitOrder) {
+      const order = patch.habitOrder.restore.map((id) => restoredIds.habits.get(id) || id);
+      state.habits.sort((a, b) => (order.includes(a.id) ? order.indexOf(a.id) : order.length) - (order.includes(b.id) ? order.indexOf(b.id) : order.length));
+    }
+    Object.entries(patch.globals).forEach(([field, change]) => {
+      state[field] = clone(change.restore);
+      if (state[field]) state[field].updatedAt = now;
+      if (field === "profile") Object.values(state.profile?.preferences || {}).forEach((entry) => { entry.updatedAt = now; });
     });
     state.taskOrder ||= {};
     Object.entries(patch.taskOrder).forEach(([date, order]) => {
@@ -108,6 +152,7 @@
       entities[type] = {
         restore: Array.isArray(change.restore) ? change.restore.filter((item) => item?.id).map(clone) : [],
         removeIds: Array.isArray(change.removeIds) ? change.removeIds.map(String).filter(Boolean) : [],
+        ...(Array.isArray(change.expected) ? { expected: change.expected.map(clone) } : {}),
       };
     });
     const taskOrder = {};
@@ -123,7 +168,14 @@
         if (id && (value === null || validTimestamp(value))) tombstones[type][id] = value;
       });
     });
-    return { entities, taskOrder, tombstones };
+    const globals = {};
+    GLOBAL_FIELDS.forEach((field) => { if (source.globals?.[field]) globals[field] = clone(source.globals[field]); });
+    const habitOrder = source.habitOrder && Array.isArray(source.habitOrder.restore) && Array.isArray(source.habitOrder.expected) ? clone(source.habitOrder) : null;
+    const expectedTaskOrder = {};
+    Object.entries(source.expectedTaskOrder || {}).forEach(([date, order]) => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(date) && (order === null || Array.isArray(order))) expectedTaskOrder[date] = clone(order);
+    });
+    return { entities, taskOrder, tombstones, globals, habitOrder, expectedTaskOrder };
   }
 
   function validTimestamp(value) {

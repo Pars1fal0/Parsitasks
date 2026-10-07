@@ -7,6 +7,39 @@ const TABLE = "google_drive_connections";
 const COOKIE = "parsitasks_google_drive_oauth";
 const MAX_CHUNK = 5 * 1024 * 1024;
 
+export async function readDriveMaterial(env, auth, file, fetchFn = fetch) {
+  if (!/^[A-Za-z0-9_-]+$/.test(file.googleId || "")) throw new Error("Некорректный файл");
+  const connection = await readConnection(env, auth, fetchFn);
+  if (!connection?.folder_id) throw new Error("Подключите Google Drive");
+  const token = await googleToken(env, connection, fetchFn);
+  const endpoint = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(file.googleId)}`;
+  const headers = { Authorization: `Bearer ${token}` };
+  const response = await fetchFn(`${endpoint}?fields=id,name,mimeType,size,parents`, { headers, redirect: "error" });
+  if (!response.ok) throw new Error("Google Drive не разрешил чтение материала");
+  const metadata = await response.json();
+  if (!metadata.parents?.includes(connection.folder_id)) throw new Error("Файл находится вне папки Parsitasks этого аккаунта");
+  const result = { fileId: file.id, name: metadata.name, mime: metadata.mimeType, size: Number(metadata.size) || 0,
+    url: `https://drive.google.com/file/d/${encodeURIComponent(file.googleId)}/view` };
+  if (!["text/plain", "text/markdown", "text/csv", "application/json"].includes(metadata.mimeType) || result.size > 256 * 1024) {
+    return { ...result, contentAvailable: false, reason: "MCP читает только текстовые материалы до 256 КиБ. PDF, документы Office и большие файлы открывайте в Drive." };
+  }
+  const content = await fetchFn(`${endpoint}?alt=media`, { headers, redirect: "error" });
+  if (!content.ok || !content.body) throw new Error("Не удалось получить содержимое материала");
+  const reader = content.body.getReader();
+  const chunks = []; let size = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read(); if (done) break;
+      size += value.byteLength;
+      if (size > 256 * 1024) throw new Error("Материал превышает лимит чтения MCP");
+      chunks.push(value);
+    }
+  } finally { await reader.cancel(); }
+  const bytes = new Uint8Array(size); let offset = 0;
+  chunks.forEach((chunk) => { bytes.set(chunk, offset); offset += chunk.byteLength; });
+  return { ...result, contentAvailable: true, text: new TextDecoder("utf-8", { fatal: true }).decode(bytes) };
+}
+
 export async function handleGoogleDriveRequest(request, env, options = {}) {
   const url = new URL(request.url);
   const fetchFn = options.fetch || fetch;

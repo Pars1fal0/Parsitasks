@@ -3,6 +3,7 @@ import habitSchedule from "../app/src/habits/habit-schedule.js";
 import taskChecklist from "../app/src/tasks/task-checklist.js";
 import goalActivity from "../app/src/goals/goal-activity.js";
 import documentState from "../app/src/core/document-state.js";
+import studyModel from "../app/src/study/study-model.js";
 
 export const normalizeCustomRepeat = recurrence.normalizeCustomRepeat;
 
@@ -26,6 +27,9 @@ export function getTodayOverview(state, dateKey) {
     date: dateKey,
     tasks,
     habits,
+    lessons: studyModel.eventsForDate(state, dateKey),
+    deadlines: (state.tasks || []).filter((task) => task.dueDate === dateKey).map((task) => ({ taskId: task.id, title: task.title,
+      workDate: task.date, dueDate: task.dueDate, dueTime: task.dueTime || "", completed: task.completed?.[task.date || task.dueDate] === true })),
     activeGoals: goals,
     summary: {
       tasksTotal: tasks.length,
@@ -84,6 +88,7 @@ export function searchKnowledge(state, query, options = {}) {
   }
 
   for (const entry of Array.isArray(state?.journalEntries) ? state.journalEntries : []) {
+    if (state?.profile?.journalAccess?.read === false) continue;
     if (entry?.text && matchesTokens(`${entry.date} ${entry.text}`, tokens)) {
       results.push({
         id: `journal:${entry.id}`,
@@ -94,12 +99,33 @@ export function searchKnowledge(state, query, options = {}) {
     }
   }
 
-  return { results: results.slice(0, limit) };
+  const subjects = new Map((state.studySubjects || []).map((item) => [item.id, item.name]));
+  const extraTypes = { note: "notes", board: "boardItems", subject: "studySubjects", lesson: "studyLessons", material: "studyFiles", category: "categories" };
+  for (const [type, collection] of Object.entries(extraTypes)) {
+    for (const item of state[collection] || []) {
+      const title = item.title || item.name || (type === "lesson" ? subjects.get(item.subjectId) : item.text) || type;
+      if (!matchesTokens([title, item.body, item.text, item.teacher, item.room, subjects.get(item.subjectId)].join(" "), tokens)) continue;
+      results.push({ id: `${type}:${item.id}`, title: String(title).slice(0, 200), type,
+        url: `${baseUrl}/app#${type === "note" ? "journal" : type === "board" ? "board" : type === "category" ? "tasks" : "study"}` });
+    }
+  }
+  const score = (item) => tokens.reduce((total, token) => total + (item.title.toLocaleLowerCase("ru").includes(token) ? 1 : 0), 0);
+  return { results: results.filter((item) => !options.types || options.types.includes(item.type))
+    .sort((a, b) => score(b) - score(a)).slice(0, limit) };
 }
 
 export function fetchKnowledge(state, compoundId, options = {}) {
-  const [type, id] = String(compoundId || "").split(":");
+  const separator = String(compoundId || "").indexOf(":");
+  const type = String(compoundId || "").slice(0, separator);
+  const id = String(compoundId || "").slice(separator + 1);
   const baseUrl = cleanText(options.baseUrl).replace(/\/+$/, "");
+  const extraTypes = { note: "notes", board: "boardItems", subject: "studySubjects", lesson: "studyLessons", material: "studyFiles", category: "categories" };
+  if (id && extraTypes[type]) {
+    const item = (state[extraTypes[type]] || []).find((entry) => entry.id === id);
+    if (!item) return null;
+    return { id: compoundId, title: String(item.title || item.name || item.text || type).slice(0, 200), text: JSON.stringify(item),
+      url: `${baseUrl}/app#${type === "note" ? "journal" : type === "board" ? "board" : type === "category" ? "tasks" : "study"}`, metadata: { type } };
+  }
   if (!id || !["task", "habit", "goal", "journal"].includes(type)) return null;
 
   if (type === "task") {
@@ -140,6 +166,7 @@ export function fetchKnowledge(state, compoundId, options = {}) {
   }
 
   if (type === "journal") {
+    if (state?.profile?.journalAccess?.read === false) return null;
     const entry = (state.journalEntries || []).find((item) => item.id === id);
     if (!entry) return null;
     return {
@@ -185,7 +212,7 @@ export function createTaskCommand(state, input, options = {}) {
   if (existing) return { changed: false, state: nextState, task: existing, created: false };
 
   const now = options.now || new Date().toISOString();
-  const date = normalizeDateKey(input.date || options.today);
+  const date = input.date === null ? null : normalizeDateKey(input.date || options.today);
   const title = cleanText(input.title).slice(0, 200);
   if (!title) throw new Error("Название задачи не может быть пустым");
 
@@ -213,17 +240,27 @@ export function createTaskCommand(state, input, options = {}) {
     notified: {},
     createdAt: now,
     updatedAt: now,
+    dueDate: input.dueDate ? normalizeDateKey(input.dueDate) : "",
+    dueTime: input.dueTime ? normalizeTime(input.dueTime) : "",
+    dueReminderOffset: input.dueReminderOffset || "none",
+    checklist: taskChecklist.normalizeItems((input.checklist || []).map((title, index) => ({ id: `mcp-sub-${requestId.slice(0, 80)}-${index}`, title }))),
+    checklistLogs: {},
   };
+
+  if (task.dueTime && !task.dueDate) throw new Error("Для времени сдачи нужна дата сдачи");
+  if (date === null && (task.repeat !== "none" || schedule.mode !== "none")) throw new Error("Задаче в «Позже» нельзя назначить повтор или время работы без даты");
 
   if (task.repeatUntil && task.repeatUntil < task.date) {
     throw new Error("Дата окончания повтора не может быть раньше даты задачи");
   }
 
   nextState.tasks.push(task);
-  const order = new Set(Array.isArray(nextState.taskOrder[date]) ? nextState.taskOrder[date] : []);
-  order.add(task.id);
-  nextState.taskOrder[date] = [...order];
-  nextState.syncMeta.taskOrder[date] = now;
+  if (date) {
+    const order = new Set(Array.isArray(nextState.taskOrder[date]) ? nextState.taskOrder[date] : []);
+    order.add(task.id);
+    nextState.taskOrder[date] = [...order];
+    nextState.syncMeta.taskOrder[date] = now;
+  }
   return { changed: true, state: nextState, task, created: true };
 }
 
@@ -344,6 +381,13 @@ function serializeTask(task, dateKey, categories) {
     endTime: task.endTime || "",
     dueDate: task.dueDate || "",
     dueTime: task.dueTime || "",
+    dueReminderOffset: task.dueReminderOffset || "none",
+    reminderOffset: task.reminderOffset || "none",
+    categoryId: task.categoryId || "",
+    sourceNoteId: task.sourceNoteId || "",
+    studySubjectId: task.studySubjectId || "",
+    studyDetails: task.studyDetails || "",
+    studyFileIds: task.studyFileIds || [],
     priority: task.priority || "medium",
     category: categories.get(task.categoryId)?.name || "",
     completed: task.completed?.[dateKey] === true,
@@ -371,6 +415,7 @@ function serializeHabit(habit, dateKey) {
     frozen: status === "frozen",
     status,
     reminderTime: habit.reminderTime || "",
+    numberStep: config.numberStep || habit.numberStep || 0,
     weeklyProgress: habitSchedule.weekProgress(habit, dateKey, dateKey),
   };
 }
@@ -387,6 +432,8 @@ function serializeGoal(goal, state, todayKey) {
     dueDate: goal.dueDate || "",
     why: goal.why || "",
     status: goal.status || "active",
+    paused: goal.paused === true,
+    archived: goal.archived === true,
     progress,
     steps: steps.map((step) => ({ id: step.id, title: step.title, done: step.done === true })),
     linkedTaskIds: goal.linkedTaskIds || [],
