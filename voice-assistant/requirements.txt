@@ -1,3 +1,0 @@
-vosk==0.3.45
-sounddevice==0.5.5
-pywin32==312

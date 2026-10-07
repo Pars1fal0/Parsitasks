@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.34.18
+
+- Из проекта удалены исходники, установщик, сценарии запуска и тест отдельного Windows-помощника; очищены инструкции и упоминания в документации.
+
 ## 0.34.17
 
 - Восстановление пароля проверяет сессию сервером до показа формы; токены сразу удаляются из URL, а безопасная отметка в текущей вкладке сохраняет режим при перезагрузке. Просроченный или повреждённый callback не заменяет существующую сессию.
@@ -470,7 +474,6 @@
 - Account deletion now requires typing the signed-in email and cloud-only controls stay disabled while signed out.
 - Browser notification limits are stated explicitly instead of implying closed-tab background delivery.
 - Browser and MCP task repeats now use the same normalization implementation.
-- The Windows voice assistant now recognizes partial dictation and send phrases without waiting indefinitely for Vosk to finalize an utterance.
 - Accessibility E2E now runs against populated tasks, overlapping timeline blocks, habits, goals, and archive data.
 
 ## 0.17.0
@@ -530,7 +533,6 @@
 
 - Merge independently edited task, goal, habit, and category fields across devices instead of choosing one entire record.
 - Keep cloud delivery queued when a browser storage quota error leaves the newest state only in memory.
-- Wait for the Codex window to finish restoring or maximizing before voice input clicks the composer.
 - Keep interface preferences explicitly device-local instead of uploading unused remote UI settings.
 - Improved the 320px task form, bottom navigation labels, goal cards, timeline menus, and sticky mobile header.
 - Added regression coverage for field-level synchronization, storage quota recovery, and narrow schedule controls.
@@ -551,8 +553,6 @@
 
 - Fixed task, habit, goal, overdue, navigation, and timeline menus being clipped by cards or viewport edges.
 - Added browser-level regression coverage for floating card menus.
-- Made the optional voice assistant prefer the largest visible Codex window, ignore cloaked windows, maximize undersized windows, and verify focus before typing.
-- Disabled voice auto-send by default so recognition mistakes require an explicit `Отправь` or `Отправить`.
 - Added an opt-in read-only live Supabase check for Auth, the `rhythm_states` table, and RLS.
 - Extracted settings import, export, and reset behavior from `app.js` into a tested module.
 - Updated release metadata and documentation for the current application structure.
@@ -563,7 +563,6 @@
 - Kept rendering scoped to the active section and added browser layout containment for large archives.
 - Separated touch resize zones on 15-minute timeline blocks so their handles no longer compete for the same area.
 - Reworded existing synchronization controls in user-facing language without changing their behavior.
-- Added early dependency diagnostics for the optional Windows voice assistant.
 
 ## 0.13.1
 
@@ -585,10 +584,6 @@
 - Reloading now preserves the active section, selected calendar period, browsed date, task filter, and archive period.
 - A view left on today still follows the calendar when the app is reopened on a later day.
 - Increased small timeline, calendar, and synchronization controls to mobile-friendly touch targets.
-
-## 0.12.10
-
-- Voice submission now accepts `Отправь`, `Отправить`, and `Отправляй` while remaining compatible with custom phrases.
 
 ## 0.12.9
 
@@ -626,7 +621,6 @@
 
 ## 0.12.4
 
-- Added an isolated low-load Windows voice assistant with offline Russian wake-word recognition and Win32-based Codex prompt submission.
 - Removed the ineffective simple/advanced interface mode and its obsolete persisted setting.
 - Automatically merge duplicate categories by normalized name and preserve task-category links across devices.
 - Fixed deleted records reappearing during two-device synchronization when device clocks or migrated timestamps differ.

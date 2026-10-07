@@ -6,12 +6,6 @@ web-dist/
 .wrangler/
 .wrangler-*.log
 node_modules/
-voice-assistant/.venv/
-voice-assistant/__pycache__/
-voice-assistant/model/
-voice-assistant/config.json
-voice-assistant/*.log
-voice-assistant/*.pid
 .security-test.env
 .backup.env
 *.parsibak
