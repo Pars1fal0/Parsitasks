@@ -319,7 +319,8 @@ body.has-expanded-calendar :is(.sidebar, .topbar) { visibility: hidden; }
   body { touch-action: pan-x pan-y; }
   body[data-view="overview"] .topbar { gap: 4px; margin-bottom: 8px; }
   body[data-view="overview"] .title-block { min-height: 44px; display: flex; align-items: center; padding-right: 50px; }
-  body[data-view="overview"] #saveStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  body[data-view="overview"] .title-block:has(#saveStatus[data-state="error"]) { display: block; }
+  body[data-view="overview"] #saveStatus:not([data-state="error"]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .calendar-time-scroll { height: max(280px, calc(100dvh - var(--calendar-mobile-top, 250px) - 140px - env(safe-area-inset-bottom))); min-height: 280px; touch-action: pan-x pan-y; }
   .calendar-time-grid { user-select: none; -webkit-user-select: none; }
   .calendar-schedule-toolbar { margin-bottom: 8px; }

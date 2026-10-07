@@ -528,7 +528,6 @@
         hidePreview();
         if (!resizing) lesson ? ctx.openLesson(lesson, date) : ctx.editTask(task, date);
       });
-      open.setAttribute("aria-label", `${entry.timeLabel} · ${task.title}`);
       if (height >= 46) open.title = `${entry.timeLabel} · ${task.title}`;
       open.append(element("small", "", entry.timeLabel), element("strong", "", task.title));
       if (lesson) open.append(element("small", "", [lesson.typeLabel, lesson.room].filter(Boolean).join(" · ")));
@@ -712,7 +711,7 @@
             if (untimedOpen) section?.querySelector(".calendar-untimed-close")?.focus({ preventScroll: true });
           } else { section?.scrollIntoView({ block: "start", behavior: "smooth" }); section?.focus({ preventScroll: true }); }
         });
-        jump.setAttribute("aria-label", description); jump.title = description; jump.dataset.calendarFocus = "untimed";
+        jump.setAttribute("aria-label", `${jump.textContent}. ${description}`); jump.title = description; jump.dataset.calendarFocus = "untimed";
         jump.setAttribute("aria-expanded", String(expanded && untimedOpen));
         controls.prepend(jump);
       }
@@ -724,9 +723,9 @@
           const count = models[index].timedTasks.length + models[index].unscheduledTasks.length;
           const dueCount = ctx.getState().tasks.filter((task) => task.dueDate === day).length;
           const item = button(`calendar-week-strip-day${day === date ? " is-selected" : ""}`, "", () => ctx.selectDate(day));
-          item.append(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))), element("strong", "", String(new Date(`${day}T12:00:00`).getDate())), element("span", "", count ? `${count}` : "—"));
+          item.append(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))), " ", element("strong", "", String(new Date(`${day}T12:00:00`).getDate())), " ", element("span", "", count ? `${count}` : "—"));
           item.classList.toggle("has-deadlines", dueCount > 0); item.setAttribute("aria-pressed", String(day === date));
-          item.setAttribute("aria-label", `${ctx.formatLongDate(day)}: ${count} дел и занятий, ${dueCount} сроков сдачи`);
+          item.setAttribute("aria-label", `${item.textContent}. ${ctx.formatLongDate(day)}: ${count} дел и занятий, ${dueCount} сроков сдачи`);
           strip.append(item);
         });
         root.append(strip);
@@ -755,8 +754,8 @@
         const rangeStart = Math.min(4, Math.max(0, dates.indexOf(date) - 1));
         column.classList.toggle("is-in-range", index >= rangeStart && index < rangeStart + 3);
         const heading = button(`calendar-time-heading${day === date ? " is-selected" : ""}${day === ctx.todayKey() ? " is-today" : ""}`, ctx.formatShortDate(day), () => ctx.selectDate(day));
-        heading.prepend(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))));
-        heading.setAttribute("aria-label", ctx.formatLongDate(day));
+        heading.prepend(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))), " ");
+        heading.setAttribute("aria-label", `${heading.textContent}. ${ctx.formatLongDate(day)}`);
         heading.setAttribute("aria-pressed", String(day === date));
         column.append(heading);
         const hours = element("div", "calendar-time-day"); hours.dataset.date = day;

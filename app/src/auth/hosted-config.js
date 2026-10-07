@@ -24,7 +24,8 @@
       if (!/^https:\/\/[^/]+\.supabase\.co$/i.test(supabaseUrl) || !anonKey) {
         return { managed: false };
       }
-      return { anonKey, managed: true, supabaseUrl };
+      return { anonKey, managed: true, supabaseUrl,
+        ...(value.turnstileSiteKey ? { turnstileSiteKey: String(value.turnstileSiteKey) } : {}) };
     } catch {
       return { managed: false };
     } finally {

@@ -1,11 +1,13 @@
 ﻿(function (global) {
+  const MAX_IMPORT_BYTES = 16 * 1024 * 1024;
   function createImportExport(ctx) {
     function exportData() {
+      const exportState = ctx.storage.getUnsupportedState?.() || ctx.getState();
       const payload = {
         app: "Parsitasks",
-        schemaVersion: ctx.schemaVersion,
+        schemaVersion: Math.max(Number(ctx.schemaVersion) || 1, Number(exportState.schemaVersion) || 0),
         exportedAt: new Date().toISOString(),
-        state: ctx.getState(),
+        state: exportState,
       };
       createBackup({ payload, silent: true });
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -26,7 +28,9 @@
 
       const owner = ctx.getUserId?.();
       try {
+        if (file.size > MAX_IMPORT_BYTES) throw new Error("import-too-large");
         const text = await file.text();
+        if (new TextEncoder().encode(text).byteLength > MAX_IMPORT_BYTES) throw new Error("import-too-large");
         const parsed = JSON.parse(text);
         const candidate = extractImportState(parsed);
         const importedState = ctx.normalizeState(candidate);
@@ -34,11 +38,13 @@
           .map(([field, label]) => ({ label, value: importedState[field]?.length || 0 }));
         const exported = Number.isFinite(Date.parse(parsed.exportedAt)) ? new Date(parsed.exportedAt).toLocaleString("ru-RU") : "не указана";
         if (ctx.getUserId?.() !== owner) return;
+        const expectedState = currentRevision();
         const confirmed = await ctx.confirmAction?.({ title: "Заменить данные из файла?",
           message: "Все текущие данные будут заменены. Сначала сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.",
           details: [{ label: "Дата копии", value: exported }, ...counts],
           confirmLabel: "Заменить данные", tone: "danger" });
         if (confirmed !== true || ctx.getUserId?.() !== owner) return;
+        if (currentRevision() !== expectedState) throw new Error("workspace-changed");
         const undo = ctx.createUndoSnapshot();
         const safetyBackup = createImportSafetyBackup(undo);
         if (safetyBackup?.ok === false) throw new Error("safety-backup-failed");
@@ -50,8 +56,8 @@
         }
         ctx.render();
         ctx.showToast("Данные импортированы. Предыдущие данные сохранены", { undo });
-      } catch {
-        ctx.showToast("Не удалось импортировать JSON");
+      } catch (error) {
+        ctx.showToast(importError(error));
       } finally {
         ctx.els.importFile.value = "";
       }
@@ -139,6 +145,8 @@
       }
 
       const backupDate = backup.exportedAt ? formatBackupDate(backup.exportedAt) : "без даты";
+      try { checkImportVersion(backup); } catch (error) { ctx.showToast(importError(error)); return; }
+      const expectedState = currentRevision();
       const message = `Восстановить данные из локальной резервной копии (${backupDate})? Текущий план будет заменён.`;
       const confirmed = await ctx.confirmAction({
             confirmLabel: "Восстановить",
@@ -147,6 +155,7 @@
             title: "Восстановить резервную копию?",
           });
       if (!confirmed || ctx.getUserId?.() !== owner) return;
+      if (currentRevision() !== expectedState) { ctx.showToast(importError(new Error("workspace-changed"))); return; }
 
       const undo = ctx.createUndoSnapshot();
       const safetyBackup = createImportSafetyBackup(undo);
@@ -166,7 +175,26 @@
     }
 
     function loadBackup() {
-      return ctx.storage.loadBackup();
+      return ctx.storage.loadBackup({ owner: ctx.getUserId?.() ?? ctx.storage.getOwner?.() ?? "" });
+    }
+
+    function currentRevision() {
+      return JSON.stringify(ctx.getState?.());
+    }
+
+    function checkImportVersion(parsed) {
+      for (const version of [parsed?.schemaVersion, parsed?.state?.schemaVersion]) {
+        if (version === undefined) continue;
+        if (!Number.isInteger(version) || version < 1) throw new Error("invalid-schema");
+        if (Number.isInteger(ctx.schemaVersion) && version > ctx.schemaVersion) throw new Error("newer-schema");
+      }
+    }
+
+    function importError(error) {
+      if (error?.message === "newer-schema") return "Копия создана более новой версией приложения. Обнови приложение перед восстановлением";
+      if (error?.message === "workspace-changed") return "Данные изменились во время подтверждения. Повтори импорт или восстановление";
+      if (error?.message === "import-too-large") return "JSON больше 16 МБ. Импорт отменён, текущие данные сохранены";
+      return "Не удалось импортировать JSON";
     }
 
     function updateBackupStatus() {
@@ -190,6 +218,7 @@
     }
 
     function extractImportState(parsed) {
+      checkImportVersion(parsed);
       const candidate = parsed?.state ?? parsed;
       if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
         throw new Error("invalid-import");

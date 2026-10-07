@@ -1,5 +1,6 @@
 const TITLE = "[Monitoring] Parsitasks availability incident";
-async function updateIncident({ token, repository, runId, healthy, fetchImpl = fetch }) {
+const { sendAlert } = require("./monitor-public.cjs");
+async function updateIncident({ token, repository, runId, healthy, webhook, fetchImpl = fetch }) {
   if (!token || !/^[\w.-]+\/[\w.-]+$/.test(repository || "") || !/^\d+$/.test(String(runId))) throw new Error("Invalid incident configuration");
   const base = `https://api.github.com/repos/${repository}`;
   async function request(route, method = "GET", body) {
@@ -19,15 +20,24 @@ async function updateIncident({ token, repository, runId, healthy, fetchImpl = f
   const runUrl = `https://github.com/${repository}/actions/runs/${runId}`;
   if (healthy) {
     if (!issue) return { action: "none" };
+    if (webhook) await sendAlert({ webhook, event: "recovered", fetchImpl });
     await request(`/issues/${issue.number}/comments`, "POST", { body: `Public checks have recovered. [Verification run](${runUrl}). This does not confirm authenticated sync or email delivery.` });
     await request(`/issues/${issue.number}`, "PATCH", { state: "closed", state_reason: "completed" });
     return { action: "resolved" };
   }
-  if (issue) return { action: "already-open" };
-  await request("/issues", "POST", { title: TITLE, body: `Public availability checks failed twice. [Review the workflow run](${runUrl}).\n\nNo user content, account identifiers, credentials or raw provider errors are included. Investigate before rolling back; keep database security migrations in place.` });
+  const marker = "External outage alert delivered.";
+  if (issue) {
+    if (webhook && !String(issue.body || "").includes(marker)) {
+      await sendAlert({ webhook, event: "outage", fetchImpl });
+      await request(`/issues/${issue.number}`, "PATCH", { body: `${issue.body || ""}\n\n${marker}` });
+    }
+    return { action: "already-open" };
+  }
+  if (webhook) await sendAlert({ webhook, event: "outage", fetchImpl });
+  await request("/issues", "POST", { title: TITLE, body: `Public availability checks failed twice. [Review the workflow run](${runUrl}).\n\nNo user content, account identifiers, credentials or raw provider errors are included. Investigate before rolling back; keep database security migrations in place.${webhook ? `\n\n${marker}` : ""}` });
   return { action: "opened" };
 }
 module.exports = { updateIncident };
 if (require.main === module) updateIncident({ token: process.env.GITHUB_TOKEN, repository: process.env.GITHUB_REPOSITORY,
-  runId: process.env.GITHUB_RUN_ID, healthy: process.env.PARSITASKS_HEALTHY === "true" })
+  runId: process.env.GITHUB_RUN_ID, healthy: process.env.PARSITASKS_HEALTHY === "true", webhook: process.env.PARSITASKS_INCIDENT_WEBHOOK })
   .then((result) => console.log(`incident ${result.action}`)).catch((error) => { console.error(error.message); process.exitCode = 1; });

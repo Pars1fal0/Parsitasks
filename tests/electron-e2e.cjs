@@ -285,6 +285,11 @@ const { _electron: electron } = require("playwright-core");
         const transaction = db.transaction("assets", "readwrite");
         transaction.objectStore("assets").put({
           id: assetId,
+          assetId,
+          owner: "",
+          remotePath: "test-user/e2e-cached-board-image.png",
+          cacheOnly: true,
+          lastAccessedAt: Date.now(),
           blob,
           mime: "image/png",
           name: "icon-192.png",
@@ -387,7 +392,12 @@ const { _electron: electron } = require("playwright-core");
       const viewport = document.querySelector("#boardViewport").getBoundingClientRect();
       return item.right > viewport.left && item.left < viewport.right && item.bottom > viewport.top && item.top < viewport.bottom;
     });
-    assert.equal(boardContentVisible, true, "board content must stay in view after a mobile resize");
+    const boardGeometry = await page.evaluate(() => ({
+      items: [...document.querySelectorAll(".board-item")].map((node) => node.getBoundingClientRect().toJSON()),
+      viewport: document.querySelector("#boardViewport").getBoundingClientRect().toJSON(),
+      transform: document.querySelector("#boardWorld").style.transform,
+    }));
+    assert.equal(boardContentVisible, true, `board content must stay in view after a mobile resize: ${JSON.stringify(boardGeometry)}`);
     await page.locator(".nav-more-summary").click();
     await page.locator('.nav-more-menu .nav-tab[data-view="archive"]').click();
     const archiveToolbarFits = await page.locator(".archive-toolbar").evaluate((node) => node.scrollWidth <= node.clientWidth + 1);

@@ -18,6 +18,18 @@ module.exports = [
     const compiled = new Module(filename, module);
     compiled.filename = filename; compiled.paths = Module._nodeModulePaths(__dirname);
     compiled._compile(bundle.outputFiles[0].text, filename);
+    const worker = compiled.exports.default;
+    const env = { SUPABASE_URL: "https://synthetic.supabase.co", SUPABASE_PUBLISHABLE_KEY: "sb_publishable_synthetic",
+      TURNSTILE_SITE_KEY: "synthetic_site_key", TURNSTILE_SECRET_KEY: "must-not-leak",
+      ASSETS: { fetch: async () => new Response("synthetic page", { headers: { "Content-Security-Policy": "default-src 'self'" } }) } };
+    const configResponse = await worker.fetch(new Request("https://example.test/api/public-config"), env, {});
+    assert.deepEqual(await configResponse.json(), { supabaseUrl: env.SUPABASE_URL, anonKey: env.SUPABASE_PUBLISHABLE_KEY, turnstileSiteKey: env.TURNSTILE_SITE_KEY });
+    for (const route of ["/auth", "/auth.html"]) {
+      const response = await worker.fetch(new Request(`https://example.test${route}`), env, {});
+      assert.match(response.headers.get("Content-Security-Policy"), /script-src 'self' https:\/\/challenges.cloudflare.com/);
+    }
+    const appResponse = await worker.fetch(new Request("https://example.test/app"), env, {});
+    assert.equal(appResponse.headers.get("Content-Security-Policy"), "default-src 'self'", "CAPTCHA does not relax the workspace CSP");
     const state = { tasks: [{ id: "synthetic", title: "Synthetic task", date: "2026-10-06", repeat: "none", completed: {} }], habits: [], goals: [] };
     const server = compiled.exports.createParsitasksServer({ store: { read: async () => ({ state }), write: async () => { throw new Error("No database writes allowed"); } } });
     const client = new Client({ name: "isolated-sdk-check", version: "1.0.0" });

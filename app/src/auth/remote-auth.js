@@ -48,13 +48,13 @@
       return session;
     }
 
-    async function signUp(email, password) {
+    async function signUp(email, password, authOptions = {}) {
       requireStrongPassword(password);
-      return authenticate("signup", { email: cleanEmail(email), password });
+      return authenticate("signup", { email: cleanEmail(email), password, ...captchaPayload(authOptions) });
     }
 
-    async function signIn(email, password) {
-      return authenticate("token?grant_type=password", { email: cleanEmail(email), password });
+    async function signIn(email, password, authOptions = {}) {
+      return authenticate("token?grant_type=password", { email: cleanEmail(email), password, ...captchaPayload(authOptions) });
     }
 
     function createOAuthUrl(provider, redirectTo) {
@@ -165,7 +165,7 @@
       }).catch(() => {});
     }
 
-    async function resetPassword(email) {
+    async function resetPassword(email, authOptions = {}) {
       const config = requireConfig();
       const redirectTo = getRecoveryRedirectUrl();
       const url = new URL(`${config.supabaseUrl}/auth/v1/recover`);
@@ -175,6 +175,7 @@
         headers: authHeaders(config),
         body: JSON.stringify({
           email: cleanEmail(email),
+          ...captchaPayload(authOptions),
         }),
       });
       const data = await readResponse(response);
@@ -324,6 +325,10 @@
       if (!global.history?.replaceState || !global.location) return;
       global.history.replaceState(null, "", `${global.location.pathname}${global.location.search}`);
     }
+  }
+
+  function captchaPayload(options = {}) {
+    return options.captchaToken ? { gotrue_meta_security: { captcha_token: String(options.captchaToken) } } : {};
   }
 
   function authHeaders(config) {

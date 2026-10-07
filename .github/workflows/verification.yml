@@ -16,7 +16,7 @@ concurrency:
 jobs:
   verify:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     outputs:
       candidate_seal: ${{ steps.seal.outputs.candidate_seal_sha256 }}
     steps:
@@ -59,6 +59,8 @@ jobs:
         run: npm run test:save-failures
       - name: Verify storage failure and backup recovery
         run: npm run test:reliability
+      - name: Verify image cache ownership, retention and transaction failures
+        run: npm run test:board-cache
       - name: Verify cloud recovery and account deletion with mocked accounts
         run: npm run test:account-recovery
       - name: Verify password recovery with all Auth requests mocked
@@ -121,8 +123,7 @@ jobs:
     needs: verify
     if: >-
       github.event_name != 'pull_request' &&
-      github.ref == 'refs/heads/master' &&
-      vars.PARSITASKS_GATED_DEPLOY_ENABLED == '1'
+      github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
@@ -162,6 +163,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Deploy the prebuilt candidate
         run: |
+          npm run verify:database
           test -n "$CLOUDFLARE_API_TOKEN" && test -n "$CLOUDFLARE_ACCOUNT_ID"
           npx --no-install wrangler deploy --config .release-candidate/wrangler.json --no-bundle
         env:

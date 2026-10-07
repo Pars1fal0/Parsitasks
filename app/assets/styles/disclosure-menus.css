@@ -42,7 +42,8 @@
 .goal-menu-popover,
 .overdue-more-menu,
 .nav-more-menu {
-  translate: var(--menu-shift-x, 0) 0;
+  transform: translateX(var(--menu-shift-x, 0));
+  max-height: min(var(--menu-max-height, calc(100vh - 24px)), calc(100vh - 24px));
 }
 
 .timeline-task-menu-wrap.opens-up .timeline-task-menu {

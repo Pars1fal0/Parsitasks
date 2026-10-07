@@ -10,6 +10,7 @@ const APP_SHELL = [
   "assets/styles/auth.css",
   "assets/styles/oauth-consent.css",
   "src/auth/auth-page.js",
+  "src/auth/auth-captcha.js",
   "assets/images/google-g.svg",
   "index.html",
   "src/auth/auth-gate.js",

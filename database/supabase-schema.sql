@@ -27,6 +27,47 @@ execute function public.set_rhythm_states_updated_at();
 create index if not exists rhythm_states_client_updated_at_idx
 on public.rhythm_states (client_updated_at desc);
 
+create or replace function public.guard_parsitasks_schema_write()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  document_version integer;
+  previous_version integer;
+begin
+  if new.schema_version < 1 then
+    raise exception 'Invalid workspace schema' using errcode = '22023';
+  end if;
+  if new.state ? 'schemaVersion' then
+    if jsonb_typeof(new.state -> 'schemaVersion') <> 'number'
+      or (new.state ->> 'schemaVersion') !~ '^[0-9]{1,8}$' then
+      raise exception 'Invalid workspace schema' using errcode = '22023';
+    end if;
+    document_version := (new.state ->> 'schemaVersion')::integer;
+    if document_version <> new.schema_version then
+      raise exception 'Workspace schema versions disagree' using errcode = '22023';
+    end if;
+  end if;
+  if tg_op = 'UPDATE' and current_user in ('anon', 'authenticated') then
+    previous_version := old.schema_version;
+    if (old.state ->> 'schemaVersion') ~ '^[0-9]{1,8}$' then
+      previous_version := greatest(previous_version, (old.state ->> 'schemaVersion')::integer);
+    end if;
+    if new.schema_version < previous_version then
+      raise exception 'parsitasks_client_outdated: update the application before saving'
+        using errcode = 'P0001';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.guard_parsitasks_schema_write() from public, anon, authenticated;
+drop trigger if exists parsitasks_schema_write_guard on public.rhythm_states;
+create trigger parsitasks_schema_write_guard
+before insert or update on public.rhythm_states
+for each row execute function public.guard_parsitasks_schema_write();
+
 alter table public.rhythm_states
 add column if not exists user_id uuid references auth.users (id) on delete cascade;
 
@@ -447,3 +488,130 @@ begin
   end if;
 end;
 $$;
+
+begin;
+
+-- Claims remain as tombstones so a long-offline client cannot restore a deleted file reference.
+create table if not exists public.parsitasks_image_gc (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  path text primary key,
+  claimed_at timestamptz not null default now()
+);
+alter table public.parsitasks_image_gc enable row level security;
+revoke all on public.parsitasks_image_gc from public, anon, authenticated;
+
+create or replace function public.claim_parsitasks_unused_images()
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare
+  owner_id uuid := auth.uid();
+  paths jsonb;
+begin
+  if owner_id is null then raise exception 'Authentication required' using errcode = '28000'; end if;
+  perform id from auth.users where id = owner_id for key share;
+  if not found then raise exception 'Account unavailable' using errcode = '28000'; end if;
+  perform user_id from public.rhythm_states where user_id = owner_id for update;
+  if not found then return '[]'::jsonb; end if;
+  with candidates as (
+    select o.name from storage.objects o
+    where o.bucket_id = 'board-images'
+      and (storage.foldername(o.name))[1] = owner_id::text
+      and o.created_at < now() - interval '30 days'
+      and not exists (
+        select 1 from public.rhythm_states s,
+          lateral jsonb_array_elements(case when jsonb_typeof(s.state -> 'boardItems') = 'array'
+            then s.state -> 'boardItems' else '[]'::jsonb end) item
+        where s.user_id = owner_id and item ->> 'remotePath' = o.name
+      )
+      and not exists (
+        select 1 from public.rhythm_state_snapshots s,
+          lateral jsonb_array_elements(case when jsonb_typeof(s.state -> 'boardItems') = 'array'
+            then s.state -> 'boardItems' else '[]'::jsonb end) item
+        where s.user_id = owner_id and item ->> 'remotePath' = o.name
+      )
+    order by o.name limit 100
+  ), claims as (
+    insert into public.parsitasks_image_gc(user_id, path)
+      select owner_id, name from candidates
+      on conflict (path) do update set user_id = excluded.user_id
+      returning path
+  ) select coalesce(jsonb_agg(path order by path), '[]'::jsonb) into paths from claims;
+  return paths;
+end;
+$$;
+revoke all on function public.claim_parsitasks_unused_images() from public, anon, authenticated;
+grant execute on function public.claim_parsitasks_unused_images() to authenticated;
+
+create or replace function public.guard_parsitasks_image_references()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  if exists (
+    select 1 from jsonb_array_elements(case when jsonb_typeof(new.state -> 'boardItems') = 'array'
+      then new.state -> 'boardItems' else '[]'::jsonb end) item
+    join public.parsitasks_image_gc gc on gc.path = item ->> 'remotePath'
+  ) then
+    raise exception 'parsitasks_image_expired: upload this image again' using errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.guard_parsitasks_image_references() from public, anon, authenticated;
+drop trigger if exists parsitasks_image_reference_guard on public.rhythm_states;
+create trigger parsitasks_image_reference_guard before insert or update on public.rhythm_states
+for each row execute function public.guard_parsitasks_image_references();
+
+create or replace function public.parsitasks_image_writable(object_path text)
+returns boolean language plpgsql volatile security definer set search_path = ''
+as $$
+declare owner_id uuid := auth.uid();
+begin
+  if owner_id is null or (storage.foldername(object_path))[1] <> owner_id::text then return false; end if;
+  -- Serialize uploads and collection against the same workspace row.
+  perform user_id from public.rhythm_states where user_id = owner_id for update;
+  return not exists (select 1 from public.parsitasks_image_gc where path = object_path);
+end;
+$$;
+revoke all on function public.parsitasks_image_writable(text) from public, anon, authenticated;
+grant execute on function public.parsitasks_image_writable(text) to authenticated;
+drop policy if exists "board_images_gc_insert" on storage.objects;
+create policy "board_images_gc_insert" on storage.objects as restrictive for insert to authenticated
+with check (bucket_id <> 'board-images' or public.parsitasks_image_writable(name));
+drop policy if exists "board_images_gc_update" on storage.objects;
+create policy "board_images_gc_update" on storage.objects as restrictive for update to authenticated
+using (true) with check (bucket_id <> 'board-images' or public.parsitasks_image_writable(name));
+
+commit;
+notify pgrst, 'reload schema';
+
+begin;
+-- Public deployment readiness only: no users, rows, file paths or provider secrets.
+create or replace function public.parsitasks_release_capabilities()
+returns jsonb language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object(
+    'migration', '2026-10-07',
+    'schemaWriteGuard', exists (
+      select 1 from pg_catalog.pg_trigger
+      where tgrelid = 'public.rhythm_states'::regclass
+        and tgname = 'parsitasks_schema_write_guard' and tgenabled = 'O'
+        and tgfoid = pg_catalog.to_regprocedure('public.guard_parsitasks_schema_write()')
+    ),
+    'imageRetention', exists (
+      select 1 from pg_catalog.pg_trigger where tgrelid = 'public.rhythm_states'::regclass
+        and tgname = 'parsitasks_image_reference_guard' and tgenabled = 'O'
+        and tgfoid = pg_catalog.to_regprocedure('public.guard_parsitasks_image_references()')
+    ) and pg_catalog.to_regprocedure('public.claim_parsitasks_unused_images()') is not null
+      and (select count(*) = 2 from pg_catalog.pg_policy where polrelid = 'storage.objects'::regclass
+        and polname in ('board_images_gc_insert', 'board_images_gc_update') and not polpermissive),
+    'storageAccountGuard', exists (
+      select 1 from pg_catalog.pg_policy where polrelid = 'storage.objects'::regclass
+        and polname = 'board_images_active_account' and not polpermissive
+    ) and pg_catalog.to_regprocedure('public.parsitasks_lock_storage_account()') is not null,
+    'restoreSafety', pg_catalog.to_regprocedure('public.restore_parsitasks_snapshot(bigint,timestamp with time zone)') is not null
+  );
+$$;
+revoke all on function public.parsitasks_release_capabilities() from public, anon, authenticated;
+grant execute on function public.parsitasks_release_capabilities() to anon, authenticated;
+commit;
+notify pgrst, 'reload schema';

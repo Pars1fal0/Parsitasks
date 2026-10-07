@@ -46,6 +46,7 @@ const { chromium } = require("playwright-core");
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     }
     await page.setViewportSize({ width: 2560, height: 1200 });
+    if (await page.locator(".calendar-exit-button:visible").count()) await page.locator(".calendar-exit-button").click();
     await page.locator(".calendar-time-scroll").waitFor({ state: "visible" });
     const comfortable = await page.locator(".calendar-time-scroll").boundingBox();
     await go("settings");
@@ -62,6 +63,7 @@ const { chromium } = require("playwright-core");
     assert.equal(new Set(paletteSurfaces).size, 4, "sidebar tint follows every palette");
     await page.locator("#densityPreference").selectOption("compact", { force: true });
     await go("calendar/week");
+    if (await page.locator(".calendar-exit-button:visible").count()) await page.locator(".calendar-exit-button").click();
     await page.locator(".calendar-time-scroll").waitFor({ state: "visible" });
     const compact = await page.locator(".calendar-time-scroll").boundingBox();
     const sidebar = await page.locator(".sidebar").boundingBox();

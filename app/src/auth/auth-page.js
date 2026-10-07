@@ -22,6 +22,7 @@
     title: document.querySelector("#authTitle"),
   };
   let auth = null;
+  let captcha = null;
   let busy = false;
   let mode = new URLSearchParams(global.location.search).get("mode") === "signup" ? "signup" : "signin";
 
@@ -155,6 +156,9 @@
       }
       if (callbackError) showError(localizeError({ message: callbackError }));
       else clearStatus();
+      captcha = global.RhythmAuthCaptcha.createAuthCaptcha({ siteKey: config.turnstileSiteKey,
+        element: document.querySelector("#authCaptcha"), onError: showError });
+      await captcha.initialize();
       elements.email.focus();
     } catch (error) {
       showError(localizeError(error));
@@ -214,7 +218,7 @@
     }
     setBusy(true, mode === "signup" ? "Создаём аккаунт..." : "Входим...");
     try {
-      const result = await auth[mode === "signup" ? "signUp" : "signIn"](email, password);
+      const result = await auth[mode === "signup" ? "signUp" : "signIn"](email, password, { captchaToken: captcha?.getToken() });
       elements.password.value = "";
       elements.passwordConfirm.value = "";
       if (!result.access_token) {
@@ -226,6 +230,7 @@
     } catch (error) {
       showError(localizeError(error));
     } finally {
+      captcha?.reset();
       setBusy(false);
     }
   }
@@ -240,11 +245,12 @@
     }
     setBusy(true, "Отправляем письмо...");
     try {
-      await auth.resetPassword(email);
+      await auth.resetPassword(email, { captchaToken: captcha?.getToken() });
       showStatus("Если аккаунт существует, ссылка для восстановления отправлена на почту.");
     } catch (error) {
       showError(localizeError(error));
     } finally {
+      captcha?.reset();
       setBusy(false);
     }
   }
@@ -299,6 +305,7 @@
 
   function localizeError(error) {
     const message = String(error?.message || "");
+    if (/captcha.*(?:failed|invalid)|captcha verification/i.test(message)) return "Проверка безопасности не прошла. Обновите страницу и повторите попытку.";
     if (/invalid login credentials/i.test(message)) return "Неверный email или пароль";
     if (/email not confirmed/i.test(message)) return "Сначала подтвердите email по ссылке из письма";
     if (/user already registered/i.test(message)) return "Аккаунт с таким email уже существует";

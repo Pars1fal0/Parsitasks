@@ -7,6 +7,7 @@
     let queuedPush = false;
     let timerId = null;
     let generation = 0;
+    const cleanupAttempts = new Map();
 
     function getConfig() {
       const settings = ctx.getSettings();
@@ -124,6 +125,17 @@
         else queuedPush = true;
         if (!pushed?.skipped) ctx.recordSyncEvent?.("push");
         if (manual) ctx.showToast(pushed?.skipped ? "Данные уже синхронизированы" : mergedRemote ? "Данные устройств объединены и сохранены" : "Данные сохранены в БД");
+        const cleanupKey = `${operation.config.supabaseUrl}:${operation.config.userId}`;
+        if (ctx.remoteSync.cleanupUnusedImages && Date.now() - (cleanupAttempts.get(cleanupKey) || 0) >= 86400000) {
+          cleanupAttempts.set(cleanupKey, Date.now());
+          try {
+            await ctx.remoteSync.cleanupUnusedImages(operation.config);
+            assertCurrent(operation);
+          } catch (error) {
+            if (!isCurrent(operation)) return { cancelled: true };
+            ctx.recordSyncEvent?.("error", `Очистка неиспользуемых фото: ${ctx.describeError(error)}`);
+          }
+        }
       } catch (error) {
         if (!isCurrent(operation)) return { cancelled: true };
         lastError = ctx.describeError(error);

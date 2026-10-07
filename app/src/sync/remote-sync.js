@@ -202,6 +202,28 @@
       return { ok: true };
     }
 
+    async function cleanupUnusedImages(config) {
+      ensureFetch();
+      const normalized = normalizeConfig(config);
+      ensureConfigured(normalized);
+      const claimed = await request(`${normalized.supabaseUrl}/rest/v1/rpc/claim_parsitasks_unused_images`, {
+        method: "POST", headers: supabaseHeaders(normalized), body: "{}",
+      });
+      const paths = await readResponse(claimed);
+      if (!claimed.ok) throw createRemoteError("image-cleanup-failed", claimed, paths);
+      if (!Array.isArray(paths) || paths.length > 100 || paths.some((path) => typeof path !== "string"
+        || !path.startsWith(`${normalized.userId}/`) || path.split("/").some((part) => !part || [".", ".."].includes(part) || /[\\\0]/.test(part)))) {
+        throw new Error("Сервер не подтвердил безопасный список файлов для очистки");
+      }
+      if (!paths.length) return { removed: 0 };
+      const response = await request(`${normalized.supabaseUrl}/storage/v1/object/board-images`, {
+        method: "DELETE", headers: supabaseHeaders(normalized), body: JSON.stringify({ prefixes: paths }),
+      });
+      const result = await readResponse(response);
+      if (!response.ok) throw createRemoteError("image-cleanup-failed", response, result);
+      return { removed: paths.length };
+    }
+
     async function removeAccountImages(config) {
       if (!/^[a-zA-Z0-9_-]+$/.test(config.userId)) throw new Error("Invalid account identity");
       const folders = [config.userId], files = [];
@@ -306,6 +328,7 @@
 
     return {
       checkConnection,
+      cleanupUnusedImages,
       deleteAccount,
       getSnapshot,
       isConfigured,
@@ -324,7 +347,8 @@
   function createRemoteError(code, response, data) {
     const message = typeof data === "string" ? data : data?.message || data?.hint || response.statusText;
     const error = new Error(message || code);
-    error.code = code;
+    error.code = /parsitasks_client_outdated/.test(message || "") ? "client-outdated"
+      : /parsitasks_image_expired/.test(message || "") ? "image-expired" : code;
     error.status = response.status;
     error.data = data;
     return error;

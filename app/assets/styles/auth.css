@@ -622,6 +622,11 @@ input:disabled {
   }
 }
 
+#authCaptcha:not([hidden]) {
+  min-height: 140px;
+  margin-bottom: 20px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   input,
   .primary-button,

@@ -21,7 +21,10 @@ module.exports = [
       assert.match(sql, /to authenticated/);
       assert.match(sql, /auth\.uid\(\).*user_id/s);
       assert.match(sql, /user_key = 'auth:' \|\| \(select auth\.uid\(\)\)::text/);
-      assert.doesNotMatch(sql, /to anon/);
+      assert.doesNotMatch(sql, /create policy[^;]*\bto anon\b/i);
+      assert.doesNotMatch(sql, /grant[^;]*on table[^;]*\bto anon\b/i);
+      assert.deepEqual([...sql.matchAll(/grant execute on function ([^;]+) to anon[^;]*;/g)].map((match) => match[1]),
+        ["public.parsitasks_release_capabilities()"]);
       assert.doesNotMatch(sql, /x-rhythm-user-key/);
       assert.match(sql, /revoke all on table public\.rhythm_states from anon/);
       assert.match(sql, /grant select, insert, update, delete on table public\.rhythm_states to authenticated/);

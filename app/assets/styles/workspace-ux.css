@@ -35,6 +35,7 @@
 .later-task-date[hidden], .overdue-actions input[hidden] { display: none; }
 .later-task-panel > #addLaterTask { margin-top: 8px; }
 .save-status { overflow-wrap: anywhere; }
+.save-status[data-state="error"]::before { background: var(--coral); box-shadow: none; }
 @media (max-width: 680px) {
   #tasksView .task-item > .task-select-control { grid-column: 1; }
   .later-task-row { flex-wrap: wrap; }

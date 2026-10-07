@@ -94,12 +94,14 @@ const { _electron: electron } = require("playwright-core");
             assert.equal(await page.locator("#sideProgressBar").evaluate((node) => node.style.width), "75%");
           }
           if (view === "settings") {
-            assert.ok(await page.locator('[aria-labelledby="appearanceHeading"] .settings-row').evaluateAll((rows) => rows.every((row) => {
+            const settingsGeometry = await page.locator('[aria-labelledby="appearanceHeading"] .settings-row').evaluateAll((rows) => rows.flatMap((row) => {
               const text = row.querySelector(":scope > span"), field = row.querySelector(":scope > select, :scope > input");
-              if (!text || !field) return true;
+              if (!text || !field) return [];
               const a = text.getBoundingClientRect(), b = field.getBoundingClientRect();
-              return a.right <= b.left + 1 && b.right <= row.getBoundingClientRect().right + 1;
-            })), "settings labels and controls have separate aligned columns");
+              return [{ label: text.textContent, text: a.toJSON(), field: b.toJSON(), row: row.getBoundingClientRect().toJSON() }];
+            }));
+            assert.ok(settingsGeometry.every(({ text, field, row }) => (text.right <= field.left + 1 || text.bottom <= field.top + 1)
+              && field.right <= row.right + 1), `settings labels and controls must not overlap at ${width}px: ${JSON.stringify(settingsGeometry)}`);
           }
           if (view === "nutrition" && width <= 390) {
             const meal = await page.locator(".nutrition-meal-card").first().boundingBox();

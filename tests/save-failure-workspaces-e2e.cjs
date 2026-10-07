@@ -206,6 +206,45 @@ const { chromium } = require("playwright-core");
         check(`recurring timeline ${action} rolls back`, true, {});
       }
     }
+    if (!observe) {
+      await seed("board", { boardItems: [], tasks: [{ id: "repeat-audit", title: "Серия для проверки", date: "2026-10-01", repeat: "daily", completed: {}, excludedDates: {} }] });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await failWrites();
+      await page.locator("#boardAddMenu > summary").click();
+      await page.locator("#boardAddText").click();
+      assert.equal(await page.locator("#boardWorld .board-item").count(), 0);
+      assert.equal((await state()).boardItems.length, 0);
+      await page.evaluate(() => { window.pendingAuditMove = moveTaskToDate("repeat-audit", "2026-10-02", "2026-10-03"); });
+      await page.locator("#confirmAccept").click();
+      await page.evaluate(() => window.pendingAuditMove);
+      assert.doesNotMatch(await page.locator("#appToast").innerText(), /Серия перенесена/);
+      assert.equal((await state()).tasks[0].date, "2026-10-01");
+      await resumeWrites();
+      await page.reload();
+      assert.equal(await page.locator("#boardWorld .board-item").count(), 0);
+      check("board and recurring series roll back on storage errors and survive reload", true, {});
+        await page.locator("#boardAddMenu > summary").click();
+        await page.locator("#boardAddText").click();
+        const content = page.locator(".board-text-content").first();
+        await page.waitForFunction(() => document.querySelector(".board-text-content")?.isContentEditable);
+        await content.fill("Сохранённый текст");
+        await content.press("Escape");
+        await failWrites();
+        await content.dblclick();
+        await page.waitForFunction(() => document.querySelector(".board-text-content")?.isContentEditable);
+        await content.fill("Черновик после ошибки записи");
+        await page.waitForTimeout(450);
+        assert.equal((await state()).boardItems[0].text, "Сохранённый текст");
+        assert.match(await page.locator("#boardStatus").innerText(), /Не удалось сохранить/);
+        await page.reload();
+        assert.equal(await content.innerText(), "Черновик после ошибки записи");
+        assert.equal((await state()).boardItems[0].text, "Сохранённый текст");
+        await content.dblclick();
+        await page.waitForFunction(() => document.querySelector(".board-text-content")?.isContentEditable);
+        await content.press("Escape");
+        assert.equal((await state()).boardItems[0].text, "Черновик после ошибки записи");
+        check("failed board text restores a separate draft after reload and can be saved again", true, {});
+    }
     check("no browser runtime errors", errors.length === 0, errors);
     const release = appUrl ? await (await page.request.get(`${allowedOrigin}/release.json`)).json() : null;
     const output = { browser: browser.version(), appUrl: url.href, buildHash: release?.buildHash || null, syntheticDate: "2026-10-02", findings };

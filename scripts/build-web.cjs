@@ -5,8 +5,6 @@ const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 const root = path.resolve(__dirname, "..");
-const appSource = path.join(root, "app");
-const output = path.join(root, "web-dist");
 function listFiles(directory, prefix = "") {
   return fs.readdirSync(directory, { withFileTypes: true })
     .sort((left, right) => left.name.localeCompare(right.name))
@@ -31,60 +29,74 @@ function stampAssetUrls(html, version) {
   });
 }
 
-function buildWeb() {
-const files = listFiles(appSource);
-if (!files.includes("sw.js")) throw new Error("Missing app/sw.js");
-
-fs.rmSync(output, { force: true, recursive: true });
-fs.mkdirSync(output, { recursive: true });
-
-const buildHasher = crypto.createHash("sha256");
-files.forEach((file) => {
-  buildHasher.update(file);
-  buildHasher.update(fs.readFileSync(path.join(appSource, file)));
-});
-buildHasher.update(fs.readFileSync(path.join(root, "mcp", "oauth-consent-entry.mjs")));
-const buildHash = buildHasher.digest("hex").slice(0, 12);
-
-for (const file of files) {
-  const source = path.join(appSource, file);
-  const destination = path.join(output, file);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  if (file === "sw.js") {
-    fs.writeFileSync(destination, fs.readFileSync(source, "utf8").replaceAll("__BUILD_HASH__", buildHash), "utf8");
-  } else if (file.endsWith(".html")) {
-    fs.writeFileSync(destination, stampAssetUrls(fs.readFileSync(source, "utf8"), buildHash), "utf8");
-  } else {
-    fs.copyFileSync(source, destination);
+function buildWeb({ directory = root } = {}) {
+  const workspace = fs.realpathSync(directory);
+  const appSource = path.join(workspace, "app");
+  const output = path.join(workspace, "web-dist");
+  const files = listFiles(appSource);
+  if (!files.includes("sw.js")) throw new Error("Missing app/sw.js");
+  const staging = fs.mkdtempSync(path.join(workspace, ".web-build-"));
+  const previous = path.join(workspace, `.web-build-old-${crypto.randomUUID()}`);
+  let oldMoved = false;
+  let installed = false;
+  const validate = (target) => {
+    if (path.dirname(target) !== workspace || !/^(?:web-dist|\.web-build-[A-Za-z0-9-]+)$/.test(path.basename(target))) throw new Error("Unsafe generated build directory");
+    if (fs.existsSync(target) && (fs.lstatSync(target).isSymbolicLink() || fs.realpathSync(target) !== target)) throw new Error("Build directory must not be a link");
+  };
+  try {
+    const contents = new Map(files.map((file) => [file, fs.readFileSync(path.join(appSource, file))]));
+    const buildHasher = crypto.createHash("sha256");
+    contents.forEach((body, file) => { buildHasher.update(file); buildHasher.update(body); });
+    buildHasher.update(fs.readFileSync(path.join(workspace, "mcp", "oauth-consent-entry.mjs")));
+    const buildHash = buildHasher.digest("hex").slice(0, 12);
+    for (const [file, body] of contents) {
+      const destination = path.join(staging, file);
+      fs.mkdirSync(path.dirname(destination), { recursive: true });
+      const value = file === "sw.js" ? body.toString("utf8").replaceAll("__BUILD_HASH__", buildHash)
+        : file.endsWith(".html") ? stampAssetUrls(body.toString("utf8"), buildHash) : body;
+      fs.writeFileSync(destination, value);
+    }
+    esbuild.buildSync({
+      bundle: true,
+      entryPoints: [path.join(workspace, "mcp", "oauth-consent-entry.mjs")],
+      format: "iife", minify: true, logLevel: "silent",
+      outfile: path.join(staging, "oauth-consent.js"), platform: "browser", target: ["es2022"],
+    });
+    fs.writeFileSync(path.join(staging, ".nojekyll"), "");
+    let sourceRevision = process.env.GITHUB_SHA || null;
+    if (!sourceRevision) {
+      try { sourceRevision = execFileSync("git", ["rev-parse", "HEAD"], { cwd: workspace, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch {}
+    }
+    // Cloudflare consumes routing/header configuration; these are not public assets.
+    const assets = Object.fromEntries([...files.filter((file) => !["_headers", "_redirects"].includes(file)), "oauth-consent.js"].map((file) => [
+      `/${file}`, crypto.createHash("sha256").update(fs.readFileSync(path.join(staging, file))).digest("hex"),
+    ]));
+    fs.writeFileSync(path.join(staging, "release.json"), JSON.stringify({
+      version: JSON.parse(fs.readFileSync(path.join(workspace, "package.json"))).version,
+      buildHash, sourceRevision, assets,
+    }, null, 2));
+    validate(output); validate(previous); validate(staging);
+    if (fs.existsSync(output)) {
+      try { fs.renameSync(output, previous); oldMoved = true; }
+      catch { throw new Error("Build output is in use. Stop the local dev server and retry; the previous build was preserved"); }
+    }
+    try { fs.renameSync(staging, output); installed = true; }
+    catch (error) {
+      if (oldMoved) { validate(previous); validate(output); fs.renameSync(previous, output); oldMoved = false; }
+      throw error;
+    }
+    if (oldMoved) {
+      validate(previous);
+      try { fs.rmSync(previous, { recursive: true }); }
+      catch { console.warn(`New build installed; previous generated build retained at ${previous}`); }
+    }
+    console.log(`web build ok - ${files.length + 2} files - cache ${buildHash}`);
+    return { buildHash, output };
+  } finally {
+    if (!installed && fs.existsSync(staging)) { validate(staging); fs.rmSync(staging, { recursive: true }); }
   }
 }
 
-esbuild.buildSync({
-  bundle: true,
-  entryPoints: [path.join(root, "mcp", "oauth-consent-entry.mjs")],
-  format: "iife",
-  minify: true,
-  outfile: path.join(output, "oauth-consent.js"),
-  platform: "browser",
-  target: ["es2022"],
-});
-
-fs.writeFileSync(path.join(output, ".nojekyll"), "", "utf8");
-let sourceRevision = process.env.GITHUB_SHA || null;
-if (!sourceRevision) {
-  try { sourceRevision = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim(); } catch {}
-}
-// Cloudflare consumes routing/header configuration; these are not public assets.
-const assets = Object.fromEntries([...files.filter((file) => !["_headers", "_redirects"].includes(file)), "oauth-consent.js"].map((file) => [
-  `/${file}`, crypto.createHash("sha256").update(fs.readFileSync(path.join(output, file))).digest("hex"),
-]));
-fs.writeFileSync(path.join(output, "release.json"), JSON.stringify({
-  version: JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8")).version,
-  buildHash, sourceRevision, assets,
-}, null, 2), "utf8");
-console.log(`web build ok - ${files.length + 2} files - cache ${buildHash}`);
-}
-
-module.exports = { stampAssetUrls };
+module.exports = { stampAssetUrls, buildWeb };
 
 if (require.main === module) buildWeb();

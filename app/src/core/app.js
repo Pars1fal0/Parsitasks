@@ -110,7 +110,9 @@ let lastAutoBackupAt = typeof initialUiState.lastAutoBackupAt === "string"
   : "";
 let nextAutoBackupAt = "";
 const formSnapshots = new WeakMap();
-let localStorageError = initialStateLoad.status === "corrupt"
+let localStorageError = initialStateLoad.status === "newer" || initialStateLoad.reason === "newer-backup"
+  ? "Данные созданы более новой версией · обнови приложение, исходные данные сохранены"
+  : initialStateLoad.status === "corrupt"
   ? "Локальные данные повреждены · восстанови backup или облако"
   : initialStateLoad.status === "recovered-memory"
     ? "Backup открыт, но локальное сохранение недоступно"
@@ -1064,6 +1066,7 @@ const notesView = window.RhythmNotesView.createNotesView({
 });
 
 const boardAssets = window.RhythmBoardAssets.createBoardAssetStore({
+  getOwner: () => remoteAuth.getSession()?.user?.id ? JSON.stringify([remoteSyncUrl, remoteAuth.getSession().user.id]) : "",
   getRemoteConfig: async () => {
     const session = await remoteAuth.ensureFreshSession().catch(() => remoteAuth.getSession());
     return {
@@ -1075,10 +1078,12 @@ const boardAssets = window.RhythmBoardAssets.createBoardAssetStore({
     };
   },
 });
+boardAssets.pruneCache().catch(() => {});
 const boardView = window.RhythmBoardView.createBoardView({
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   assets: boardAssets,
   commitItems: (items, options = {}) => {
+    const previous = createUndoSnapshot();
     const normalized = window.RhythmBoardModel.normalizeItems(items, { createId });
     state.boardItems = normalized;
     state.tombstones.boardItems ||= {};
@@ -1088,7 +1093,11 @@ const boardView = window.RhythmBoardView.createBoardView({
     normalized.forEach((item) => {
       delete state.tombstones.boardItems[item.id];
     });
-    saveState();
+    if (saveState() === false) {
+      restoreFailedSave(previous);
+      return false;
+    }
+    return true;
   },
   createId,
   els,
@@ -1870,6 +1879,7 @@ async function init() {
   render();
   scrollWorkspaceTop();
   if (initialStateLoad.status === "recovered") showToast("Повреждённые локальные данные восстановлены из резервной копии");
+  if (initialStateLoad.status === "newer" || initialStateLoad.reason === "newer-backup") showToast("Обнови приложение: данные созданы более новой версией. Исходные данные сохранены, экспорт доступен");
   if (initialStateLoad.status === "recovered-memory") showToast("Копия восстановлена только в памяти. Экспортируй данные");
   if (initialStateLoad.status === "corrupt") showToast("Локальные данные повреждены. Восстанови копию или загрузи данные из облака");
   try {
@@ -1998,6 +2008,7 @@ function renderSaveStatus() {
     remoteEnabled: remoteSyncEnabled === "on" && Boolean(remoteAuth.getSession()?.user?.id),
     remoteLastPushedAt: latestIsoDate(remoteSyncLastPushedAt, remoteSyncLastPulledAt),
     syncStatus: remoteSyncWorkflow.getStatus(),
+    stateBytes: storage.getDiagnostics().bytes,
   });
 }
 
@@ -2294,7 +2305,11 @@ async function moveTaskToDate(taskId, sourceDateKey, targetDateKey) {
         showToast("Не удалось перенести серию");
         return;
       }
-      saveState();
+      if (saveState() === false) {
+        restoreFailedSave(undo);
+        render();
+        return;
+      }
       render();
       showToast(`Серия перенесена на ${formatLongDate(targetDate)}`, {
         undo,
@@ -3716,13 +3731,14 @@ function saveState(options = {}) {
     state = stateController.saveState(state, options);
     localStorageError = "";
   } catch (error) {
-    localStateUpdatedAt = options.localUpdatedAt || new Date().toISOString();
+    if (error.code === "client-outdated") {
+      localStorageError = "Данные созданы более новой версией · обнови приложение, исходные данные сохранены";
+      renderSaveStatus(); showToast(localStorageError); return false;
+    }
     if (error.message === "Workspace changed in another tab") {
       localStorageError = "В другой вкладке сменился аккаунт · обнови эту страницу";
       renderSaveStatus(); showToast(localStorageError); return false;
     }
-    if (!options.skipRemote) scheduleRemotePush();
-    syncDesktopReminders();
     localStorageError = "Локальное хранилище заполнено · экспортируй данные";
     renderSaveStatus();
     showToast("Не удалось сохранить данные. Экспортируй JSON, чтобы не потерять изменения");

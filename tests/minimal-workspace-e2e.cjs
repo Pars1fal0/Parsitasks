@@ -91,7 +91,7 @@ const { chromium } = require("playwright-core");
     assert.equal(preserved.sourceNoteId, "note"); assert.equal(preserved.dueDate, "2026-10-05"); assert.equal(preserved.studySubjectId, "math");
 
     assert.equal(await page.locator("[data-calendar-scale]").count(), 0);
-    const handle = page.locator('.calendar-time-event[data-event-id="block"] .calendar-event-resize');
+    const handle = page.locator('.calendar-time-event[data-event-id="block"] .calendar-event-resize[data-edge="end"]');
     await handle.focus(); await handle.press("ArrowDown");
     assert.equal((await stored()).tasks.find((task) => task.id === "block").endTime, "11:45");
     const resizeBox = await handle.boundingBox();
@@ -142,7 +142,7 @@ const { chromium } = require("playwright-core");
     assert.equal(await page.locator('.calendar-time-day[data-date="2026-10-04"] [data-event-id="block"]').count(), 1, "failed move restores visible position");
     assert.match(await page.locator("#appToast").innerText(), /Не удалось сохранить/);
     await page.evaluate(() => { Storage.prototype.setItem = window.originalWrite; });
-    const retryHandle = page.locator('.calendar-time-day[data-date="2026-10-04"] [data-event-id="block"] .calendar-event-resize');
+    const retryHandle = page.locator('.calendar-time-day[data-date="2026-10-04"] [data-event-id="block"] .calendar-event-resize[data-edge="end"]');
     await retryHandle.focus(); await retryHandle.press("ArrowUp");
     await retryHandle.focus(); await retryHandle.press("ArrowDown");
     assert.equal((await stored()).tasks.find((task) => task.id === "block").endTime, "15:45", "calendar can retry after storage recovery");
@@ -171,7 +171,7 @@ const { chromium } = require("playwright-core");
     }
     await page.evaluate(() => { location.hash = "habits"; });
     await page.locator("#habitsView").waitFor({ state: "visible" });
-    await page.locator('[data-habit-id="water"] .habit-quick-adds button').first().click();
+    await page.locator('[data-habit-id="water"] .habit-quick-adds button:visible').first().click();
     assert.equal((await stored()).habits.find((habit) => habit.id === "water").logs["2026-10-04"], 250);
     await page.locator('[data-habit-id="walk"] .check-button').click();
     assert.equal((await stored()).habits.find((habit) => habit.id === "walk").logs["2026-10-04"], true);

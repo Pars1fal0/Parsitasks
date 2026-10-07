@@ -1,6 +1,7 @@
 server*.log
 dist/
 web-dist/
+.web-build-*/
 .wrangler-build/
 .release-candidate/
 .wrangler/

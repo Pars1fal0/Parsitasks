@@ -1,6 +1,6 @@
 # Parsitasks: Preparation for Public Release
 
-Updated: 2026-10-06. This checklist distinguishes implemented controls from
+Updated: 2026-10-07. This checklist distinguishes implemented controls from
 checks that still require real infrastructure or disposable accounts. It is not
 a security certification or permission to start charging users.
 
@@ -45,6 +45,16 @@ a security certification or permission to start charging users.
   It uses only the public key and never signs in or reads workspace content.
 
 ## Publish This Stage Safely
+
+The 2026-10-07 code adds server-side schema compatibility, durable image
+retention and a database-readiness deployment gate. See
+[RELIABILITY_REPORT.md](RELIABILITY_REPORT.md) for implemented work and remaining
+external dependencies. Apply the three new migrations in the order documented
+in [OPERATIONS.md](OPERATIONS.md) after the earlier lifecycle migrations.
+Production update, 2026-10-07: the owner explicitly authorized direct migration
+without a separate staging project. All three migrations were applied in order;
+the public readiness check confirms all four required guards. Provider settings
+and real staging/concurrency checks remain outstanding.
 
 1. Verify `database/20261005-reliability.sql` is already applied. Follow its backup
    and verification files if not. Do not replace the schema with an old copy.
@@ -104,7 +114,7 @@ operational work and actual remaining dependencies are recorded in
 | Independent backups | Database restored to a separate project; schema, accounts, workspace counts and files verified | Backup destination, credentials and retention policy |
 | Google integration | Separate user connects/revokes Drive and Calendar using production redirects | Google consent configuration and any required verification |
 | Real mobile operation | Safari/iOS and Chrome/Android: keyboard, pinch, scroll, selection, resizing and save failures | Physical devices; browser emulation is insufficient |
-| Operations | Gated deploy enabled, old bypass disabled, monitoring failures reach the owner, rollback rehearsed | GitHub/Cloudflare settings and alert ownership |
+| Operations | Verified-artifact deploy has credentials, old bypass disabled, monitoring failures reach the owner, rollback rehearsed | GitHub/Cloudflare settings and alert ownership |
 | Legal and commercial | Operator/contact details, privacy/terms, deletion/retention policy, jurisdiction and payment/refund obligations reviewed | Owner decisions and qualified legal/payment advice |
 
 ## Backup Recovery Drill

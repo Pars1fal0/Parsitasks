@@ -37,7 +37,8 @@
 .study-period-menu-actions .study-cycle-details > summary { min-height: 44px; padding: 12px 8px; cursor: pointer; font-size: 13px; }
 
 @media (max-width: 680px) {
-  body:is([data-view="tasks"], [data-view="habits"]) #saveStatus { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .title-block:has(#saveStatus[data-state="error"]) { padding-right: 52px; }
+  body:is([data-view="tasks"], [data-view="habits"]) #saveStatus:not([data-state="error"]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   body:is([data-view="tasks"], [data-view="habits"]) .topbar { gap: 4px; margin-bottom: 8px; }
   body:is([data-view="tasks"], [data-view="habits"]) .title-block { min-height: 36px; }
   #tasksView .quick-task-disclosure { margin-bottom: 8px; }

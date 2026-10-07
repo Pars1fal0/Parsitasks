@@ -10,8 +10,11 @@
     const getAllItems = ctx.getItems;
     const commitAllItems = ctx.commitItems;
     const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => "") });
+    const drafts = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => ""), tabScoped: true,
+      onError: () => ctx.showToast("Не удалось сохранить черновик текста. Не закрывай вкладку до сохранения.") });
     let activeBoardId = local?.read("active-board") || "";
     let boardOwner = local?.owner();
+    let assetOwner = ctx.assets.getOwner?.();
     let mobileLayout = global.innerWidth <= 600;
     const listPreference = () => local?.read(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`) ?? (mobileLayout ? true : local?.read("board-list-mode") ?? false);
     let listMode = listPreference();
@@ -58,7 +61,13 @@
       boardSelect.addEventListener("change", () => switchBoard(boardSelect.value));
       newBoard.addEventListener("click", () => editBoardName());
       renameBoard.addEventListener("click", () => editBoardName(activeBoardId));
-      listToggle.addEventListener("click", () => { finishActiveTextEdit(); listMode = !listMode; local?.write(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`, listMode); render(); });
+      listToggle.addEventListener("click", () => {
+        finishActiveTextEdit(); listMode = !listMode;
+        local?.write(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`, listMode);
+        if (!listMode && mobileLayout) viewportSize = null;
+        render();
+        if (!listMode && mobileLayout) global.requestAnimationFrame(() => { if (!listMode && isBoardActive()) focusContent(); });
+      });
       listAdd.addEventListener("click", () => { listMode = false; render(); ctx.els.boardAddMenu.open = true; ctx.els.boardAddMenu.querySelector("summary").focus(); });
       global.addEventListener("resize", () => { if (mobileLayout !== (global.innerWidth <= 600)) { finishActiveTextEdit(); mobileLayout = global.innerWidth <= 600; listMode = listPreference(); render(); } });
       ctx.els.boardAddText?.addEventListener("click", () => { closeAddMenu(); addTextAtCenter(); });
@@ -152,7 +161,16 @@
 
     function render() {
       if (!ctx.els.boardWorld || !ctx.els.boardViewport) return;
+      if (assetOwner !== ctx.assets.getOwner?.()) {
+        objectUrls.forEach((url) => URL.revokeObjectURL(url));
+        objectUrls.clear(); pendingUploadAttempts.clear();
+        assetOwner = ctx.assets.getOwner?.();
+      }
       if (boardOwner !== local?.owner()) {
+        objectUrls.forEach((url) => URL.revokeObjectURL(url));
+        objectUrls.clear(); pendingUploadAttempts.clear();
+        if (saveTextTimer) clearTimeout(saveTextTimer);
+        saveTextTimer = null; textBeforeEdit = null; cameraVisibilityChecked = false; viewportSize = null;
         boardOwner = local?.owner(); activeBoardId = local?.read("active-board") || "";
         listMode = listPreference();
         selectedIds.clear(); selectedId = ""; editingId = ""; undoStack = []; redoStack = []; camera = loadBoardCamera(); cameraReady = false;
@@ -355,7 +373,7 @@
       selectedId = item.id;
       selectedIds = new Set([item.id]);
       closeSourcePicker();
-      commit([...ctx.getItems(), item]);
+      if (!commit([...ctx.getItems(), item])) return;
       ctx.showToast("Карточка добавлена на доску");
     }
 
@@ -368,7 +386,7 @@
         x: index * 306, y: 36, width: 280, height: 320, z: index, text,
       }, { createId: ctx.createId, now }));
       pushUndo();
-      commit(items);
+      if (!commit(items)) return;
       activeAreaId = items[0].id;
       if (ctx.els.boardViewport.getBoundingClientRect().width < 700) focusArea(activeAreaId);
       else focusContent();
@@ -378,7 +396,7 @@
     function createTextContent(item, node) {
       const content = document.createElement("div");
       content.className = "board-text-content";
-      content.textContent = item.text;
+      content.textContent = drafts?.read(`board-text:${item.id}`)?.value ?? item.text;
       content.spellcheck = true;
       content.dataset.placeholder = "Введите текст";
       content.style.fontSize = `${item.fontSize}px`;
@@ -401,7 +419,7 @@
       frame.className = "board-frame-content";
       const title = document.createElement("div");
       title.className = "board-frame-title";
-      title.textContent = item.text;
+      title.textContent = drafts?.read(`board-text:${item.id}`)?.value ?? item.text;
       title.spellcheck = true;
       title.setAttribute("aria-label", "Название фрейма");
       title.addEventListener("dblclick", (event) => {
@@ -580,7 +598,7 @@
           recordUndo(before);
           selectedId = added.at(-1).id;
           selectedIds = new Set([selectedId]);
-          commit([...before, ...added]);
+          if (!commit([...before, ...added])) return;
           setStatus(
             added.length === 1
               ? "Фото сохранено в Supabase Storage"
@@ -848,6 +866,7 @@
     }
 
     function handleViewportResize() {
+      if (!isBoardActive() || listMode) { viewportSize = null; return; }
       const rect = ctx.els.boardViewport?.getBoundingClientRect();
       if (!rect?.width || !rect?.height) return;
       if (viewportSize && camera) {
@@ -872,6 +891,8 @@
     function focusContent() {
       const content = ctx.model.bounds(ctx.getItems());
       const rect = ctx.els.boardViewport.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      viewportSize = { width: rect.width, height: rect.height };
       camera = cameraApi.fitCamera(content, rect, MIN_ZOOM, MAX_ZOOM);
       applyCamera();
       saveCamera();
@@ -920,7 +941,8 @@
       form.onsubmit = (event) => { event.preventDefault(); if (owner !== local?.owner()) { dialog.close(); return; }
         const text = name.value.trim(); if (!text) return;
         const next = ctx.model.normalizeItem({ ...board, id: board?.id || ctx.createId(), type: "board", text, updatedAt: new Date().toISOString() });
-        commitAllItems([...getAllItems().filter((item) => item.id !== next.id), next]); dialog.close(); switchBoard(next.id);
+        if (commitAllItems([...getAllItems().filter((item) => item.id !== next.id), next]) === false) return;
+        dialog.close(); switchBoard(next.id);
       };
       dialog.addEventListener("close", () => dialog.remove(), { once: true }); dialog.showModal();
     }
@@ -1118,7 +1140,7 @@
       pushUndo();
       setSelection([]);
       editingId = "";
-      commit(ctx.getItems().filter((item) => !ids.has(item.id)), { deletedIds: [...ids] });
+      if (!commit(ctx.getItems().filter((item) => !ids.has(item.id)), { deletedIds: [...ids] })) return;
       ctx.showToast("Объект удалён · отмена доступна на панели доски");
     }
 
@@ -1128,7 +1150,7 @@
       redoStack.push(cloneItems(ctx.getItems()));
       setSelection([]);
       editingId = "";
-      applyHistorySnapshot(snapshot);
+      if (!applyHistorySnapshot(snapshot)) { redoStack.pop(); undoStack.push(snapshot); return; }
       ctx.showToast("Изменение отменено");
     }
 
@@ -1138,15 +1160,16 @@
       undoStack.push(cloneItems(ctx.getItems()));
       setSelection([]);
       editingId = "";
-      applyHistorySnapshot(snapshot);
+      if (!applyHistorySnapshot(snapshot)) { undoStack.pop(); redoStack.push(snapshot); return; }
       ctx.showToast("Изменение повторено");
     }
 
     function applyHistorySnapshot(snapshot) {
       const nextIds = new Set((snapshot || []).map((item) => item.id));
       const deletedIds = ctx.getItems().filter((item) => !nextIds.has(item.id)).map((item) => item.id);
-      ctx.commitItems(snapshot, { deletedIds, restoreDeleted: true });
+      const saved = ctx.commitItems(snapshot, { deletedIds, restoreDeleted: true }) !== false;
       render();
+      return saved;
     }
 
     function startTextEdit(id, node) {
@@ -1173,8 +1196,10 @@
     }
 
     function scheduleTextSave(id, value) {
+      drafts?.write(`board-text:${id}`, { value: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH) });
       if (saveTextTimer) clearTimeout(saveTextTimer);
-      saveTextTimer = setTimeout(() => saveText(id, value), 350);
+      const owner = local?.owner();
+      saveTextTimer = setTimeout(() => { if (owner === local?.owner()) saveText(id, value); }, 350);
     }
 
     function finishTextEdit(id, content) {
@@ -1185,7 +1210,7 @@
       if (textBeforeEdit && textBeforeEdit.value !== value) {
         recordUndo(textBeforeEdit.items);
       }
-      saveText(id, value, Math.ceil(content.scrollHeight));
+      if (saveText(id, value, Math.ceil(content.scrollHeight)) === false) return;
       textBeforeEdit = null;
       editingId = "";
       content.contentEditable = "false";
@@ -1200,8 +1225,8 @@
       const current = ctx.getItems().find((item) => item.id === id);
       if (!current) return;
       const height = Math.max(current.height, minimumHeight);
-      if (current.text === value && current.height === height) return;
-      ctx.commitItems(ctx.getItems().map((item) => item.id === id
+      if (current.text === value && current.height === height) { drafts?.remove(`board-text:${id}`); return true; }
+      const saved = ctx.commitItems(ctx.getItems().map((item) => item.id === id
         ? {
             ...item,
             text: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH),
@@ -1209,9 +1234,16 @@
             updatedAt: new Date().toISOString(),
           }
         : item), { render: false });
+      if (saved === false) {
+        drafts?.write(`board-text:${id}`, { value: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH) });
+        setStatus("Не удалось сохранить текст · повтори сохранение", "error");
+        return false;
+      }
+      drafts?.remove(`board-text:${id}`);
       const node = findItemNode(id);
       if (node) node.style.height = `${height}px`;
       setStatus("Сохранено · фото хранятся в Supabase Storage", "saved");
+      return true;
     }
 
     function pastePlainText(event) {
@@ -1470,7 +1502,7 @@
         updatedAt: now,
       }));
       setSelection(copies.map((item) => item.id), copies.at(-1)?.id);
-      commit([...ctx.getItems(), ...copies]);
+      if (!commit([...ctx.getItems(), ...copies])) return;
       ctx.showToast(copies.length > 1 ? "Объекты продублированы" : "Объект продублирован");
     }
 
@@ -1492,9 +1524,9 @@
       const nextGroupId = currentGroupId ? "" : ctx.createId();
       const ids = new Set(items.map((item) => item.id));
       const now = new Date().toISOString();
-      commit(ctx.getItems().map((item) => ids.has(item.id)
+      if (!commit(ctx.getItems().map((item) => ids.has(item.id)
         ? { ...item, groupId: nextGroupId, updatedAt: now }
-        : item));
+        : item))) return;
       ctx.showToast(currentGroupId ? "Группа разобрана" : "Объекты сгруппированы");
     }
 
@@ -1522,9 +1554,9 @@
       const ids = new Set(items.map((item) => item.id));
       const locked = !items.every((item) => item.locked);
       const now = new Date().toISOString();
-      commit(ctx.getItems().map((item) => ids.has(item.id)
+      if (!commit(ctx.getItems().map((item) => ids.has(item.id)
         ? { ...item, locked, updatedAt: now }
-        : item));
+        : item))) return;
       ctx.showToast(locked ? "Объект заблокирован" : "Объект разблокирован");
     }
 
@@ -1553,8 +1585,13 @@
     }
 
     function commit(items, options = {}) {
-      ctx.commitItems(ctx.model.normalizeItems(items, { createId: ctx.createId }), options);
+      const saved = ctx.commitItems(ctx.model.normalizeItems(items, { createId: ctx.createId }), options) !== false;
+      if (!saved) {
+        if (JSON.stringify(undoStack.at(-1)) === JSON.stringify(ctx.getItems())) undoStack.pop();
+        setStatus("Не удалось сохранить изменение", "error");
+      }
       render();
+      return saved;
     }
 
     async function loadImage(item) {
@@ -1621,17 +1658,22 @@
     }
 
     async function uploadLegacyImage(item) {
+      const owner = local?.owner();
+      const ownerOfAsset = ctx.assets.getOwner?.();
       try {
         const remotePath = await ctx.assets.upload(item);
+        if (owner !== local?.owner() || ownerOfAsset !== ctx.assets.getOwner?.()) return;
         if (!remotePath) return;
         const current = ctx.getItems().find((candidate) => candidate.id === item.id);
         if (!current || current.remotePath) return;
-        ctx.commitItems(ctx.getItems().map((candidate) => candidate.id === item.id
+        const saved = ctx.commitItems(ctx.getItems().map((candidate) => candidate.id === item.id
           ? { ...candidate, remotePath, updatedAt: new Date().toISOString() }
           : candidate), { render: false });
+        if (saved === false) { setStatus("Не удалось сохранить ссылку на фото", "error"); return; }
         pendingUploadAttempts.delete(item.assetId);
         setStatus("Старое фото перенесено в Supabase Storage", "cloud");
       } catch (error) {
+        if (owner !== local?.owner() || ownerOfAsset !== ctx.assets.getOwner?.()) return;
         setStatus(error.message || "Не удалось перенести фото в Supabase", "error");
       }
     }

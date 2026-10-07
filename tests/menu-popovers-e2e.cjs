@@ -85,6 +85,11 @@ async function menuBounds(locator) {
       top: rect.top,
       viewportHeight: window.innerHeight,
       viewportWidth: window.innerWidth,
+      menuHeight: rect.height,
+      trigger: node.closest("details")?.querySelector("summary")?.getBoundingClientRect().toJSON(),
+      maxHeight: getComputedStyle(node).maxHeight,
+      position: getComputedStyle(node).position,
+      classes: node.closest("details")?.className,
     };
   });
 }
@@ -111,7 +116,7 @@ async function waitForDisclosurePosition(locator) {
 }
 
 function assertMenuFits(bounds, label) {
-  assert.ok(bounds.top >= 0, `${label} must stay below the viewport top`);
+  assert.ok(bounds.top >= 0, `${label} must stay below the viewport top: ${JSON.stringify(bounds)}`);
   assert.ok(bounds.bottom <= bounds.viewportHeight, `${label} must stay above the viewport bottom`);
   assert.ok(
     bounds.left >= 0 && bounds.right <= bounds.viewportWidth,

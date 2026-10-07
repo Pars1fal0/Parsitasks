@@ -3,7 +3,7 @@ name: Public Availability
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 * * * *'
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: read
@@ -44,6 +44,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PARSITASKS_HEALTHY: ${{ steps.probe.outcome == 'success' || steps.retry.outcome == 'success' }}
+          PARSITASKS_INCIDENT_WEBHOOK: ${{ secrets.PARSITASKS_INCIDENT_WEBHOOK }}
       - name: Fail a confirmed outage
         if: steps.probe.outcome == 'failure' && steps.retry.outcome == 'failure'
         run: exit 1

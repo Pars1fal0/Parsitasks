@@ -47,7 +47,7 @@ export default {
       if (["GET", "HEAD"].includes(request.method) && url.pathname === "/app/") {
         return Response.redirect(`${url.origin}/app${url.search}`, 308);
       }
-      if (["GET", "HEAD"].includes(request.method) && url.pathname === "/auth") {
+      if (["GET", "HEAD"].includes(request.method) && ["/auth", "/auth.html"].includes(url.pathname)) {
         return assetPage(request, env, "/auth.html");
       }
       if (["GET", "HEAD"].includes(request.method) && url.pathname === "/auth/") {
@@ -752,6 +752,7 @@ function publicConfigResponse(env) {
   return jsonResponse({
     supabaseUrl: String(env.SUPABASE_URL),
     anonKey: supabasePublicKey(env),
+    ...(env.TURNSTILE_SITE_KEY ? { turnstileSiteKey: String(env.TURNSTILE_SITE_KEY) } : {}),
   }, {
     headers: {
       "Access-Control-Allow-Origin": "*",
@@ -765,9 +766,13 @@ function consentPage(request, env) {
   return env.ASSETS.fetch(new Request(assetUrl, request));
 }
 
-function assetPage(request, env, pathname) {
+async function assetPage(request, env, pathname) {
   const assetUrl = new URL(pathname, request.url);
-  return env.ASSETS.fetch(new Request(assetUrl, request));
+  const response = await env.ASSETS.fetch(new Request(assetUrl, request));
+  if (pathname !== "/auth.html" || !env.TURNSTILE_SITE_KEY) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; connect-src 'self' https://parsitasks.ru https://*.supabase.co https://challenges.cloudflare.com; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 function isProtectedResourceMetadataPath(pathname) {

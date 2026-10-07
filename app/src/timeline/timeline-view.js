@@ -152,7 +152,6 @@
 
       main.type = "button";
       main.className = "timeline-task-main";
-      main.setAttribute("aria-label", `${entry.title}, ${entry.timeLabel || "без времени"}`);
       if (!study && Number.isFinite(entry.minutes) && ctx.shiftTaskTime) {
         main.setAttribute("aria-keyshortcuts", "Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight");
         main.addEventListener("keydown", (event) => handleTaskKeydown(event, entry));

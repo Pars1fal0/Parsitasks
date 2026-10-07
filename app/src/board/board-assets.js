@@ -4,10 +4,16 @@
   const BUCKET = "board-images";
   const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
   const MAX_DIMENSION = 2200;
+  const MAX_CACHE_BYTES = 64 * 1024 * 1024;
+  const MAX_CACHE_ENTRIES = 200;
+  const CACHE_RETENTION_MS = 30 * 86400000;
   const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
   function createBoardAssetStore(options = {}) {
     const fetchFn = options.fetchFn || global.fetch?.bind(global);
+    const now = options.now || Date.now;
+    const cacheOwner = () => String(options.getOwner?.() || "");
+    const cacheKey = (id, owner) => owner ? JSON.stringify([owner, String(id)]) : String(id);
     let dbPromise = null;
 
     function openDb() {
@@ -15,37 +21,112 @@
       if (dbPromise) return dbPromise;
       dbPromise = new Promise((resolve, reject) => {
         const request = global.indexedDB.open(DB_NAME, 1);
+        let abandoned = false;
+        const fail = (error) => { abandoned = true; global.clearTimeout(timer); reject(error); };
+        const timer = global.setTimeout(() => fail(new Error("Хранилище изображений не отвечает. Повтори попытку")), 10000);
         request.onupgradeneeded = () => {
+          if (abandoned) { request.transaction.abort(); return; }
           if (!request.result.objectStoreNames.contains(STORE_NAME)) {
             request.result.createObjectStore(STORE_NAME, { keyPath: "id" });
           }
         };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error || new Error("Не удалось открыть хранилище изображений"));
+        request.onsuccess = () => {
+          global.clearTimeout(timer);
+          if (abandoned) { request.result.close(); return; }
+          request.result.onversionchange = () => { request.result.close(); dbPromise = null; };
+          resolve(request.result);
+        };
+        request.onerror = () => fail(request.error || new Error("Не удалось открыть хранилище изображений"));
+        request.onblocked = () => fail(new Error("Хранилище изображений занято другой вкладкой. Закрой старую вкладку и повтори попытку"));
       });
+      const pending = dbPromise;
+      pending.catch(() => { if (dbPromise === pending) dbPromise = null; });
       return dbPromise;
     }
 
-    async function put(id, blob, meta = {}) {
+    async function put(id, blob, meta = {}, owner = cacheOwner()) {
       const db = await openDb();
+      assertOwner(owner);
+      if (meta.cacheOnly) await pruneCache({ reserveBytes: blob.size, reserveEntries: 1 });
+      assertOwner(owner);
       await transaction(db, "readwrite", (store) => store.put({
-        id,
+        id: cacheKey(id, owner),
+        assetId: id,
+        owner,
         blob,
         mime: blob.type || meta.mime || "image/jpeg",
         name: String(meta.name || ""),
-        updatedAt: new Date().toISOString(),
+        remotePath: String(meta.remotePath || ""),
+        cacheOnly: meta.cacheOnly === true && Boolean(meta.remotePath),
+        updatedAt: new Date(now()).toISOString(),
+        lastAccessedAt: now(),
       }));
+      if (meta.cacheOnly) await pruneCache();
       return { id, blob };
     }
 
-    async function get(id) {
+    async function get(id, owner = cacheOwner()) {
       const db = await openDb();
-      return transaction(db, "readonly", (store) => store.get(id));
+      const key = cacheKey(id, owner);
+      const row = await transaction(db, "readwrite", (store) => {
+        const request = store.get(key);
+        request.onsuccess = () => {
+          if (request.result?.cacheOnly) store.put({ ...request.result, lastAccessedAt: now() });
+        };
+        return request;
+      }).catch(() => transaction(db, "readonly", (store) => store.get(key)));
+      assertOwner(owner);
+      return row;
     }
 
-    async function remove(id) {
+    async function remove(id, owner = cacheOwner()) {
       const db = await openDb();
-      await transaction(db, "readwrite", (store) => store.delete(id));
+      assertOwner(owner);
+      await transaction(db, "readwrite", (store) => store.delete(cacheKey(id, owner)));
+    }
+
+    async function pruneCache({ reserveBytes = 0, reserveEntries = 0 } = {}) {
+      const db = await openDb();
+      const byteLimit = Math.max(0, (options.maxCacheBytes ?? MAX_CACHE_BYTES) - reserveBytes);
+      const entryLimit = Math.max(0, (options.maxCacheEntries ?? MAX_CACHE_ENTRIES) - reserveEntries);
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const rows = [];
+        let bytes = 0, entries = 0, removed = 0;
+        const request = store.openCursor();
+        request.onsuccess = () => {
+          const cursor = request.result;
+          if (cursor) {
+            const row = cursor.value;
+            const size = Number(row.blob?.size) || 0;
+            bytes += size; entries++;
+            if (row.cacheOnly === true && row.remotePath && typeof row.owner === "string") {
+              rows.push({ id: cursor.primaryKey, bytes: size, accessed: Number(row.lastAccessedAt) || Date.parse(row.updatedAt) || 0 });
+            }
+            cursor.continue();
+            return;
+          }
+          rows.sort((a, b) => a.accessed - b.accessed || String(a.id).localeCompare(String(b.id)));
+          for (const row of rows) {
+            if (bytes <= byteLimit && entries <= entryLimit && now() - row.accessed < CACHE_RETENTION_MS) continue;
+            store.delete(row.id); bytes -= row.bytes; entries--; removed++;
+          }
+        };
+        tx.oncomplete = () => resolve({ bytes, entries, removed });
+        tx.onerror = tx.onabort = () => reject(tx.error || new Error("Не удалось очистить кеш изображений"));
+      });
+    }
+
+    function assertOwner(owner) {
+      if (owner !== cacheOwner()) throw new Error("Аккаунт изменился. Открой изображение заново");
+    }
+
+    function assertRemotePath(config, path) {
+      const parts = String(path || "").split("/");
+      if (parts[0] !== config.userId || parts.length < 2 || parts.some((part) => !part || [".", ".."].includes(part) || /[\\\0]/.test(part))) {
+        throw new Error("Изображение принадлежит другому аккаунту или содержит неверный путь");
+      }
     }
 
     async function prepareImage(file) {
@@ -76,47 +157,63 @@
     }
 
     async function resolveBlob(item) {
-      const local = await get(item.assetId).catch(() => null);
-      if (isUsableImageBlob(local?.blob, local?.mime || item.mime)) {
+      const owner = cacheOwner();
+      const local = await get(item.assetId, owner).catch(() => null);
+      assertOwner(owner);
+      if (isUsableImageBlob(local?.blob, local?.mime || item.mime) && (!item.remotePath || local.remotePath === item.remotePath)) {
         return normalizeBlobType(local.blob, local?.mime || item.mime);
       }
-      if (local) await remove(item.assetId).catch(() => {});
+      if (local && !isUsableImageBlob(local.blob, local.mime)) await remove(item.assetId, owner).catch(() => {});
       if (!item.remotePath) return null;
       const config = await getRemoteConfig();
+      assertOwner(owner);
       if (!config || !fetchFn) return null;
+      assertRemotePath(config, item.remotePath);
       const response = await fetchFn(storageUrl(config.supabaseUrl, "object/authenticated", item.remotePath), {
         headers: storageHeaders(config),
       });
       if (!response.ok) throw new Error(await storageError(response, response.status));
       const responseType = response.headers?.get?.("content-type") || "";
       const downloaded = await response.blob();
+      assertOwner(owner);
       const blob = normalizeBlobType(downloaded, responseType || item.mime);
       if (!isUsableImageBlob(blob, responseType || item.mime)) {
         throw new Error("Supabase вернул повреждённый или пустой файл изображения");
       }
-      await put(item.assetId, blob, { mime: blob.type || item.mime, name: item.name }).catch(() => {});
+      await put(item.assetId, blob, { mime: blob.type || item.mime, name: item.name, remotePath: item.remotePath, cacheOnly: true }, owner).catch(() => {});
+      assertOwner(owner);
       return blob;
     }
 
     async function upload(item) {
       if (item.remotePath || !fetchFn) return item.remotePath || "";
-      const local = await get(item.assetId).catch(() => null);
+      const owner = cacheOwner();
+      const local = await get(item.assetId, owner).catch(() => null);
+      assertOwner(owner);
       if (!local?.blob) return "";
       const config = await requireRemoteConfig();
-      return uploadBlob(config, item.assetId, local.blob, local.mime || item.mime);
+      assertOwner(owner);
+      const path = await uploadBlob(config, item.assetId, local.blob, local.mime || item.mime);
+      assertOwner(owner);
+      return path;
     }
 
     async function uploadPrepared(assetId, prepared) {
+      const owner = cacheOwner();
       if (!isUsableImageBlob(prepared?.blob, prepared?.mime)) {
         throw new Error("Не удалось подготовить изображение");
       }
       const config = await requireRemoteConfig();
+      assertOwner(owner);
       const path = await uploadBlob(config, assetId, prepared.blob, prepared.mime);
-      await put(assetId, prepared.blob, prepared).catch(() => {});
+      assertOwner(owner);
+      await put(assetId, prepared.blob, { ...prepared, remotePath: path, cacheOnly: true }, owner).catch(() => {});
+      assertOwner(owner);
       return path;
     }
 
     async function uploadBlob(config, assetId, blob, mime) {
+      if (!/^[A-Za-z0-9_-]{1,160}$/.test(assetId)) throw new Error("Неверный идентификатор изображения");
       const extension = extensionForMime(mime);
       const path = `${config.userId}/${assetId}.${extension}`;
       let response;
@@ -172,6 +269,9 @@
 
     return {
       prepareImage,
+      getOwner: cacheOwner,
+      get,
+      pruneCache,
       put,
       remove,
       resolveBlob,
@@ -184,8 +284,9 @@
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, mode);
       const request = action(tx.objectStore(STORE_NAME));
-      request.onsuccess = () => resolve(request.result);
+      tx.oncomplete = () => resolve(request.result);
       request.onerror = () => reject(request.error || new Error("Ошибка локального хранилища"));
+      tx.onerror = () => reject(tx.error || new Error("Ошибка локального хранилища"));
       tx.onabort = () => reject(tx.error || new Error("Операция хранения отменена"));
     });
   }

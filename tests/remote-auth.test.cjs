@@ -12,6 +12,17 @@ function createStorage() {
 }
 
 module.exports = [
+  { name: "signup, password login and recovery pass CAPTCHA tokens to Supabase without logging or persisting them", async fn() {
+    const bodies = [];
+    const storage = createStorage();
+    const auth = createRemoteAuth({ getConfig: () => ({ anonKey: "anon", supabaseUrl: "https://demo.supabase.co" }), storage,
+      fetch: async (url, init) => { bodies.push(JSON.parse(init.body)); return { ok: true, text: async () => "{}" }; } });
+    await auth.signUp("test@example.com", "password12", { captchaToken: "captcha-1" });
+    await auth.signIn("test@example.com", "password12", { captchaToken: "captcha-2" });
+    await auth.resetPassword("test@example.com", { captchaToken: "captcha-3" });
+    assert.deepEqual(bodies.map((body) => body.gotrue_meta_security.captcha_token), ["captcha-1", "captcha-2", "captcha-3"]);
+    assert.doesNotMatch(JSON.stringify([...storage.values]), /captcha-/);
+  } },
   {
     name: "rejects weak new account passwords before contacting Supabase",
     async fn() {

@@ -10,6 +10,32 @@ const authConfig = {
 };
 
 module.exports = [
+  { name: "image cleanup deletes only server-claimed paths owned by the current account", async fn() {
+    const calls = [];
+    const sync = createRemoteSync({ fetch: async (url, init) => {
+      calls.push({ url, init });
+      return { ok: true, status: 200, text: async () => JSON.stringify(calls.length === 1 ? ["user-123/old.png"] : []) };
+    } });
+    assert.deepEqual(await sync.cleanupUnusedImages(authConfig), { removed: 1 });
+    assert.equal(calls[0].init.method, "POST");
+    assert.match(calls[0].url, /claim_parsitasks_unused_images$/);
+    assert.equal(calls[1].init.method, "DELETE");
+    assert.deepEqual(JSON.parse(calls[1].init.body), { prefixes: ["user-123/old.png"] });
+    for (const path of ["foreign/old.png", "user-123/../old.png", "user-123/", "user-123/a\\b.png"]) {
+      let calls = 0;
+      const invalid = createRemoteSync({ fetch: async () => { calls++; return { ok: true, status: 200, text: async () => JSON.stringify([path]) }; } });
+      await assert.rejects(invalid.cleanupUnusedImages(authConfig), /безопасный список/);
+      assert.equal(calls, 1);
+    }
+  } },
+  {
+    name: "server schema downgrade rejection asks the old client to update",
+    async fn() {
+      const sync = createRemoteSync({ fetch: async () => ({ ok: false, status: 400,
+        text: async () => JSON.stringify({ message: "parsitasks_client_outdated: update the application before saving" }) }) });
+      await assert.rejects(sync.pushState(authConfig, { state: { tasks: [] } }), (error) => error.code === "client-outdated");
+    },
+  },
   {
     name: "updates only the remote revision that was previously read",
     async fn() {

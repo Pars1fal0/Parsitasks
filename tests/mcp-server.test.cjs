@@ -78,7 +78,7 @@ module.exports = [
       assert.match(source, /methodNotAllowed\(\["GET", "POST", "DELETE"\]\)/);
       assert.match(source, /url\.pathname === "\/"[\s\S]*assetPage\(request, env, "\/landing\.html"\)/);
       assert.match(source, /url\.pathname === "\/app"[\s\S]*assetPage\(request, env, "\/index\.html"\)/);
-      assert.match(source, /url\.pathname === "\/auth"[\s\S]*assetPage\(request, env, "\/auth\.html"\)/);
+      assert.match(source, /\["\/auth", "\/auth\.html"\]\.includes\(url\.pathname\)[\s\S]*assetPage\(request, env, "\/auth\.html"\)/);
       assert.deepEqual(
         [...promptsSource.matchAll(/server\.registerPrompt\(\s*"([^"]+)"/g)].map((match) => match[1]),
         ["plan_week", "review_backlog", "monthly_review", "journal_weekly_reflection"],

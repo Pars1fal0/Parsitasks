@@ -583,15 +583,17 @@ npm run mcp:dev
 
 ## Публикация сайта
 
-Cloudflare Workers подключается к приватному GitHub-репозиторию и автоматически публикует каждый push в `master`. Параметры проекта:
+Публикация выполняется через GitHub Actions `Application Verification` для `master`:
+полный набор тестов, сборка и проверка отпечатков артефакта, проверка защит базы,
+затем публикация именно этого артефакта и проверка сайта. Нужны секреты GitHub
+`CLOUDFLARE_API_TOKEN` и `CLOUDFLARE_ACCOUNT_ID`, а также миграции из
+[OPERATIONS.md](OPERATIONS.md). Без них публикация завершится ошибкой.
 
-- production branch: `master`;
-- build command: `npm run build:cloudflare`;
-- deploy command: `npx wrangler deploy`;
-- root directory: оставить пустой;
-- static assets directory задается в `wrangler.jsonc` как `web-dist`.
-
-Команда публикации сначала запускает unit-тесты и lint, затем собирает чистый статический каталог `web-dist`. Для корректных ссылок подтверждения email полученный адрес `*.workers.dev` нужно указать в Supabase в `Authentication` → `URL Configuration` как `Site URL` и добавить в `Redirect URLs`.
+Старую интеграцию Cloudflare Builds с публикацией исходников нужно отключить.
+`npm run build:cloudflare` намеренно отказывается её запускать. Локальная полная
+проверка: `npm run verify:release`. Не заменяй её прямым `wrangler deploy`.
+Для email-подтверждения и восстановления настрой production `Site URL` и разрешённые
+адреса возврата в Supabase `Authentication` → `URL Configuration`.
 
 ## Десктопная версия
 

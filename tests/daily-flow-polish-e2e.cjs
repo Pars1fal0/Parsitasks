@@ -47,19 +47,38 @@ const { chromium } = require("playwright-core");
     assert.match(await page.locator(".calendar-untimed").innerText(), /Дело без времени/);
     assert.match(await page.locator(".calendar-untimed").innerText(), /Сдать отчёт/);
     const calendarSpace = async () => {
-      await page.waitForFunction(() => {
+      if (await page.locator(".calendar-exit-button:visible").count()) await page.locator(".calendar-exit-button").click();
+      try { await page.waitForFunction(() => {
         const node = document.querySelector(".calendar-time-scroll");
-        return node?.clientHeight >= (innerWidth <= 680 ? 280 : 700)
+        return node?.getBoundingClientRect().height >= (innerWidth <= 680 ? 280 : 700)
           && (innerWidth > 680 || (Boolean(document.querySelector(".calendar-touch-options"))
             && node.getBoundingClientRect().bottom <= innerHeight - 64));
       });
+      } catch (error) {
+        console.log(await page.evaluate(() => ({ width: innerWidth, height: innerHeight, body: document.body.className,
+          scroller: document.querySelector(".calendar-time-scroll")?.getBoundingClientRect().toJSON(),
+          root: document.querySelector("#calendarSchedule")?.getBoundingClientRect().toJSON(),
+          nav: document.querySelector(".nav-tabs")?.getBoundingClientRect().toJSON(),
+        })));
+        await page.screenshot({ path: path.join(captures, "calendar-space-failure.png") });
+        console.log(captures);
+        throw error;
+      }
       await page.locator(".calendar-time-scroll").waitFor({ state: "visible" });
-      const size = await page.locator(".calendar-time-scroll").evaluate((node) => ({ width: innerWidth, height: node.clientHeight, min: parseFloat(getComputedStyle(node).minHeight), bottom: node.getBoundingClientRect().bottom, viewport: innerHeight }));
+      const size = await page.locator(".calendar-time-scroll").evaluate((node) => ({ width: innerWidth, height: node.getBoundingClientRect().height, min: parseFloat(getComputedStyle(node).minHeight), bottom: node.getBoundingClientRect().bottom, viewport: innerHeight }));
       assert.ok(size.height >= (size.width <= 680 ? 280 : 700), "calendar viewport has useful working space: " + JSON.stringify(size));
       if (size.width <= 680) {
         assert.ok(size.bottom <= size.viewport - 64, "mobile grid fits above bottom tabs rather than extending behind them: " + JSON.stringify(size));
       }
-      assert.ok(await page.locator(".calendar-untimed").evaluate((node) => Boolean(node.compareDocumentPosition(document.querySelector(".calendar-time-scroll")) & Node.DOCUMENT_POSITION_PRECEDING)), "untimed tasks follow the timeline");
+      const ordering = await page.evaluate(() => {
+        const node = document.querySelector(".calendar-untimed");
+        return {
+          follows: Boolean(node.compareDocumentPosition(document.querySelector(".calendar-time-scroll")) & Node.DOCUMENT_POSITION_PRECEDING),
+          sections: [...node.parentElement.children].map((child) => child.className),
+          calendars: [...document.querySelectorAll(".calendar-time-scroll")].map((child) => child.closest("section")?.id),
+        };
+      });
+      assert.ok(ordering.follows, `untimed tasks follow the timeline: ${JSON.stringify(ordering)}`);
     };
     await calendarSpace();
     await page.locator("#activeDate").fill("2026-10-02"); await page.locator("#activeDate").dispatchEvent("change");

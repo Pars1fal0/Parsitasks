@@ -49,6 +49,14 @@ function availabilityFixture({ pageStatus = 200, auth = true, anonymousStatus = 
 }
 
 module.exports = [
+  { name: "local release verification runs the same checks as CI and the legacy source-build route fails closed", fn() {
+    const { releaseChecks } = require("../scripts/verify-release.cjs");
+    const checks = releaseChecks();
+    assert.ok(checks.length >= 30);
+    for (const script of ["test:sql-isolation", "test:auth-recovery", "test:save-failures", "test:mobile-completion", "build:worker"]) assert.ok(checks.some((check) => check.args[1] === script));
+    const legacy = require("node:child_process").spawnSync(process.execPath, [path.resolve(__dirname, "../scripts/legacy-cloudflare-build.cjs")], { encoding: "utf8" });
+    assert.equal(legacy.status, 2); assert.match(legacy.stderr, /sealed artifact/);
+  } },
   { name: "release candidate packages only the built Worker and web assets and seals their exact hashes", fn() {
     const f = fixture(); f.prepare(); const result = f.verify();
     assert.equal(result.sourceRevision, revision); assert.equal(result.sourceDirty, false);
@@ -157,9 +165,11 @@ module.exports = [
   } },
   { name: "production job depends on successful verification and deploys only a sealed artifact", fn() {
     const workflow = fs.readFileSync(path.resolve(__dirname, "../.github/workflows/verification.yml"), "utf8");
-    assert.match(workflow, /needs: verify/); assert.match(workflow, /PARSITASKS_GATED_DEPLOY_ENABLED == '1'/);
+    assert.match(workflow, /needs: verify/); assert.doesNotMatch(workflow, /PARSITASKS_GATED_DEPLOY_ENABLED/);
     assert.match(workflow, /environment:\s*\n\s*name: production/);
     assert.match(workflow, /release:verify/); assert.match(workflow, /--config \.release-candidate\/wrangler.json --no-bundle/);
+    const desktop = fs.readFileSync(path.resolve(__dirname, "../.github/workflows/desktop-release.yml"), "utf8");
+    assert.match(desktop, /run: npm run verify:release/);
     assert.match(workflow, /github.event_name != 'pull_request'/);
     const monitoring = fs.readFileSync(path.resolve(__dirname, "../.github/workflows/availability.yml"), "utf8");
     assert.match(monitoring, /PARSITASKS_MONITORING_ENABLED == '1'/);
@@ -171,7 +181,7 @@ module.exports = [
     assert.equal(config.jobs.deploy.environment.name, "production");
     assert.equal(config.permissions.contents, "read");
     assert.equal(config.on.pull_request_target, undefined);
-    assert.equal(publicChecks.on.schedule[0].cron, "17 * * * *");
+    assert.equal(publicChecks.on.schedule[0].cron, "*/5 * * * *");
     const recheck = config.jobs.deploy.steps.find((step) => step.name === "Recheck artifact fingerprints and source revision");
     assert.equal(recheck.env.EXPECTED_CANDIDATE_SEAL, "${{ needs.verify.outputs.candidate_seal }}");
     assert.ok(recheck.run.includes('--seal "$EXPECTED_CANDIDATE_SEAL"'));

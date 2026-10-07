@@ -3,6 +3,68 @@ const { createRemoteSyncWorkflow } = require("../app/src/sync/remote-sync-contro
 
 module.exports = [
   {
+    name: "image cleanup is account-scoped, throttled and does not turn a successful push into an error",
+    async fn() {
+      let userId = "first";
+      let failPush = false;
+      let switchDuringCleanup = false;
+      let meta = { pending: true, lastPulledAt: "", lastPushedAt: "" };
+      const cleanups = [];
+      const events = [];
+      const toasts = [];
+      const workflow = createRemoteSyncWorkflow({
+        describeError: (error) => error.message,
+        getRemoteUiSettings: () => ({}),
+        getSettings: () => ({ accessToken: "jwt", enabled: true, anonKey: "anon", supabaseUrl: "url", userId }),
+        getState: () => ({ tasks: [] }),
+        getSyncMeta: () => meta,
+        remoteSync: {
+          normalizeConfig: (config) => config,
+          isConfigured: (config) => config.enabled,
+          pullState: async () => ({ found: false }),
+          pushState: async () => {
+            if (failPush) throw new Error("Push failed");
+            return { row: { updated_at: "2026-10-07T10:00:00Z" } };
+          },
+          cleanupUnusedImages: async (config) => {
+            cleanups.push(config.userId);
+            if (switchDuringCleanup) { userId = "fourth"; workflow.resetQueue(); }
+            throw new Error("Storage unavailable");
+          },
+        },
+        recordSyncEvent: (...args) => events.push(args),
+        renderSaveStatus() {},
+        saveUiState() {},
+        schemaVersion: 26,
+        setSyncMeta: (next) => { meta = { ...meta, ...next }; },
+        showToast: (message) => toasts.push(message),
+        syncControls() {},
+      });
+      await workflow.push();
+      assert.equal(workflow.getStatus().lastError, "");
+      assert.equal(workflow.getStatus().pending, false);
+      assert.match(events.at(-1)[1], /Очистка неиспользуемых фото/);
+      assert.deepEqual(toasts, ["Данные сохранены в БД"]);
+      await workflow.push({ silent: true });
+      assert.deepEqual(cleanups, ["first"]);
+      userId = "second"; workflow.resetQueue();
+      await workflow.push({ silent: true });
+      assert.deepEqual(cleanups, ["first", "second"]);
+      userId = "third"; workflow.resetQueue(); failPush = true;
+      await workflow.push({ silent: true });
+      assert.equal(workflow.getStatus().lastError, "Push failed");
+      assert.deepEqual(cleanups, ["first", "second"]);
+      failPush = false; switchDuringCleanup = true;
+      const before = events.length;
+      assert.deepEqual(await workflow.push({ silent: true }), { cancelled: true });
+      assert.equal(events.length, before + 1, "only the original account's push was recorded");
+      assert.deepEqual(events.at(-1), ["push"]);
+      assert.equal(workflow.getStatus().lastError, "");
+      assert.equal(workflow.getStatus().inFlight, false);
+      assert.deepEqual(cleanups, ["first", "second", "third"]);
+    },
+  },
+  {
     name: "reloads and merges once when a remote write revision conflicts",
     async fn() {
       let pulls = 0;

@@ -10,6 +10,29 @@ const { downloadRollback } = require("../scripts/download-rollback.cjs");
 const password = "synthetic-backup-key-not-a-real-secret";
 
 module.exports = [
+  { name: "incident webhook delivery retries failures and records success before suppressing later alerts", async fn() {
+    let issue = { number: 42, title: "[Monitoring] Parsitasks availability incident", body: "Synthetic incident", user: { login: "github-actions[bot]" } };
+    let deliveryFails = true; const events = []; let patches = 0;
+    const fetchImpl = async (url, init) => {
+      if (new URL(url).host === "alerts.example.test") {
+        assert.equal(init.headers.Authorization, undefined, "GitHub credentials must not reach the webhook");
+        if (deliveryFails) return new Response(null, { status: 503 });
+        events.push(JSON.parse(init.body).event); return new Response(null, { status: 204 });
+      }
+      if (init.method === "GET") return Response.json(issue.state === "closed" ? [] : [issue]);
+      if (init.method === "PATCH") { patches++; issue = { ...issue, ...JSON.parse(init.body) }; }
+      return Response.json({});
+    };
+    const config = { token: "synthetic", repository: "owner/project", runId: "123", healthy: false,
+      webhook: "https://alerts.example.test/hook", fetchImpl };
+    await assert.rejects(updateIncident(config), /Alert delivery failed/); assert.equal(patches, 0);
+    deliveryFails = false;
+    assert.equal((await updateIncident(config)).action, "already-open");
+    assert.match(issue.body, /External outage alert delivered/);
+    await updateIncident(config); assert.deepEqual(events, ["outage"]);
+    assert.equal((await updateIncident({ ...config, healthy: true })).action, "resolved");
+    assert.deepEqual(events, ["outage", "recovered"]); assert.equal(issue.state, "closed");
+  } },
   { name: "encrypted backups verify and unpack byte-identical synthetic files without restoring a database", fn() {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "parsitasks-backup-test-"));
     try {

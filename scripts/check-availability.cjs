@@ -81,5 +81,5 @@ async function main() {
   const result = args.includes("--full") ? await verifyRelease({ baseUrl: url }) : await checkAvailability({ baseUrl: url });
   console.log(`availability ok - ${JSON.stringify(result)}`);
 }
-module.exports = { checkAvailability };
+module.exports = { checkAvailability, publicProvider };
 if (require.main === module) main().catch((error) => { console.error(error.message); process.exitCode = 1; });

@@ -213,7 +213,7 @@ const { chromium } = require("playwright-core");
       check("late task survives saving", (await stored()).tasks.some((item) => item.startTime === "23:45" && item.endTime === "23:59"), (await stored()).tasks);
     }
     await seed([{ id: "late", title: "Вечернее дело", date: "2026-10-04", repeat: "none", completed: {}, scheduleMode: "block", startTime: "23:30", endTime: "23:45", time: "23:45" }], "calendar/day");
-    await page.locator('[data-event-id="late"] .calendar-event-resize').press("ArrowDown");
+    await page.locator('[data-event-id="late"] .calendar-event-resize[data-edge="end"]').press("ArrowDown");
     const resized = (await stored()).tasks.find((item) => item.id === "late");
     check("late block can extend to the end of the day", resized.endTime === "23:59", { start: resized.startTime, end: resized.endTime });
     await seed([{ id: "late-move", title: "Вечерний перенос", date: "2026-10-04", repeat: "none", completed: {}, scheduleMode: "block", startTime: "22:30", endTime: "22:59", time: "22:59" }], "calendar/day");

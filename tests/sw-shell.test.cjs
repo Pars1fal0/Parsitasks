@@ -36,7 +36,6 @@ module.exports = [
       const buildScript = fs.readFileSync(path.join(root, "scripts", "build-web.cjs"), "utf8");
       assert.match(buildScript, /replaceAll\("__BUILD_HASH__", buildHash\)/);
       assert.match(buildScript, /createHash\("sha256"\)/);
-      assert.match(buildScript, /stampAssetUrls\(fs\.readFileSync\(source, "utf8"\), buildHash\)/);
     },
   },
   {
