@@ -41,6 +41,7 @@ const { chromium } = require("playwright-core");
     const go = async (hash) => {
       await page.evaluate((value) => { location.hash = value; window.scrollTo(0, 0); }, hash);
       await page.locator(`#${hash.startsWith("calendar/") ? "overview" : hash}View`).waitFor({ state: "visible" });
+      if (hash.startsWith("calendar/")) await page.locator(`#overviewView[data-mode="${hash.split("/")[1]}"]`).waitFor({ state: "visible" });
     };
     assert.ok(await page.locator(".calendar-time-scroll").evaluate((node) => node.scrollTop > 600), "today starts around current time");
     assert.ok(await page.locator(".calendar-untimed").isVisible());
@@ -48,12 +49,18 @@ const { chromium } = require("playwright-core");
     assert.match(await page.locator(".calendar-untimed").innerText(), /Сдать отчёт/);
     const calendarSpace = async () => {
       if (await page.locator(".calendar-exit-button:visible").count()) await page.locator(".calendar-exit-button").click();
-      try { await page.waitForFunction(() => {
+      let size;
+      try { const measurement = await page.waitForFunction(() => {
         const node = document.querySelector(".calendar-time-scroll");
-        return node?.getBoundingClientRect().height >= (innerWidth <= 680 ? 280 : 700)
+        const bounds = node?.getBoundingClientRect();
+        return bounds?.height >= (innerWidth <= 680 ? 280 : 700)
           && (innerWidth > 680 || (Boolean(document.querySelector(".calendar-touch-options"))
-            && node.getBoundingClientRect().bottom <= innerHeight - 64));
+            && bounds.bottom <= innerHeight - 64))
+          ? { width: innerWidth, height: bounds.height, min: parseFloat(getComputedStyle(node).minHeight), bottom: bounds.bottom, viewport: innerHeight }
+          : false;
       });
+        size = await measurement.jsonValue();
+        await measurement.dispose();
       } catch (error) {
         console.log(await page.evaluate(() => ({ width: innerWidth, height: innerHeight, body: document.body.className,
           scroller: document.querySelector(".calendar-time-scroll")?.getBoundingClientRect().toJSON(),
@@ -64,8 +71,6 @@ const { chromium } = require("playwright-core");
         console.log(captures);
         throw error;
       }
-      await page.locator(".calendar-time-scroll").waitFor({ state: "visible" });
-      const size = await page.locator(".calendar-time-scroll").evaluate((node) => ({ width: innerWidth, height: node.getBoundingClientRect().height, min: parseFloat(getComputedStyle(node).minHeight), bottom: node.getBoundingClientRect().bottom, viewport: innerHeight }));
       assert.ok(size.height >= (size.width <= 680 ? 280 : 700), "calendar viewport has useful working space: " + JSON.stringify(size));
       if (size.width <= 680) {
         assert.ok(size.bottom <= size.viewport - 64, "mobile grid fits above bottom tabs rather than extending behind them: " + JSON.stringify(size));
