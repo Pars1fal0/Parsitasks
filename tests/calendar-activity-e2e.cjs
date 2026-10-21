@@ -66,6 +66,25 @@ const axePath = require.resolve("axe-core/axe.min.js");
     await page.locator('[data-overview-mode="week"]').click(); await fits();
     await page.locator('[data-overview-mode="year"]').click();
     await page.waitForSelector(".activity-chart-frame canvas");
+    const perfectDay = page.locator('.heatmap-cell[data-date="2026-09-06"]');
+    assert.ok(await perfectDay.evaluate((node) => node.classList.contains("is-perfect-day")));
+    assert.match(await perfectDay.getAttribute("aria-label"), /Всё выполнено/);
+    for (const date of ["2026-09-04", "2026-09-05", "2026-10-02"]) {
+      assert.equal(await page.locator(`.heatmap-cell[data-date="${date}"]`).evaluate((node) => node.classList.contains("is-perfect-day")), false);
+    }
+    for (const theme of ["dark", "light"]) {
+      await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
+      for (const width of [1440, 390]) {
+        await page.setViewportSize({ width, height: 1000 });
+        await perfectDay.waitFor({ state: "visible" });
+        assert.equal(await perfectDay.evaluate((node) => getComputedStyle(node).backgroundColor), "rgb(230, 185, 79)");
+        assert.equal(await page.locator(".heatmap-legend-perfect").evaluate((node) => getComputedStyle(node, "::before").backgroundColor), "rgb(230, 185, 79)");
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+        await page.locator(".heatmap-panel").screenshot({ path: path.join(captures, `perfect-days-${theme}-${width}.png`) });
+      }
+    }
+    await page.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+    await page.setViewportSize({ width: 1440, height: 1000 });
     const values = await page.evaluate(() => {
       const [tasks, habits] = [...document.querySelectorAll(".activity-chart-frame canvas")].map((canvas) => window.RhythmCharts.Chart.getChart(canvas));
       return { tasks: tasks.data.datasets[0].data, datasets: tasks.data.datasets.length, min: tasks.scales.y.min, max: tasks.scales.y.max, habits: habits.data.datasets[0].data };
@@ -166,6 +185,7 @@ const axePath = require.resolve("axe-core/axe.min.js");
       localStorage.setItem("rhythm-day-state-v1", JSON.stringify(state)); location.hash = "calendar/year";
     });
     await page.reload(); await page.locator("#activityCharts").waitFor({ state: "visible" });
+    assert.equal(await page.locator(".heatmap-cell.is-perfect-day").count(), 0, "empty days never earn a gold cell");
     assert.equal(await page.locator(".activity-chart-empty").count(), 2); assert.equal(await page.locator(".activity-chart-frame canvas").count(), 0);
     assert.deepEqual(errors, []);
     console.log(`calendar and activity charts ok; isolated screenshots: ${captures}`);

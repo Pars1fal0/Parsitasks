@@ -28,6 +28,29 @@ module.exports = [
     },
   },
   {
+    name: "marks a perfect day only when both tasks and habits are fully completed",
+    fn() {
+      const cases = [
+        { taskDone: 2, taskTotal: 2, habitDone: 3, habitTotal: 3, expected: true },
+        { taskDone: 1, taskTotal: 2, habitDone: 3, habitTotal: 3, expected: false },
+        { taskDone: 2, taskTotal: 2, habitDone: 2, habitTotal: 3, expected: false },
+        { taskDone: 0, taskTotal: 0, habitDone: 0, habitTotal: 0, expected: false },
+        { taskDone: 0, taskTotal: 0, habitDone: 3, habitTotal: 3, expected: false },
+        { taskDone: 2, taskTotal: 2, habitDone: 0, habitTotal: 0, habitFrozen: 2, expected: false },
+        { taskDone: 199, taskTotal: 200, habitDone: 3, habitTotal: 3, expected: false },
+        { taskDone: 2, taskTotal: 2, habitDone: 199, habitTotal: 200, expected: false },
+      ];
+      for (const { expected, ...stats } of cases) {
+        const day = buildHeatmapModel({
+          activeDate: "2026-10-21", formatLongDate: (date) => date, parseDate: parseDateKey,
+          statsForDate: () => ({ taskPercent: 100, habitPercent: 100, ...stats }), toDateKey,
+        }).days.at(-1);
+        assert.equal(day.isPerfectDay, expected, JSON.stringify(stats));
+        assert.equal(day.tooltip.includes("Всё выполнено"), expected);
+      }
+    },
+  },
+  {
     name: "shows frozen habits separately from required completions",
     fn() {
       const model = buildHeatmapModel({

@@ -6012,6 +6012,7 @@ body.has-floating-task-form::before {
 
 .heatmap-legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
 }
@@ -6030,8 +6031,12 @@ body.has-floating-task-form::before {
   content: "";
 }
 
-.heatmap-legend span:last-child::before {
+.heatmap-legend .heatmap-legend-habits::before {
   background: var(--coral);
+}
+
+.heatmap-legend .heatmap-legend-perfect::before {
+  background: #e6b94f;
 }
 
 .heatmap-grid {
@@ -6122,6 +6127,16 @@ body.has-floating-task-form::before {
   background:
     linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
     #eef3f1;
+}
+
+.heatmap-cell.is-perfect-day {
+  border-color: #f4d58b;
+  background: #e6b94f;
+}
+
+:root[data-theme="light"] .heatmap-cell.is-perfect-day {
+  border-color: #b78317;
+  background: #e6b94f;
 }
 
 .heatmap-empty-cell {
