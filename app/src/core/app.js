@@ -1,4 +1,5 @@
 ﻿const documentState = window.RhythmDocumentState;
+/* exported parseQuickTaskInput -- called by the desktop smoke test through the page global scope. */
 const SCHEMA_VERSION = documentState.SCHEMA_VERSION;
 const VALID_BACKUP_SCHEDULES = ["0", "5", "15", "30", "60"];
 const VALID_VIEWS = ["tasks", "timeline", "habits", "goals", "overview", "study", "nutrition", "journal", "board", "archive", "settings"];
@@ -13,7 +14,6 @@ const {
   cleanTimeValue,
   createId,
   escapeHtml,
-  firstDayIndex,
   formatLongDate,
   formatMonthLabel,
   formatShortDate,
@@ -26,7 +26,6 @@ const {
   normalizeDateKey,
   parseDate,
   randomCategoryColor,
-  sanitizeColor,
   timeToMinutes,
   toDateKey,
   toTimeValue,
@@ -538,7 +537,6 @@ const priorityLabels = {
   low: "Низкий",
 };
 
-const repeatLabels = window.RhythmRecurrence.repeatLabels;
 const calendarDragController = window.RhythmCalendarDragController.createCalendarDragController({
   addDays,
   getActiveDate: () => activeDate,
@@ -2037,17 +2035,8 @@ function renderTimeline() {
   timelineView.renderTimeline();
 }
 
-function createTaskNode(task) {
-  return tasksView.createTaskNode(task);
-}
 
-function renderOverdueTasks() {
-  tasksView.renderOverdueTasks();
-}
 
-function renderExcludedTasks() {
-  tasksView.renderExcludedTasks();
-}
 
 function excludeTaskDate(task, dateKey) {
   if (task.repeat === "none") return;
@@ -2433,37 +2422,19 @@ function renderGoals() {
   goalsView.renderGoals();
 }
 
-function createHabitNode(habit) {
-  return habitsView.createHabitNode(habit);
-}
 
-function habitSubtitle(habit) {
-  return habitsView.habitSubtitle(habit);
-}
 
 function renderOverview() {
   return calendarView.renderOverview();
 }
 
-function renderWeekBoard(week) {
-  return calendarView.renderWeekBoard(week);
-}
 
-function renderMonthCalendar() {
-  return calendarView.renderMonthCalendar();
-}
 
-function renderHeatmap() {
-  return calendarView.renderHeatmap();
-}
 
 function renderArchive() {
   return archiveView.renderArchive();
 }
 
-function createArchiveNode(entry) {
-  return archiveView.createArchiveNode(entry);
-}
 
 function renderCategories() {
   categoriesController.renderCategories();
@@ -2821,9 +2792,7 @@ function saveCategoryFromForm(event) {
   categoriesController.saveCategoryFromForm(event);
 }
 
-function deleteCategory(categoryId) {
-  categoriesController.deleteCategory(categoryId);
-}function openFloatingTaskForm() {
+function openFloatingTaskForm() {
   if (!els.taskFormPanel || !taskFormHome.parent) return;
   if (!els.taskFormPanel.classList.contains("is-floating-panel")) {
     document.body.appendChild(els.taskFormPanel);
@@ -3151,21 +3120,12 @@ async function openBackupFolder() {
   return importExportController.openBackupFolder();
 }
 
-function candidateReminderDates(task, now) {
-  return notificationsController.candidateReminderDates(task, now);
-}
 
-function getDueDate(task, dateKey) {
-  return notificationsController.getDueDate(task, dateKey);
-}
 
 function getTaskDeadlineDate(task, dateKey) {
   return notificationsController.getTaskDeadlineDate(task, dateKey);
 }
 
-function getReminderDate(task, dateKey) {
-  return notificationsController.getReminderDate(task, dateKey);
-}
 
 async function shiftDate(days) {
   if (!(await confirmDiscardOpenForms())) return;
@@ -3766,9 +3726,6 @@ function restoreBackup() {
   return importExportController.restoreBackup();
 }
 
-function loadBackup() {
-  return importExportController.loadBackup();
-}
 
 function updateBackupStatus() {
   importExportController.updateBackupStatus();
@@ -3808,9 +3765,6 @@ function renderWeekdayLabels() {
   );
 }
 
-function icon(name) {
-  return `<svg class="ui-icon"><use href="#icon-${name}"></use></svg>`;
-}
 
 function createUndoSnapshot() {
   return {

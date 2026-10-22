@@ -11,7 +11,7 @@
     "desktop": "electron .",
     "desktop:smoke": "electron . --smoke-test",
     "test:e2e": "node tests/electron-e2e.cjs && node tests/timeline-journal-interactions-e2e.cjs && node tests/menu-popovers-e2e.cjs && node tests/accessibility-e2e.cjs && node tests/study-e2e.cjs && node tests/notes-e2e.cjs && node tests/goals-activity-e2e.cjs && node tests/board-workspace-e2e.cjs && node tests/ux-reliability-e2e.cjs && node tests/weekly-habits-checklists-e2e.cjs && node tests/ux-streamlining-e2e.cjs && node tests/personal-workspace-e2e.cjs && node tests/simple-workspace-e2e.cjs && node tests/clear-controls-e2e.cjs && node tests/later-workspace-e2e.cjs",
-    "lint": "node tests/lint.cjs",
+    "lint": "node tests/lint.cjs && eslint .",
     "test": "node tests/run-tests.cjs",
     "test:dependencies": "npm audit --audit-level=high",
     "test:planning": "node tests/planning-workspace-e2e.cjs && node tests/workspace-completion-e2e.cjs",
@@ -70,7 +70,7 @@
     "pack:win": "electron-builder --win portable --publish never",
     "release:win": "electron-builder --win portable nsis --publish always"
   },
-  "repository": "github:Pars1fal0/tasks-and-habits",
+  "repository": "github:Pars1fal0/Parsitasks",
   "build": {
     "appId": "local.rhythm-day.tracker",
     "productName": "Parsitasks",
@@ -115,12 +115,13 @@
     "publish": {
       "provider": "github",
       "owner": "Pars1fal0",
-      "repo": "tasks-and-habits",
+      "repo": "Parsitasks",
       "releaseType": "release"
     }
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
+    "@eslint/js": "^9.39.5",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "@supabase/supabase-js": "^2.110.7",
     "agents": "^0.17.4",
@@ -129,6 +130,8 @@
     "electron": "^43.2.0",
     "electron-builder": "26.15.3",
     "esbuild": "^0.28.1",
+    "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "playwright-core": "^1.61.1",
     "sharp": "^0.35.5",
     "wrangler": "^4.114.0",

@@ -152,3 +152,19 @@
   .board-selection-toolbar .board-link-controls { width: 100%; min-width: 0; justify-content: space-between; padding: 6px 2px; }
   .board-selection-toolbar .board-link-swatch { width: 32px; height: 32px; flex-basis: 32px; }
 }
+
+/* Swatch colours live here so the CSP needs no inline styles. */
+[data-board-text-color="#17191d"] { --swatch: #17191d; }
+[data-board-text-color="#ffffff"] { --swatch: #ffffff; }
+[data-board-text-color="#ef5b5b"] { --swatch: #ef5b5b; }
+[data-board-text-color="#f28c38"] { --swatch: #f28c38; }
+[data-board-text-color="#e5bb32"] { --swatch: #e5bb32; }
+[data-board-text-color="#179f83"] { --swatch: #179f83; }
+[data-board-text-color="#397ee8"] { --swatch: #397ee8; }
+[data-board-text-color="#8958d5"] { --swatch: #8958d5; }
+[data-board-link-color="#ffffff"] { --swatch: #ffffff; }
+[data-board-link-color="#e8f5f0"] { --swatch: #e8f5f0; }
+[data-board-link-color="#efeaff"] { --swatch: #efeaff; }
+[data-board-link-color="#fff0e2"] { --swatch: #fff0e2; }
+[data-board-link-color="#e8f2ff"] { --swatch: #e8f2ff; }
+[data-board-link-color="#fff6d9"] { --swatch: #fff6d9; }

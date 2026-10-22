@@ -239,7 +239,7 @@
           if (!response.ok) throw createRemoteError("account-storage-list-failed", response, rows);
           if (!Array.isArray(rows) || rows.length > 100) throw new Error("Сервер не подтвердил список файлов аккаунта");
           for (const row of rows) {
-            if (typeof row?.name !== "string" || !row.name || /[\/\\\0]/.test(row.name) || [".", ".."].includes(row.name)) throw new Error("Некорректный путь файла. Удаление аккаунта остановлено.");
+            if (typeof row?.name !== "string" || !row.name || /[/\\\0]/.test(row.name) || [".", ".."].includes(row.name)) throw new Error("Некорректный путь файла. Удаление аккаунта остановлено.");
             const name = `${prefix}/${row.name}`;
             if (row.id === null) folders.push(name);
             else if (typeof row.id === "string" && row.id) files.push(name);

@@ -18,7 +18,7 @@ async function inventory(client) {
         const { data, error } = await client.storage.from(bucket.id).list(folders[index], { limit: 100, offset, sortBy: { column: "name", order: "asc" } });
         if (error || !Array.isArray(data) || data.length > 100) throw new Error("Storage file inventory failed");
         for (const item of data) {
-          if (typeof item.name !== "string" || !item.name || /[\/\\\0]/.test(item.name) || [".", ".."].includes(item.name)) throw new Error("Unsafe Storage inventory path");
+          if (typeof item.name !== "string" || !item.name || /[/\\\0]/.test(item.name) || [".", ".."].includes(item.name)) throw new Error("Unsafe Storage inventory path");
           const name = [folders[index], item.name].filter(Boolean).join("/");
           if (!item.id) folders.push(name);
           else files.push({ bucket: bucket.id, path: name, id: item.id, updatedAt: item.updated_at || "",

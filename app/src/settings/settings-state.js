@@ -1,7 +1,6 @@
 (function (global) {
   function createSettingsState(options = {}) {
     const validBackupSchedules = options.validBackupSchedules || ["0", "5", "15", "30", "60"];
-    const cleanText = options.cleanText || ((value) => String(value || "").trim());
 
     function normalizeThemePreference(value) {
       return ["dark", "light", "system"].includes(value) ? value : "dark";

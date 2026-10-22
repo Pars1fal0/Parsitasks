@@ -1,7 +1,6 @@
 (function (global) {
   function createTasksView(ctx) {
     let draggedTaskId = null;
-    let draggedTaskDate = "";
     let overdueVisibleCount = 20;
     let historicalVisibleCount = 60;
     const expandedBacklogGroups = new Set();
@@ -409,7 +408,6 @@
           return;
         }
         draggedTaskId = task.id;
-        draggedTaskDate = activeDate;
         ctx.setDraggedTask(task.id, activeDate);
         node.classList.add("is-dragging");
         event.dataTransfer.effectAllowed = "move";
@@ -419,7 +417,6 @@
       node.addEventListener("dragend", () => {
         ctx.clearTaskDragState();
         draggedTaskId = null;
-        draggedTaskDate = "";
         node.classList.remove("is-dragging");
       });
       node.addEventListener("dragover", (event) => {

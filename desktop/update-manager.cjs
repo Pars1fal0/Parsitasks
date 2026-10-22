@@ -1,4 +1,4 @@
-const RELEASES_URL = "https://github.com/Pars1fal0/tasks-and-habits/releases/latest";
+const RELEASES_URL = "https://github.com/Pars1fal0/Parsitasks/releases/latest";
 const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const STARTUP_CHECK_DELAY_MS = 12 * 1000;
 
