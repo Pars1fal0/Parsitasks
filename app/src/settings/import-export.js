@@ -1,287 +1,286 @@
-﻿(function (global) {
-  const MAX_IMPORT_BYTES = 16 * 1024 * 1024;
-  function createImportExport(ctx) {
-    function exportData() {
-      const exportState = ctx.storage.getUnsupportedState?.() || ctx.getState();
-      const payload = {
-        app: "Parsitasks",
-        schemaVersion: Math.max(Number(ctx.schemaVersion) || 1, Number(exportState.schemaVersion) || 0),
-        exportedAt: new Date().toISOString(),
-        state: exportState,
-      };
-      createBackup({ payload, silent: true });
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `parsitasks-${ctx.toDateKey(new Date())}.json`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      ctx.showToast("Экспорт готов");
-    }
+const MAX_IMPORT_BYTES = 16 * 1024 * 1024;
+function createImportExport(ctx) {
+  function exportData() {
+    const exportState = ctx.storage.getUnsupportedState?.() || ctx.getState();
+    const payload = {
+      app: "Parsitasks",
+      schemaVersion: Math.max(Number(ctx.schemaVersion) || 1, Number(exportState.schemaVersion) || 0),
+      exportedAt: new Date().toISOString(),
+      state: exportState,
+    };
+    createBackup({ payload, silent: true });
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `parsitasks-${ctx.toDateKey(new Date())}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    ctx.showToast("Экспорт готов");
+  }
 
-    async function importData() {
-      const file = ctx.els.importFile.files?.[0];
-      if (!file) return;
+  async function importData() {
+    const file = ctx.els.importFile.files?.[0];
+    if (!file) return;
 
-      const owner = ctx.getUserId?.();
-      try {
-        if (file.size > MAX_IMPORT_BYTES) throw new Error("import-too-large");
-        const text = await file.text();
-        if (new TextEncoder().encode(text).byteLength > MAX_IMPORT_BYTES) throw new Error("import-too-large");
-        const parsed = JSON.parse(text);
-        const candidate = extractImportState(parsed);
-        const importedState = ctx.normalizeState(candidate);
-        const counts = [["tasks", "задач"], ["habits", "привычек"], ["notes", "заметок"], ["goals", "целей"], ["studySubjects", "предметов"], ["studyLessons", "занятий"], ["studyFiles", "ссылок на файлы"], ["boardItems", "объектов доски"], ["journalEntries", "записей дневника"], ["categories", "категорий"]]
-          .map(([field, label]) => ({ label, value: importedState[field]?.length || 0 }));
-        const exported = Number.isFinite(Date.parse(parsed.exportedAt)) ? new Date(parsed.exportedAt).toLocaleString("ru-RU") : "не указана";
-        if (ctx.getUserId?.() !== owner) return;
-        const expectedState = currentRevision();
-        const confirmed = await ctx.confirmAction?.({ title: "Заменить данные из файла?",
-          message: "Все текущие данные будут заменены. Сначала сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.",
-          details: [{ label: "Дата копии", value: exported }, ...counts],
-          confirmLabel: "Заменить данные", tone: "danger" });
-        if (confirmed !== true || ctx.getUserId?.() !== owner) return;
-        if (currentRevision() !== expectedState) throw new Error("workspace-changed");
-        const undo = ctx.createUndoSnapshot();
-        const safetyBackup = createImportSafetyBackup(undo);
-        if (safetyBackup?.ok === false) throw new Error("safety-backup-failed");
-        ctx.replaceState(importedState);
-        if (ctx.saveState({ skipBackup: true }) === false) {
-          ctx.replaceState(ctx.normalizeState(JSON.parse(undo.state)));
-          ctx.render();
-          throw new Error("save-failed");
-        }
-        ctx.render();
-        ctx.showToast("Данные импортированы. Предыдущие данные сохранены", { undo });
-      } catch (error) {
-        ctx.showToast(importError(error));
-      } finally {
-        ctx.els.importFile.value = "";
-      }
-    }
-
-    function syncDesktopBackup() {
-      if (!window.rhythmDesktop?.writeFileBackup) return Promise.resolve({ ok: false, reason: "desktop-unavailable" });
-      return window.rhythmDesktop
-        .writeFileBackup({
-          schemaVersion: ctx.schemaVersion,
-          state: ctx.getState(),
-        })
-        .then(async (result) => {
-          await updateFileBackupStatus();
-          return result || { ok: true };
-        })
-        .catch(() => {
-          if (ctx.els.fileBackupStatus) {
-            ctx.els.fileBackupStatus.hidden = false;
-            ctx.els.fileBackupStatus.textContent = "Файловая копия: ошибка записи";
-          }
-          return { ok: false, reason: "write-failed" };
-        });
-    }
-
-    async function updateFileBackupStatus() {
-      if (!window.rhythmDesktop?.getFileBackupInfo || !ctx.els.fileBackupStatus || !ctx.els.openBackupFolderButton) return;
-      ctx.els.fileBackupStatus.hidden = false;
-      ctx.els.openBackupFolderButton.hidden = false;
-      try {
-        const info = await window.rhythmDesktop.getFileBackupInfo();
-        if (info?.latest?.mtimeMs) {
-          ctx.els.fileBackupStatus.textContent = `Файловая копия: ${formatBackupDate(info.latest.mtimeMs)}`;
-        } else {
-          ctx.els.fileBackupStatus.textContent = "Файловая копия: папка готова";
-        }
-      } catch {
-        ctx.els.fileBackupStatus.textContent = "Файловая копия недоступна";
-      }
-    }
-
-    async function openBackupFolder() {
-      if (!window.rhythmDesktop?.openBackupFolder) {
-        ctx.showToast("Папка резервных копий доступна в приложении для компьютера");
-        return { ok: false, reason: "desktop-unavailable" };
-      }
-
-      try {
-        const result = await window.rhythmDesktop.openBackupFolder();
-        ctx.showToast(result?.ok ? "Папка резервных копий открыта" : "Не удалось открыть папку резервных копий");
-        return result;
-      } catch {
-        ctx.showToast("Не удалось открыть папку резервных копий");
-        return { ok: false, reason: "open-failed" };
-      }
-    }
-
-    function createBackup({ payload = null, silent = false, throttle = false } = {}) {
-      const result = ctx.storage.createBackup({
-        payload,
-        state: ctx.getState(),
-        throttle,
-      });
-
-      if (result.ok) {
-        updateBackupStatus();
-        if (!silent) ctx.showToast("Локальная резервная копия обновлена");
-        return result;
-      }
-
-      if (!silent && result.reason !== "throttled") ctx.showToast("Не удалось создать резервную копию");
-      return result;
-    }
-
-    function createImportSafetyBackup(snapshot) {
-      return ctx.storage.createImportSafetyBackup(snapshot, { schemaVersion: ctx.schemaVersion });
-    }
-
-    async function restoreBackup() {
-      const owner = ctx.getUserId?.();
-      const backup = loadBackup();
-      if (!backup) {
-        ctx.showToast("Локальная резервная копия пока не найдена");
-        return;
-      }
-
-      const backupDate = backup.exportedAt ? formatBackupDate(backup.exportedAt) : "без даты";
-      try { checkImportVersion(backup); } catch (error) { ctx.showToast(importError(error)); return; }
+    const owner = ctx.getUserId?.();
+    try {
+      if (file.size > MAX_IMPORT_BYTES) throw new Error("import-too-large");
+      const text = await file.text();
+      if (new TextEncoder().encode(text).byteLength > MAX_IMPORT_BYTES) throw new Error("import-too-large");
+      const parsed = JSON.parse(text);
+      const candidate = extractImportState(parsed);
+      const importedState = ctx.normalizeState(candidate);
+      const counts = [["tasks", "задач"], ["habits", "привычек"], ["notes", "заметок"], ["goals", "целей"], ["studySubjects", "предметов"], ["studyLessons", "занятий"], ["studyFiles", "ссылок на файлы"], ["boardItems", "объектов доски"], ["journalEntries", "записей дневника"], ["categories", "категорий"]]
+        .map(([field, label]) => ({ label, value: importedState[field]?.length || 0 }));
+      const exported = Number.isFinite(Date.parse(parsed.exportedAt)) ? new Date(parsed.exportedAt).toLocaleString("ru-RU") : "не указана";
+      if (ctx.getUserId?.() !== owner) return;
       const expectedState = currentRevision();
-      const message = `Восстановить данные из локальной резервной копии (${backupDate})? Текущий план будет заменён.`;
-      const confirmed = await ctx.confirmAction({
-            confirmLabel: "Восстановить",
-            message,
-            tone: "danger",
-            title: "Восстановить резервную копию?",
-          });
-      if (!confirmed || ctx.getUserId?.() !== owner) return;
-      if (currentRevision() !== expectedState) { ctx.showToast(importError(new Error("workspace-changed"))); return; }
-
+      const confirmed = await ctx.confirmAction?.({ title: "Заменить данные из файла?",
+        message: "Все текущие данные будут заменены. Сначала сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.",
+        details: [{ label: "Дата копии", value: exported }, ...counts],
+        confirmLabel: "Заменить данные", tone: "danger" });
+      if (confirmed !== true || ctx.getUserId?.() !== owner) return;
+      if (currentRevision() !== expectedState) throw new Error("workspace-changed");
       const undo = ctx.createUndoSnapshot();
       const safetyBackup = createImportSafetyBackup(undo);
-      if (safetyBackup?.ok === false) {
-        ctx.showToast("Не удалось сохранить текущее состояние. Восстановление отменено");
-        return;
-      }
-      ctx.replaceState(ctx.normalizeState(backup.state || backup));
+      if (safetyBackup?.ok === false) throw new Error("safety-backup-failed");
+      ctx.replaceState(importedState);
       if (ctx.saveState({ skipBackup: true }) === false) {
         ctx.replaceState(ctx.normalizeState(JSON.parse(undo.state)));
         ctx.render();
-        ctx.showToast("Не удалось записать восстановленные данные. Предыдущее состояние сохранено");
-        return;
+        throw new Error("save-failed");
       }
       ctx.render();
-      ctx.showToast("Данные восстановлены. Предыдущее состояние сохранено", { undo });
+      ctx.showToast("Данные импортированы. Предыдущие данные сохранены", { undo });
+    } catch (error) {
+      ctx.showToast(importError(error));
+    } finally {
+      ctx.els.importFile.value = "";
     }
-
-    function loadBackup() {
-      return ctx.storage.loadBackup({ owner: ctx.getUserId?.() ?? ctx.storage.getOwner?.() ?? "" });
-    }
-
-    function currentRevision() {
-      return JSON.stringify(ctx.getState?.());
-    }
-
-    function checkImportVersion(parsed) {
-      for (const version of [parsed?.schemaVersion, parsed?.state?.schemaVersion]) {
-        if (version === undefined) continue;
-        if (!Number.isInteger(version) || version < 1) throw new Error("invalid-schema");
-        if (Number.isInteger(ctx.schemaVersion) && version > ctx.schemaVersion) throw new Error("newer-schema");
-      }
-    }
-
-    function importError(error) {
-      if (error?.message === "newer-schema") return "Копия создана более новой версией приложения. Обнови приложение перед восстановлением";
-      if (error?.message === "workspace-changed") return "Данные изменились во время подтверждения. Повтори импорт или восстановление";
-      if (error?.message === "import-too-large") return "JSON больше 16 МБ. Импорт отменён, текущие данные сохранены";
-      return "Не удалось импортировать JSON";
-    }
-
-    function updateBackupStatus() {
-      const backup = loadBackup();
-      if (!backup?.exportedAt) {
-        ctx.els.backupStatus.textContent = "Резервная копия ещё не создана";
-        return;
-      }
-      ctx.els.backupStatus.textContent = `Резервная копия: ${formatBackupDate(backup.exportedAt)}`;
-    }
-
-    function formatBackupDate(value) {
-      const date = new Date(value);
-      if (!Number.isFinite(date.getTime())) return "без даты";
-      return new Intl.DateTimeFormat("ru-RU", {
-        day: "2-digit",
-        month: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(date);
-    }
-
-    function extractImportState(parsed) {
-      checkImportVersion(parsed);
-      const candidate = parsed?.state ?? parsed;
-      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
-        throw new Error("invalid-import");
-      }
-      const recognizedKeys = [
-        "tasks",
-        "habits",
-        "goals",
-        "boardItems",
-        "journalEntries",
-        "notes",
-        "nutritionFoods",
-        "nutritionMeals",
-        "nutritionTemplates",
-        "nutritionSettings",
-        "categories",
-        "taskOrder",
-        "tombstones",
-        "syncMeta",
-        "schemaVersion",
-        "defaultsSeeded",
-        "studySubjects",
-        "studyLessons",
-        "studyFiles",
-        "studyWeekCycle",
-      ];
-      if (!recognizedKeys.some((key) => Object.hasOwn(candidate, key))) throw new Error("unrecognized-import");
-      [
-        "tasks",
-        "habits",
-        "goals",
-        "boardItems",
-        "journalEntries",
-        "notes",
-        "nutritionFoods",
-        "nutritionMeals",
-        "nutritionTemplates",
-        "categories",
-        "studySubjects",
-        "studyLessons",
-        "studyFiles",
-      ].forEach((key) => {
-        if (Object.hasOwn(candidate, key) && !Array.isArray(candidate[key])) throw new Error(`invalid-${key}`);
-      });
-      return candidate;
-    }
-
-    return {
-      createBackup,
-      createImportSafetyBackup,
-      exportData,
-      formatBackupDate,
-      importData,
-      loadBackup,
-      openBackupFolder,
-      restoreBackup,
-      syncDesktopBackup,
-      updateBackupStatus,
-      updateFileBackupStatus,
-    };
   }
 
-  const api = { createImportExport };
-  global.RhythmImportExport = api;
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-})(typeof window !== "undefined" ? window : globalThis);
+  function syncDesktopBackup() {
+    if (!window.rhythmDesktop?.writeFileBackup) return Promise.resolve({ ok: false, reason: "desktop-unavailable" });
+    return window.rhythmDesktop
+      .writeFileBackup({
+        schemaVersion: ctx.schemaVersion,
+        state: ctx.getState(),
+      })
+      .then(async (result) => {
+        await updateFileBackupStatus();
+        return result || { ok: true };
+      })
+      .catch(() => {
+        if (ctx.els.fileBackupStatus) {
+          ctx.els.fileBackupStatus.hidden = false;
+          ctx.els.fileBackupStatus.textContent = "Файловая копия: ошибка записи";
+        }
+        return { ok: false, reason: "write-failed" };
+      });
+  }
+
+  async function updateFileBackupStatus() {
+    if (!window.rhythmDesktop?.getFileBackupInfo || !ctx.els.fileBackupStatus || !ctx.els.openBackupFolderButton) return;
+    ctx.els.fileBackupStatus.hidden = false;
+    ctx.els.openBackupFolderButton.hidden = false;
+    try {
+      const info = await window.rhythmDesktop.getFileBackupInfo();
+      if (info?.latest?.mtimeMs) {
+        ctx.els.fileBackupStatus.textContent = `Файловая копия: ${formatBackupDate(info.latest.mtimeMs)}`;
+      } else {
+        ctx.els.fileBackupStatus.textContent = "Файловая копия: папка готова";
+      }
+    } catch {
+      ctx.els.fileBackupStatus.textContent = "Файловая копия недоступна";
+    }
+  }
+
+  async function openBackupFolder() {
+    if (!window.rhythmDesktop?.openBackupFolder) {
+      ctx.showToast("Папка резервных копий доступна в приложении для компьютера");
+      return { ok: false, reason: "desktop-unavailable" };
+    }
+
+    try {
+      const result = await window.rhythmDesktop.openBackupFolder();
+      ctx.showToast(result?.ok ? "Папка резервных копий открыта" : "Не удалось открыть папку резервных копий");
+      return result;
+    } catch {
+      ctx.showToast("Не удалось открыть папку резервных копий");
+      return { ok: false, reason: "open-failed" };
+    }
+  }
+
+  function createBackup({ payload = null, silent = false, throttle = false } = {}) {
+    const result = ctx.storage.createBackup({
+      payload,
+      state: ctx.getState(),
+      throttle,
+    });
+
+    if (result.ok) {
+      updateBackupStatus();
+      if (!silent) ctx.showToast("Локальная резервная копия обновлена");
+      return result;
+    }
+
+    if (!silent && result.reason !== "throttled") ctx.showToast("Не удалось создать резервную копию");
+    return result;
+  }
+
+  function createImportSafetyBackup(snapshot) {
+    return ctx.storage.createImportSafetyBackup(snapshot, { schemaVersion: ctx.schemaVersion });
+  }
+
+  async function restoreBackup() {
+    const owner = ctx.getUserId?.();
+    const backup = loadBackup();
+    if (!backup) {
+      ctx.showToast("Локальная резервная копия пока не найдена");
+      return;
+    }
+
+    const backupDate = backup.exportedAt ? formatBackupDate(backup.exportedAt) : "без даты";
+    try { checkImportVersion(backup); } catch (error) { ctx.showToast(importError(error)); return; }
+    const expectedState = currentRevision();
+    const message = `Восстановить данные из локальной резервной копии (${backupDate})? Текущий план будет заменён.`;
+    const confirmed = await ctx.confirmAction({
+          confirmLabel: "Восстановить",
+          message,
+          tone: "danger",
+          title: "Восстановить резервную копию?",
+        });
+    if (!confirmed || ctx.getUserId?.() !== owner) return;
+    if (currentRevision() !== expectedState) { ctx.showToast(importError(new Error("workspace-changed"))); return; }
+
+    const undo = ctx.createUndoSnapshot();
+    const safetyBackup = createImportSafetyBackup(undo);
+    if (safetyBackup?.ok === false) {
+      ctx.showToast("Не удалось сохранить текущее состояние. Восстановление отменено");
+      return;
+    }
+    ctx.replaceState(ctx.normalizeState(backup.state || backup));
+    if (ctx.saveState({ skipBackup: true }) === false) {
+      ctx.replaceState(ctx.normalizeState(JSON.parse(undo.state)));
+      ctx.render();
+      ctx.showToast("Не удалось записать восстановленные данные. Предыдущее состояние сохранено");
+      return;
+    }
+    ctx.render();
+    ctx.showToast("Данные восстановлены. Предыдущее состояние сохранено", { undo });
+  }
+
+  function loadBackup() {
+    return ctx.storage.loadBackup({ owner: ctx.getUserId?.() ?? ctx.storage.getOwner?.() ?? "" });
+  }
+
+  function currentRevision() {
+    return JSON.stringify(ctx.getState?.());
+  }
+
+  function checkImportVersion(parsed) {
+    for (const version of [parsed?.schemaVersion, parsed?.state?.schemaVersion]) {
+      if (version === undefined) continue;
+      if (!Number.isInteger(version) || version < 1) throw new Error("invalid-schema");
+      if (Number.isInteger(ctx.schemaVersion) && version > ctx.schemaVersion) throw new Error("newer-schema");
+    }
+  }
+
+  function importError(error) {
+    if (error?.message === "newer-schema") return "Копия создана более новой версией приложения. Обнови приложение перед восстановлением";
+    if (error?.message === "workspace-changed") return "Данные изменились во время подтверждения. Повтори импорт или восстановление";
+    if (error?.message === "import-too-large") return "JSON больше 16 МБ. Импорт отменён, текущие данные сохранены";
+    return "Не удалось импортировать JSON";
+  }
+
+  function updateBackupStatus() {
+    const backup = loadBackup();
+    if (!backup?.exportedAt) {
+      ctx.els.backupStatus.textContent = "Резервная копия ещё не создана";
+      return;
+    }
+    ctx.els.backupStatus.textContent = `Резервная копия: ${formatBackupDate(backup.exportedAt)}`;
+  }
+
+  function formatBackupDate(value) {
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return "без даты";
+    return new Intl.DateTimeFormat("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(date);
+  }
+
+  function extractImportState(parsed) {
+    checkImportVersion(parsed);
+    const candidate = parsed?.state ?? parsed;
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+      throw new Error("invalid-import");
+    }
+    const recognizedKeys = [
+      "tasks",
+      "habits",
+      "goals",
+      "boardItems",
+      "journalEntries",
+      "notes",
+      "nutritionFoods",
+      "nutritionMeals",
+      "nutritionTemplates",
+      "nutritionSettings",
+      "categories",
+      "taskOrder",
+      "tombstones",
+      "syncMeta",
+      "schemaVersion",
+      "defaultsSeeded",
+      "studySubjects",
+      "studyLessons",
+      "studyFiles",
+      "studyWeekCycle",
+    ];
+    if (!recognizedKeys.some((key) => Object.hasOwn(candidate, key))) throw new Error("unrecognized-import");
+    [
+      "tasks",
+      "habits",
+      "goals",
+      "boardItems",
+      "journalEntries",
+      "notes",
+      "nutritionFoods",
+      "nutritionMeals",
+      "nutritionTemplates",
+      "categories",
+      "studySubjects",
+      "studyLessons",
+      "studyFiles",
+    ].forEach((key) => {
+      if (Object.hasOwn(candidate, key) && !Array.isArray(candidate[key])) throw new Error(`invalid-${key}`);
+    });
+    return candidate;
+  }
+
+  return {
+    createBackup,
+    createImportSafetyBackup,
+    exportData,
+    formatBackupDate,
+    importData,
+    loadBackup,
+    openBackupFolder,
+    restoreBackup,
+    syncDesktopBackup,
+    updateBackupStatus,
+    updateFileBackupStatus,
+  };
+}
+
+const api = { createImportExport };
+
+export { createImportExport };
+export default api;

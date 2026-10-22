@@ -11,7 +11,7 @@ const { chromium } = require("playwright-core");
     findings.push({ name, passed: Boolean(passed), evidence });
     if (!observe) assert.ok(passed, `${name}: ${JSON.stringify(evidence)}`);
   };
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "ru-RU", timezoneId: "Europe/Saratov" });
     const appUrl = process.argv.find((arg) => arg.startsWith("--app-url="))?.slice(10);

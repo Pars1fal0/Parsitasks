@@ -815,51 +815,7 @@ function createWindow() {
           hasQuickInput: Boolean(document.querySelector("#quickTaskInput")),
           hasCategories: document.querySelectorAll(".category-item").length >= 1,
           hasJsonActions: Boolean(document.querySelector("#exportButton")) && Boolean(document.querySelector("#importFile")),
-          modulesLoaded: Boolean(
-            window.RhythmQuickInput &&
-              window.RhythmAppEvents &&
-              window.RhythmArchiveView &&
-              window.RhythmBoardAssets &&
-              window.RhythmBoardModel &&
-              window.RhythmBoardView &&
-              window.RhythmCalendarDragController &&
-              window.RhythmCalendarView &&
-              window.RhythmCategories &&
-              window.RhythmConfirmDialog &&
-              window.RhythmDeviceSyncController &&
-              window.RhythmFormDialog &&
-              window.RhythmGlobalSearch &&
-              window.RhythmGoalCheckpointEditor &&
-              window.RhythmGoalsView &&
-              window.RhythmHabitForm &&
-              window.RhythmHabitsView &&
-              window.RhythmHeatmapView &&
-              window.RhythmImportExport &&
-              window.RhythmJournalModel &&
-               window.RhythmJournalView &&
-               window.RhythmNutritionModel &&
-               window.RhythmNutritionController &&
-               window.RhythmNutritionView &&
-              window.RhythmNotifications &&
-              window.RhythmRecurrence &&
-              window.RhythmRemoteSync &&
-              window.RhythmRemoteSyncController &&
-              window.RhythmStateNormalizer &&
-              window.RhythmStateMerge &&
-              window.RhythmStorage &&
-              window.RhythmTaskState &&
-              window.RhythmTaskSchedule &&
-              window.RhythmTaskForm &&
-              window.RhythmTasksView &&
-              window.RhythmTaskMoves &&
-              window.RhythmOverdueController &&
-              window.RhythmTimelineController &&
-              window.RhythmTimelineView &&
-              window.RhythmSettingsController &&
-              window.RhythmViewRenderer &&
-              window.RhythmDateRollover &&
-              window.RhythmToast,
-          ),
+          modulesLoaded: typeof window.render === "function" && Boolean(window.RhythmRecurrence && window.RhythmStateMerge),
           desktopBridge: Boolean(
             window.rhythmDesktop?.syncReminders
               && window.rhythmDesktop?.writeFileBackup

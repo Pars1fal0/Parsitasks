@@ -1,45 +1,47 @@
-(function (global) {
-  const shellVersion = "0.35.1";
-  global.RhythmShellVersion = shellVersion;
-  const versionKey = "rhythm-shell-version";
-  const retryKey = "rhythm-shell-refresh";
+export const shellVersion = "0.35.1";
+const versionKey = "rhythm-shell-version";
+const retryKey = "rhythm-shell-refresh";
+
+function checkShellVersion() {
   let storedVersion = "";
   let alreadyRetried = false;
 
   try {
-    storedVersion = global.localStorage.getItem(versionKey) || "";
-    alreadyRetried = global.sessionStorage.getItem(retryKey) === shellVersion;
+    storedVersion = globalThis.localStorage.getItem(versionKey) || "";
+    alreadyRetried = globalThis.sessionStorage.getItem(retryKey) === shellVersion;
   } catch {}
 
   const hasOldShell =
     storedVersion !== shellVersion
-    && "serviceWorker" in global.navigator
-    && global.navigator.serviceWorker.controller;
+    && "serviceWorker" in globalThis.navigator
+    && globalThis.navigator.serviceWorker.controller;
 
   if (hasOldShell && !alreadyRetried) {
-    global.document.documentElement.style.visibility = "hidden";
+    globalThis.document.documentElement.style.visibility = "hidden";
     try {
-      global.sessionStorage.setItem(retryKey, shellVersion);
+      globalThis.sessionStorage.setItem(retryKey, shellVersion);
     } catch {}
 
-    const clearWorkers = global.navigator.serviceWorker
+    const clearWorkers = globalThis.navigator.serviceWorker
       .getRegistrations()
       .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())));
-    const clearCaches = "caches" in global
-      ? global.caches.keys().then((keys) =>
+    const clearCaches = "caches" in globalThis
+      ? globalThis.caches.keys().then((keys) =>
           Promise.all(
             keys
               .filter((key) => key.startsWith("rhythm-day-"))
-              .map((key) => global.caches.delete(key)),
+              .map((key) => globalThis.caches.delete(key)),
           ))
       : Promise.resolve();
 
-    Promise.allSettled([clearWorkers, clearCaches]).then(() => global.location.reload());
+    Promise.allSettled([clearWorkers, clearCaches]).then(() => globalThis.location.reload());
     return;
   }
 
   try {
-    global.localStorage.setItem(versionKey, shellVersion);
-    global.sessionStorage.removeItem(retryKey);
+    globalThis.localStorage.setItem(versionKey, shellVersion);
+    globalThis.sessionStorage.removeItem(retryKey);
   } catch {}
-})(window);
+}
+
+checkShellVersion();

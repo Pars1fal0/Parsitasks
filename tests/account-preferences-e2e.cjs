@@ -4,7 +4,7 @@ const { pathToFileURL } = require("node:url");
 const { chromium } = require("playwright-core");
 
 (async () => {
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
   try {
     const devices = [];
     const errors = [];

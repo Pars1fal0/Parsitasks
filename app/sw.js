@@ -127,6 +127,7 @@ const APP_SHELL = [
   "src/core/app-shell-controller.js",
   "src/ui/toast.js",
   "src/core/document-state.js",
+  "src/core/page-globals.js",
   "src/core/app.js",
   "manifest.webmanifest",
   "assets/icons/icon-192.png",

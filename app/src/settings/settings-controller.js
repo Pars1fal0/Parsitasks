@@ -1,162 +1,166 @@
-(function (global) {
-  function createSettingsController(ctx) {
-    const settingsSync = global.RhythmSettingsSync.createSettingsSync(ctx);
+import * as settingsSyncModule from "./settings-sync.js";
+import * as accentColors from "./accent-colors.js";
 
-    function organizeLayout() {
-      const grid = document.querySelector("#settingsView .settings-grid");
-      const section = (heading) => document.querySelector(`#${heading}`).closest("details");
-      const appearance = section("appearanceHeading");
-      const reminders = section("notificationsSettingsHeading");
-      const account = section("dataSettingsHeading");
-      const help = document.querySelector("#helpSettingsHeading")?.closest("details");
-      const primary = [appearance, reminders, account, help].filter(Boolean);
-      const children = [...grid.children];
-      const identity = document.querySelector(".settings-account-card");
-      identity.classList.remove("panel");
-      account.querySelector(":scope > summary").after(identity);
-      primary.forEach((group) => {
-        group.classList.remove("panel");
-        group.classList.add("settings-primary-group");
-      });
-      children.filter((node) => !primary.includes(node)).forEach((node) => {
-        node.classList.remove("panel", "settings-panel", "settings-accordion");
-        node.classList.add("settings-subsection");
-        const destination = node.contains(document.querySelector("#navigationPreferences")) || node.contains(ctx.els.categoryForm) ? appearance : account;
-        destination.append(node);
-      });
-      const status = document.querySelector("#remoteSyncStatus");
-      account.querySelector(".settings-account-card").after(status);
-      const deleteAccount = document.querySelector("#remoteAccountDeleteButton");
-      const danger = document.createElement("div");
-      danger.className = "settings-actions";
-      danger.append(deleteAccount);
-      account.append(danger);
-      grid.replaceChildren(...primary);
-      const icons = new Map([[appearance, "settings"], [reminders, "bell"], [account, "archive"], [help, "search"]]);
-      primary.forEach((group) => {
-        const summary = group.querySelector(":scope > summary");
-        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        icon.setAttribute("class", "ui-icon settings-section-icon"); icon.setAttribute("aria-hidden", "true");
-        const use = document.createElementNS("http://www.w3.org/2000/svg", "use"); use.setAttribute("href", `#icon-${icons.get(group)}`);
-        icon.append(use); summary.prepend(icon);
-        const body = document.createElement("div"); body.className = "settings-group-body";
-        body.append(...[...group.children].filter((node) => node !== summary)); group.append(body);
-      });
-      const appearanceBody = appearance.querySelector(".settings-group-body");
-      [["Оформление", ["themePreference", "accentPreference", "densityPreference"]],
-        ["Время и календарь", ["timeFormat", "firstDayOfWeek", "timeZoneSetting"]]].reverse().forEach(([title, fields]) => {
-        const block = document.createElement("section"); block.className = "settings-block";
-        const heading = document.createElement("h3"); heading.className = "settings-block-title"; heading.textContent = title;
-        block.append(heading);
-        fields.forEach((name) => {
-          const input = name === "accentPreference" ? appearance.querySelector(".accent-settings-row") : appearance.querySelector(`#${name}`)?.closest(".settings-row");
-          if (input) block.append(input);
-        });
-        appearanceBody.prepend(block);
-      });
-      document.querySelectorAll(".accent-option").forEach((label) => { label.title = label.lastElementChild.textContent; });
-    }
+function createSettingsController(ctx) {
+  const settingsSync = settingsSyncModule.createSettingsSync(ctx);
 
-    function bindEvents() {
-      organizeLayout();
-      ctx.els.settingsExportButton?.addEventListener("click", ctx.exportData);
-      ctx.els.settingsImportDataButton?.addEventListener("click", () => ctx.els.importFile?.click());
-      ctx.els.settingsRestoreBackupButton?.addEventListener("click", ctx.restoreBackup);
-      ctx.els.settingsOpenBackupFolderButton?.addEventListener("click", ctx.openBackupFolder);
-      ctx.els.settingsNotifyButton?.addEventListener("click", ctx.requestNotifications);
-      ctx.els.settingsExportSettingsButton?.addEventListener("click", ctx.exportSettings);
-      ctx.els.settingsImportSettingsButton?.addEventListener("click", () => ctx.els.settingsImportFile?.click());
-      ctx.els.settingsImportFile?.addEventListener("change", ctx.importSettings);
-      ctx.els.settingsResetButton?.addEventListener("click", ctx.resetInterfaceSettings);
-      settingsSync.bindEvents();
-
-      ctx.els.accentPreferences?.forEach((input) => {
-        input.addEventListener("change", () => {
-          if (input.checked) ctx.updateSetting("accentPreference", input.value);
-        });
+  function organizeLayout() {
+    const grid = document.querySelector("#settingsView .settings-grid");
+    const section = (heading) => document.querySelector(`#${heading}`).closest("details");
+    const appearance = section("appearanceHeading");
+    const reminders = section("notificationsSettingsHeading");
+    const account = section("dataSettingsHeading");
+    const help = document.querySelector("#helpSettingsHeading")?.closest("details");
+    const primary = [appearance, reminders, account, help].filter(Boolean);
+    const children = [...grid.children];
+    const identity = document.querySelector(".settings-account-card");
+    identity.classList.remove("panel");
+    account.querySelector(":scope > summary").after(identity);
+    primary.forEach((group) => {
+      group.classList.remove("panel");
+      group.classList.add("settings-primary-group");
+    });
+    children.filter((node) => !primary.includes(node)).forEach((node) => {
+      node.classList.remove("panel", "settings-panel", "settings-accordion");
+      node.classList.add("settings-subsection");
+      const destination = node.contains(document.querySelector("#navigationPreferences")) || node.contains(ctx.els.categoryForm) ? appearance : account;
+      destination.append(node);
+    });
+    const status = document.querySelector("#remoteSyncStatus");
+    account.querySelector(".settings-account-card").after(status);
+    const deleteAccount = document.querySelector("#remoteAccountDeleteButton");
+    const danger = document.createElement("div");
+    danger.className = "settings-actions";
+    danger.append(deleteAccount);
+    account.append(danger);
+    grid.replaceChildren(...primary);
+    const icons = new Map([[appearance, "settings"], [reminders, "bell"], [account, "archive"], [help, "search"]]);
+    primary.forEach((group) => {
+      const summary = group.querySelector(":scope > summary");
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      icon.setAttribute("class", "ui-icon settings-section-icon"); icon.setAttribute("aria-hidden", "true");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use"); use.setAttribute("href", `#icon-${icons.get(group)}`);
+      icon.append(use); summary.prepend(icon);
+      const body = document.createElement("div"); body.className = "settings-group-body";
+      body.append(...[...group.children].filter((node) => node !== summary)); group.append(body);
+    });
+    const appearanceBody = appearance.querySelector(".settings-group-body");
+    [["Оформление", ["themePreference", "accentPreference", "densityPreference"]],
+      ["Время и календарь", ["timeFormat", "firstDayOfWeek", "timeZoneSetting"]]].reverse().forEach(([title, fields]) => {
+      const block = document.createElement("section"); block.className = "settings-block";
+      const heading = document.createElement("h3"); heading.className = "settings-block-title"; heading.textContent = title;
+      block.append(heading);
+      fields.forEach((name) => {
+        const input = name === "accentPreference" ? appearance.querySelector(".accent-settings-row") : appearance.querySelector(`#${name}`)?.closest(".settings-row");
+        if (input) block.append(input);
       });
-      const customForm = document.querySelector("#customAccentForm");
-      const picker = document.querySelector("#customAccentPicker");
-      const hex = document.querySelector("#customAccentHex");
-      const error = document.querySelector("#customAccentError");
-      customForm.addEventListener("submit", (event) => {
-        event.preventDefault();
-        if (!/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex.value.trim())) {
-          error.textContent = "Введите HEX-код: #AABBCC или #ABC";
-          hex.setAttribute("aria-invalid", "true"); hex.focus(); return;
-        }
-        error.textContent = ""; hex.removeAttribute("aria-invalid");
-        ctx.updateSetting("accentPreference", global.RhythmAccentColors.normalize(hex.value));
-        syncControls();
-      });
-      picker.addEventListener("change", () => {
-        error.textContent = ""; hex.removeAttribute("aria-invalid");
-        ctx.updateSetting("accentPreference", picker.value); syncControls();
-      });
-      hex.addEventListener("input", () => { error.textContent = ""; hex.removeAttribute("aria-invalid"); });
-      ctx.els.themePreference?.addEventListener("change", () => ctx.updateSetting("themePreference", ctx.els.themePreference.value));
-      ctx.els.notificationSetting?.addEventListener("change", () => ctx.updateSetting("notificationSetting", ctx.els.notificationSetting.value));
-      const quietEnabled = document.querySelector("#quietHoursEnabled");
-      const quietStart = document.querySelector("#quietHoursStart");
-      const quietEnd = document.querySelector("#quietHoursEnd");
-      [quietEnabled, quietStart, quietEnd].forEach((field) => field?.addEventListener("change", () => {
-        if (quietEnabled.checked && quietStart.value === quietEnd.value) {
-          ctx.showToast?.("Начало и конец тихих часов должны отличаться");
-          syncControls();
-          return;
-        }
-        ctx.updateSetting("quietHours", { enabled: quietEnabled.checked, start: quietStart.value, end: quietEnd.value });
-      }));
-      ctx.els.backupSchedule?.addEventListener("change", () => ctx.updateSetting("backupSchedule", ctx.els.backupSchedule.value));
-      ctx.els.firstDayOfWeek?.addEventListener("change", () => ctx.updateSetting("firstDayOfWeek", ctx.els.firstDayOfWeek.value));
-      ctx.els.densityPreference?.addEventListener("change", () => ctx.updateSetting("densityPreference", ctx.els.densityPreference.value));
-      ctx.els.timeFormat?.addEventListener("change", () => ctx.updateSetting("timeFormat", ctx.els.timeFormat.value));
-      ctx.els.timeZoneSetting?.addEventListener("change", () => ctx.updateTimeZone(ctx.els.timeZoneSetting.value));
-      ctx.els.mcpJournalRead?.addEventListener("change", () => ctx.updateJournalPermission("read", ctx.els.mcpJournalRead.value));
-      ctx.els.mcpJournalWrite?.addEventListener("change", () => ctx.updateJournalPermission("write", ctx.els.mcpJournalWrite.value));
-    }
-
-    function syncControls(settings = ctx.getSettings()) {
-      ctx.els.accentPreferences?.forEach((input) => {
-        input.checked = input.value === settings.accentPreference;
-      });
-      const chosen = global.RhythmAccentColors.presets[settings.accentPreference] || global.RhythmAccentColors.normalize(settings.accentPreference);
-      setValue(document.querySelector("#customAccentPicker"), chosen);
-      const hex = document.querySelector("#customAccentHex");
-      if (document.activeElement !== hex) {
-        setValue(hex, chosen.toUpperCase());
-        hex.removeAttribute("aria-invalid"); document.querySelector("#customAccentError").textContent = "";
-      }
-      document.querySelector("#customAccentForm").classList.toggle("is-custom", settings.accentPreference.startsWith("#"));
-      setValue(ctx.els.themePreference, settings.themePreference);
-      setValue(ctx.els.notificationSetting, settings.notificationSetting);
-      const quiet = settings.quietHours || { enabled: false, start: "22:00", end: "08:00" };
-      const enabled = document.querySelector("#quietHoursEnabled");
-      if (enabled) enabled.checked = quiet.enabled;
-      ["Start", "End"].forEach((part) => {
-        const field = document.querySelector(`#quietHours${part}`);
-        if (field) { field.value = quiet[part.toLowerCase()]; field.disabled = !quiet.enabled; }
-      });
-      setValue(ctx.els.backupSchedule, settings.backupSchedule);
-      setValue(ctx.els.firstDayOfWeek, settings.firstDayOfWeek);
-      setValue(ctx.els.densityPreference, settings.densityPreference);
-      setValue(ctx.els.timeFormat, settings.timeFormat);
-      setValue(ctx.els.timeZoneSetting, settings.timeZone);
-      setValue(ctx.els.mcpJournalRead, settings.journalAccess?.read === false ? "off" : "on");
-      setValue(ctx.els.mcpJournalWrite, settings.journalAccess?.write === false ? "off" : "on");
-      settingsSync.syncControls(settings);
-      ctx.renderBackupStatus?.();
-    }
-
-    function setValue(element, value) {
-      if (element) element.value = value;
-    }
-
-    return {
-      bindEvents,
-      syncControls,
-    };
+      appearanceBody.prepend(block);
+    });
+    document.querySelectorAll(".accent-option").forEach((label) => { label.title = label.lastElementChild.textContent; });
   }
 
-  global.RhythmSettingsController = { createSettingsController };
-})(window);
+  function bindEvents() {
+    organizeLayout();
+    ctx.els.settingsExportButton?.addEventListener("click", ctx.exportData);
+    ctx.els.settingsImportDataButton?.addEventListener("click", () => ctx.els.importFile?.click());
+    ctx.els.settingsRestoreBackupButton?.addEventListener("click", ctx.restoreBackup);
+    ctx.els.settingsOpenBackupFolderButton?.addEventListener("click", ctx.openBackupFolder);
+    ctx.els.settingsNotifyButton?.addEventListener("click", ctx.requestNotifications);
+    ctx.els.settingsExportSettingsButton?.addEventListener("click", ctx.exportSettings);
+    ctx.els.settingsImportSettingsButton?.addEventListener("click", () => ctx.els.settingsImportFile?.click());
+    ctx.els.settingsImportFile?.addEventListener("change", ctx.importSettings);
+    ctx.els.settingsResetButton?.addEventListener("click", ctx.resetInterfaceSettings);
+    settingsSync.bindEvents();
+
+    ctx.els.accentPreferences?.forEach((input) => {
+      input.addEventListener("change", () => {
+        if (input.checked) ctx.updateSetting("accentPreference", input.value);
+      });
+    });
+    const customForm = document.querySelector("#customAccentForm");
+    const picker = document.querySelector("#customAccentPicker");
+    const hex = document.querySelector("#customAccentHex");
+    const error = document.querySelector("#customAccentError");
+    customForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex.value.trim())) {
+        error.textContent = "Введите HEX-код: #AABBCC или #ABC";
+        hex.setAttribute("aria-invalid", "true"); hex.focus(); return;
+      }
+      error.textContent = ""; hex.removeAttribute("aria-invalid");
+      ctx.updateSetting("accentPreference", accentColors.normalize(hex.value));
+      syncControls();
+    });
+    picker.addEventListener("change", () => {
+      error.textContent = ""; hex.removeAttribute("aria-invalid");
+      ctx.updateSetting("accentPreference", picker.value); syncControls();
+    });
+    hex.addEventListener("input", () => { error.textContent = ""; hex.removeAttribute("aria-invalid"); });
+    ctx.els.themePreference?.addEventListener("change", () => ctx.updateSetting("themePreference", ctx.els.themePreference.value));
+    ctx.els.notificationSetting?.addEventListener("change", () => ctx.updateSetting("notificationSetting", ctx.els.notificationSetting.value));
+    const quietEnabled = document.querySelector("#quietHoursEnabled");
+    const quietStart = document.querySelector("#quietHoursStart");
+    const quietEnd = document.querySelector("#quietHoursEnd");
+    [quietEnabled, quietStart, quietEnd].forEach((field) => field?.addEventListener("change", () => {
+      if (quietEnabled.checked && quietStart.value === quietEnd.value) {
+        ctx.showToast?.("Начало и конец тихих часов должны отличаться");
+        syncControls();
+        return;
+      }
+      ctx.updateSetting("quietHours", { enabled: quietEnabled.checked, start: quietStart.value, end: quietEnd.value });
+    }));
+    ctx.els.backupSchedule?.addEventListener("change", () => ctx.updateSetting("backupSchedule", ctx.els.backupSchedule.value));
+    ctx.els.firstDayOfWeek?.addEventListener("change", () => ctx.updateSetting("firstDayOfWeek", ctx.els.firstDayOfWeek.value));
+    ctx.els.densityPreference?.addEventListener("change", () => ctx.updateSetting("densityPreference", ctx.els.densityPreference.value));
+    ctx.els.timeFormat?.addEventListener("change", () => ctx.updateSetting("timeFormat", ctx.els.timeFormat.value));
+    ctx.els.timeZoneSetting?.addEventListener("change", () => ctx.updateTimeZone(ctx.els.timeZoneSetting.value));
+    ctx.els.mcpJournalRead?.addEventListener("change", () => ctx.updateJournalPermission("read", ctx.els.mcpJournalRead.value));
+    ctx.els.mcpJournalWrite?.addEventListener("change", () => ctx.updateJournalPermission("write", ctx.els.mcpJournalWrite.value));
+  }
+
+  function syncControls(settings = ctx.getSettings()) {
+    ctx.els.accentPreferences?.forEach((input) => {
+      input.checked = input.value === settings.accentPreference;
+    });
+    const chosen = accentColors.presets[settings.accentPreference] || accentColors.normalize(settings.accentPreference);
+    setValue(document.querySelector("#customAccentPicker"), chosen);
+    const hex = document.querySelector("#customAccentHex");
+    if (document.activeElement !== hex) {
+      setValue(hex, chosen.toUpperCase());
+      hex.removeAttribute("aria-invalid"); document.querySelector("#customAccentError").textContent = "";
+    }
+    document.querySelector("#customAccentForm").classList.toggle("is-custom", settings.accentPreference.startsWith("#"));
+    setValue(ctx.els.themePreference, settings.themePreference);
+    setValue(ctx.els.notificationSetting, settings.notificationSetting);
+    const quiet = settings.quietHours || { enabled: false, start: "22:00", end: "08:00" };
+    const enabled = document.querySelector("#quietHoursEnabled");
+    if (enabled) enabled.checked = quiet.enabled;
+    ["Start", "End"].forEach((part) => {
+      const field = document.querySelector(`#quietHours${part}`);
+      if (field) { field.value = quiet[part.toLowerCase()]; field.disabled = !quiet.enabled; }
+    });
+    setValue(ctx.els.backupSchedule, settings.backupSchedule);
+    setValue(ctx.els.firstDayOfWeek, settings.firstDayOfWeek);
+    setValue(ctx.els.densityPreference, settings.densityPreference);
+    setValue(ctx.els.timeFormat, settings.timeFormat);
+    setValue(ctx.els.timeZoneSetting, settings.timeZone);
+    setValue(ctx.els.mcpJournalRead, settings.journalAccess?.read === false ? "off" : "on");
+    setValue(ctx.els.mcpJournalWrite, settings.journalAccess?.write === false ? "off" : "on");
+    settingsSync.syncControls(settings);
+    ctx.renderBackupStatus?.();
+  }
+
+  function setValue(element, value) {
+    if (element) element.value = value;
+  }
+
+  return {
+    bindEvents,
+    syncControls,
+  };
+}
+
+const api = { createSettingsController };
+
+export { createSettingsController };
+export default api;

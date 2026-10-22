@@ -7,7 +7,7 @@ const { chromium } = require("playwright-core");
 const sharp = require("sharp");
 
 (async () => {
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
   const captures = fs.mkdtempSync(path.join(os.tmpdir(), "parsitasks-icons-"));
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, locale: "ru-RU", timezoneId: "Europe/Saratov" });

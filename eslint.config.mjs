@@ -15,21 +15,17 @@ export default [
     },
   },
   {
-    // Classic browser scripts: modules expose themselves on window.Rhythm* and load via <script> tags.
-    // Shared modules also run under Node in unit tests, hence module/require.
     files: ["app/**/*.js"],
-    languageOptions: {
-      sourceType: "script",
-      globals: { ...globals.browser, module: "readonly", require: "readonly" },
-    },
+    languageOptions: { sourceType: "module", globals: { ...globals.browser } },
   },
   {
     files: ["mcp/oauth-consent-entry.mjs"],
     languageOptions: { globals: { ...globals.browser } },
   },
   {
+    // The service worker stays a classic script.
     files: ["app/sw.js"],
-    languageOptions: { globals: { ...globals.serviceworker } },
+    languageOptions: { sourceType: "script", globals: { ...globals.serviceworker } },
   },
   {
     files: ["**/*.cjs"],

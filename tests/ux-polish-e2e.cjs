@@ -6,7 +6,7 @@ const { pathToFileURL } = require("node:url");
 const { chromium } = require("playwright-core");
 
 (async () => {
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
   const capture = fs.mkdtempSync(path.join(os.tmpdir(), "parsitasks-ux-polish-"));
   try {
     const context = await browser.newContext({ viewport: { width: 390, height: 900 }, locale: "ru-RU" });

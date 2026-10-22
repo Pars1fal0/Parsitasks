@@ -1,1987 +1,1988 @@
-(function (global) {
-  const cameraApi = global.RhythmBoardCamera || (typeof require === "function" ? require("./board-camera.js") : null);
-  const CAMERA_KEY = "rhythm-board-camera-v2";
-  const MIN_ZOOM = 0.02;
-  const MAX_ZOOM = 8;
-  const MAX_UNDO = 50;
-  const RESIZE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+import * as cameraApi from "./board-camera.js";
+import * as workspaceLocal from "../core/workspace-local.js";
 
-  function createBoardView(ctx) {
-    const getAllItems = ctx.getItems;
-    const commitAllItems = ctx.commitItems;
-    const local = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => "") });
-    const drafts = global.RhythmWorkspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => ""), tabScoped: true,
-      onError: () => ctx.showToast("Не удалось сохранить черновик текста. Не закрывай вкладку до сохранения.") });
-    let activeBoardId = local?.read("active-board") || "";
-    let boardOwner = local?.owner();
-    let assetOwner = ctx.assets.getOwner?.();
-    let mobileLayout = global.innerWidth <= 600;
-    const listPreference = () => local?.read(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`) ?? (mobileLayout ? true : local?.read("board-list-mode") ?? false);
-    let listMode = listPreference();
-    ctx = { ...ctx, getItems: () => getAllItems().filter((item) => item.type !== "board" && (item.boardId || "") === activeBoardId),
-      commitItems: (items, options) => commitAllItems([...getAllItems().filter((item) => item.type === "board" || (item.boardId || "") !== activeBoardId), ...items.map((item) => ({ ...item, boardId: activeBoardId }))], options) };
-    const boardControls = document.createElement("div"); boardControls.className = "board-space-controls";
-    const boardSelect = document.createElement("select"); boardSelect.id = "boardSpaceSelect"; boardSelect.setAttribute("aria-label", "Выбрать доску");
-    const newBoard = document.createElement("button"); newBoard.type = "button"; newBoard.className = "icon-button"; newBoard.setAttribute("aria-label", "Создать доску"); newBoard.title = "Создать доску";
-    const renameBoard = document.createElement("button"); renameBoard.type = "button"; renameBoard.className = "icon-button"; renameBoard.setAttribute("aria-label", "Переименовать доску"); renameBoard.title = "Переименовать доску";
-    const listToggle = document.createElement("button"); listToggle.type = "button"; listToggle.className = "ghost-button compact-button";
-    const listAdd = document.createElement("button"); listAdd.type = "button"; listAdd.className = "icon-button";
-    listAdd.setAttribute("aria-label", "Добавить карточку на доску"); listAdd.title = "Добавить карточку";
-    const cardList = document.createElement("div"); cardList.id = "boardCardList"; cardList.className = "board-card-list";
-    const makeIcon = (name) => { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.classList.add("ui-icon"); const use = document.createElementNS(svg.namespaceURI, "use"); use.setAttribute("href", `#icon-${name}`); svg.append(use); return svg; };
-    newBoard.append(makeIcon("plus")); renameBoard.append(makeIcon("edit"));
-    listAdd.append(makeIcon("plus"));
-    boardControls.append(boardSelect, newBoard, renameBoard, listToggle, listAdd);
-    ctx.els.boardViewport.before(boardControls, cardList);
-    const cameraStorage = { getItem: (key) => JSON.stringify(local?.read(key)), setItem: (key, value) => local?.write(key, JSON.parse(value)) };
-    const loadBoardCamera = () => cameraApi.loadCamera(cameraStorage, `board-camera:${activeBoardId}`, MIN_ZOOM, MAX_ZOOM)
-      || (!activeBoardId ? cameraApi.loadCamera(global.localStorage, CAMERA_KEY, MIN_ZOOM, MAX_ZOOM) : null);
-    let camera = loadBoardCamera();
-    let cameraReady = false;
-    let selectedId = "";
-    let selectedIds = new Set();
-    let editingId = "";
-    let gesture = null;
-    let textBeforeEdit = null;
-    let saveTextTimer = null;
-    let undoStack = [];
-    let redoStack = [];
-    let clipboardItems = [];
-    let pasteOffset = 0;
-    let viewportSize = null;
-    let imageUploadBusy = false;
-    let spacePressed = false;
-    let interactionMode = "select";
-    let cameraVisibilityChecked = false;
-    let activeAreaId = "";
-    const objectUrls = new Map();
-    const pendingUploadAttempts = new Map();
+const CAMERA_KEY = "rhythm-board-camera-v2";
+const MIN_ZOOM = 0.02;
+const MAX_ZOOM = 8;
+const MAX_UNDO = 50;
+const RESIZE_DIRECTIONS = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
-    function bindEvents() {
-      boardSelect.addEventListener("change", () => switchBoard(boardSelect.value));
-      newBoard.addEventListener("click", () => editBoardName());
-      renameBoard.addEventListener("click", () => editBoardName(activeBoardId));
-      listToggle.addEventListener("click", () => {
-        finishActiveTextEdit(); listMode = !listMode;
-        local?.write(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`, listMode);
-        if (!listMode && mobileLayout) viewportSize = null;
-        render();
-        if (!listMode && mobileLayout) global.requestAnimationFrame(() => { if (!listMode && isBoardActive()) focusContent(); });
-      });
-      listAdd.addEventListener("click", () => { listMode = false; render(); ctx.els.boardAddMenu.open = true; ctx.els.boardAddMenu.querySelector("summary").focus(); });
-      global.addEventListener("resize", () => { if (mobileLayout !== (global.innerWidth <= 600)) { finishActiveTextEdit(); mobileLayout = global.innerWidth <= 600; listMode = listPreference(); render(); } });
-      ctx.els.boardAddText?.addEventListener("click", () => { closeAddMenu(); addTextAtCenter(); });
-      ctx.els.boardAddFrame?.addEventListener("click", () => { closeAddMenu(); addFrameAtCenter(); });
-      ctx.els.boardAddImage?.addEventListener("click", () => {
-        closeAddMenu();
-        if (!imageUploadBusy) ctx.els.boardImageInput?.click();
-      });
-      ctx.els.boardAddLink?.addEventListener("click", () => { closeAddMenu(); openSourcePicker(); });
-      ctx.els.boardPickerClose?.addEventListener("click", closeSourcePicker);
-      ctx.els.boardSourceSearch?.addEventListener("input", renderSourceResults);
-      ctx.els.boardSourceType?.addEventListener("change", renderSourceResults);
-      ctx.els.boardSourceResults?.addEventListener("click", (event) => {
-        const button = event.target.closest("[data-board-source]");
-        if (button) addLinkedSource(button.dataset.boardSource, button.dataset.boardSourceId);
-      });
-      ctx.els.boardEmpty?.addEventListener("click", (event) => {
-        const template = event.target.closest("[data-board-template]")?.dataset.boardTemplate;
-        if (template) createTemplate(template);
-        else if (event.target.closest("#boardStartBlank")) {
-          ctx.els.boardAddMenu.open = true;
-          ctx.els.boardAddMenu.querySelector("summary")?.focus();
-        }
-      });
-      ctx.els.boardAreaSelect?.addEventListener("change", () => focusArea(ctx.els.boardAreaSelect.value));
-      global.document.addEventListener("pointerdown", (event) => {
-        if (ctx.els.boardAddMenu?.open && !event.target.closest("#boardAddMenu")) closeAddMenu();
-      });
-      ctx.els.boardImageInput?.addEventListener("change", async () => {
-        const files = [...(ctx.els.boardImageInput.files || [])];
-        ctx.els.boardImageInput.value = "";
-        await addImageFiles(files, viewportCenter());
-      });
-      ctx.els.boardUndo?.addEventListener("click", undo);
-      ctx.els.boardRedo?.addEventListener("click", redo);
-      ctx.els.boardModeSelect?.addEventListener("click", () => setInteractionMode("select"));
-      ctx.els.boardModePan?.addEventListener("click", () => setInteractionMode("pan"));
-      ctx.els.boardDuplicate?.addEventListener("click", duplicateSelected);
-      ctx.els.boardDelete?.addEventListener("click", deleteSelected);
-      ctx.els.boardGroup?.addEventListener("click", toggleGroupSelected);
-      ctx.els.boardBringFront?.addEventListener("click", () => moveSelectionLayer("front"));
-      ctx.els.boardSendBack?.addEventListener("click", () => moveSelectionLayer("back"));
-      ctx.els.boardLock?.addEventListener("click", toggleLockSelected);
-      ctx.els.boardZoomIn?.addEventListener("click", () => zoomAt(1.3));
-      ctx.els.boardZoomOut?.addEventListener("click", () => zoomAt(1 / 1.3));
-      ctx.els.boardFocus?.addEventListener("click", focusContent);
-      ctx.els.boardBold?.addEventListener("click", () => {
-        toggleBold();
-        focusPrimarySelection();
-      });
-      ctx.els.boardColorPresets?.addEventListener("click", (event) => {
-        const swatch = event.target.closest("[data-board-text-color]");
-        if (swatch) {
-          applyTextColor(swatch.dataset.boardTextColor);
-          focusPrimarySelection();
-        }
-      });
-      ctx.els.boardLinkControls?.addEventListener("click", (event) => {
-        const swatch = event.target.closest("[data-board-link-color]");
-        if (swatch) applyLinkColor(swatch.dataset.boardLinkColor);
-      });
-      ctx.els.boardTextColor?.addEventListener("input", () => applyTextColor(ctx.els.boardTextColor.value));
-      ctx.els.boardTextColor?.addEventListener("change", focusPrimarySelection);
-      ctx.els.boardFontSize?.addEventListener("change", applyFontSize);
-      ctx.els.boardFontSize?.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          applyFontSize();
-          ctx.els.boardFontSize.blur();
-        }
-      });
-      ctx.els.boardViewport?.addEventListener("dblclick", handleCanvasDoubleClick);
-      ctx.els.boardViewport?.addEventListener("pointerdown", startPan);
-      ctx.els.boardViewport?.addEventListener("wheel", handleWheel, { passive: false });
-      ctx.els.boardViewport?.addEventListener("dragover", handleDragOver);
-      ctx.els.boardViewport?.addEventListener("dragleave", handleDragLeave);
-      ctx.els.boardViewport?.addEventListener("drop", handleDrop);
-      global.addEventListener("pointermove", handlePointerMove);
-      global.addEventListener("pointerup", finishGesture);
-      global.addEventListener("pointercancel", cancelGesture);
-      global.addEventListener("keydown", handleKeyDown, true);
-      global.addEventListener("keyup", handleKeyUp, true);
-      global.addEventListener("paste", handlePaste);
-      if (global.ResizeObserver && ctx.els.boardViewport) {
-        const resizeObserver = new global.ResizeObserver(handleViewportResize);
-        resizeObserver.observe(ctx.els.boardViewport);
-      } else {
-        global.addEventListener("resize", handleViewportResize);
-      }
-    }
+function createBoardView(ctx) {
+  const getAllItems = ctx.getItems;
+  const commitAllItems = ctx.commitItems;
+  const local = workspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => "") });
+  const drafts = workspaceLocal?.createWorkspaceLocal({ getUserId: ctx.getUserId || (() => ""), tabScoped: true,
+    onError: () => ctx.showToast("Не удалось сохранить черновик текста. Не закрывай вкладку до сохранения.") });
+  let activeBoardId = local?.read("active-board") || "";
+  let boardOwner = local?.owner();
+  let assetOwner = ctx.assets.getOwner?.();
+  let mobileLayout = globalThis.innerWidth <= 600;
+  const listPreference = () => local?.read(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`) ?? (mobileLayout ? true : local?.read("board-list-mode") ?? false);
+  let listMode = listPreference();
+  ctx = { ...ctx, getItems: () => getAllItems().filter((item) => item.type !== "board" && (item.boardId || "") === activeBoardId),
+    commitItems: (items, options) => commitAllItems([...getAllItems().filter((item) => item.type === "board" || (item.boardId || "") !== activeBoardId), ...items.map((item) => ({ ...item, boardId: activeBoardId }))], options) };
+  const boardControls = document.createElement("div"); boardControls.className = "board-space-controls";
+  const boardSelect = document.createElement("select"); boardSelect.id = "boardSpaceSelect"; boardSelect.setAttribute("aria-label", "Выбрать доску");
+  const newBoard = document.createElement("button"); newBoard.type = "button"; newBoard.className = "icon-button"; newBoard.setAttribute("aria-label", "Создать доску"); newBoard.title = "Создать доску";
+  const renameBoard = document.createElement("button"); renameBoard.type = "button"; renameBoard.className = "icon-button"; renameBoard.setAttribute("aria-label", "Переименовать доску"); renameBoard.title = "Переименовать доску";
+  const listToggle = document.createElement("button"); listToggle.type = "button"; listToggle.className = "ghost-button compact-button";
+  const listAdd = document.createElement("button"); listAdd.type = "button"; listAdd.className = "icon-button";
+  listAdd.setAttribute("aria-label", "Добавить карточку на доску"); listAdd.title = "Добавить карточку";
+  const cardList = document.createElement("div"); cardList.id = "boardCardList"; cardList.className = "board-card-list";
+  const makeIcon = (name) => { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.classList.add("ui-icon"); const use = document.createElementNS(svg.namespaceURI, "use"); use.setAttribute("href", `#icon-${name}`); svg.append(use); return svg; };
+  newBoard.append(makeIcon("plus")); renameBoard.append(makeIcon("edit"));
+  listAdd.append(makeIcon("plus"));
+  boardControls.append(boardSelect, newBoard, renameBoard, listToggle, listAdd);
+  ctx.els.boardViewport.before(boardControls, cardList);
+  const cameraStorage = { getItem: (key) => JSON.stringify(local?.read(key)), setItem: (key, value) => local?.write(key, JSON.parse(value)) };
+  const loadBoardCamera = () => cameraApi.loadCamera(cameraStorage, `board-camera:${activeBoardId}`, MIN_ZOOM, MAX_ZOOM)
+    || (!activeBoardId ? cameraApi.loadCamera(globalThis.localStorage, CAMERA_KEY, MIN_ZOOM, MAX_ZOOM) : null);
+  let camera = loadBoardCamera();
+  let cameraReady = false;
+  let selectedId = "";
+  let selectedIds = new Set();
+  let editingId = "";
+  let gesture = null;
+  let textBeforeEdit = null;
+  let saveTextTimer = null;
+  let undoStack = [];
+  let redoStack = [];
+  let clipboardItems = [];
+  let pasteOffset = 0;
+  let viewportSize = null;
+  let imageUploadBusy = false;
+  let spacePressed = false;
+  let interactionMode = "select";
+  let cameraVisibilityChecked = false;
+  let activeAreaId = "";
+  const objectUrls = new Map();
+  const pendingUploadAttempts = new Map();
 
-    function render() {
-      if (!ctx.els.boardWorld || !ctx.els.boardViewport) return;
-      if (assetOwner !== ctx.assets.getOwner?.()) {
-        objectUrls.forEach((url) => URL.revokeObjectURL(url));
-        objectUrls.clear(); pendingUploadAttempts.clear();
-        assetOwner = ctx.assets.getOwner?.();
-      }
-      if (boardOwner !== local?.owner()) {
-        objectUrls.forEach((url) => URL.revokeObjectURL(url));
-        objectUrls.clear(); pendingUploadAttempts.clear();
-        if (saveTextTimer) clearTimeout(saveTextTimer);
-        saveTextTimer = null; textBeforeEdit = null; cameraVisibilityChecked = false; viewportSize = null;
-        boardOwner = local?.owner(); activeBoardId = local?.read("active-board") || "";
-        listMode = listPreference();
-        selectedIds.clear(); selectedId = ""; editingId = ""; undoStack = []; redoStack = []; camera = loadBoardCamera(); cameraReady = false;
-      }
-      const boards = getAllItems().filter((item) => item.type === "board");
-      if (activeBoardId && !boards.some((item) => item.id === activeBoardId)) activeBoardId = "";
-      boardSelect.replaceChildren(new Option("Основная доска", ""), ...boards.map((item) => new Option(item.text, item.id)));
-      boardSelect.value = activeBoardId; renameBoard.disabled = !activeBoardId;
-      listToggle.setAttribute("aria-pressed", String(listMode));
-      listToggle.textContent = listMode ? "Полотно" : "Список карточек";
-      cardList.hidden = !listMode;
-      listAdd.hidden = !listMode;
-      document.querySelector("#boardView").classList.toggle("is-list-mode", listMode);
-      renderCardList();
-      if (listMode) return;
-      initializeCamera();
-      const items = ctx.getItems();
-      const liveIds = new Set(items.map((item) => item.id));
-      selectedIds = new Set([...selectedIds].filter((id) => liveIds.has(id)));
-      if (selectedId && !liveIds.has(selectedId)) selectedId = [...selectedIds].at(-1) || "";
-      if (editingId && !items.some((item) => item.id === editingId)) editingId = "";
-      releaseUnusedObjectUrls(items);
-
-      ctx.els.boardWorld.replaceChildren(...items.map(createItemNode), ...createGuideNodes());
-      ctx.els.boardEmpty.hidden = items.length > 0;
-      renderAreaOptions(items);
-      if (!ctx.els.boardSourcePicker.hidden) renderSourceResults();
-      syncHistoryControls();
-      applyCamera();
-      scheduleCameraVisibilityCheck(items);
-      syncInteractionMode();
-      updateSelection();
-      items.filter((item) => item.type === "image").forEach(loadImage);
-      syncLegacyImages(items);
-    }
-
-    function createItemNode(item) {
-      const node = document.createElement("article");
-      node.className = `board-item board-${item.type}`;
-      node.classList.toggle("is-locked", item.locked);
-      node.dataset.id = item.id;
-      node.tabIndex = -1;
-      node.setAttribute("role", "group");
-      node.setAttribute("aria-label", item.type === "text"
-        ? "Текст на доске"
-        : item.type === "frame" ? `Область: ${item.text}`
-          : item.type === "link" ? `Связанный объект: ${ctx.links.resolve(item, ctx.getState())?.title || "Источник"}` : "Изображение на доске");
-      applyNodeGeometry(node, item);
-
-      if (item.type === "text") {
-        node.append(createTextContent(item, node));
-      } else if (item.type === "frame") {
-        node.append(createFrameContent(item, node));
-      } else if (item.type === "link") {
-        node.append(createLinkContent(item));
-      } else {
-        node.append(...createImageContent(item));
-      }
-      RESIZE_DIRECTIONS.forEach((direction) => node.append(createResizeHandle(direction)));
-
-      node.addEventListener("pointerdown", (event) => {
-        if (event.button !== 0) return;
-        if (spacePressed || interactionMode === "pan") return;
-        if (
-          event.detail >= 2
-          && (item.type === "text" || item.type === "frame")
-          && event.target.closest(".board-text-content, .board-frame-title")
-        ) {
-          event.preventDefault();
-          event.stopPropagation();
-          setSelection([item.id], item.id);
-          startTextEdit(item.id, node);
-          return;
-        }
-        const resizeHandle = event.target.closest("[data-board-resize]");
-        const remainsSelected = selectItem(item.id, node, { additive: event.shiftKey, toggle: event.shiftKey });
-        if (!remainsSelected) return;
-        if (item.locked || selectedItems().some((candidate) => candidate.locked)) return;
-        if (resizeHandle) {
-          startItemGesture(event, item, "resize", node, resizeHandle.dataset.boardResize);
-          return;
-        }
-        if (editingId === item.id && event.target.closest(".board-text-content, .board-frame-title")) return;
-        startItemGesture(event, item, "move", node);
-      });
-      node.addEventListener("focus", () => {
-        if (!selectedIds.has(item.id)) selectItem(item.id, node);
-      });
-      return node;
-    }
-
-    function createLinkContent(item) {
-      const source = ctx.links.resolve(item, ctx.getState(), ctx.todayKey());
-      const card = document.createElement("div");
-      const top = document.createElement("div");
-      const kind = document.createElement("span");
-      const status = document.createElement("span");
-      const title = document.createElement("strong");
-      const detail = document.createElement("p");
-      const open = document.createElement("button");
-      card.className = `board-linked-card is-${source?.tone || "neutral"}`;
-      card.classList.toggle("is-theme-surface", !item.backgroundColor || item.backgroundColor.toLowerCase() === "#ffffff");
-      card.style.setProperty("--board-link-bg", item.backgroundColor || "#ffffff");
-      kind.textContent = source?.typeLabel || "Объект";
-      status.className = "board-link-status";
-      status.textContent = source?.status || "";
-      top.className = "board-linked-top";
-      top.append(kind, status);
-      title.textContent = source?.title || "Источник удалён";
-      detail.textContent = source?.detail || "";
-      open.type = "button";
-      open.className = "board-link-open";
-      open.textContent = source?.missing ? "Источник недоступен" : "Открыть";
-      open.disabled = Boolean(source?.missing);
-      open.addEventListener("pointerdown", (event) => event.stopPropagation());
-      open.addEventListener("click", (event) => {
-        event.stopPropagation();
-        ctx.openSource?.(item.sourceType, item.sourceId);
-      });
-      card.append(top, title, detail, open);
-      return card;
-    }
-
-    function closeAddMenu() {
-      ctx.els.boardAddMenu?.removeAttribute("open");
-    }
-
-    function renderAreaOptions(items) {
-      const frames = items.filter((item) => item.type === "frame");
-      ctx.els.boardAreaNav.hidden = frames.length < 2;
-      if (frames.length < 2) return;
-      if (!frames.some((frame) => frame.id === activeAreaId)) activeAreaId = frames[0].id;
-      ctx.els.boardAreaSelect.replaceChildren(...frames.map((frame) => {
-        const option = document.createElement("option");
-        option.value = frame.id;
-        option.textContent = frame.text || "Область";
-        return option;
-      }));
-      ctx.els.boardAreaSelect.value = activeAreaId;
-    }
-
-    function focusArea(id) {
-      const frame = ctx.getItems().find((item) => item.id === id && item.type === "frame");
-      if (!frame) return;
-      activeAreaId = id;
-      const rect = ctx.els.boardViewport.getBoundingClientRect();
-      camera = cameraApi.fitCamera({ left: frame.x, top: frame.y, width: frame.width, height: frame.height }, rect, MIN_ZOOM, MAX_ZOOM);
-      applyCamera();
-      saveCamera();
-    }
-
-    function openSourcePicker() {
-      ctx.els.boardSourcePicker.hidden = false;
-      ctx.els.boardSourceSearch.value = "";
-      ctx.els.boardSourceType.value = "all";
-      renderSourceResults();
-      ctx.els.boardSourceSearch.focus();
-    }
-
-    function closeSourcePicker() {
-      ctx.els.boardSourcePicker.hidden = true;
-      ctx.els.boardViewport.focus({ preventScroll: true });
-    }
-
-    function renderSourceResults() {
-      const linked = ctx.getItems().filter((item) => item.type === "link")
-        .map((item) => `${item.sourceType}:${item.sourceId}`);
-      const sources = ctx.links.list(ctx.getState(), {
-        type: ctx.els.boardSourceType.value,
-        query: ctx.els.boardSourceSearch.value,
-        linked,
-        todayKey: ctx.todayKey(),
-      });
-      ctx.els.boardSourceResults.replaceChildren(...sources.map((source) => {
-        const button = document.createElement("button");
-        const title = document.createElement("strong");
-        const detail = document.createElement("small");
-        button.type = "button";
-        button.className = "board-source-result";
-        button.dataset.boardSource = source.type;
-        button.dataset.boardSourceId = source.id;
-        title.textContent = source.title;
-        detail.textContent = `${source.typeLabel}${source.detail ? ` · ${source.detail}` : ""}`;
-        button.append(title, detail);
-        return button;
-      }));
-      if (!sources.length) ctx.els.boardSourceResults.textContent = "Ничего не найдено";
-    }
-
-    function addLinkedSource(sourceType, sourceId) {
-      const source = ctx.links.resolve({ sourceType, sourceId }, ctx.getState());
-      if (!source || source.missing) return;
-      const world = screenToWorld(viewportCenter().x, viewportCenter().y);
-      const position = findOpenPosition(world.x - 120, world.y - 78, 240, 156, true);
-      const item = ctx.model.createLinkItem({ sourceType, sourceId, ...position, width: 240, z: nextZ() }, {
-        createId: ctx.createId, now: new Date().toISOString(),
-      });
-      if (!item) return;
-      pushUndo();
-      selectedId = item.id;
-      selectedIds = new Set([item.id]);
-      closeSourcePicker();
-      if (!commit([...ctx.getItems(), item])) return;
-      ctx.showToast("Карточка добавлена на доску");
-    }
-
-    function createTemplate(name) {
-      const labels = name === "study" ? ["Сейчас изучаю", "Материалы", "Важное"]
-        : name === "project" ? ["Идеи", "В работе", "Результат"] : null;
-      if (!labels || ctx.getItems().length) return;
-      const now = new Date().toISOString();
-      const items = labels.map((text, index) => ctx.model.createFrameItem({
-        x: index * 306, y: 36, width: 280, height: 320, z: index, text,
-      }, { createId: ctx.createId, now }));
-      pushUndo();
-      if (!commit(items)) return;
-      activeAreaId = items[0].id;
-      if (ctx.els.boardViewport.getBoundingClientRect().width < 700) focusArea(activeAreaId);
-      else focusContent();
-      ctx.showToast(name === "study" ? "Доска для учёбы готова" : "Доска проекта готова");
-    }
-
-    function createTextContent(item, node) {
-      const content = document.createElement("div");
-      content.className = "board-text-content";
-      content.textContent = drafts?.read(`board-text:${item.id}`)?.value ?? item.text;
-      content.spellcheck = true;
-      content.dataset.placeholder = "Введите текст";
-      content.style.fontSize = `${item.fontSize}px`;
-      content.style.fontWeight = String(item.fontWeight);
-      content.style.color = !item.color || item.color.toLowerCase() === "#17191d" ? "var(--text)" : item.color;
-      content.setAttribute("aria-label", "Текстовый объект");
-      content.addEventListener("dblclick", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        startTextEdit(item.id, node);
-      });
-      content.addEventListener("input", () => scheduleTextSave(item.id, editableText(content)));
-      content.addEventListener("blur", () => finishTextEdit(item.id, content));
-      content.addEventListener("paste", pastePlainText);
-      return content;
-    }
-
-    function createFrameContent(item, node) {
-      const frame = document.createElement("div");
-      frame.className = "board-frame-content";
-      const title = document.createElement("div");
-      title.className = "board-frame-title";
-      title.textContent = drafts?.read(`board-text:${item.id}`)?.value ?? item.text;
-      title.spellcheck = true;
-      title.setAttribute("aria-label", "Название фрейма");
-      title.addEventListener("dblclick", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        startTextEdit(item.id, node);
-      });
-      title.addEventListener("input", () => scheduleTextSave(item.id, editableText(title)));
-      title.addEventListener("blur", () => finishTextEdit(item.id, title));
-      title.addEventListener("paste", pastePlainText);
-      frame.append(title);
-      return frame;
-    }
-
-    function createImageContent(item) {
-      const image = document.createElement("img");
-      image.className = "board-image-content";
-      image.alt = item.name || "Изображение на доске";
-      image.draggable = false;
-      image.dataset.assetId = item.assetId;
-      const placeholder = document.createElement("div");
-      placeholder.className = "board-image-placeholder";
-      placeholder.textContent = item.remotePath
-        ? "Загружаем изображение из Supabase…"
-        : "Переносим старое изображение в Supabase…";
-      return [image, placeholder];
-    }
-
-    function createResizeHandle(direction) {
-      const handle = document.createElement("span");
-      handle.className = `board-resize-handle is-${direction}`;
-      handle.dataset.boardResize = direction;
-      handle.setAttribute("aria-hidden", "true");
-      return handle;
-    }
-
-    function addTextAtCenter(point = viewportCenter()) {
-      const world = screenToWorld(point.x, point.y);
-      const viewportWidth = ctx.els.boardViewport.getBoundingClientRect().width / camera.zoom;
-      const width = clamp(viewportWidth - 32 / camera.zoom, 180, 360);
-      const position = findOpenPosition(world.x - width / 2, world.y - 70, width, 140);
-      pushUndo();
-      const item = ctx.model.createTextItem({
-        x: position.x,
-        y: position.y,
-        width,
-        z: nextZ(),
-      }, {
-        createId: ctx.createId,
-        now: new Date().toISOString(),
-      });
-      selectedId = item.id;
-      selectedIds = new Set([item.id]);
-      commit([...ctx.getItems(), item]);
-      requestAnimationFrame(() => {
-        const node = findItemNode(item.id);
-        if (node) startTextEdit(item.id, node);
-      });
-    }
-
-    function addFrameAtCenter(point = viewportCenter()) {
-      const world = screenToWorld(point.x, point.y);
-      const viewport = ctx.els.boardViewport.getBoundingClientRect();
-      const width = clamp((viewport.width - 64) / camera.zoom, 360, 720);
-      const height = clamp((viewport.height - 120) / camera.zoom, 240, 480);
-      const item = ctx.model.createFrameItem({
-        x: world.x - width / 2,
-        y: world.y - height / 2,
-        width,
-        height,
-        z: 0,
-      }, {
-        createId: ctx.createId,
-        now: new Date().toISOString(),
-      });
-      pushUndo();
-      selectedId = item.id;
-      selectedIds = new Set([item.id]);
-      const items = [item, ...ctx.getItems()].map((candidate, index) => ({ ...candidate, z: index }));
-      commit(items);
-      requestAnimationFrame(() => {
-        const node = findItemNode(item.id);
-        if (node) startTextEdit(item.id, node);
-      });
-    }
-
-    function findOpenPosition(baseX, baseY, width, height, ignoreFrames = false) {
-      const directions = [
-        [0, 0],
-        [-1, 0],
-        [1, 0],
-        [0, 1],
-        [0, -1],
-        [-1, 1],
-        [1, 1],
-        [-1, -1],
-        [1, -1],
-      ];
-      const items = ctx.getItems().filter((item) => !ignoreFrames || item.type !== "frame");
-      const stepX = width + 40;
-      const stepY = height + 40;
-      const viewport = ctx.els.boardViewport.getBoundingClientRect();
-      const padding = 16 / camera.zoom;
-      const visibleBounds = {
-        left: -camera.x / camera.zoom + padding,
-        top: -camera.y / camera.zoom + padding,
-        right: (viewport.width - camera.x) / camera.zoom - padding,
-        bottom: (viewport.height - camera.y) / camera.zoom - padding,
-      };
-      for (const keepVisible of [true, false]) {
-        for (let radius = 0; radius <= 20; radius += 1) {
-          for (const [directionX, directionY] of directions) {
-            if (radius === 0 && (directionX || directionY)) continue;
-            if (radius > 0 && !directionX && !directionY) continue;
-            const candidate = {
-              x: baseX + directionX * stepX * radius,
-              y: baseY + directionY * stepY * radius,
-            };
-            if (keepVisible && (
-              candidate.x < visibleBounds.left
-              || candidate.y < visibleBounds.top
-              || candidate.x + width > visibleBounds.right
-              || candidate.y + height > visibleBounds.bottom
-            )) continue;
-            const overlaps = items.some((item) =>
-              candidate.x < item.x + item.width + 24
-              && candidate.x + width + 24 > item.x
-              && candidate.y < item.y + item.height + 24
-              && candidate.y + height + 24 > item.y);
-            if (!overlaps) return candidate;
-          }
-        }
-      }
-      return { x: baseX, y: baseY + (items.length + 1) * stepY };
-    }
-
-    async function addImageFiles(files, point) {
-      const images = files
-        .filter((file) => String(file.type || "").startsWith("image/"))
-        .slice(0, 8);
-      if (!images.length || imageUploadBusy) return;
-      imageUploadBusy = true;
-      ctx.els.boardAddImage.disabled = true;
-      const before = cloneItems(ctx.getItems());
-      const added = [];
-      const anchor = screenToWorld(point.x, point.y);
-      try {
-        for (let index = 0; index < images.length; index += 1) {
-          try {
-            setStatus(`Загружаю фото ${index + 1} из ${images.length} в Supabase…`, "loading");
-            const prepared = await ctx.assets.prepareImage(images[index]);
-            const assetId = ctx.createId();
-            const remotePath = await ctx.assets.uploadPrepared(assetId, prepared);
-            cacheImageUrl(assetId, prepared.blob);
-            const fit = fitImage(prepared.width, prepared.height);
-            const item = ctx.model.createImageItem({
-              assetId,
-              remotePath,
-              mime: prepared.mime,
-              name: prepared.name,
-              width: fit.width,
-              height: fit.height,
-              x: anchor.x - fit.width / 2 + index * 32,
-              y: anchor.y - fit.height / 2 + index * 32,
-              z: nextZ() + index,
-            }, {
-              createId: ctx.createId,
-              now: new Date().toISOString(),
-            });
-            added.push(item);
-          } catch (error) {
-            showImageError(error);
-          }
-        }
-        if (added.length) {
-          recordUndo(before);
-          selectedId = added.at(-1).id;
-          selectedIds = new Set([selectedId]);
-          if (!commit([...before, ...added])) return;
-          setStatus(
-            added.length === 1
-              ? "Фото сохранено в Supabase Storage"
-              : `Фото сохранены в Supabase Storage: ${added.length}`,
-            "cloud",
-          );
-        }
-      } finally {
-        imageUploadBusy = false;
-        ctx.els.boardAddImage.disabled = false;
-      }
-    }
-
-    function startPan(event) {
-      const shouldPan = event.pointerType === "touch"
-        || event.button === 1
-        || (event.button === 0 && (spacePressed || interactionMode === "pan"));
-      if (
-        (!shouldPan && event.button !== 0)
-        || (!shouldPan && event.target.closest(".board-item"))
-        || event.target.closest(".board-toolbar")
-        || event.target.closest(".board-selection-toolbar")
-        || event.target.closest(".board-zoom-controls")
-        || event.target.closest(".board-source-picker")
-        || event.target.closest(".board-empty")
-        || event.target.closest(".board-area-nav")
-      ) return;
-      event.preventDefault();
-      finishActiveTextEdit();
-      if (!shouldPan && !event.shiftKey) setSelection([]);
-      gesture = {
-        type: shouldPan ? "pan" : "marquee",
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        extendSelection: event.shiftKey,
-        initialSelection: new Set(selectedIds),
-        cameraX: camera.x,
-        cameraY: camera.y,
-      };
-      ctx.els.boardViewport.setPointerCapture?.(event.pointerId);
-      ctx.els.boardViewport.classList.add(shouldPan ? "is-panning" : "is-selecting");
-      if (!shouldPan) updateMarquee(event.clientX, event.clientY);
-    }
-
-    function startItemGesture(event, item, type, node, direction = "") {
-      if (type === "resize") event.preventDefault();
-      event.stopPropagation();
-      const movingItems = type === "move"
-        ? ctx.getItems().filter((candidate) => selectedIds.has(candidate.id))
-        : [item];
-      gesture = {
-        type,
-        direction,
-        pointerId: event.pointerId,
-        itemId: item.id,
-        node,
-        startX: event.clientX,
-        startY: event.clientY,
-        original: { ...item },
-        originals: new Map(movingItems.map((candidate) => [candidate.id, { ...candidate }])),
-        nodes: movingItems.map((candidate) => findItemNode(candidate.id)).filter(Boolean),
-        before: cloneItems(ctx.getItems()),
-        moved: false,
-      };
-      gesture.nodes.forEach((itemNode) => itemNode.classList.add(type === "move" ? "is-dragging" : "is-resizing"));
-    }
-
-    function handlePointerMove(event) {
-      if (!gesture || event.pointerId !== gesture.pointerId) return;
-      const dx = event.clientX - gesture.startX;
-      const dy = event.clientY - gesture.startY;
-      if (gesture.type === "pan") {
-        camera.x = gesture.cameraX + dx;
-        camera.y = gesture.cameraY + dy;
-        applyCamera();
-        return;
-      }
-      if (gesture.type === "marquee") {
-        gesture.moved ||= Math.abs(dx) + Math.abs(dy) > 3;
-        updateMarquee(event.clientX, event.clientY);
-        previewMarqueeSelection();
-        return;
-      }
-      const worldDx = dx / camera.zoom;
-      const worldDy = dy / camera.zoom;
-      gesture.moved ||= Math.abs(dx) + Math.abs(dy) > 3;
-      if (!gesture.moved) return;
-      event.preventDefault();
-      if (!gesture.pointerCaptured) {
-        gesture.node?.setPointerCapture?.(gesture.pointerId);
-        gesture.pointerCaptured = true;
-      }
-      if (gesture.type === "move") {
-        const snap = snapMove(
-          [...gesture.originals.values()],
-          ctx.getItems().filter((item) => !gesture.originals.has(item.id)),
-          worldDx,
-          worldDy,
-          7 / camera.zoom,
-        );
-        showSnapGuides(snap);
-        gesture.previews = new Map();
-        gesture.originals.forEach((original, id) => {
-          const preview = {
-            x: original.x + snap.dx,
-            y: original.y + snap.dy,
-            width: original.width,
-            height: original.height,
-          };
-          gesture.previews.set(id, preview);
-          const itemNode = findItemNode(id);
-          if (itemNode) applyNodeGeometry(itemNode, { ...original, ...preview });
-        });
-        return;
-      }
-      if (gesture.type === "group-resize") {
-        const nextBounds = resizeGeometry(
-          { ...gesture.groupBounds, type: "image" },
-          worldDx,
-          worldDy,
-          gesture.direction,
-        );
-        const scaleX = nextBounds.width / Math.max(gesture.groupBounds.width, 1);
-        const scaleY = nextBounds.height / Math.max(gesture.groupBounds.height, 1);
-        gesture.previews = new Map();
-        gesture.originals.forEach((original, id) => {
-          const minimumWidth = original.type === "frame" ? 240 : original.type === "link" ? 180 : 40;
-          const minimumHeight = original.type === "frame" ? 160 : original.type === "link" ? 96 : original.type === "image" ? 40 : 24;
-          const preview = {
-            x: nextBounds.x + (original.x - gesture.groupBounds.x) * scaleX,
-            y: nextBounds.y + (original.y - gesture.groupBounds.y) * scaleY,
-            width: Math.max(minimumWidth, original.width * scaleX),
-            height: Math.max(minimumHeight, original.height * scaleY),
-          };
-          gesture.previews.set(id, preview);
-          const itemNode = findItemNode(id);
-          if (itemNode) applyNodeGeometry(itemNode, { ...original, ...preview });
-        });
-        applyNodeGeometry(gesture.node, { ...nextBounds, z: 1000000000 });
-        return;
-      }
-      gesture.preview = resizeGeometry(gesture.original, worldDx, worldDy, gesture.direction);
-      applyNodeGeometry(gesture.node, { ...gesture.original, ...gesture.preview });
-    }
-
-    function finishGesture(event) {
-      if (!gesture || event.pointerId !== gesture.pointerId) return;
-      const current = gesture;
-      gesture = null;
-      hideSnapGuides();
-      ctx.els.boardViewport.classList.remove("is-panning", "is-selecting");
-      current.nodes?.forEach((itemNode) => itemNode.classList.remove("is-dragging", "is-resizing"));
-      current.node?.classList.remove("is-dragging", "is-resizing");
-      if (current.type === "pan") {
-        saveCamera();
-        return;
-      }
-      if (current.type === "marquee") {
-        hideMarquee();
-        if (!current.moved && !current.extendSelection) setSelection([]);
-        return;
-      }
-      const hasGroupPreviews = current.type === "move" || current.type === "group-resize";
-      if (!current.moved || (hasGroupPreviews ? !current.previews : !current.preview)) {
-        current.node?.focus({ preventScroll: true });
-        return;
-      }
-      recordUndo(current.before);
-      const now = new Date().toISOString();
-      const next = ctx.getItems().map((item) => {
-        if (hasGroupPreviews && current.previews.has(item.id)) {
-          return { ...item, ...current.previews.get(item.id), updatedAt: now };
-        }
-        if (current.type === "resize" && item.id === current.itemId) {
-          return { ...item, ...current.preview, updatedAt: now };
-        }
-        return item;
-      });
-      commit(next);
-    }
-
-    function cancelGesture() {
-      if (!gesture) return;
-      gesture.nodes?.forEach((itemNode) => itemNode.classList.remove("is-dragging", "is-resizing"));
-      gesture.node?.classList.remove("is-dragging", "is-resizing");
-      ctx.els.boardViewport.classList.remove("is-panning", "is-selecting");
-      hideMarquee();
-      hideSnapGuides();
-      gesture = null;
-      applyCamera();
+  function bindEvents() {
+    boardSelect.addEventListener("change", () => switchBoard(boardSelect.value));
+    newBoard.addEventListener("click", () => editBoardName());
+    renameBoard.addEventListener("click", () => editBoardName(activeBoardId));
+    listToggle.addEventListener("click", () => {
+      finishActiveTextEdit(); listMode = !listMode;
+      local?.write(`board-list-mode:${mobileLayout ? "mobile" : "desktop"}`, listMode);
+      if (!listMode && mobileLayout) viewportSize = null;
       render();
-    }
-
-    function updateMarquee(clientX, clientY) {
-      if (!gesture || gesture.type !== "marquee" || !ctx.els.boardMarquee) return;
-      const viewport = ctx.els.boardViewport.getBoundingClientRect();
-      const left = clamp(Math.min(gesture.startX, clientX) - viewport.left, 0, viewport.width);
-      const top = clamp(Math.min(gesture.startY, clientY) - viewport.top, 0, viewport.height);
-      const right = clamp(Math.max(gesture.startX, clientX) - viewport.left, 0, viewport.width);
-      const bottom = clamp(Math.max(gesture.startY, clientY) - viewport.top, 0, viewport.height);
-      gesture.marquee = { left, top, right, bottom };
-      ctx.els.boardMarquee.hidden = false;
-      Object.assign(ctx.els.boardMarquee.style, {
-        left: `${left}px`,
-        top: `${top}px`,
-        width: `${right - left}px`,
-        height: `${bottom - top}px`,
-      });
-    }
-
-    function previewMarqueeSelection() {
-      if (!gesture?.marquee) return;
-      const viewport = ctx.els.boardViewport.getBoundingClientRect();
-      const marqueeRect = {
-        left: viewport.left + gesture.marquee.left,
-        top: viewport.top + gesture.marquee.top,
-        right: viewport.left + gesture.marquee.right,
-        bottom: viewport.top + gesture.marquee.bottom,
-      };
-      const ids = [...ctx.els.boardWorld.querySelectorAll(".board-item")]
-        .filter((node) => {
-          const rect = node.getBoundingClientRect();
-          return rect.left < marqueeRect.right
-            && rect.right > marqueeRect.left
-            && rect.top < marqueeRect.bottom
-            && rect.bottom > marqueeRect.top;
-        })
-        .map((node) => node.dataset.id);
-      const next = gesture.extendSelection
-        ? [...new Set([...gesture.initialSelection, ...ids])]
-        : ids;
-      setSelection(next, ids.at(-1) || [...gesture.initialSelection].at(-1) || "");
-    }
-
-    function hideMarquee() {
-      if (!ctx.els.boardMarquee) return;
-      ctx.els.boardMarquee.hidden = true;
-      ctx.els.boardMarquee.removeAttribute("style");
-    }
-
-    function showSnapGuides(snap) {
-      const vertical = ctx.els.boardWorld.querySelector('[data-board-guide="vertical"]');
-      const horizontal = ctx.els.boardWorld.querySelector('[data-board-guide="horizontal"]');
-      if (vertical) {
-        vertical.hidden = !Number.isFinite(snap.vertical);
-        if (!vertical.hidden) vertical.style.transform = `translate(${snap.vertical}px, -100000px)`;
+      if (!listMode && mobileLayout) globalThis.requestAnimationFrame(() => { if (!listMode && isBoardActive()) focusContent(); });
+    });
+    listAdd.addEventListener("click", () => { listMode = false; render(); ctx.els.boardAddMenu.open = true; ctx.els.boardAddMenu.querySelector("summary").focus(); });
+    globalThis.addEventListener("resize", () => { if (mobileLayout !== (globalThis.innerWidth <= 600)) { finishActiveTextEdit(); mobileLayout = globalThis.innerWidth <= 600; listMode = listPreference(); render(); } });
+    ctx.els.boardAddText?.addEventListener("click", () => { closeAddMenu(); addTextAtCenter(); });
+    ctx.els.boardAddFrame?.addEventListener("click", () => { closeAddMenu(); addFrameAtCenter(); });
+    ctx.els.boardAddImage?.addEventListener("click", () => {
+      closeAddMenu();
+      if (!imageUploadBusy) ctx.els.boardImageInput?.click();
+    });
+    ctx.els.boardAddLink?.addEventListener("click", () => { closeAddMenu(); openSourcePicker(); });
+    ctx.els.boardPickerClose?.addEventListener("click", closeSourcePicker);
+    ctx.els.boardSourceSearch?.addEventListener("input", renderSourceResults);
+    ctx.els.boardSourceType?.addEventListener("change", renderSourceResults);
+    ctx.els.boardSourceResults?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-board-source]");
+      if (button) addLinkedSource(button.dataset.boardSource, button.dataset.boardSourceId);
+    });
+    ctx.els.boardEmpty?.addEventListener("click", (event) => {
+      const template = event.target.closest("[data-board-template]")?.dataset.boardTemplate;
+      if (template) createTemplate(template);
+      else if (event.target.closest("#boardStartBlank")) {
+        ctx.els.boardAddMenu.open = true;
+        ctx.els.boardAddMenu.querySelector("summary")?.focus();
       }
-      if (horizontal) {
-        horizontal.hidden = !Number.isFinite(snap.horizontal);
-        if (!horizontal.hidden) horizontal.style.transform = `translate(-100000px, ${snap.horizontal}px)`;
-      }
-    }
-
-    function hideSnapGuides() {
-      ctx.els.boardWorld.querySelectorAll("[data-board-guide]").forEach((guide) => {
-        guide.hidden = true;
-      });
-    }
-
-    function handleWheel(event) {
-      event.preventDefault();
-      const factor = Math.exp(-event.deltaY * 0.0015);
-      zoomAt(factor, { x: event.clientX, y: event.clientY });
-    }
-
-    function handleViewportResize() {
-      if (!isBoardActive() || listMode) { viewportSize = null; return; }
-      const rect = ctx.els.boardViewport?.getBoundingClientRect();
-      if (!rect?.width || !rect?.height) return;
-      if (viewportSize && camera) {
-        if (rect.width < 700 && activeAreaId) focusArea(activeAreaId);
-        else {
-          camera.x += (rect.width - viewportSize.width) / 2;
-          camera.y += (rect.height - viewportSize.height) / 2;
-          applyCamera();
-          saveCamera();
-        }
-      }
-      viewportSize = { width: rect.width, height: rect.height };
-    }
-
-    function zoomAt(factor, point = viewportCenter()) {
-      const rect = ctx.els.boardViewport.getBoundingClientRect();
-      camera = cameraApi.zoomCamera(camera, factor, point, rect, MIN_ZOOM, MAX_ZOOM);
-      applyCamera();
-      saveCamera();
-    }
-
-    function focusContent() {
-      const content = ctx.model.bounds(ctx.getItems());
-      const rect = ctx.els.boardViewport.getBoundingClientRect();
-      if (!rect.width || !rect.height) return;
-      viewportSize = { width: rect.width, height: rect.height };
-      camera = cameraApi.fitCamera(content, rect, MIN_ZOOM, MAX_ZOOM);
-      applyCamera();
-      saveCamera();
-    }
-
-    function focusItem(id, options = {}) {
-      const item = getAllItems().find((item) => item.id === id);
-      if (!item) return false;
-      if (item.type === "board") { switchBoard(item.id); return true; }
-      if ((item.boardId || "") !== activeBoardId) switchBoard(item.boardId || "");
-      if (listMode && !options.canvas) {
-        render();
-        const row = [...cardList.children].find((node) => node.dataset.id === id);
-        if (row) { row.tabIndex = -1; row.scrollIntoView({ block: "center" }); row.focus({ preventScroll: true }); }
-        return true;
-      }
-      listMode = false; render();
-      const rect = ctx.els.boardViewport.getBoundingClientRect();
-      camera = cameraApi.fitCamera(ctx.model.bounds([item]), rect, MIN_ZOOM, Math.min(MAX_ZOOM, 1.5));
-      applyCamera(); saveCamera();
-      selectItem(id);
-      findItemNode(id)?.focus({ preventScroll: true });
-      return true;
-    }
-
-    function switchBoard(id) {
-      if (imageUploadBusy) { ctx.showToast("Дождись завершения загрузки изображения"); boardSelect.value = activeBoardId; return; }
-      finishActiveTextEdit();
-      activeBoardId = id; local?.write("active-board", id);
-      selectedIds.clear(); selectedId = ""; activeAreaId = ""; editingId = "";
-      undoStack = []; redoStack = []; cameraReady = false; cameraVisibilityChecked = false;
-      camera = loadBoardCamera(); render();
-    }
-
-    function editBoardName(id) {
-      const board = getAllItems().find((item) => item.id === id && item.type === "board");
-      const dialog = document.createElement("dialog"); dialog.className = "workspace-edit-dialog";
-      const form = document.createElement("form"); form.className = "study-form";
-      const heading = document.createElement("h3"); heading.textContent = board ? "Название доски" : "Новая доска";
-      const label = document.createElement("label"); label.textContent = "Название";
-      const name = document.createElement("input"); name.required = true; name.maxLength = 80; name.value = board?.text || ""; label.append(name);
-      const save = document.createElement("button"); save.type = "submit"; save.className = "primary-button"; save.textContent = "Сохранить";
-      const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "ghost-button"; cancel.textContent = "Отмена"; cancel.onclick = () => dialog.close();
-      form.append(heading, label, save, cancel); dialog.append(form); document.body.append(dialog);
-      const owner = local?.owner();
-      form.onsubmit = (event) => { event.preventDefault(); if (owner !== local?.owner()) { dialog.close(); return; }
-        const text = name.value.trim(); if (!text) return;
-        const next = ctx.model.normalizeItem({ ...board, id: board?.id || ctx.createId(), type: "board", text, updatedAt: new Date().toISOString() });
-        if (commitAllItems([...getAllItems().filter((item) => item.id !== next.id), next]) === false) return;
-        dialog.close(); switchBoard(next.id);
-      };
-      dialog.addEventListener("close", () => dialog.remove(), { once: true }); dialog.showModal();
-    }
-
-    function renderCardList() {
-      if (!listMode) return;
-      const items = ctx.getItems();
-      releaseUnusedObjectUrls(items);
-      cardList.replaceChildren(...items.map((item) => {
-        const row = document.createElement("article"); row.className = "board-list-card"; row.dataset.id = item.id;
-        const source = item.type === "link" ? ctx.links.resolve(item, ctx.getState()) : null;
-        const title = document.createElement("h3"); title.textContent = source?.title || item.text || item.name || "Изображение";
-        const open = document.createElement("button"); open.type = "button"; open.className = "ghost-button compact-button"; open.textContent = source ? "Открыть" : "На полотне";
-        open.onclick = () => source ? ctx.openSource(item.sourceType, item.sourceId) : focusItem(item.id, { canvas: true });
-        if (item.type === "text") { const text = document.createElement("p"); text.className = "board-list-text"; text.textContent = item.text || "Без текста"; row.append(text); }
-        else row.append(title);
-        if (item.type === "image") {
-          const image = document.createElement("img"); image.className = "board-list-image"; image.alt = item.name || "Изображение"; image.loading = "lazy";
-          const placeholder = document.createElement("p"); placeholder.className = "muted"; placeholder.textContent = "Загрузка изображения…";
-          row.append(image, placeholder);
-          const owner = local?.owner();
-          ctx.assets.resolveBlob(item).then((blob) => {
-            if (!row.isConnected || owner !== local?.owner()) return;
-            if (!blob) { placeholder.textContent = "Изображение недоступно"; image.hidden = true; return; }
-            image.onload = () => { placeholder.hidden = true; };
-            image.onerror = () => { image.hidden = true; placeholder.textContent = "Не удалось открыть изображение"; };
-            image.src = objectUrls.get(item.assetId) || cacheImageUrl(item.assetId, blob);
-          }).catch(() => { if (row.isConnected) { image.hidden = true; placeholder.textContent = "Не удалось загрузить изображение"; } });
-        }
-        if (source?.detail) { const detail = document.createElement("p"); detail.textContent = source.detail; row.append(detail); }
-        row.append(open); return row;
-      }));
-      if (!items.length) { const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "На этой доске пока нет карточек."; cardList.append(empty); }
-    }
-
-    function handleCanvasDoubleClick(event) {
-      if (
-        event.target.closest(".board-item")
-        || event.target.closest(".board-toolbar")
-        || event.target.closest(".board-selection-toolbar")
-        || event.target.closest(".board-zoom-controls")
-        || event.target.closest(".board-source-picker")
-        || event.target.closest(".board-empty")
-        || event.target.closest(".board-area-nav")
-      ) return;
-      addTextAtCenter({ x: event.clientX, y: event.clientY });
-    }
-
-    function handleDragOver(event) {
-      if (![...(event.dataTransfer?.items || [])].some((item) => item.type.startsWith("image/"))) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "copy";
-      ctx.els.boardViewport.classList.add("is-drop-target");
-    }
-
-    function handleDragLeave(event) {
-      if (event.relatedTarget && ctx.els.boardViewport.contains(event.relatedTarget)) return;
-      ctx.els.boardViewport.classList.remove("is-drop-target");
-    }
-
-    async function handleDrop(event) {
-      ctx.els.boardViewport.classList.remove("is-drop-target");
-      const files = [...(event.dataTransfer?.files || [])].filter((file) => file.type.startsWith("image/"));
-      if (!files.length) return;
-      event.preventDefault();
-      await addImageFiles(files, { x: event.clientX, y: event.clientY });
-    }
-
-    async function handlePaste(event) {
-      if (!isBoardActive() || editingId || event.target.closest?.("input, textarea, [contenteditable]")) return;
-      const files = [...(event.clipboardData?.items || [])]
-        .filter((item) => item.type.startsWith("image/"))
-        .map((item) => item.getAsFile())
-        .filter(Boolean);
-      if (!files.length) return;
-      event.preventDefault();
+    });
+    ctx.els.boardAreaSelect?.addEventListener("change", () => focusArea(ctx.els.boardAreaSelect.value));
+    globalThis.document.addEventListener("pointerdown", (event) => {
+      if (ctx.els.boardAddMenu?.open && !event.target.closest("#boardAddMenu")) closeAddMenu();
+    });
+    ctx.els.boardImageInput?.addEventListener("change", async () => {
+      const files = [...(ctx.els.boardImageInput.files || [])];
+      ctx.els.boardImageInput.value = "";
       await addImageFiles(files, viewportCenter());
+    });
+    ctx.els.boardUndo?.addEventListener("click", undo);
+    ctx.els.boardRedo?.addEventListener("click", redo);
+    ctx.els.boardModeSelect?.addEventListener("click", () => setInteractionMode("select"));
+    ctx.els.boardModePan?.addEventListener("click", () => setInteractionMode("pan"));
+    ctx.els.boardDuplicate?.addEventListener("click", duplicateSelected);
+    ctx.els.boardDelete?.addEventListener("click", deleteSelected);
+    ctx.els.boardGroup?.addEventListener("click", toggleGroupSelected);
+    ctx.els.boardBringFront?.addEventListener("click", () => moveSelectionLayer("front"));
+    ctx.els.boardSendBack?.addEventListener("click", () => moveSelectionLayer("back"));
+    ctx.els.boardLock?.addEventListener("click", toggleLockSelected);
+    ctx.els.boardZoomIn?.addEventListener("click", () => zoomAt(1.3));
+    ctx.els.boardZoomOut?.addEventListener("click", () => zoomAt(1 / 1.3));
+    ctx.els.boardFocus?.addEventListener("click", focusContent);
+    ctx.els.boardBold?.addEventListener("click", () => {
+      toggleBold();
+      focusPrimarySelection();
+    });
+    ctx.els.boardColorPresets?.addEventListener("click", (event) => {
+      const swatch = event.target.closest("[data-board-text-color]");
+      if (swatch) {
+        applyTextColor(swatch.dataset.boardTextColor);
+        focusPrimarySelection();
+      }
+    });
+    ctx.els.boardLinkControls?.addEventListener("click", (event) => {
+      const swatch = event.target.closest("[data-board-link-color]");
+      if (swatch) applyLinkColor(swatch.dataset.boardLinkColor);
+    });
+    ctx.els.boardTextColor?.addEventListener("input", () => applyTextColor(ctx.els.boardTextColor.value));
+    ctx.els.boardTextColor?.addEventListener("change", focusPrimarySelection);
+    ctx.els.boardFontSize?.addEventListener("change", applyFontSize);
+    ctx.els.boardFontSize?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        applyFontSize();
+        ctx.els.boardFontSize.blur();
+      }
+    });
+    ctx.els.boardViewport?.addEventListener("dblclick", handleCanvasDoubleClick);
+    ctx.els.boardViewport?.addEventListener("pointerdown", startPan);
+    ctx.els.boardViewport?.addEventListener("wheel", handleWheel, { passive: false });
+    ctx.els.boardViewport?.addEventListener("dragover", handleDragOver);
+    ctx.els.boardViewport?.addEventListener("dragleave", handleDragLeave);
+    ctx.els.boardViewport?.addEventListener("drop", handleDrop);
+    globalThis.addEventListener("pointermove", handlePointerMove);
+    globalThis.addEventListener("pointerup", finishGesture);
+    globalThis.addEventListener("pointercancel", cancelGesture);
+    globalThis.addEventListener("keydown", handleKeyDown, true);
+    globalThis.addEventListener("keyup", handleKeyUp, true);
+    globalThis.addEventListener("paste", handlePaste);
+    if (globalThis.ResizeObserver && ctx.els.boardViewport) {
+      const resizeObserver = new globalThis.ResizeObserver(handleViewportResize);
+      resizeObserver.observe(ctx.els.boardViewport);
+    } else {
+      globalThis.addEventListener("resize", handleViewportResize);
     }
+  }
 
-    function handleKeyDown(event) {
-      if (!isBoardActive()) return;
-      if (event.key === "Escape" && !ctx.els.boardSourcePicker.hidden) {
-        event.preventDefault();
-        closeSourcePicker();
-        return;
-      }
-      const formControl = event.target.closest?.("input, textarea, select, button");
-      const commandKey = event.ctrlKey || event.metaKey;
-      const key = event.key.toLowerCase();
-      if (event.code === "Space" && !editingId && !formControl) {
-        spacePressed = true;
-        ctx.els.boardViewport.classList.add("is-space-pan");
-        event.preventDefault();
-        return;
-      }
-      const focusedItemId = document.activeElement?.closest?.(".board-item")?.dataset.id;
-      if (!editingId && focusedItemId && !selectedIds.has(focusedItemId)) {
-        setSelection([focusedItemId], focusedItemId);
-      }
-      if (commandKey && key === "z" && event.shiftKey && !editingId && !formControl) {
-        event.preventDefault();
-        redo();
-        return;
-      }
-      if (commandKey && (key === "y") && !editingId && !formControl) {
-        event.preventDefault();
-        redo();
-        return;
-      }
-      if (commandKey && key === "z" && !editingId && !formControl) {
-        event.preventDefault();
-        undo();
-        return;
-      }
-      if (commandKey && key === "c" && selectedIds.size && !editingId && !formControl) {
-        event.preventDefault();
-        copySelected();
-        return;
-      }
-      if (commandKey && key === "v" && clipboardItems.length && !editingId && !formControl) {
-        event.preventDefault();
-        pasteClipboard();
-        return;
-      }
-      if (commandKey && key === "d" && selectedIds.size && !editingId && !formControl) {
-        event.preventDefault();
-        duplicateSelected();
-        return;
-      }
-      if (commandKey && key === "g" && selectedIds.size && !editingId && !formControl) {
-        event.preventDefault();
-        toggleGroupSelected();
-        return;
-      }
-      if (commandKey && key === "b" && selectedTexts().length && !editingId) {
-        event.preventDefault();
-        toggleBold();
-        return;
-      }
-      if (!commandKey && !editingId && !formControl && key === "v") {
-        setInteractionMode("select");
-        return;
-      }
-      if (!commandKey && !editingId && !formControl && key === "h") {
-        setInteractionMode("pan");
-        return;
-      }
-      if (event.key === "Delete" && selectedIds.size && !editingId && !formControl) {
-        event.preventDefault();
-        event.stopPropagation();
-        deleteSelected();
-        return;
-      }
+  function render() {
+    if (!ctx.els.boardWorld || !ctx.els.boardViewport) return;
+    if (assetOwner !== ctx.assets.getOwner?.()) {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.clear(); pendingUploadAttempts.clear();
+      assetOwner = ctx.assets.getOwner?.();
+    }
+    if (boardOwner !== local?.owner()) {
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+      objectUrls.clear(); pendingUploadAttempts.clear();
+      if (saveTextTimer) clearTimeout(saveTextTimer);
+      saveTextTimer = null; textBeforeEdit = null; cameraVisibilityChecked = false; viewportSize = null;
+      boardOwner = local?.owner(); activeBoardId = local?.read("active-board") || "";
+      listMode = listPreference();
+      selectedIds.clear(); selectedId = ""; editingId = ""; undoStack = []; redoStack = []; camera = loadBoardCamera(); cameraReady = false;
+    }
+    const boards = getAllItems().filter((item) => item.type === "board");
+    if (activeBoardId && !boards.some((item) => item.id === activeBoardId)) activeBoardId = "";
+    boardSelect.replaceChildren(new Option("Основная доска", ""), ...boards.map((item) => new Option(item.text, item.id)));
+    boardSelect.value = activeBoardId; renameBoard.disabled = !activeBoardId;
+    listToggle.setAttribute("aria-pressed", String(listMode));
+    listToggle.textContent = listMode ? "Полотно" : "Список карточек";
+    cardList.hidden = !listMode;
+    listAdd.hidden = !listMode;
+    document.querySelector("#boardView").classList.toggle("is-list-mode", listMode);
+    renderCardList();
+    if (listMode) return;
+    initializeCamera();
+    const items = ctx.getItems();
+    const liveIds = new Set(items.map((item) => item.id));
+    selectedIds = new Set([...selectedIds].filter((id) => liveIds.has(id)));
+    if (selectedId && !liveIds.has(selectedId)) selectedId = [...selectedIds].at(-1) || "";
+    if (editingId && !items.some((item) => item.id === editingId)) editingId = "";
+    releaseUnusedObjectUrls(items);
+
+    ctx.els.boardWorld.replaceChildren(...items.map(createItemNode), ...createGuideNodes());
+    ctx.els.boardEmpty.hidden = items.length > 0;
+    renderAreaOptions(items);
+    if (!ctx.els.boardSourcePicker.hidden) renderSourceResults();
+    syncHistoryControls();
+    applyCamera();
+    scheduleCameraVisibilityCheck(items);
+    syncInteractionMode();
+    updateSelection();
+    items.filter((item) => item.type === "image").forEach(loadImage);
+    syncLegacyImages(items);
+  }
+
+  function createItemNode(item) {
+    const node = document.createElement("article");
+    node.className = `board-item board-${item.type}`;
+    node.classList.toggle("is-locked", item.locked);
+    node.dataset.id = item.id;
+    node.tabIndex = -1;
+    node.setAttribute("role", "group");
+    node.setAttribute("aria-label", item.type === "text"
+      ? "Текст на доске"
+      : item.type === "frame" ? `Область: ${item.text}`
+        : item.type === "link" ? `Связанный объект: ${ctx.links.resolve(item, ctx.getState())?.title || "Источник"}` : "Изображение на доске");
+    applyNodeGeometry(node, item);
+
+    if (item.type === "text") {
+      node.append(createTextContent(item, node));
+    } else if (item.type === "frame") {
+      node.append(createFrameContent(item, node));
+    } else if (item.type === "link") {
+      node.append(createLinkContent(item));
+    } else {
+      node.append(...createImageContent(item));
+    }
+    RESIZE_DIRECTIONS.forEach((direction) => node.append(createResizeHandle(direction)));
+
+    node.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      if (spacePressed || interactionMode === "pan") return;
       if (
-        event.key === "Enter"
-        && selectedIds.size === 1
-        && selectedEditableItem()
-        && !editingId
-        && !formControl
+        event.detail >= 2
+        && (item.type === "text" || item.type === "frame")
+        && event.target.closest(".board-text-content, .board-frame-title")
       ) {
         event.preventDefault();
-        const node = findItemNode(selectedId);
-        if (node) startTextEdit(selectedId, node);
+        event.stopPropagation();
+        setSelection([item.id], item.id);
+        startTextEdit(item.id, node);
         return;
       }
-      if (event.key.startsWith("Arrow") && selectedIds.size && !editingId && !formControl) {
-        event.preventDefault();
-        moveSelectedWithKeyboard(event.key, event.shiftKey ? 10 : 1);
+      const resizeHandle = event.target.closest("[data-board-resize]");
+      const remainsSelected = selectItem(item.id, node, { additive: event.shiftKey, toggle: event.shiftKey });
+      if (!remainsSelected) return;
+      if (item.locked || selectedItems().some((candidate) => candidate.locked)) return;
+      if (resizeHandle) {
+        startItemGesture(event, item, "resize", node, resizeHandle.dataset.boardResize);
         return;
       }
-      if (event.key === "Escape") {
-        if (editingId) {
-          event.preventDefault();
-          finishActiveTextEdit();
-          findItemNode(selectedId)?.focus({ preventScroll: true });
-        } else {
-          setSelection([]);
-        }
-      }
-    }
+      if (editingId === item.id && event.target.closest(".board-text-content, .board-frame-title")) return;
+      startItemGesture(event, item, "move", node);
+    });
+    node.addEventListener("focus", () => {
+      if (!selectedIds.has(item.id)) selectItem(item.id, node);
+    });
+    return node;
+  }
 
-    function handleKeyUp(event) {
-      if (event.code !== "Space") return;
-      spacePressed = false;
-      ctx.els.boardViewport?.classList.remove("is-space-pan");
-    }
+  function createLinkContent(item) {
+    const source = ctx.links.resolve(item, ctx.getState(), ctx.todayKey());
+    const card = document.createElement("div");
+    const top = document.createElement("div");
+    const kind = document.createElement("span");
+    const status = document.createElement("span");
+    const title = document.createElement("strong");
+    const detail = document.createElement("p");
+    const open = document.createElement("button");
+    card.className = `board-linked-card is-${source?.tone || "neutral"}`;
+    card.classList.toggle("is-theme-surface", !item.backgroundColor || item.backgroundColor.toLowerCase() === "#ffffff");
+    card.style.setProperty("--board-link-bg", item.backgroundColor || "#ffffff");
+    kind.textContent = source?.typeLabel || "Объект";
+    status.className = "board-link-status";
+    status.textContent = source?.status || "";
+    top.className = "board-linked-top";
+    top.append(kind, status);
+    title.textContent = source?.title || "Источник удалён";
+    detail.textContent = source?.detail || "";
+    open.type = "button";
+    open.className = "board-link-open";
+    open.textContent = source?.missing ? "Источник недоступен" : "Открыть";
+    open.disabled = Boolean(source?.missing);
+    open.addEventListener("pointerdown", (event) => event.stopPropagation());
+    open.addEventListener("click", (event) => {
+      event.stopPropagation();
+      ctx.openSource?.(item.sourceType, item.sourceId);
+    });
+    card.append(top, title, detail, open);
+    return card;
+  }
 
-    function deleteSelected() {
-      const ids = new Set(selectedIds);
-      if (!ids.size) return;
-      if (selectedItems().some((item) => item.locked)) {
-        ctx.showToast("Сначала разблокируй объект");
-        return;
-      }
-      pushUndo();
-      setSelection([]);
-      editingId = "";
-      if (!commit(ctx.getItems().filter((item) => !ids.has(item.id)), { deletedIds: [...ids] })) return;
-      ctx.showToast("Объект удалён · отмена доступна на панели доски");
-    }
+  function closeAddMenu() {
+    ctx.els.boardAddMenu?.removeAttribute("open");
+  }
 
-    function undo() {
-      const snapshot = undoStack.pop();
-      if (!snapshot) return;
-      redoStack.push(cloneItems(ctx.getItems()));
-      setSelection([]);
-      editingId = "";
-      if (!applyHistorySnapshot(snapshot)) { redoStack.pop(); undoStack.push(snapshot); return; }
-      ctx.showToast("Изменение отменено");
-    }
+  function renderAreaOptions(items) {
+    const frames = items.filter((item) => item.type === "frame");
+    ctx.els.boardAreaNav.hidden = frames.length < 2;
+    if (frames.length < 2) return;
+    if (!frames.some((frame) => frame.id === activeAreaId)) activeAreaId = frames[0].id;
+    ctx.els.boardAreaSelect.replaceChildren(...frames.map((frame) => {
+      const option = document.createElement("option");
+      option.value = frame.id;
+      option.textContent = frame.text || "Область";
+      return option;
+    }));
+    ctx.els.boardAreaSelect.value = activeAreaId;
+  }
 
-    function redo() {
-      const snapshot = redoStack.pop();
-      if (!snapshot) return;
-      undoStack.push(cloneItems(ctx.getItems()));
-      setSelection([]);
-      editingId = "";
-      if (!applyHistorySnapshot(snapshot)) { undoStack.pop(); redoStack.push(snapshot); return; }
-      ctx.showToast("Изменение повторено");
-    }
+  function focusArea(id) {
+    const frame = ctx.getItems().find((item) => item.id === id && item.type === "frame");
+    if (!frame) return;
+    activeAreaId = id;
+    const rect = ctx.els.boardViewport.getBoundingClientRect();
+    camera = cameraApi.fitCamera({ left: frame.x, top: frame.y, width: frame.width, height: frame.height }, rect, MIN_ZOOM, MAX_ZOOM);
+    applyCamera();
+    saveCamera();
+  }
 
-    function applyHistorySnapshot(snapshot) {
-      const nextIds = new Set((snapshot || []).map((item) => item.id));
-      const deletedIds = ctx.getItems().filter((item) => !nextIds.has(item.id)).map((item) => item.id);
-      const saved = ctx.commitItems(snapshot, { deletedIds, restoreDeleted: true }) !== false;
-      render();
-      return saved;
-    }
+  function openSourcePicker() {
+    ctx.els.boardSourcePicker.hidden = false;
+    ctx.els.boardSourceSearch.value = "";
+    ctx.els.boardSourceType.value = "all";
+    renderSourceResults();
+    ctx.els.boardSourceSearch.focus();
+  }
 
-    function startTextEdit(id, node) {
-      const item = ctx.getItems().find((candidate) => candidate.id === id);
-      const content = node?.querySelector(".board-text-content, .board-frame-title");
-      if (!item || !content || item.locked) return;
-      finishActiveTextEdit();
-      setSelection([id], id);
-      editingId = id;
-      textBeforeEdit = { items: cloneItems(ctx.getItems()), value: item.text };
-      node.classList.add("is-selected", "is-editing");
-      content.contentEditable = "plaintext-only";
-      if (content.contentEditable !== "plaintext-only") content.contentEditable = "true";
-      content.focus({ preventScroll: true });
-      placeCaretAtEnd(content);
-      updateSelection();
-    }
+  function closeSourcePicker() {
+    ctx.els.boardSourcePicker.hidden = true;
+    ctx.els.boardViewport.focus({ preventScroll: true });
+  }
 
-    function finishActiveTextEdit() {
-      if (!editingId) return;
-      const content = findItemNode(editingId)?.querySelector(".board-text-content, .board-frame-title");
-      if (content) finishTextEdit(editingId, content);
-      else editingId = "";
-    }
+  function renderSourceResults() {
+    const linked = ctx.getItems().filter((item) => item.type === "link")
+      .map((item) => `${item.sourceType}:${item.sourceId}`);
+    const sources = ctx.links.list(ctx.getState(), {
+      type: ctx.els.boardSourceType.value,
+      query: ctx.els.boardSourceSearch.value,
+      linked,
+      todayKey: ctx.todayKey(),
+    });
+    ctx.els.boardSourceResults.replaceChildren(...sources.map((source) => {
+      const button = document.createElement("button");
+      const title = document.createElement("strong");
+      const detail = document.createElement("small");
+      button.type = "button";
+      button.className = "board-source-result";
+      button.dataset.boardSource = source.type;
+      button.dataset.boardSourceId = source.id;
+      title.textContent = source.title;
+      detail.textContent = `${source.typeLabel}${source.detail ? ` · ${source.detail}` : ""}`;
+      button.append(title, detail);
+      return button;
+    }));
+    if (!sources.length) ctx.els.boardSourceResults.textContent = "Ничего не найдено";
+  }
 
-    function scheduleTextSave(id, value) {
-      drafts?.write(`board-text:${id}`, { value: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH) });
-      if (saveTextTimer) clearTimeout(saveTextTimer);
-      const owner = local?.owner();
-      saveTextTimer = setTimeout(() => { if (owner === local?.owner()) saveText(id, value); }, 350);
-    }
+  function addLinkedSource(sourceType, sourceId) {
+    const source = ctx.links.resolve({ sourceType, sourceId }, ctx.getState());
+    if (!source || source.missing) return;
+    const world = screenToWorld(viewportCenter().x, viewportCenter().y);
+    const position = findOpenPosition(world.x - 120, world.y - 78, 240, 156, true);
+    const item = ctx.model.createLinkItem({ sourceType, sourceId, ...position, width: 240, z: nextZ() }, {
+      createId: ctx.createId, now: new Date().toISOString(),
+    });
+    if (!item) return;
+    pushUndo();
+    selectedId = item.id;
+    selectedIds = new Set([item.id]);
+    closeSourcePicker();
+    if (!commit([...ctx.getItems(), item])) return;
+    ctx.showToast("Карточка добавлена на доску");
+  }
 
-    function finishTextEdit(id, content) {
-      if (editingId !== id) return;
-      if (saveTextTimer) clearTimeout(saveTextTimer);
-      saveTextTimer = null;
-      const value = editableText(content);
-      if (textBeforeEdit && textBeforeEdit.value !== value) {
-        recordUndo(textBeforeEdit.items);
-      }
-      if (saveText(id, value, Math.ceil(content.scrollHeight)) === false) return;
-      textBeforeEdit = null;
-      editingId = "";
-      content.contentEditable = "false";
-      content.closest(".board-item")?.classList.remove("is-editing");
-      updateSelection();
-      const rect = content.closest(".board-item")?.getBoundingClientRect();
-      const viewport = ctx.els.boardViewport.getBoundingClientRect();
-      if (rect && (rect.top < viewport.top || rect.bottom > viewport.bottom || rect.left < viewport.left || rect.right > viewport.right)) focusContent();
-    }
+  function createTemplate(name) {
+    const labels = name === "study" ? ["Сейчас изучаю", "Материалы", "Важное"]
+      : name === "project" ? ["Идеи", "В работе", "Результат"] : null;
+    if (!labels || ctx.getItems().length) return;
+    const now = new Date().toISOString();
+    const items = labels.map((text, index) => ctx.model.createFrameItem({
+      x: index * 306, y: 36, width: 280, height: 320, z: index, text,
+    }, { createId: ctx.createId, now }));
+    pushUndo();
+    if (!commit(items)) return;
+    activeAreaId = items[0].id;
+    if (ctx.els.boardViewport.getBoundingClientRect().width < 700) focusArea(activeAreaId);
+    else focusContent();
+    ctx.showToast(name === "study" ? "Доска для учёбы готова" : "Доска проекта готова");
+  }
 
-    function saveText(id, value, minimumHeight = 0) {
-      const current = ctx.getItems().find((item) => item.id === id);
-      if (!current) return;
-      const height = Math.max(current.height, minimumHeight);
-      if (current.text === value && current.height === height) { drafts?.remove(`board-text:${id}`); return true; }
-      const saved = ctx.commitItems(ctx.getItems().map((item) => item.id === id
-        ? {
-            ...item,
-            text: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH),
-            height,
-            updatedAt: new Date().toISOString(),
-          }
-        : item), { render: false });
-      if (saved === false) {
-        drafts?.write(`board-text:${id}`, { value: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH) });
-        setStatus("Не удалось сохранить текст · повтори сохранение", "error");
-        return false;
-      }
-      drafts?.remove(`board-text:${id}`);
-      const node = findItemNode(id);
-      if (node) node.style.height = `${height}px`;
-      setStatus("Сохранено · фото хранятся в Supabase Storage", "saved");
-      return true;
-    }
-
-    function pastePlainText(event) {
-      event.preventDefault();
-      const text = event.clipboardData?.getData("text/plain") || "";
-      global.document.execCommand("insertText", false, text);
-    }
-
-    function selectItem(id, node = findItemNode(id), options = {}) {
-      if (editingId && editingId !== id) finishActiveTextEdit();
-      const item = ctx.getItems().find((candidate) => candidate.id === id);
-      const targetIds = item?.groupId
-        ? ctx.getItems().filter((candidate) => candidate.groupId === item.groupId).map((candidate) => candidate.id)
-        : [id];
-      const preserveGroup = !options.additive && targetIds.every((targetId) => selectedIds.has(targetId));
-      const next = new Set(options.additive || preserveGroup ? selectedIds : []);
-      if (options.toggle && targetIds.every((targetId) => next.has(targetId))) {
-        targetIds.forEach((targetId) => next.delete(targetId));
-      } else {
-        targetIds.forEach((targetId) => next.add(targetId));
-      }
-      setSelection([...next], next.has(id) ? id : [...next].at(-1) || "");
-      if (next.has(id)) node?.focus({ preventScroll: true });
-      return next.has(id);
-    }
-
-    function setSelection(ids, primaryId = "") {
-      selectedIds = new Set((ids || []).filter(Boolean));
-      const selectedGroups = new Set(
-        ctx.getItems()
-          .filter((item) => selectedIds.has(item.id) && item.groupId)
-          .map((item) => item.groupId),
-      );
-      ctx.getItems().forEach((item) => {
-        if (item.groupId && selectedGroups.has(item.groupId)) selectedIds.add(item.id);
-      });
-      selectedId = selectedIds.has(primaryId) ? primaryId : [...selectedIds].at(-1) || "";
-      updateSelection();
-    }
-
-    function updateSelection() {
-      const selected = ctx.getItems().find((item) => item.id === selectedId);
-      const textItems = selectedTexts();
-      const linkItems = selectedLinks();
-      const items = selectedItems();
-      ctx.els.boardWorld.querySelectorAll(".board-item").forEach((node) => {
-        const active = selectedIds.has(node.dataset.id);
-        node.classList.toggle("is-selected", active);
-        node.classList.toggle("is-editing", active && node.dataset.id === editingId);
-        node.classList.toggle("is-multi-selected", active && selectedIds.size > 1);
-        node.setAttribute("aria-selected", String(active));
-      });
-      const showTextTools = textItems.length > 0 && !items.some((item) => item.locked);
-      const showLinkTools = linkItems.length > 0 && !items.some((item) => item.locked);
-      if (ctx.els.boardSelectionToolbar) ctx.els.boardSelectionToolbar.hidden = items.length === 0;
-      if (ctx.els.boardTextControls) ctx.els.boardTextControls.hidden = !showTextTools;
-      ctx.els.boardSelectionToolbar?.querySelector(".board-text-separator")?.toggleAttribute("hidden", !showTextTools);
-      if (ctx.els.boardLinkControls) ctx.els.boardLinkControls.hidden = !showLinkTools;
-      ctx.els.boardSelectionToolbar?.classList.toggle("is-link-selection", showLinkTools);
-      ctx.els.boardSelectionToolbar?.querySelector(".board-link-separator")?.toggleAttribute("hidden", !showLinkTools);
-      if (showLinkTools) {
-        const color = linkItems.every((item) => item.backgroundColor === linkItems[0].backgroundColor)
-          ? linkItems[0].backgroundColor : "";
-        ctx.els.boardLinkControls.querySelectorAll("[data-board-link-color]").forEach((swatch) => {
-          const active = swatch.dataset.boardLinkColor === color;
-          swatch.classList.toggle("is-active", active);
-          swatch.setAttribute("aria-pressed", String(active));
-        });
-      }
-      const groupId = selectedGroupId(items);
-      if (ctx.els.boardGroup) {
-        ctx.els.boardGroup.disabled = items.length < 2;
-        ctx.els.boardGroup.title = groupId ? "Разгруппировать (Ctrl+G)" : "Сгруппировать (Ctrl+G)";
-        ctx.els.boardGroup.setAttribute("aria-label", groupId ? "Разгруппировать" : "Сгруппировать");
-        ctx.els.boardGroup.classList.toggle("is-active", Boolean(groupId));
-      }
-      if (ctx.els.boardLock) {
-        const allLocked = items.length > 0 && items.every((item) => item.locked);
-        ctx.els.boardLock.setAttribute("aria-pressed", String(allLocked));
-        ctx.els.boardLock.setAttribute("aria-label", allLocked ? "Разблокировать" : "Заблокировать");
-        ctx.els.boardLock.title = allLocked ? "Разблокировать" : "Заблокировать";
-        ctx.els.boardLock.classList.toggle("is-active", allLocked);
-      }
-      if (showTextTools) {
-        const reference = selected?.type === "text" ? selected : textItems[0];
-        const allBold = textItems.every((item) => item.fontWeight >= 600);
-        ctx.els.boardFontSize.value = String(reference.fontSize);
-        ctx.els.boardBold.setAttribute("aria-pressed", String(allBold));
-        ctx.els.boardBold.classList.toggle("is-active", allBold);
-        ctx.els.boardTextColor.value = reference.color;
-        ctx.els.boardColorPresets?.querySelectorAll("[data-board-text-color]").forEach((swatch) => {
-          swatch.classList.toggle("is-active", swatch.dataset.boardTextColor === reference.color);
-        });
-      }
-      renderMultiSelectionBounds(items);
-    }
-
-    function renderMultiSelectionBounds(items) {
-      ctx.els.boardWorld.querySelector(".board-multi-bounds")?.remove();
-      if (items.length < 2) return;
-      const bounds = itemBounds(items);
-      if (!bounds) return;
-      const node = document.createElement("div");
-      node.className = "board-multi-bounds";
-      applyNodeGeometry(node, {
-        x: bounds.left,
-        y: bounds.top,
-        width: bounds.width,
-        height: bounds.height,
-        z: 1000000000,
-      });
-      if (!items.some((item) => item.locked)) {
-        RESIZE_DIRECTIONS
-          .filter((direction) => direction.length === 2)
-          .forEach((direction) => {
-            const handle = createResizeHandle(direction);
-            handle.addEventListener("pointerdown", (event) => startGroupResize(event, direction, node, bounds));
-            node.append(handle);
-          });
-      }
-      ctx.els.boardWorld.append(node);
-    }
-
-    function startGroupResize(event, direction, node, bounds) {
+  function createTextContent(item, node) {
+    const content = document.createElement("div");
+    content.className = "board-text-content";
+    content.textContent = drafts?.read(`board-text:${item.id}`)?.value ?? item.text;
+    content.spellcheck = true;
+    content.dataset.placeholder = "Введите текст";
+    content.style.fontSize = `${item.fontSize}px`;
+    content.style.fontWeight = String(item.fontWeight);
+    content.style.color = !item.color || item.color.toLowerCase() === "#17191d" ? "var(--text)" : item.color;
+    content.setAttribute("aria-label", "Текстовый объект");
+    content.addEventListener("dblclick", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      const items = selectedItems();
-      if (items.length < 2 || items.some((item) => item.locked)) return;
-      gesture = {
-        type: "group-resize",
-        direction,
-        pointerId: event.pointerId,
-        node,
-        nodes: items.map((item) => findItemNode(item.id)).filter(Boolean),
-        startX: event.clientX,
-        startY: event.clientY,
-        groupBounds: { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height },
-        originals: new Map(items.map((item) => [item.id, { ...item }])),
-        before: cloneItems(ctx.getItems()),
-        moved: false,
-      };
-      node.classList.add("is-resizing");
-      gesture.nodes.forEach((itemNode) => itemNode.classList.add("is-resizing"));
-    }
+      startTextEdit(item.id, node);
+    });
+    content.addEventListener("input", () => scheduleTextSave(item.id, editableText(content)));
+    content.addEventListener("blur", () => finishTextEdit(item.id, content));
+    content.addEventListener("paste", pastePlainText);
+    return content;
+  }
 
-    function applyFontSize() {
-      const item = selectedText() || selectedTexts()[0];
-      if (!item) return;
-      const fontSize = clamp(
-        Math.round(Number(ctx.els.boardFontSize.value) || item.fontSize),
-        ctx.model.MIN_FONT_SIZE,
-        ctx.model.MAX_FONT_SIZE,
-      );
-      updateSelectedText((candidate) => {
-        const content = findItemNode(candidate.id)?.querySelector(".board-text-content");
-        let height = candidate.height;
-        if (content) {
-          const previousSize = content.style.fontSize;
-          content.style.fontSize = `${fontSize}px`;
-          height = Math.max(height, Math.ceil(content.scrollHeight));
-          content.style.fontSize = previousSize;
-        }
-        return { fontSize, height };
-      });
-    }
+  function createFrameContent(item, node) {
+    const frame = document.createElement("div");
+    frame.className = "board-frame-content";
+    const title = document.createElement("div");
+    title.className = "board-frame-title";
+    title.textContent = drafts?.read(`board-text:${item.id}`)?.value ?? item.text;
+    title.spellcheck = true;
+    title.setAttribute("aria-label", "Название фрейма");
+    title.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      startTextEdit(item.id, node);
+    });
+    title.addEventListener("input", () => scheduleTextSave(item.id, editableText(title)));
+    title.addEventListener("blur", () => finishTextEdit(item.id, title));
+    title.addEventListener("paste", pastePlainText);
+    frame.append(title);
+    return frame;
+  }
 
-    function toggleBold() {
-      const items = selectedTexts();
-      if (!items.length) return;
-      const fontWeight = items.every((item) => item.fontWeight >= 600) ? 400 : 700;
-      updateSelectedText({ fontWeight });
-    }
+  function createImageContent(item) {
+    const image = document.createElement("img");
+    image.className = "board-image-content";
+    image.alt = item.name || "Изображение на доске";
+    image.draggable = false;
+    image.dataset.assetId = item.assetId;
+    const placeholder = document.createElement("div");
+    placeholder.className = "board-image-placeholder";
+    placeholder.textContent = item.remotePath
+      ? "Загружаем изображение из Supabase…"
+      : "Переносим старое изображение в Supabase…";
+    return [image, placeholder];
+  }
 
-    function applyTextColor(color) {
-      if (!/^#[0-9a-f]{6}$/i.test(String(color || ""))) return;
-      updateSelectedText({ color: String(color).toLowerCase() });
-    }
+  function createResizeHandle(direction) {
+    const handle = document.createElement("span");
+    handle.className = `board-resize-handle is-${direction}`;
+    handle.dataset.boardResize = direction;
+    handle.setAttribute("aria-hidden", "true");
+    return handle;
+  }
 
-    function applyLinkColor(color) {
-      const ids = new Set(selectedLinks().map((item) => item.id));
-      if (!ids.size || selectedItems().some((item) => item.locked)) return;
-      pushUndo();
-      const now = new Date().toISOString();
-      commit(ctx.getItems().map((item) => ids.has(item.id)
-        ? { ...item, backgroundColor: color, updatedAt: now } : item));
-    }
-
-    function updateSelectedText(patch) {
-      const ids = new Set(selectedTexts().map((item) => item.id));
-      if (!ids.size || selectedItems().some((item) => item.locked)) return;
-      pushUndo();
-      commit(ctx.getItems().map((candidate) => ids.has(candidate.id)
-        ? {
-            ...candidate,
-            ...(typeof patch === "function" ? patch(candidate) : patch),
-            updatedAt: new Date().toISOString(),
-          }
-        : candidate));
-    }
-
-    function selectedText() {
-      const item = ctx.getItems().find((candidate) => candidate.id === selectedId);
-      return item?.type === "text" ? item : null;
-    }
-
-    function selectedTexts() {
-      return ctx.getItems().filter((item) => selectedIds.has(item.id) && item.type === "text");
-    }
-
-    function selectedLinks() {
-      return ctx.getItems().filter((item) => selectedIds.has(item.id) && item.type === "link");
-    }
-
-    function selectedItems() {
-      return ctx.getItems().filter((item) => selectedIds.has(item.id));
-    }
-
-    function selectedEditableItem() {
-      const item = ctx.getItems().find((candidate) => candidate.id === selectedId);
-      return item && (item.type === "text" || item.type === "frame") ? item : null;
-    }
-
-    function selectedGroupId(items = selectedItems()) {
-      if (items.length < 2 || !items[0].groupId) return "";
-      const groupId = items[0].groupId;
-      const members = ctx.getItems().filter((item) => item.groupId === groupId);
-      return items.every((item) => item.groupId === groupId) && members.length === items.length ? groupId : "";
-    }
-
-    function copySelected(options = {}) {
-      clipboardItems = cloneItems(selectedItems());
-      pasteOffset = 0;
-      if (!options.silent && clipboardItems.length) ctx.showToast("Скопировано");
-    }
-
-    function pasteClipboard() {
-      if (!clipboardItems.length) return;
-      pushUndo();
-      pasteOffset += 28;
-      const now = new Date().toISOString();
-      const idMap = new Map(clipboardItems.map((item) => [item.id, ctx.createId()]));
-      const groupMap = new Map();
-      clipboardItems.forEach((item) => {
-        if (item.groupId && !groupMap.has(item.groupId)) groupMap.set(item.groupId, ctx.createId());
-      });
-      const baseZ = nextZ();
-      const copies = clipboardItems.map((item, index) => ({
-        ...item,
-        id: idMap.get(item.id),
-        groupId: item.groupId ? groupMap.get(item.groupId) : "",
-        x: item.x + pasteOffset,
-        y: item.y + pasteOffset,
-        z: baseZ + index,
-        locked: false,
-        createdAt: now,
-        updatedAt: now,
-      }));
-      setSelection(copies.map((item) => item.id), copies.at(-1)?.id);
-      if (!commit([...ctx.getItems(), ...copies])) return;
-      ctx.showToast(copies.length > 1 ? "Объекты продублированы" : "Объект продублирован");
-    }
-
-    function duplicateSelected() {
-      if (!selectedIds.size) return;
-      copySelected({ silent: true });
-      pasteClipboard();
-    }
-
-    function toggleGroupSelected() {
-      const items = selectedItems();
-      if (items.length < 2) return;
-      if (items.some((item) => item.locked)) {
-        ctx.showToast("Сначала разблокируй объекты");
-        return;
-      }
-      pushUndo();
-      const currentGroupId = selectedGroupId(items);
-      const nextGroupId = currentGroupId ? "" : ctx.createId();
-      const ids = new Set(items.map((item) => item.id));
-      const now = new Date().toISOString();
-      if (!commit(ctx.getItems().map((item) => ids.has(item.id)
-        ? { ...item, groupId: nextGroupId, updatedAt: now }
-        : item))) return;
-      ctx.showToast(currentGroupId ? "Группа разобрана" : "Объекты сгруппированы");
-    }
-
-    function moveSelectionLayer(direction) {
-      const items = selectedItems();
-      if (!items.length) return;
-      if (items.some((item) => item.locked)) {
-        ctx.showToast("Сначала разблокируй объекты");
-        return;
-      }
-      pushUndo();
-      const ids = new Set(items.map((item) => item.id));
-      const ordered = [...ctx.getItems()].sort((left, right) => left.z - right.z);
-      const selected = ordered.filter((item) => ids.has(item.id));
-      const rest = ordered.filter((item) => !ids.has(item.id));
-      const next = (direction === "back" ? [...selected, ...rest] : [...rest, ...selected])
-        .map((item, index) => ({ ...item, z: index, updatedAt: ids.has(item.id) ? new Date().toISOString() : item.updatedAt }));
-      commit(next);
-    }
-
-    function toggleLockSelected() {
-      const items = selectedItems();
-      if (!items.length) return;
-      pushUndo();
-      const ids = new Set(items.map((item) => item.id));
-      const locked = !items.every((item) => item.locked);
-      const now = new Date().toISOString();
-      if (!commit(ctx.getItems().map((item) => ids.has(item.id)
-        ? { ...item, locked, updatedAt: now }
-        : item))) return;
-      ctx.showToast(locked ? "Объект заблокирован" : "Объект разблокирован");
-    }
-
-    function focusPrimarySelection() {
-      findItemNode(selectedId)?.focus({ preventScroll: true });
-    }
-
-    function moveSelectedWithKeyboard(key, distance) {
-      if (!selectedIds.size || selectedItems().some((item) => item.locked)) return;
-      const delta = {
-        ArrowLeft: { x: -distance, y: 0 },
-        ArrowRight: { x: distance, y: 0 },
-        ArrowUp: { x: 0, y: -distance },
-        ArrowDown: { x: 0, y: distance },
-      }[key];
-      if (!delta) return;
-      pushUndo();
-      commit(ctx.getItems().map((candidate) => selectedIds.has(candidate.id)
-        ? {
-            ...candidate,
-            x: candidate.x + delta.x,
-            y: candidate.y + delta.y,
-            updatedAt: new Date().toISOString(),
-          }
-        : candidate));
-    }
-
-    function commit(items, options = {}) {
-      const saved = ctx.commitItems(ctx.model.normalizeItems(items, { createId: ctx.createId }), options) !== false;
-      if (!saved) {
-        if (JSON.stringify(undoStack.at(-1)) === JSON.stringify(ctx.getItems())) undoStack.pop();
-        setStatus("Не удалось сохранить изменение", "error");
-      }
-      render();
-      return saved;
-    }
-
-    async function loadImage(item) {
+  function addTextAtCenter(point = viewportCenter()) {
+    const world = screenToWorld(point.x, point.y);
+    const viewportWidth = ctx.els.boardViewport.getBoundingClientRect().width / camera.zoom;
+    const width = clamp(viewportWidth - 32 / camera.zoom, 180, 360);
+    const position = findOpenPosition(world.x - width / 2, world.y - 70, width, 140);
+    pushUndo();
+    const item = ctx.model.createTextItem({
+      x: position.x,
+      y: position.y,
+      width,
+      z: nextZ(),
+    }, {
+      createId: ctx.createId,
+      now: new Date().toISOString(),
+    });
+    selectedId = item.id;
+    selectedIds = new Set([item.id]);
+    commit([...ctx.getItems(), item]);
+    requestAnimationFrame(() => {
       const node = findItemNode(item.id);
-      const image = node?.querySelector("img");
-      const placeholder = node?.querySelector(".board-image-placeholder");
-      if (!image) return;
-      let url = objectUrls.get(item.assetId);
-      try {
-        if (!url) {
-          const blob = await ctx.assets.resolveBlob(item);
-          if (!blob) throw new Error(item.remotePath
-            ? "Не удалось загрузить фото из Supabase"
-            : "Фото ещё не перенесено в Supabase");
-          if (!image.isConnected) return;
-          url = cacheImageUrl(item.assetId, blob);
+      if (node) startTextEdit(item.id, node);
+    });
+  }
+
+  function addFrameAtCenter(point = viewportCenter()) {
+    const world = screenToWorld(point.x, point.y);
+    const viewport = ctx.els.boardViewport.getBoundingClientRect();
+    const width = clamp((viewport.width - 64) / camera.zoom, 360, 720);
+    const height = clamp((viewport.height - 120) / camera.zoom, 240, 480);
+    const item = ctx.model.createFrameItem({
+      x: world.x - width / 2,
+      y: world.y - height / 2,
+      width,
+      height,
+      z: 0,
+    }, {
+      createId: ctx.createId,
+      now: new Date().toISOString(),
+    });
+    pushUndo();
+    selectedId = item.id;
+    selectedIds = new Set([item.id]);
+    const items = [item, ...ctx.getItems()].map((candidate, index) => ({ ...candidate, z: index }));
+    commit(items);
+    requestAnimationFrame(() => {
+      const node = findItemNode(item.id);
+      if (node) startTextEdit(item.id, node);
+    });
+  }
+
+  function findOpenPosition(baseX, baseY, width, height, ignoreFrames = false) {
+    const directions = [
+      [0, 0],
+      [-1, 0],
+      [1, 0],
+      [0, 1],
+      [0, -1],
+      [-1, 1],
+      [1, 1],
+      [-1, -1],
+      [1, -1],
+    ];
+    const items = ctx.getItems().filter((item) => !ignoreFrames || item.type !== "frame");
+    const stepX = width + 40;
+    const stepY = height + 40;
+    const viewport = ctx.els.boardViewport.getBoundingClientRect();
+    const padding = 16 / camera.zoom;
+    const visibleBounds = {
+      left: -camera.x / camera.zoom + padding,
+      top: -camera.y / camera.zoom + padding,
+      right: (viewport.width - camera.x) / camera.zoom - padding,
+      bottom: (viewport.height - camera.y) / camera.zoom - padding,
+    };
+    for (const keepVisible of [true, false]) {
+      for (let radius = 0; radius <= 20; radius += 1) {
+        for (const [directionX, directionY] of directions) {
+          if (radius === 0 && (directionX || directionY)) continue;
+          if (radius > 0 && !directionX && !directionY) continue;
+          const candidate = {
+            x: baseX + directionX * stepX * radius,
+            y: baseY + directionY * stepY * radius,
+          };
+          if (keepVisible && (
+            candidate.x < visibleBounds.left
+            || candidate.y < visibleBounds.top
+            || candidate.x + width > visibleBounds.right
+            || candidate.y + height > visibleBounds.bottom
+          )) continue;
+          const overlaps = items.some((item) =>
+            candidate.x < item.x + item.width + 24
+            && candidate.x + width + 24 > item.x
+            && candidate.y < item.y + item.height + 24
+            && candidate.y + height + 24 > item.y);
+          if (!overlaps) return candidate;
         }
-      } catch (error) {
-        showBrokenImage(placeholder, error?.message);
-        return;
       }
+    }
+    return { x: baseX, y: baseY + (items.length + 1) * stepY };
+  }
 
-      image.addEventListener("load", () => {
-        if (placeholder) {
-          placeholder.hidden = true;
-          delete placeholder.dataset.state;
+  async function addImageFiles(files, point) {
+    const images = files
+      .filter((file) => String(file.type || "").startsWith("image/"))
+      .slice(0, 8);
+    if (!images.length || imageUploadBusy) return;
+    imageUploadBusy = true;
+    ctx.els.boardAddImage.disabled = true;
+    const before = cloneItems(ctx.getItems());
+    const added = [];
+    const anchor = screenToWorld(point.x, point.y);
+    try {
+      for (let index = 0; index < images.length; index += 1) {
+        try {
+          setStatus(`Загружаю фото ${index + 1} из ${images.length} в Supabase…`, "loading");
+          const prepared = await ctx.assets.prepareImage(images[index]);
+          const assetId = ctx.createId();
+          const remotePath = await ctx.assets.uploadPrepared(assetId, prepared);
+          cacheImageUrl(assetId, prepared.blob);
+          const fit = fitImage(prepared.width, prepared.height);
+          const item = ctx.model.createImageItem({
+            assetId,
+            remotePath,
+            mime: prepared.mime,
+            name: prepared.name,
+            width: fit.width,
+            height: fit.height,
+            x: anchor.x - fit.width / 2 + index * 32,
+            y: anchor.y - fit.height / 2 + index * 32,
+            z: nextZ() + index,
+          }, {
+            createId: ctx.createId,
+            now: new Date().toISOString(),
+          });
+          added.push(item);
+        } catch (error) {
+          showImageError(error);
         }
-      }, { once: true });
-      image.addEventListener("error", () => {
-        const cachedUrl = objectUrls.get(item.assetId);
-        if (cachedUrl === url) {
-          URL.revokeObjectURL(cachedUrl);
-          objectUrls.delete(item.assetId);
+      }
+      if (added.length) {
+        recordUndo(before);
+        selectedId = added.at(-1).id;
+        selectedIds = new Set([selectedId]);
+        if (!commit([...before, ...added])) return;
+        setStatus(
+          added.length === 1
+            ? "Фото сохранено в Supabase Storage"
+            : `Фото сохранены в Supabase Storage: ${added.length}`,
+          "cloud",
+        );
+      }
+    } finally {
+      imageUploadBusy = false;
+      ctx.els.boardAddImage.disabled = false;
+    }
+  }
+
+  function startPan(event) {
+    const shouldPan = event.pointerType === "touch"
+      || event.button === 1
+      || (event.button === 0 && (spacePressed || interactionMode === "pan"));
+    if (
+      (!shouldPan && event.button !== 0)
+      || (!shouldPan && event.target.closest(".board-item"))
+      || event.target.closest(".board-toolbar")
+      || event.target.closest(".board-selection-toolbar")
+      || event.target.closest(".board-zoom-controls")
+      || event.target.closest(".board-source-picker")
+      || event.target.closest(".board-empty")
+      || event.target.closest(".board-area-nav")
+    ) return;
+    event.preventDefault();
+    finishActiveTextEdit();
+    if (!shouldPan && !event.shiftKey) setSelection([]);
+    gesture = {
+      type: shouldPan ? "pan" : "marquee",
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      extendSelection: event.shiftKey,
+      initialSelection: new Set(selectedIds),
+      cameraX: camera.x,
+      cameraY: camera.y,
+    };
+    ctx.els.boardViewport.setPointerCapture?.(event.pointerId);
+    ctx.els.boardViewport.classList.add(shouldPan ? "is-panning" : "is-selecting");
+    if (!shouldPan) updateMarquee(event.clientX, event.clientY);
+  }
+
+  function startItemGesture(event, item, type, node, direction = "") {
+    if (type === "resize") event.preventDefault();
+    event.stopPropagation();
+    const movingItems = type === "move"
+      ? ctx.getItems().filter((candidate) => selectedIds.has(candidate.id))
+      : [item];
+    gesture = {
+      type,
+      direction,
+      pointerId: event.pointerId,
+      itemId: item.id,
+      node,
+      startX: event.clientX,
+      startY: event.clientY,
+      original: { ...item },
+      originals: new Map(movingItems.map((candidate) => [candidate.id, { ...candidate }])),
+      nodes: movingItems.map((candidate) => findItemNode(candidate.id)).filter(Boolean),
+      before: cloneItems(ctx.getItems()),
+      moved: false,
+    };
+    gesture.nodes.forEach((itemNode) => itemNode.classList.add(type === "move" ? "is-dragging" : "is-resizing"));
+  }
+
+  function handlePointerMove(event) {
+    if (!gesture || event.pointerId !== gesture.pointerId) return;
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    if (gesture.type === "pan") {
+      camera.x = gesture.cameraX + dx;
+      camera.y = gesture.cameraY + dy;
+      applyCamera();
+      return;
+    }
+    if (gesture.type === "marquee") {
+      gesture.moved ||= Math.abs(dx) + Math.abs(dy) > 3;
+      updateMarquee(event.clientX, event.clientY);
+      previewMarqueeSelection();
+      return;
+    }
+    const worldDx = dx / camera.zoom;
+    const worldDy = dy / camera.zoom;
+    gesture.moved ||= Math.abs(dx) + Math.abs(dy) > 3;
+    if (!gesture.moved) return;
+    event.preventDefault();
+    if (!gesture.pointerCaptured) {
+      gesture.node?.setPointerCapture?.(gesture.pointerId);
+      gesture.pointerCaptured = true;
+    }
+    if (gesture.type === "move") {
+      const snap = snapMove(
+        [...gesture.originals.values()],
+        ctx.getItems().filter((item) => !gesture.originals.has(item.id)),
+        worldDx,
+        worldDy,
+        7 / camera.zoom,
+      );
+      showSnapGuides(snap);
+      gesture.previews = new Map();
+      gesture.originals.forEach((original, id) => {
+        const preview = {
+          x: original.x + snap.dx,
+          y: original.y + snap.dy,
+          width: original.width,
+          height: original.height,
+        };
+        gesture.previews.set(id, preview);
+        const itemNode = findItemNode(id);
+        if (itemNode) applyNodeGeometry(itemNode, { ...original, ...preview });
+      });
+      return;
+    }
+    if (gesture.type === "group-resize") {
+      const nextBounds = resizeGeometry(
+        { ...gesture.groupBounds, type: "image" },
+        worldDx,
+        worldDy,
+        gesture.direction,
+      );
+      const scaleX = nextBounds.width / Math.max(gesture.groupBounds.width, 1);
+      const scaleY = nextBounds.height / Math.max(gesture.groupBounds.height, 1);
+      gesture.previews = new Map();
+      gesture.originals.forEach((original, id) => {
+        const minimumWidth = original.type === "frame" ? 240 : original.type === "link" ? 180 : 40;
+        const minimumHeight = original.type === "frame" ? 160 : original.type === "link" ? 96 : original.type === "image" ? 40 : 24;
+        const preview = {
+          x: nextBounds.x + (original.x - gesture.groupBounds.x) * scaleX,
+          y: nextBounds.y + (original.y - gesture.groupBounds.y) * scaleY,
+          width: Math.max(minimumWidth, original.width * scaleX),
+          height: Math.max(minimumHeight, original.height * scaleY),
+        };
+        gesture.previews.set(id, preview);
+        const itemNode = findItemNode(id);
+        if (itemNode) applyNodeGeometry(itemNode, { ...original, ...preview });
+      });
+      applyNodeGeometry(gesture.node, { ...nextBounds, z: 1000000000 });
+      return;
+    }
+    gesture.preview = resizeGeometry(gesture.original, worldDx, worldDy, gesture.direction);
+    applyNodeGeometry(gesture.node, { ...gesture.original, ...gesture.preview });
+  }
+
+  function finishGesture(event) {
+    if (!gesture || event.pointerId !== gesture.pointerId) return;
+    const current = gesture;
+    gesture = null;
+    hideSnapGuides();
+    ctx.els.boardViewport.classList.remove("is-panning", "is-selecting");
+    current.nodes?.forEach((itemNode) => itemNode.classList.remove("is-dragging", "is-resizing"));
+    current.node?.classList.remove("is-dragging", "is-resizing");
+    if (current.type === "pan") {
+      saveCamera();
+      return;
+    }
+    if (current.type === "marquee") {
+      hideMarquee();
+      if (!current.moved && !current.extendSelection) setSelection([]);
+      return;
+    }
+    const hasGroupPreviews = current.type === "move" || current.type === "group-resize";
+    if (!current.moved || (hasGroupPreviews ? !current.previews : !current.preview)) {
+      current.node?.focus({ preventScroll: true });
+      return;
+    }
+    recordUndo(current.before);
+    const now = new Date().toISOString();
+    const next = ctx.getItems().map((item) => {
+      if (hasGroupPreviews && current.previews.has(item.id)) {
+        return { ...item, ...current.previews.get(item.id), updatedAt: now };
+      }
+      if (current.type === "resize" && item.id === current.itemId) {
+        return { ...item, ...current.preview, updatedAt: now };
+      }
+      return item;
+    });
+    commit(next);
+  }
+
+  function cancelGesture() {
+    if (!gesture) return;
+    gesture.nodes?.forEach((itemNode) => itemNode.classList.remove("is-dragging", "is-resizing"));
+    gesture.node?.classList.remove("is-dragging", "is-resizing");
+    ctx.els.boardViewport.classList.remove("is-panning", "is-selecting");
+    hideMarquee();
+    hideSnapGuides();
+    gesture = null;
+    applyCamera();
+    render();
+  }
+
+  function updateMarquee(clientX, clientY) {
+    if (!gesture || gesture.type !== "marquee" || !ctx.els.boardMarquee) return;
+    const viewport = ctx.els.boardViewport.getBoundingClientRect();
+    const left = clamp(Math.min(gesture.startX, clientX) - viewport.left, 0, viewport.width);
+    const top = clamp(Math.min(gesture.startY, clientY) - viewport.top, 0, viewport.height);
+    const right = clamp(Math.max(gesture.startX, clientX) - viewport.left, 0, viewport.width);
+    const bottom = clamp(Math.max(gesture.startY, clientY) - viewport.top, 0, viewport.height);
+    gesture.marquee = { left, top, right, bottom };
+    ctx.els.boardMarquee.hidden = false;
+    Object.assign(ctx.els.boardMarquee.style, {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${right - left}px`,
+      height: `${bottom - top}px`,
+    });
+  }
+
+  function previewMarqueeSelection() {
+    if (!gesture?.marquee) return;
+    const viewport = ctx.els.boardViewport.getBoundingClientRect();
+    const marqueeRect = {
+      left: viewport.left + gesture.marquee.left,
+      top: viewport.top + gesture.marquee.top,
+      right: viewport.left + gesture.marquee.right,
+      bottom: viewport.top + gesture.marquee.bottom,
+    };
+    const ids = [...ctx.els.boardWorld.querySelectorAll(".board-item")]
+      .filter((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.left < marqueeRect.right
+          && rect.right > marqueeRect.left
+          && rect.top < marqueeRect.bottom
+          && rect.bottom > marqueeRect.top;
+      })
+      .map((node) => node.dataset.id);
+    const next = gesture.extendSelection
+      ? [...new Set([...gesture.initialSelection, ...ids])]
+      : ids;
+    setSelection(next, ids.at(-1) || [...gesture.initialSelection].at(-1) || "");
+  }
+
+  function hideMarquee() {
+    if (!ctx.els.boardMarquee) return;
+    ctx.els.boardMarquee.hidden = true;
+    ctx.els.boardMarquee.removeAttribute("style");
+  }
+
+  function showSnapGuides(snap) {
+    const vertical = ctx.els.boardWorld.querySelector('[data-board-guide="vertical"]');
+    const horizontal = ctx.els.boardWorld.querySelector('[data-board-guide="horizontal"]');
+    if (vertical) {
+      vertical.hidden = !Number.isFinite(snap.vertical);
+      if (!vertical.hidden) vertical.style.transform = `translate(${snap.vertical}px, -100000px)`;
+    }
+    if (horizontal) {
+      horizontal.hidden = !Number.isFinite(snap.horizontal);
+      if (!horizontal.hidden) horizontal.style.transform = `translate(-100000px, ${snap.horizontal}px)`;
+    }
+  }
+
+  function hideSnapGuides() {
+    ctx.els.boardWorld.querySelectorAll("[data-board-guide]").forEach((guide) => {
+      guide.hidden = true;
+    });
+  }
+
+  function handleWheel(event) {
+    event.preventDefault();
+    const factor = Math.exp(-event.deltaY * 0.0015);
+    zoomAt(factor, { x: event.clientX, y: event.clientY });
+  }
+
+  function handleViewportResize() {
+    if (!isBoardActive() || listMode) { viewportSize = null; return; }
+    const rect = ctx.els.boardViewport?.getBoundingClientRect();
+    if (!rect?.width || !rect?.height) return;
+    if (viewportSize && camera) {
+      if (rect.width < 700 && activeAreaId) focusArea(activeAreaId);
+      else {
+        camera.x += (rect.width - viewportSize.width) / 2;
+        camera.y += (rect.height - viewportSize.height) / 2;
+        applyCamera();
+        saveCamera();
+      }
+    }
+    viewportSize = { width: rect.width, height: rect.height };
+  }
+
+  function zoomAt(factor, point = viewportCenter()) {
+    const rect = ctx.els.boardViewport.getBoundingClientRect();
+    camera = cameraApi.zoomCamera(camera, factor, point, rect, MIN_ZOOM, MAX_ZOOM);
+    applyCamera();
+    saveCamera();
+  }
+
+  function focusContent() {
+    const content = ctx.model.bounds(ctx.getItems());
+    const rect = ctx.els.boardViewport.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    viewportSize = { width: rect.width, height: rect.height };
+    camera = cameraApi.fitCamera(content, rect, MIN_ZOOM, MAX_ZOOM);
+    applyCamera();
+    saveCamera();
+  }
+
+  function focusItem(id, options = {}) {
+    const item = getAllItems().find((item) => item.id === id);
+    if (!item) return false;
+    if (item.type === "board") { switchBoard(item.id); return true; }
+    if ((item.boardId || "") !== activeBoardId) switchBoard(item.boardId || "");
+    if (listMode && !options.canvas) {
+      render();
+      const row = [...cardList.children].find((node) => node.dataset.id === id);
+      if (row) { row.tabIndex = -1; row.scrollIntoView({ block: "center" }); row.focus({ preventScroll: true }); }
+      return true;
+    }
+    listMode = false; render();
+    const rect = ctx.els.boardViewport.getBoundingClientRect();
+    camera = cameraApi.fitCamera(ctx.model.bounds([item]), rect, MIN_ZOOM, Math.min(MAX_ZOOM, 1.5));
+    applyCamera(); saveCamera();
+    selectItem(id);
+    findItemNode(id)?.focus({ preventScroll: true });
+    return true;
+  }
+
+  function switchBoard(id) {
+    if (imageUploadBusy) { ctx.showToast("Дождись завершения загрузки изображения"); boardSelect.value = activeBoardId; return; }
+    finishActiveTextEdit();
+    activeBoardId = id; local?.write("active-board", id);
+    selectedIds.clear(); selectedId = ""; activeAreaId = ""; editingId = "";
+    undoStack = []; redoStack = []; cameraReady = false; cameraVisibilityChecked = false;
+    camera = loadBoardCamera(); render();
+  }
+
+  function editBoardName(id) {
+    const board = getAllItems().find((item) => item.id === id && item.type === "board");
+    const dialog = document.createElement("dialog"); dialog.className = "workspace-edit-dialog";
+    const form = document.createElement("form"); form.className = "study-form";
+    const heading = document.createElement("h3"); heading.textContent = board ? "Название доски" : "Новая доска";
+    const label = document.createElement("label"); label.textContent = "Название";
+    const name = document.createElement("input"); name.required = true; name.maxLength = 80; name.value = board?.text || ""; label.append(name);
+    const save = document.createElement("button"); save.type = "submit"; save.className = "primary-button"; save.textContent = "Сохранить";
+    const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "ghost-button"; cancel.textContent = "Отмена"; cancel.onclick = () => dialog.close();
+    form.append(heading, label, save, cancel); dialog.append(form); document.body.append(dialog);
+    const owner = local?.owner();
+    form.onsubmit = (event) => { event.preventDefault(); if (owner !== local?.owner()) { dialog.close(); return; }
+      const text = name.value.trim(); if (!text) return;
+      const next = ctx.model.normalizeItem({ ...board, id: board?.id || ctx.createId(), type: "board", text, updatedAt: new Date().toISOString() });
+      if (commitAllItems([...getAllItems().filter((item) => item.id !== next.id), next]) === false) return;
+      dialog.close(); switchBoard(next.id);
+    };
+    dialog.addEventListener("close", () => dialog.remove(), { once: true }); dialog.showModal();
+  }
+
+  function renderCardList() {
+    if (!listMode) return;
+    const items = ctx.getItems();
+    releaseUnusedObjectUrls(items);
+    cardList.replaceChildren(...items.map((item) => {
+      const row = document.createElement("article"); row.className = "board-list-card"; row.dataset.id = item.id;
+      const source = item.type === "link" ? ctx.links.resolve(item, ctx.getState()) : null;
+      const title = document.createElement("h3"); title.textContent = source?.title || item.text || item.name || "Изображение";
+      const open = document.createElement("button"); open.type = "button"; open.className = "ghost-button compact-button"; open.textContent = source ? "Открыть" : "На полотне";
+      open.onclick = () => source ? ctx.openSource(item.sourceType, item.sourceId) : focusItem(item.id, { canvas: true });
+      if (item.type === "text") { const text = document.createElement("p"); text.className = "board-list-text"; text.textContent = item.text || "Без текста"; row.append(text); }
+      else row.append(title);
+      if (item.type === "image") {
+        const image = document.createElement("img"); image.className = "board-list-image"; image.alt = item.name || "Изображение"; image.loading = "lazy";
+        const placeholder = document.createElement("p"); placeholder.className = "muted"; placeholder.textContent = "Загрузка изображения…";
+        row.append(image, placeholder);
+        const owner = local?.owner();
+        ctx.assets.resolveBlob(item).then((blob) => {
+          if (!row.isConnected || owner !== local?.owner()) return;
+          if (!blob) { placeholder.textContent = "Изображение недоступно"; image.hidden = true; return; }
+          image.onload = () => { placeholder.hidden = true; };
+          image.onerror = () => { image.hidden = true; placeholder.textContent = "Не удалось открыть изображение"; };
+          image.src = objectUrls.get(item.assetId) || cacheImageUrl(item.assetId, blob);
+        }).catch(() => { if (row.isConnected) { image.hidden = true; placeholder.textContent = "Не удалось загрузить изображение"; } });
+      }
+      if (source?.detail) { const detail = document.createElement("p"); detail.textContent = source.detail; row.append(detail); }
+      row.append(open); return row;
+    }));
+    if (!items.length) { const empty = document.createElement("p"); empty.className = "muted"; empty.textContent = "На этой доске пока нет карточек."; cardList.append(empty); }
+  }
+
+  function handleCanvasDoubleClick(event) {
+    if (
+      event.target.closest(".board-item")
+      || event.target.closest(".board-toolbar")
+      || event.target.closest(".board-selection-toolbar")
+      || event.target.closest(".board-zoom-controls")
+      || event.target.closest(".board-source-picker")
+      || event.target.closest(".board-empty")
+      || event.target.closest(".board-area-nav")
+    ) return;
+    addTextAtCenter({ x: event.clientX, y: event.clientY });
+  }
+
+  function handleDragOver(event) {
+    if (![...(event.dataTransfer?.items || [])].some((item) => item.type.startsWith("image/"))) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    ctx.els.boardViewport.classList.add("is-drop-target");
+  }
+
+  function handleDragLeave(event) {
+    if (event.relatedTarget && ctx.els.boardViewport.contains(event.relatedTarget)) return;
+    ctx.els.boardViewport.classList.remove("is-drop-target");
+  }
+
+  async function handleDrop(event) {
+    ctx.els.boardViewport.classList.remove("is-drop-target");
+    const files = [...(event.dataTransfer?.files || [])].filter((file) => file.type.startsWith("image/"));
+    if (!files.length) return;
+    event.preventDefault();
+    await addImageFiles(files, { x: event.clientX, y: event.clientY });
+  }
+
+  async function handlePaste(event) {
+    if (!isBoardActive() || editingId || event.target.closest?.("input, textarea, [contenteditable]")) return;
+    const files = [...(event.clipboardData?.items || [])]
+      .filter((item) => item.type.startsWith("image/"))
+      .map((item) => item.getAsFile())
+      .filter(Boolean);
+    if (!files.length) return;
+    event.preventDefault();
+    await addImageFiles(files, viewportCenter());
+  }
+
+  function handleKeyDown(event) {
+    if (!isBoardActive()) return;
+    if (event.key === "Escape" && !ctx.els.boardSourcePicker.hidden) {
+      event.preventDefault();
+      closeSourcePicker();
+      return;
+    }
+    const formControl = event.target.closest?.("input, textarea, select, button");
+    const commandKey = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    if (event.code === "Space" && !editingId && !formControl) {
+      spacePressed = true;
+      ctx.els.boardViewport.classList.add("is-space-pan");
+      event.preventDefault();
+      return;
+    }
+    const focusedItemId = document.activeElement?.closest?.(".board-item")?.dataset.id;
+    if (!editingId && focusedItemId && !selectedIds.has(focusedItemId)) {
+      setSelection([focusedItemId], focusedItemId);
+    }
+    if (commandKey && key === "z" && event.shiftKey && !editingId && !formControl) {
+      event.preventDefault();
+      redo();
+      return;
+    }
+    if (commandKey && (key === "y") && !editingId && !formControl) {
+      event.preventDefault();
+      redo();
+      return;
+    }
+    if (commandKey && key === "z" && !editingId && !formControl) {
+      event.preventDefault();
+      undo();
+      return;
+    }
+    if (commandKey && key === "c" && selectedIds.size && !editingId && !formControl) {
+      event.preventDefault();
+      copySelected();
+      return;
+    }
+    if (commandKey && key === "v" && clipboardItems.length && !editingId && !formControl) {
+      event.preventDefault();
+      pasteClipboard();
+      return;
+    }
+    if (commandKey && key === "d" && selectedIds.size && !editingId && !formControl) {
+      event.preventDefault();
+      duplicateSelected();
+      return;
+    }
+    if (commandKey && key === "g" && selectedIds.size && !editingId && !formControl) {
+      event.preventDefault();
+      toggleGroupSelected();
+      return;
+    }
+    if (commandKey && key === "b" && selectedTexts().length && !editingId) {
+      event.preventDefault();
+      toggleBold();
+      return;
+    }
+    if (!commandKey && !editingId && !formControl && key === "v") {
+      setInteractionMode("select");
+      return;
+    }
+    if (!commandKey && !editingId && !formControl && key === "h") {
+      setInteractionMode("pan");
+      return;
+    }
+    if (event.key === "Delete" && selectedIds.size && !editingId && !formControl) {
+      event.preventDefault();
+      event.stopPropagation();
+      deleteSelected();
+      return;
+    }
+    if (
+      event.key === "Enter"
+      && selectedIds.size === 1
+      && selectedEditableItem()
+      && !editingId
+      && !formControl
+    ) {
+      event.preventDefault();
+      const node = findItemNode(selectedId);
+      if (node) startTextEdit(selectedId, node);
+      return;
+    }
+    if (event.key.startsWith("Arrow") && selectedIds.size && !editingId && !formControl) {
+      event.preventDefault();
+      moveSelectedWithKeyboard(event.key, event.shiftKey ? 10 : 1);
+      return;
+    }
+    if (event.key === "Escape") {
+      if (editingId) {
+        event.preventDefault();
+        finishActiveTextEdit();
+        findItemNode(selectedId)?.focus({ preventScroll: true });
+      } else {
+        setSelection([]);
+      }
+    }
+  }
+
+  function handleKeyUp(event) {
+    if (event.code !== "Space") return;
+    spacePressed = false;
+    ctx.els.boardViewport?.classList.remove("is-space-pan");
+  }
+
+  function deleteSelected() {
+    const ids = new Set(selectedIds);
+    if (!ids.size) return;
+    if (selectedItems().some((item) => item.locked)) {
+      ctx.showToast("Сначала разблокируй объект");
+      return;
+    }
+    pushUndo();
+    setSelection([]);
+    editingId = "";
+    if (!commit(ctx.getItems().filter((item) => !ids.has(item.id)), { deletedIds: [...ids] })) return;
+    ctx.showToast("Объект удалён · отмена доступна на панели доски");
+  }
+
+  function undo() {
+    const snapshot = undoStack.pop();
+    if (!snapshot) return;
+    redoStack.push(cloneItems(ctx.getItems()));
+    setSelection([]);
+    editingId = "";
+    if (!applyHistorySnapshot(snapshot)) { redoStack.pop(); undoStack.push(snapshot); return; }
+    ctx.showToast("Изменение отменено");
+  }
+
+  function redo() {
+    const snapshot = redoStack.pop();
+    if (!snapshot) return;
+    undoStack.push(cloneItems(ctx.getItems()));
+    setSelection([]);
+    editingId = "";
+    if (!applyHistorySnapshot(snapshot)) { undoStack.pop(); redoStack.push(snapshot); return; }
+    ctx.showToast("Изменение повторено");
+  }
+
+  function applyHistorySnapshot(snapshot) {
+    const nextIds = new Set((snapshot || []).map((item) => item.id));
+    const deletedIds = ctx.getItems().filter((item) => !nextIds.has(item.id)).map((item) => item.id);
+    const saved = ctx.commitItems(snapshot, { deletedIds, restoreDeleted: true }) !== false;
+    render();
+    return saved;
+  }
+
+  function startTextEdit(id, node) {
+    const item = ctx.getItems().find((candidate) => candidate.id === id);
+    const content = node?.querySelector(".board-text-content, .board-frame-title");
+    if (!item || !content || item.locked) return;
+    finishActiveTextEdit();
+    setSelection([id], id);
+    editingId = id;
+    textBeforeEdit = { items: cloneItems(ctx.getItems()), value: item.text };
+    node.classList.add("is-selected", "is-editing");
+    content.contentEditable = "plaintext-only";
+    if (content.contentEditable !== "plaintext-only") content.contentEditable = "true";
+    content.focus({ preventScroll: true });
+    placeCaretAtEnd(content);
+    updateSelection();
+  }
+
+  function finishActiveTextEdit() {
+    if (!editingId) return;
+    const content = findItemNode(editingId)?.querySelector(".board-text-content, .board-frame-title");
+    if (content) finishTextEdit(editingId, content);
+    else editingId = "";
+  }
+
+  function scheduleTextSave(id, value) {
+    drafts?.write(`board-text:${id}`, { value: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH) });
+    if (saveTextTimer) clearTimeout(saveTextTimer);
+    const owner = local?.owner();
+    saveTextTimer = setTimeout(() => { if (owner === local?.owner()) saveText(id, value); }, 350);
+  }
+
+  function finishTextEdit(id, content) {
+    if (editingId !== id) return;
+    if (saveTextTimer) clearTimeout(saveTextTimer);
+    saveTextTimer = null;
+    const value = editableText(content);
+    if (textBeforeEdit && textBeforeEdit.value !== value) {
+      recordUndo(textBeforeEdit.items);
+    }
+    if (saveText(id, value, Math.ceil(content.scrollHeight)) === false) return;
+    textBeforeEdit = null;
+    editingId = "";
+    content.contentEditable = "false";
+    content.closest(".board-item")?.classList.remove("is-editing");
+    updateSelection();
+    const rect = content.closest(".board-item")?.getBoundingClientRect();
+    const viewport = ctx.els.boardViewport.getBoundingClientRect();
+    if (rect && (rect.top < viewport.top || rect.bottom > viewport.bottom || rect.left < viewport.left || rect.right > viewport.right)) focusContent();
+  }
+
+  function saveText(id, value, minimumHeight = 0) {
+    const current = ctx.getItems().find((item) => item.id === id);
+    if (!current) return;
+    const height = Math.max(current.height, minimumHeight);
+    if (current.text === value && current.height === height) { drafts?.remove(`board-text:${id}`); return true; }
+    const saved = ctx.commitItems(ctx.getItems().map((item) => item.id === id
+      ? {
+          ...item,
+          text: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH),
+          height,
+          updatedAt: new Date().toISOString(),
         }
-        showBrokenImage(placeholder, "Файл изображения повреждён или недоступен");
-      }, { once: true });
-      image.src = url;
+      : item), { render: false });
+    if (saved === false) {
+      drafts?.write(`board-text:${id}`, { value: String(value).slice(0, ctx.model.MAX_TEXT_LENGTH) });
+      setStatus("Не удалось сохранить текст · повтори сохранение", "error");
+      return false;
     }
+    drafts?.remove(`board-text:${id}`);
+    const node = findItemNode(id);
+    if (node) node.style.height = `${height}px`;
+    setStatus("Сохранено · фото хранятся в Supabase Storage", "saved");
+    return true;
+  }
 
-    function cacheImageUrl(assetId, blob) {
-      const previous = objectUrls.get(assetId);
-      if (previous) URL.revokeObjectURL(previous);
-      const url = URL.createObjectURL(blob);
-      objectUrls.set(assetId, url);
-      return url;
+  function pastePlainText(event) {
+    event.preventDefault();
+    const text = event.clipboardData?.getData("text/plain") || "";
+    globalThis.document.execCommand("insertText", false, text);
+  }
+
+  function selectItem(id, node = findItemNode(id), options = {}) {
+    if (editingId && editingId !== id) finishActiveTextEdit();
+    const item = ctx.getItems().find((candidate) => candidate.id === id);
+    const targetIds = item?.groupId
+      ? ctx.getItems().filter((candidate) => candidate.groupId === item.groupId).map((candidate) => candidate.id)
+      : [id];
+    const preserveGroup = !options.additive && targetIds.every((targetId) => selectedIds.has(targetId));
+    const next = new Set(options.additive || preserveGroup ? selectedIds : []);
+    if (options.toggle && targetIds.every((targetId) => next.has(targetId))) {
+      targetIds.forEach((targetId) => next.delete(targetId));
+    } else {
+      targetIds.forEach((targetId) => next.add(targetId));
     }
+    setSelection([...next], next.has(id) ? id : [...next].at(-1) || "");
+    if (next.has(id)) node?.focus({ preventScroll: true });
+    return next.has(id);
+  }
 
-    function showBrokenImage(placeholder, message) {
-      if (!placeholder) return;
-      placeholder.hidden = false;
-      placeholder.textContent = message || "Не удалось отобразить изображение";
-      placeholder.dataset.state = "error";
+  function setSelection(ids, primaryId = "") {
+    selectedIds = new Set((ids || []).filter(Boolean));
+    const selectedGroups = new Set(
+      ctx.getItems()
+        .filter((item) => selectedIds.has(item.id) && item.groupId)
+        .map((item) => item.groupId),
+    );
+    ctx.getItems().forEach((item) => {
+      if (item.groupId && selectedGroups.has(item.groupId)) selectedIds.add(item.id);
+    });
+    selectedId = selectedIds.has(primaryId) ? primaryId : [...selectedIds].at(-1) || "";
+    updateSelection();
+  }
+
+  function updateSelection() {
+    const selected = ctx.getItems().find((item) => item.id === selectedId);
+    const textItems = selectedTexts();
+    const linkItems = selectedLinks();
+    const items = selectedItems();
+    ctx.els.boardWorld.querySelectorAll(".board-item").forEach((node) => {
+      const active = selectedIds.has(node.dataset.id);
+      node.classList.toggle("is-selected", active);
+      node.classList.toggle("is-editing", active && node.dataset.id === editingId);
+      node.classList.toggle("is-multi-selected", active && selectedIds.size > 1);
+      node.setAttribute("aria-selected", String(active));
+    });
+    const showTextTools = textItems.length > 0 && !items.some((item) => item.locked);
+    const showLinkTools = linkItems.length > 0 && !items.some((item) => item.locked);
+    if (ctx.els.boardSelectionToolbar) ctx.els.boardSelectionToolbar.hidden = items.length === 0;
+    if (ctx.els.boardTextControls) ctx.els.boardTextControls.hidden = !showTextTools;
+    ctx.els.boardSelectionToolbar?.querySelector(".board-text-separator")?.toggleAttribute("hidden", !showTextTools);
+    if (ctx.els.boardLinkControls) ctx.els.boardLinkControls.hidden = !showLinkTools;
+    ctx.els.boardSelectionToolbar?.classList.toggle("is-link-selection", showLinkTools);
+    ctx.els.boardSelectionToolbar?.querySelector(".board-link-separator")?.toggleAttribute("hidden", !showLinkTools);
+    if (showLinkTools) {
+      const color = linkItems.every((item) => item.backgroundColor === linkItems[0].backgroundColor)
+        ? linkItems[0].backgroundColor : "";
+      ctx.els.boardLinkControls.querySelectorAll("[data-board-link-color]").forEach((swatch) => {
+        const active = swatch.dataset.boardLinkColor === color;
+        swatch.classList.toggle("is-active", active);
+        swatch.setAttribute("aria-pressed", String(active));
+      });
     }
+    const groupId = selectedGroupId(items);
+    if (ctx.els.boardGroup) {
+      ctx.els.boardGroup.disabled = items.length < 2;
+      ctx.els.boardGroup.title = groupId ? "Разгруппировать (Ctrl+G)" : "Сгруппировать (Ctrl+G)";
+      ctx.els.boardGroup.setAttribute("aria-label", groupId ? "Разгруппировать" : "Сгруппировать");
+      ctx.els.boardGroup.classList.toggle("is-active", Boolean(groupId));
+    }
+    if (ctx.els.boardLock) {
+      const allLocked = items.length > 0 && items.every((item) => item.locked);
+      ctx.els.boardLock.setAttribute("aria-pressed", String(allLocked));
+      ctx.els.boardLock.setAttribute("aria-label", allLocked ? "Разблокировать" : "Заблокировать");
+      ctx.els.boardLock.title = allLocked ? "Разблокировать" : "Заблокировать";
+      ctx.els.boardLock.classList.toggle("is-active", allLocked);
+    }
+    if (showTextTools) {
+      const reference = selected?.type === "text" ? selected : textItems[0];
+      const allBold = textItems.every((item) => item.fontWeight >= 600);
+      ctx.els.boardFontSize.value = String(reference.fontSize);
+      ctx.els.boardBold.setAttribute("aria-pressed", String(allBold));
+      ctx.els.boardBold.classList.toggle("is-active", allBold);
+      ctx.els.boardTextColor.value = reference.color;
+      ctx.els.boardColorPresets?.querySelectorAll("[data-board-text-color]").forEach((swatch) => {
+        swatch.classList.toggle("is-active", swatch.dataset.boardTextColor === reference.color);
+      });
+    }
+    renderMultiSelectionBounds(items);
+  }
 
-    function syncLegacyImages(items) {
-      items
-        .filter((item) => item.type === "image" && !item.remotePath)
-        .forEach((item) => {
-          const lastAttempt = pendingUploadAttempts.get(item.assetId) || 0;
-          if (Date.now() - lastAttempt < 30000) return;
-          pendingUploadAttempts.set(item.assetId, Date.now());
-          uploadLegacyImage(item);
+  function renderMultiSelectionBounds(items) {
+    ctx.els.boardWorld.querySelector(".board-multi-bounds")?.remove();
+    if (items.length < 2) return;
+    const bounds = itemBounds(items);
+    if (!bounds) return;
+    const node = document.createElement("div");
+    node.className = "board-multi-bounds";
+    applyNodeGeometry(node, {
+      x: bounds.left,
+      y: bounds.top,
+      width: bounds.width,
+      height: bounds.height,
+      z: 1000000000,
+    });
+    if (!items.some((item) => item.locked)) {
+      RESIZE_DIRECTIONS
+        .filter((direction) => direction.length === 2)
+        .forEach((direction) => {
+          const handle = createResizeHandle(direction);
+          handle.addEventListener("pointerdown", (event) => startGroupResize(event, direction, node, bounds));
+          node.append(handle);
         });
     }
+    ctx.els.boardWorld.append(node);
+  }
 
-    async function uploadLegacyImage(item) {
-      const owner = local?.owner();
-      const ownerOfAsset = ctx.assets.getOwner?.();
-      try {
-        const remotePath = await ctx.assets.upload(item);
-        if (owner !== local?.owner() || ownerOfAsset !== ctx.assets.getOwner?.()) return;
-        if (!remotePath) return;
-        const current = ctx.getItems().find((candidate) => candidate.id === item.id);
-        if (!current || current.remotePath) return;
-        const saved = ctx.commitItems(ctx.getItems().map((candidate) => candidate.id === item.id
-          ? { ...candidate, remotePath, updatedAt: new Date().toISOString() }
-          : candidate), { render: false });
-        if (saved === false) { setStatus("Не удалось сохранить ссылку на фото", "error"); return; }
-        pendingUploadAttempts.delete(item.assetId);
-        setStatus("Старое фото перенесено в Supabase Storage", "cloud");
-      } catch (error) {
-        if (owner !== local?.owner() || ownerOfAsset !== ctx.assets.getOwner?.()) return;
-        setStatus(error.message || "Не удалось перенести фото в Supabase", "error");
+  function startGroupResize(event, direction, node, bounds) {
+    event.preventDefault();
+    event.stopPropagation();
+    const items = selectedItems();
+    if (items.length < 2 || items.some((item) => item.locked)) return;
+    gesture = {
+      type: "group-resize",
+      direction,
+      pointerId: event.pointerId,
+      node,
+      nodes: items.map((item) => findItemNode(item.id)).filter(Boolean),
+      startX: event.clientX,
+      startY: event.clientY,
+      groupBounds: { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height },
+      originals: new Map(items.map((item) => [item.id, { ...item }])),
+      before: cloneItems(ctx.getItems()),
+      moved: false,
+    };
+    node.classList.add("is-resizing");
+    gesture.nodes.forEach((itemNode) => itemNode.classList.add("is-resizing"));
+  }
+
+  function applyFontSize() {
+    const item = selectedText() || selectedTexts()[0];
+    if (!item) return;
+    const fontSize = clamp(
+      Math.round(Number(ctx.els.boardFontSize.value) || item.fontSize),
+      ctx.model.MIN_FONT_SIZE,
+      ctx.model.MAX_FONT_SIZE,
+    );
+    updateSelectedText((candidate) => {
+      const content = findItemNode(candidate.id)?.querySelector(".board-text-content");
+      let height = candidate.height;
+      if (content) {
+        const previousSize = content.style.fontSize;
+        content.style.fontSize = `${fontSize}px`;
+        height = Math.max(height, Math.ceil(content.scrollHeight));
+        content.style.fontSize = previousSize;
       }
-    }
-
-    function releaseUnusedObjectUrls(items) {
-      const liveIds = new Set(items.filter((item) => item.type === "image").map((item) => item.assetId));
-      objectUrls.forEach((url, assetId) => {
-        if (liveIds.has(assetId)) return;
-        URL.revokeObjectURL(url);
-        objectUrls.delete(assetId);
-      });
-    }
-
-    function showImageError(error) {
-      const message = error?.message || "Не удалось загрузить изображение в Supabase";
-      setStatus(message, "error");
-      ctx.showToast(message);
-    }
-
-    function pushUndo() {
-      recordUndo(cloneItems(ctx.getItems()));
-    }
-
-    function recordUndo(snapshot) {
-      undoStack.push(snapshot);
-      redoStack = [];
-      trimHistory();
-    }
-
-    function trimHistory() {
-      if (undoStack.length > MAX_UNDO) undoStack = undoStack.slice(-MAX_UNDO);
-      if (redoStack.length > MAX_UNDO) redoStack = redoStack.slice(-MAX_UNDO);
-      syncHistoryControls();
-    }
-
-    function syncHistoryControls() {
-      if (ctx.els.boardUndo) ctx.els.boardUndo.disabled = undoStack.length === 0;
-      if (ctx.els.boardRedo) ctx.els.boardRedo.disabled = redoStack.length === 0;
-    }
-
-    function nextZ() {
-      return Math.max(0, ...ctx.getItems().map((item) => item.z || 0)) + 1;
-    }
-
-    function setInteractionMode(mode) {
-      interactionMode = mode === "pan" ? "pan" : "select";
-      if (interactionMode === "pan") setSelection([]);
-      syncInteractionMode();
-      ctx.els.boardViewport?.focus({ preventScroll: true });
-    }
-
-    function syncInteractionMode() {
-      ctx.els.boardViewport.dataset.mode = interactionMode;
-      [
-        [ctx.els.boardModeSelect, interactionMode === "select"],
-        [ctx.els.boardModePan, interactionMode === "pan"],
-      ].forEach(([button, active]) => {
-        button?.classList.toggle("is-active", active);
-        button?.setAttribute("aria-pressed", String(active));
-      });
-    }
-
-    function createGuideNodes() {
-      return ["vertical", "horizontal"].map((direction) => {
-        const guide = document.createElement("div");
-        guide.className = `board-snap-guide is-${direction}`;
-        guide.dataset.boardGuide = direction;
-        guide.hidden = true;
-        guide.setAttribute("aria-hidden", "true");
-        return guide;
-      });
-    }
-
-    function initializeCamera() {
-      if (cameraReady) return;
-      cameraReady = true;
-      if (!camera) {
-        const rect = ctx.els.boardViewport.getBoundingClientRect();
-        camera = cameraApi.initialCamera(rect);
-      }
-    }
-
-    function applyCamera() {
-      if (!camera) return;
-      ctx.els.boardWorld.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`;
-      ctx.els.boardWorld.style.setProperty("--board-unit", `${1 / camera.zoom}px`);
-      ctx.els.boardZoomLabel.textContent = cameraApi.formatZoom(camera.zoom);
-      ctx.els.boardViewport.style.setProperty("--board-grid-size", `${Math.max(6, 24 * camera.zoom)}px`);
-      ctx.els.boardViewport.style.setProperty("--board-grid-x", `${camera.x}px`);
-      ctx.els.boardViewport.style.setProperty("--board-grid-y", `${camera.y}px`);
-      ctx.els.boardViewport.classList.toggle("is-grid-hidden", camera.zoom < 0.12);
-    }
-
-    function scheduleCameraVisibilityCheck(items) {
-      const schedule = global.requestAnimationFrame || ((callback) => global.setTimeout(callback, 0));
-      schedule(() => ensureContentVisible(items));
-    }
-
-    function ensureContentVisible(items) {
-      if (cameraVisibilityChecked || !isBoardActive() || !items.length) return;
-      const rect = ctx.els.boardViewport.getBoundingClientRect();
-      if (rect.width < 1 || rect.height < 1) return;
-      const content = ctx.model.bounds(items);
-      if (!content) return;
-      cameraVisibilityChecked = true;
-      const margin = 32;
-      const projected = cameraApi.projectBounds(camera, content);
-      const isVisible = projected.right >= margin
-        && projected.bottom >= margin
-        && projected.left <= rect.width - margin
-        && projected.top <= rect.height - margin;
-      if (!isVisible) focusContent();
-    }
-
-    function saveCamera() {
-      cameraApi.saveCamera(cameraStorage, `board-camera:${activeBoardId}`, camera);
-      if (!activeBoardId) cameraApi.saveCamera(global.localStorage, CAMERA_KEY, camera);
-    }
-
-    function viewportCenter() {
-      const rect = ctx.els.boardViewport.getBoundingClientRect();
-      return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-    }
-
-    function screenToWorld(clientX, clientY) {
-      const rect = ctx.els.boardViewport.getBoundingClientRect();
-      return cameraApi.screenToWorld(camera, rect, clientX, clientY);
-    }
-
-    function findItemNode(id) {
-      return ctx.els.boardWorld.querySelector(`[data-id="${cssEscape(id)}"]`);
-    }
-
-    function setStatus(message, state = "") {
-      if (!ctx.els.boardStatus) return;
-      ctx.els.boardStatus.textContent = message;
-      ctx.els.boardStatus.dataset.state = state;
-    }
-
-    function isBoardActive() {
-      return document.body.dataset.view === "board";
-    }
-
-    return {
-      bindEvents,
-      focusContent,
-      focusItem,
-      render,
-    };
-  }
-
-  function resizeGeometry(item, dx, dy, direction) {
-    const minWidth = item.type === "frame" ? 240 : item.type === "link" ? 180 : 40;
-    const minHeight = item.type === "frame" ? 160 : item.type === "link" ? 96 : item.type === "image" ? 40 : 24;
-    const maxSize = 10000;
-    const hasWest = direction.includes("w");
-    const hasEast = direction.includes("e");
-    const hasNorth = direction.includes("n");
-    const hasSouth = direction.includes("s");
-    const isCorner = (hasWest || hasEast) && (hasNorth || hasSouth);
-
-    if (item.type === "link") {
-      const ratio = item.width / Math.max(item.height, 1);
-      const widthFromX = item.width + (hasEast ? dx : hasWest ? -dx : 0);
-      const widthFromY = (item.height + (hasSouth ? dy : hasNorth ? -dy : 0)) * ratio;
-      const horizontalChange = Math.abs(widthFromX - item.width) / item.width;
-      const verticalChange = Math.abs(widthFromY - item.width) / item.width;
-      let width = isCorner ? (verticalChange > horizontalChange ? widthFromY : widthFromX)
-        : hasEast || hasWest ? widthFromX : widthFromY;
-      width = clamp(width, Math.max(minWidth, minHeight * ratio), Math.min(maxSize, maxSize * ratio));
-      const height = width / ratio;
-      return {
-        x: hasWest ? item.x + item.width - width : hasEast ? item.x : item.x + (item.width - width) / 2,
-        y: hasNorth ? item.y + item.height - height : hasSouth ? item.y : item.y + (item.height - height) / 2,
-        width,
-        height,
-      };
-    }
-
-    if (item.type === "image" && isCorner) {
-      const rawWidth = clamp(item.width + (hasEast ? dx : -dx), minWidth, maxSize);
-      const rawHeight = clamp(item.height + (hasSouth ? dy : -dy), minHeight, maxSize);
-      const ratio = item.width / Math.max(item.height, 1);
-      const widthChange = Math.abs(rawWidth - item.width) / Math.max(item.width, 1);
-      const heightChange = Math.abs(rawHeight - item.height) / Math.max(item.height, 1);
-      let width = rawWidth;
-      let height = clamp(width / ratio, minHeight, maxSize);
-      if (heightChange > widthChange) {
-        height = rawHeight;
-        width = clamp(height * ratio, minWidth, maxSize);
-      }
-      return {
-        x: hasWest ? item.x + item.width - width : item.x,
-        y: hasNorth ? item.y + item.height - height : item.y,
-        width,
-        height,
-      };
-    }
-
-    let left = item.x;
-    let top = item.y;
-    let right = item.x + item.width;
-    let bottom = item.y + item.height;
-    if (hasWest) left = Math.min(right - minWidth, left + dx);
-    if (hasEast) right = Math.max(left + minWidth, right + dx);
-    if (hasNorth) top = Math.min(bottom - minHeight, top + dy);
-    if (hasSouth) bottom = Math.max(top + minHeight, bottom + dy);
-    return {
-      x: left,
-      y: top,
-      width: clamp(right - left, minWidth, maxSize),
-      height: clamp(bottom - top, minHeight, maxSize),
-    };
-  }
-
-  function fitImage(width, height) {
-    const scale = Math.min(1, 520 / width, 420 / height);
-    return {
-      width: Math.max(80, Math.round(width * scale)),
-      height: Math.max(80, Math.round(height * scale)),
-    };
-  }
-
-  function snapMove(movingItems, targetItems, dx, dy, threshold = 7) {
-    const moving = itemBounds(movingItems);
-    if (!moving || !targetItems.length) return { dx, dy, vertical: NaN, horizontal: NaN };
-    const movingX = [moving.left + dx, moving.left + moving.width / 2 + dx, moving.right + dx];
-    const movingY = [moving.top + dy, moving.top + moving.height / 2 + dy, moving.bottom + dy];
-    const targetX = targetItems.flatMap((item) => [item.x, item.x + item.width / 2, item.x + item.width]);
-    const targetY = targetItems.flatMap((item) => [item.y, item.y + item.height / 2, item.y + item.height]);
-    const xSnap = closestSnap(movingX, targetX, threshold);
-    const ySnap = closestSnap(movingY, targetY, threshold);
-    return {
-      dx: dx + (xSnap?.delta || 0),
-      dy: dy + (ySnap?.delta || 0),
-      vertical: xSnap?.target ?? NaN,
-      horizontal: ySnap?.target ?? NaN,
-    };
-  }
-
-  function closestSnap(sources, targets, threshold) {
-    let best = null;
-    sources.forEach((source) => {
-      targets.forEach((target) => {
-        const delta = target - source;
-        if (Math.abs(delta) > threshold) return;
-        if (!best || Math.abs(delta) < Math.abs(best.delta)) best = { delta, target };
-      });
+      return { fontSize, height };
     });
-    return best;
   }
 
-  function itemBounds(items = []) {
-    if (!items.length) return null;
-    const left = Math.min(...items.map((item) => item.x));
-    const top = Math.min(...items.map((item) => item.y));
-    const right = Math.max(...items.map((item) => item.x + item.width));
-    const bottom = Math.max(...items.map((item) => item.y + item.height));
-    return { left, top, right, bottom, width: right - left, height: bottom - top };
+  function toggleBold() {
+    const items = selectedTexts();
+    if (!items.length) return;
+    const fontWeight = items.every((item) => item.fontWeight >= 600) ? 400 : 700;
+    updateSelectedText({ fontWeight });
   }
 
-  function applyNodeGeometry(node, item) {
-    node.style.width = `${item.width}px`;
-    node.style.height = `${item.height}px`;
-    node.style.transform = `translate(${item.x}px, ${item.y}px)`;
-    node.style.zIndex = String(item.z);
-    if (item.type === "link") {
-      node.style.setProperty("--board-link-scale", String(clamp(Math.min(item.width / 240, item.height / 156), 0.6, 4)));
+  function applyTextColor(color) {
+    if (!/^#[0-9a-f]{6}$/i.test(String(color || ""))) return;
+    updateSelectedText({ color: String(color).toLowerCase() });
+  }
+
+  function applyLinkColor(color) {
+    const ids = new Set(selectedLinks().map((item) => item.id));
+    if (!ids.size || selectedItems().some((item) => item.locked)) return;
+    pushUndo();
+    const now = new Date().toISOString();
+    commit(ctx.getItems().map((item) => ids.has(item.id)
+      ? { ...item, backgroundColor: color, updatedAt: now } : item));
+  }
+
+  function updateSelectedText(patch) {
+    const ids = new Set(selectedTexts().map((item) => item.id));
+    if (!ids.size || selectedItems().some((item) => item.locked)) return;
+    pushUndo();
+    commit(ctx.getItems().map((candidate) => ids.has(candidate.id)
+      ? {
+          ...candidate,
+          ...(typeof patch === "function" ? patch(candidate) : patch),
+          updatedAt: new Date().toISOString(),
+        }
+      : candidate));
+  }
+
+  function selectedText() {
+    const item = ctx.getItems().find((candidate) => candidate.id === selectedId);
+    return item?.type === "text" ? item : null;
+  }
+
+  function selectedTexts() {
+    return ctx.getItems().filter((item) => selectedIds.has(item.id) && item.type === "text");
+  }
+
+  function selectedLinks() {
+    return ctx.getItems().filter((item) => selectedIds.has(item.id) && item.type === "link");
+  }
+
+  function selectedItems() {
+    return ctx.getItems().filter((item) => selectedIds.has(item.id));
+  }
+
+  function selectedEditableItem() {
+    const item = ctx.getItems().find((candidate) => candidate.id === selectedId);
+    return item && (item.type === "text" || item.type === "frame") ? item : null;
+  }
+
+  function selectedGroupId(items = selectedItems()) {
+    if (items.length < 2 || !items[0].groupId) return "";
+    const groupId = items[0].groupId;
+    const members = ctx.getItems().filter((item) => item.groupId === groupId);
+    return items.every((item) => item.groupId === groupId) && members.length === items.length ? groupId : "";
+  }
+
+  function copySelected(options = {}) {
+    clipboardItems = cloneItems(selectedItems());
+    pasteOffset = 0;
+    if (!options.silent && clipboardItems.length) ctx.showToast("Скопировано");
+  }
+
+  function pasteClipboard() {
+    if (!clipboardItems.length) return;
+    pushUndo();
+    pasteOffset += 28;
+    const now = new Date().toISOString();
+    const idMap = new Map(clipboardItems.map((item) => [item.id, ctx.createId()]));
+    const groupMap = new Map();
+    clipboardItems.forEach((item) => {
+      if (item.groupId && !groupMap.has(item.groupId)) groupMap.set(item.groupId, ctx.createId());
+    });
+    const baseZ = nextZ();
+    const copies = clipboardItems.map((item, index) => ({
+      ...item,
+      id: idMap.get(item.id),
+      groupId: item.groupId ? groupMap.get(item.groupId) : "",
+      x: item.x + pasteOffset,
+      y: item.y + pasteOffset,
+      z: baseZ + index,
+      locked: false,
+      createdAt: now,
+      updatedAt: now,
+    }));
+    setSelection(copies.map((item) => item.id), copies.at(-1)?.id);
+    if (!commit([...ctx.getItems(), ...copies])) return;
+    ctx.showToast(copies.length > 1 ? "Объекты продублированы" : "Объект продублирован");
+  }
+
+  function duplicateSelected() {
+    if (!selectedIds.size) return;
+    copySelected({ silent: true });
+    pasteClipboard();
+  }
+
+  function toggleGroupSelected() {
+    const items = selectedItems();
+    if (items.length < 2) return;
+    if (items.some((item) => item.locked)) {
+      ctx.showToast("Сначала разблокируй объекты");
+      return;
+    }
+    pushUndo();
+    const currentGroupId = selectedGroupId(items);
+    const nextGroupId = currentGroupId ? "" : ctx.createId();
+    const ids = new Set(items.map((item) => item.id));
+    const now = new Date().toISOString();
+    if (!commit(ctx.getItems().map((item) => ids.has(item.id)
+      ? { ...item, groupId: nextGroupId, updatedAt: now }
+      : item))) return;
+    ctx.showToast(currentGroupId ? "Группа разобрана" : "Объекты сгруппированы");
+  }
+
+  function moveSelectionLayer(direction) {
+    const items = selectedItems();
+    if (!items.length) return;
+    if (items.some((item) => item.locked)) {
+      ctx.showToast("Сначала разблокируй объекты");
+      return;
+    }
+    pushUndo();
+    const ids = new Set(items.map((item) => item.id));
+    const ordered = [...ctx.getItems()].sort((left, right) => left.z - right.z);
+    const selected = ordered.filter((item) => ids.has(item.id));
+    const rest = ordered.filter((item) => !ids.has(item.id));
+    const next = (direction === "back" ? [...selected, ...rest] : [...rest, ...selected])
+      .map((item, index) => ({ ...item, z: index, updatedAt: ids.has(item.id) ? new Date().toISOString() : item.updatedAt }));
+    commit(next);
+  }
+
+  function toggleLockSelected() {
+    const items = selectedItems();
+    if (!items.length) return;
+    pushUndo();
+    const ids = new Set(items.map((item) => item.id));
+    const locked = !items.every((item) => item.locked);
+    const now = new Date().toISOString();
+    if (!commit(ctx.getItems().map((item) => ids.has(item.id)
+      ? { ...item, locked, updatedAt: now }
+      : item))) return;
+    ctx.showToast(locked ? "Объект заблокирован" : "Объект разблокирован");
+  }
+
+  function focusPrimarySelection() {
+    findItemNode(selectedId)?.focus({ preventScroll: true });
+  }
+
+  function moveSelectedWithKeyboard(key, distance) {
+    if (!selectedIds.size || selectedItems().some((item) => item.locked)) return;
+    const delta = {
+      ArrowLeft: { x: -distance, y: 0 },
+      ArrowRight: { x: distance, y: 0 },
+      ArrowUp: { x: 0, y: -distance },
+      ArrowDown: { x: 0, y: distance },
+    }[key];
+    if (!delta) return;
+    pushUndo();
+    commit(ctx.getItems().map((candidate) => selectedIds.has(candidate.id)
+      ? {
+          ...candidate,
+          x: candidate.x + delta.x,
+          y: candidate.y + delta.y,
+          updatedAt: new Date().toISOString(),
+        }
+      : candidate));
+  }
+
+  function commit(items, options = {}) {
+    const saved = ctx.commitItems(ctx.model.normalizeItems(items, { createId: ctx.createId }), options) !== false;
+    if (!saved) {
+      if (JSON.stringify(undoStack.at(-1)) === JSON.stringify(ctx.getItems())) undoStack.pop();
+      setStatus("Не удалось сохранить изменение", "error");
+    }
+    render();
+    return saved;
+  }
+
+  async function loadImage(item) {
+    const node = findItemNode(item.id);
+    const image = node?.querySelector("img");
+    const placeholder = node?.querySelector(".board-image-placeholder");
+    if (!image) return;
+    let url = objectUrls.get(item.assetId);
+    try {
+      if (!url) {
+        const blob = await ctx.assets.resolveBlob(item);
+        if (!blob) throw new Error(item.remotePath
+          ? "Не удалось загрузить фото из Supabase"
+          : "Фото ещё не перенесено в Supabase");
+        if (!image.isConnected) return;
+        url = cacheImageUrl(item.assetId, blob);
+      }
+    } catch (error) {
+      showBrokenImage(placeholder, error?.message);
+      return;
+    }
+
+    image.addEventListener("load", () => {
+      if (placeholder) {
+        placeholder.hidden = true;
+        delete placeholder.dataset.state;
+      }
+    }, { once: true });
+    image.addEventListener("error", () => {
+      const cachedUrl = objectUrls.get(item.assetId);
+      if (cachedUrl === url) {
+        URL.revokeObjectURL(cachedUrl);
+        objectUrls.delete(item.assetId);
+      }
+      showBrokenImage(placeholder, "Файл изображения повреждён или недоступен");
+    }, { once: true });
+    image.src = url;
+  }
+
+  function cacheImageUrl(assetId, blob) {
+    const previous = objectUrls.get(assetId);
+    if (previous) URL.revokeObjectURL(previous);
+    const url = URL.createObjectURL(blob);
+    objectUrls.set(assetId, url);
+    return url;
+  }
+
+  function showBrokenImage(placeholder, message) {
+    if (!placeholder) return;
+    placeholder.hidden = false;
+    placeholder.textContent = message || "Не удалось отобразить изображение";
+    placeholder.dataset.state = "error";
+  }
+
+  function syncLegacyImages(items) {
+    items
+      .filter((item) => item.type === "image" && !item.remotePath)
+      .forEach((item) => {
+        const lastAttempt = pendingUploadAttempts.get(item.assetId) || 0;
+        if (Date.now() - lastAttempt < 30000) return;
+        pendingUploadAttempts.set(item.assetId, Date.now());
+        uploadLegacyImage(item);
+      });
+  }
+
+  async function uploadLegacyImage(item) {
+    const owner = local?.owner();
+    const ownerOfAsset = ctx.assets.getOwner?.();
+    try {
+      const remotePath = await ctx.assets.upload(item);
+      if (owner !== local?.owner() || ownerOfAsset !== ctx.assets.getOwner?.()) return;
+      if (!remotePath) return;
+      const current = ctx.getItems().find((candidate) => candidate.id === item.id);
+      if (!current || current.remotePath) return;
+      const saved = ctx.commitItems(ctx.getItems().map((candidate) => candidate.id === item.id
+        ? { ...candidate, remotePath, updatedAt: new Date().toISOString() }
+        : candidate), { render: false });
+      if (saved === false) { setStatus("Не удалось сохранить ссылку на фото", "error"); return; }
+      pendingUploadAttempts.delete(item.assetId);
+      setStatus("Старое фото перенесено в Supabase Storage", "cloud");
+    } catch (error) {
+      if (owner !== local?.owner() || ownerOfAsset !== ctx.assets.getOwner?.()) return;
+      setStatus(error.message || "Не удалось перенести фото в Supabase", "error");
     }
   }
 
-  function editableText(node) {
-    return String(node.innerText || node.textContent || "")
-      .replace(/\u00a0/g, " ")
-      .replace(/\r\n?/g, "\n")
-      .slice(0, 20000);
+  function releaseUnusedObjectUrls(items) {
+    const liveIds = new Set(items.filter((item) => item.type === "image").map((item) => item.assetId));
+    objectUrls.forEach((url, assetId) => {
+      if (liveIds.has(assetId)) return;
+      URL.revokeObjectURL(url);
+      objectUrls.delete(assetId);
+    });
   }
 
-  function placeCaretAtEnd(node) {
-    const selection = global.getSelection?.();
-    if (!selection) return;
-    const range = global.document.createRange();
-    range.selectNodeContents(node);
-    range.collapse(false);
-    selection.removeAllRanges();
-    selection.addRange(range);
+  function showImageError(error) {
+    const message = error?.message || "Не удалось загрузить изображение в Supabase";
+    setStatus(message, "error");
+    ctx.showToast(message);
   }
 
-  function cloneItems(items) {
-    return JSON.parse(JSON.stringify(items || []));
+  function pushUndo() {
+    recordUndo(cloneItems(ctx.getItems()));
   }
 
-  function clamp(value, min, max) {
-    return Math.min(max, Math.max(min, value));
+  function recordUndo(snapshot) {
+    undoStack.push(snapshot);
+    redoStack = [];
+    trimHistory();
   }
 
-  function cssEscape(value) {
-    return global.CSS?.escape ? global.CSS.escape(value) : String(value).replace(/["\\]/g, "\\$&");
+  function trimHistory() {
+    if (undoStack.length > MAX_UNDO) undoStack = undoStack.slice(-MAX_UNDO);
+    if (redoStack.length > MAX_UNDO) redoStack = redoStack.slice(-MAX_UNDO);
+    syncHistoryControls();
   }
 
-  const api = {
-    MAX_ZOOM,
-    MIN_ZOOM,
-    createBoardView,
-    fitImage,
-    resizeGeometry,
-    snapMove,
+  function syncHistoryControls() {
+    if (ctx.els.boardUndo) ctx.els.boardUndo.disabled = undoStack.length === 0;
+    if (ctx.els.boardRedo) ctx.els.boardRedo.disabled = redoStack.length === 0;
+  }
+
+  function nextZ() {
+    return Math.max(0, ...ctx.getItems().map((item) => item.z || 0)) + 1;
+  }
+
+  function setInteractionMode(mode) {
+    interactionMode = mode === "pan" ? "pan" : "select";
+    if (interactionMode === "pan") setSelection([]);
+    syncInteractionMode();
+    ctx.els.boardViewport?.focus({ preventScroll: true });
+  }
+
+  function syncInteractionMode() {
+    ctx.els.boardViewport.dataset.mode = interactionMode;
+    [
+      [ctx.els.boardModeSelect, interactionMode === "select"],
+      [ctx.els.boardModePan, interactionMode === "pan"],
+    ].forEach(([button, active]) => {
+      button?.classList.toggle("is-active", active);
+      button?.setAttribute("aria-pressed", String(active));
+    });
+  }
+
+  function createGuideNodes() {
+    return ["vertical", "horizontal"].map((direction) => {
+      const guide = document.createElement("div");
+      guide.className = `board-snap-guide is-${direction}`;
+      guide.dataset.boardGuide = direction;
+      guide.hidden = true;
+      guide.setAttribute("aria-hidden", "true");
+      return guide;
+    });
+  }
+
+  function initializeCamera() {
+    if (cameraReady) return;
+    cameraReady = true;
+    if (!camera) {
+      const rect = ctx.els.boardViewport.getBoundingClientRect();
+      camera = cameraApi.initialCamera(rect);
+    }
+  }
+
+  function applyCamera() {
+    if (!camera) return;
+    ctx.els.boardWorld.style.transform = `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`;
+    ctx.els.boardWorld.style.setProperty("--board-unit", `${1 / camera.zoom}px`);
+    ctx.els.boardZoomLabel.textContent = cameraApi.formatZoom(camera.zoom);
+    ctx.els.boardViewport.style.setProperty("--board-grid-size", `${Math.max(6, 24 * camera.zoom)}px`);
+    ctx.els.boardViewport.style.setProperty("--board-grid-x", `${camera.x}px`);
+    ctx.els.boardViewport.style.setProperty("--board-grid-y", `${camera.y}px`);
+    ctx.els.boardViewport.classList.toggle("is-grid-hidden", camera.zoom < 0.12);
+  }
+
+  function scheduleCameraVisibilityCheck(items) {
+    const schedule = globalThis.requestAnimationFrame || ((callback) => globalThis.setTimeout(callback, 0));
+    schedule(() => ensureContentVisible(items));
+  }
+
+  function ensureContentVisible(items) {
+    if (cameraVisibilityChecked || !isBoardActive() || !items.length) return;
+    const rect = ctx.els.boardViewport.getBoundingClientRect();
+    if (rect.width < 1 || rect.height < 1) return;
+    const content = ctx.model.bounds(items);
+    if (!content) return;
+    cameraVisibilityChecked = true;
+    const margin = 32;
+    const projected = cameraApi.projectBounds(camera, content);
+    const isVisible = projected.right >= margin
+      && projected.bottom >= margin
+      && projected.left <= rect.width - margin
+      && projected.top <= rect.height - margin;
+    if (!isVisible) focusContent();
+  }
+
+  function saveCamera() {
+    cameraApi.saveCamera(cameraStorage, `board-camera:${activeBoardId}`, camera);
+    if (!activeBoardId) cameraApi.saveCamera(globalThis.localStorage, CAMERA_KEY, camera);
+  }
+
+  function viewportCenter() {
+    const rect = ctx.els.boardViewport.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  }
+
+  function screenToWorld(clientX, clientY) {
+    const rect = ctx.els.boardViewport.getBoundingClientRect();
+    return cameraApi.screenToWorld(camera, rect, clientX, clientY);
+  }
+
+  function findItemNode(id) {
+    return ctx.els.boardWorld.querySelector(`[data-id="${cssEscape(id)}"]`);
+  }
+
+  function setStatus(message, state = "") {
+    if (!ctx.els.boardStatus) return;
+    ctx.els.boardStatus.textContent = message;
+    ctx.els.boardStatus.dataset.state = state;
+  }
+
+  function isBoardActive() {
+    return document.body.dataset.view === "board";
+  }
+
+  return {
+    bindEvents,
+    focusContent,
+    focusItem,
+    render,
   };
-  global.RhythmBoardView = api;
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-})(typeof window !== "undefined" ? window : globalThis);
+}
+
+function resizeGeometry(item, dx, dy, direction) {
+  const minWidth = item.type === "frame" ? 240 : item.type === "link" ? 180 : 40;
+  const minHeight = item.type === "frame" ? 160 : item.type === "link" ? 96 : item.type === "image" ? 40 : 24;
+  const maxSize = 10000;
+  const hasWest = direction.includes("w");
+  const hasEast = direction.includes("e");
+  const hasNorth = direction.includes("n");
+  const hasSouth = direction.includes("s");
+  const isCorner = (hasWest || hasEast) && (hasNorth || hasSouth);
+
+  if (item.type === "link") {
+    const ratio = item.width / Math.max(item.height, 1);
+    const widthFromX = item.width + (hasEast ? dx : hasWest ? -dx : 0);
+    const widthFromY = (item.height + (hasSouth ? dy : hasNorth ? -dy : 0)) * ratio;
+    const horizontalChange = Math.abs(widthFromX - item.width) / item.width;
+    const verticalChange = Math.abs(widthFromY - item.width) / item.width;
+    let width = isCorner ? (verticalChange > horizontalChange ? widthFromY : widthFromX)
+      : hasEast || hasWest ? widthFromX : widthFromY;
+    width = clamp(width, Math.max(minWidth, minHeight * ratio), Math.min(maxSize, maxSize * ratio));
+    const height = width / ratio;
+    return {
+      x: hasWest ? item.x + item.width - width : hasEast ? item.x : item.x + (item.width - width) / 2,
+      y: hasNorth ? item.y + item.height - height : hasSouth ? item.y : item.y + (item.height - height) / 2,
+      width,
+      height,
+    };
+  }
+
+  if (item.type === "image" && isCorner) {
+    const rawWidth = clamp(item.width + (hasEast ? dx : -dx), minWidth, maxSize);
+    const rawHeight = clamp(item.height + (hasSouth ? dy : -dy), minHeight, maxSize);
+    const ratio = item.width / Math.max(item.height, 1);
+    const widthChange = Math.abs(rawWidth - item.width) / Math.max(item.width, 1);
+    const heightChange = Math.abs(rawHeight - item.height) / Math.max(item.height, 1);
+    let width = rawWidth;
+    let height = clamp(width / ratio, minHeight, maxSize);
+    if (heightChange > widthChange) {
+      height = rawHeight;
+      width = clamp(height * ratio, minWidth, maxSize);
+    }
+    return {
+      x: hasWest ? item.x + item.width - width : item.x,
+      y: hasNorth ? item.y + item.height - height : item.y,
+      width,
+      height,
+    };
+  }
+
+  let left = item.x;
+  let top = item.y;
+  let right = item.x + item.width;
+  let bottom = item.y + item.height;
+  if (hasWest) left = Math.min(right - minWidth, left + dx);
+  if (hasEast) right = Math.max(left + minWidth, right + dx);
+  if (hasNorth) top = Math.min(bottom - minHeight, top + dy);
+  if (hasSouth) bottom = Math.max(top + minHeight, bottom + dy);
+  return {
+    x: left,
+    y: top,
+    width: clamp(right - left, minWidth, maxSize),
+    height: clamp(bottom - top, minHeight, maxSize),
+  };
+}
+
+function fitImage(width, height) {
+  const scale = Math.min(1, 520 / width, 420 / height);
+  return {
+    width: Math.max(80, Math.round(width * scale)),
+    height: Math.max(80, Math.round(height * scale)),
+  };
+}
+
+function snapMove(movingItems, targetItems, dx, dy, threshold = 7) {
+  const moving = itemBounds(movingItems);
+  if (!moving || !targetItems.length) return { dx, dy, vertical: NaN, horizontal: NaN };
+  const movingX = [moving.left + dx, moving.left + moving.width / 2 + dx, moving.right + dx];
+  const movingY = [moving.top + dy, moving.top + moving.height / 2 + dy, moving.bottom + dy];
+  const targetX = targetItems.flatMap((item) => [item.x, item.x + item.width / 2, item.x + item.width]);
+  const targetY = targetItems.flatMap((item) => [item.y, item.y + item.height / 2, item.y + item.height]);
+  const xSnap = closestSnap(movingX, targetX, threshold);
+  const ySnap = closestSnap(movingY, targetY, threshold);
+  return {
+    dx: dx + (xSnap?.delta || 0),
+    dy: dy + (ySnap?.delta || 0),
+    vertical: xSnap?.target ?? NaN,
+    horizontal: ySnap?.target ?? NaN,
+  };
+}
+
+function closestSnap(sources, targets, threshold) {
+  let best = null;
+  sources.forEach((source) => {
+    targets.forEach((target) => {
+      const delta = target - source;
+      if (Math.abs(delta) > threshold) return;
+      if (!best || Math.abs(delta) < Math.abs(best.delta)) best = { delta, target };
+    });
+  });
+  return best;
+}
+
+function itemBounds(items = []) {
+  if (!items.length) return null;
+  const left = Math.min(...items.map((item) => item.x));
+  const top = Math.min(...items.map((item) => item.y));
+  const right = Math.max(...items.map((item) => item.x + item.width));
+  const bottom = Math.max(...items.map((item) => item.y + item.height));
+  return { left, top, right, bottom, width: right - left, height: bottom - top };
+}
+
+function applyNodeGeometry(node, item) {
+  node.style.width = `${item.width}px`;
+  node.style.height = `${item.height}px`;
+  node.style.transform = `translate(${item.x}px, ${item.y}px)`;
+  node.style.zIndex = String(item.z);
+  if (item.type === "link") {
+    node.style.setProperty("--board-link-scale", String(clamp(Math.min(item.width / 240, item.height / 156), 0.6, 4)));
+  }
+}
+
+function editableText(node) {
+  return String(node.innerText || node.textContent || "")
+    .replace(/\u00a0/g, " ")
+    .replace(/\r\n?/g, "\n")
+    .slice(0, 20000);
+}
+
+function placeCaretAtEnd(node) {
+  const selection = globalThis.getSelection?.();
+  if (!selection) return;
+  const range = globalThis.document.createRange();
+  range.selectNodeContents(node);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+function cloneItems(items) {
+  return JSON.parse(JSON.stringify(items || []));
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function cssEscape(value) {
+  return globalThis.CSS?.escape ? globalThis.CSS.escape(value) : String(value).replace(/["\\]/g, "\\$&");
+}
+
+const api = {
+  MAX_ZOOM,
+  MIN_ZOOM,
+  createBoardView,
+  fitImage,
+  resizeGeometry,
+  snapMove,
+};
+
+export { MAX_ZOOM, MIN_ZOOM, createBoardView, fitImage, resizeGeometry, snapMove };
+export default api;

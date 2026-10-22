@@ -33,7 +33,8 @@ function buildWeb({ directory = root } = {}) {
   const workspace = fs.realpathSync(directory);
   const appSource = path.join(workspace, "app");
   const output = path.join(workspace, "web-dist");
-  const files = listFiles(appSource);
+  // app/package.json only tells Node that app sources are ES modules; it is not a public asset.
+  const files = listFiles(appSource).filter((file) => file !== "package.json");
   if (!files.includes("sw.js")) throw new Error("Missing app/sw.js");
   const staging = fs.mkdtempSync(path.join(workspace, ".web-build-"));
   const previous = path.join(workspace, `.web-build-old-${crypto.randomUUID()}`);

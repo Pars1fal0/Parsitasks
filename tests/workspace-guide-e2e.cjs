@@ -9,7 +9,7 @@ const { _electron: electron, chromium } = require("playwright-core");
   if (process.env.PARSITASKS_ONBOARDING_WEB_URL) {
     const base = new URL(process.env.PARSITASKS_ONBOARDING_WEB_URL);
     assert.ok(base.protocol === "http:" && ["localhost", "127.0.0.1"].includes(base.hostname), "Web UI test is restricted to a local server");
-    browser = await chromium.launch({ channel: "chrome", headless: true });
+    browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
     const context = await browser.newContext({ acceptDownloads: true });
     page = await context.newPage();
     await page.goto(new URL("/app?automation=1#tasks", base).href);

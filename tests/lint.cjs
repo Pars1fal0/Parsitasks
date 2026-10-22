@@ -37,12 +37,14 @@ const forbidden = [
   });
 });
 
-[...sourceFiles, ...testFiles, ...scriptFiles].forEach((filePath) => {
+const classicFiles = [path.join(appRoot, "sw.js"), ...testFiles, ...scriptFiles];
+classicFiles.forEach((filePath) => {
   const source = fs.readFileSync(filePath, "utf8");
   assert.doesNotThrow(() => new Function(source), `${path.relative(root, filePath)} has invalid JavaScript syntax`);
 });
 
-mcpFiles.forEach((filePath) => {
+// app/package.json marks the browser sources as ES modules, so node --check parses them as modules.
+[...sourceFiles.filter((filePath) => !classicFiles.includes(filePath)), ...mcpFiles].forEach((filePath) => {
   const result = require("node:child_process").spawnSync(process.execPath, ["--check", filePath], {
     encoding: "utf8",
   });

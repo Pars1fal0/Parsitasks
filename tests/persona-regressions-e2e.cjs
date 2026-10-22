@@ -7,7 +7,7 @@ const { chromium } = require("playwright-core");
 
 (async () => {
   const observe = process.argv.includes("--observe");
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
   const capture = fs.mkdtempSync(path.join(os.tmpdir(), "parsitasks-persona-fixes-"));
   const findings = [];
   const check = (name, condition, evidence) => {

@@ -11,7 +11,7 @@ const { chromium } = require("playwright-core");
     findings.push({ name, passed: Boolean(passed), evidence });
     if (!observe) assert.ok(passed, name + ": " + JSON.stringify(evidence));
   }
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
   const captures = fs.mkdtempSync(path.join(os.tmpdir(), "parsitasks-task-recovery-"));
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, timezoneId: "Europe/Saratov", locale: "ru-RU" });

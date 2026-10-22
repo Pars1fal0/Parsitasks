@@ -15,8 +15,21 @@ module.exports = [
       const serviceWorker = fs.readFileSync(path.join(root, "app", "sw.js"), "utf8");
       const shell = serviceWorker.match(/const APP_SHELL = \[([\s\S]*?)\];/)?.[1] || "";
       const shellEntries = new Set([...shell.matchAll(/"([^"]+)"/g)].map((match) => match[1]));
-      const scripts = [...[htmlByPage["index.html"], htmlByPage["auth.html"], htmlByPage["landing.html"]].join("\n")
-        .matchAll(/<script src="([^"?]+)(?:\?[^" ]*)?"/g)].map((match) => match[1]);
+      const entryScripts = [...[htmlByPage["index.html"], htmlByPage["auth.html"], htmlByPage["landing.html"]].join("\n")
+        .matchAll(/<script\b[^>]*\bsrc="([^"?]+)(?:\?[^" ]*)?"/g)].map((match) => match[1]);
+      // Modules load their imports at runtime, so the whole import graph must be cached for offline use.
+      const scripts = new Set();
+      const visit = (script) => {
+        if (scripts.has(script)) return;
+        scripts.add(script);
+        if (!script.startsWith("src/")) return;
+        const source = fs.readFileSync(path.join(root, "app", script), "utf8");
+        for (const [, specifier] of source.matchAll(/^import (?:[^"]+ from )?"(\.[^"]+)";$/gm)) {
+          visit(path.posix.normalize(path.posix.join(path.posix.dirname(script), specifier)));
+        }
+      };
+      entryScripts.forEach(visit);
+      assert.ok(scripts.size > 90, "the app import graph should be discovered");
       scripts.forEach((script) => assert.equal(shellEntries.has(script), true, `${script} is missing from APP_SHELL`));
       for (const [file, html] of Object.entries(htmlByPage)) {
         const stylesheets = [...html.matchAll(/<link rel="stylesheet" href="([^"]+)"/g)]

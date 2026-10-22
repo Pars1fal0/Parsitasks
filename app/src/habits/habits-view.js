@@ -1,250 +1,295 @@
-(function (global) {
-  function createHabitsView(ctx) {
-    let draggedHabitId = "";
-    function closeNumberMenus(except = null) {
-      if (!global.matchMedia?.("(max-width: 680px)")?.matches) return;
-      ctx.els.habitList.querySelectorAll(".habit-number-more[open]").forEach((menu) => {
-        if (menu !== except) menu.open = false;
-      });
-    }
-    if (ctx.els.habitList) document.addEventListener("click", (event) => closeNumberMenus(event.target.closest(".habit-number-more")));
-    ctx.els.habitList?.addEventListener("keydown", (event) => {
-      if (event.key !== "Escape") return;
-      const menu = event.target.closest(".habit-number-more[open]");
-      if (menu) { event.stopPropagation(); menu.open = false; menu.querySelector("summary").focus(); }
+import * as habitFreeze from "./habit-freeze.js";
+import * as habitSchedule from "./habit-schedule.js";
+
+function createHabitsView(ctx) {
+  let draggedHabitId = "";
+  function closeNumberMenus(except = null) {
+    if (!globalThis.matchMedia?.("(max-width: 680px)")?.matches) return;
+    ctx.els.habitList.querySelectorAll(".habit-number-more[open]").forEach((menu) => {
+      if (menu !== except) menu.open = false;
     });
+  }
+  if (ctx.els.habitList) document.addEventListener("click", (event) => closeNumberMenus(event.target.closest(".habit-number-more")));
+  ctx.els.habitList?.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const menu = event.target.closest(".habit-number-more[open]");
+    if (menu) { event.stopPropagation(); menu.open = false; menu.querySelector("summary").focus(); }
+  });
 
-    function saveChange(undo) {
-      if (ctx.saveState() !== false) return true;
-      ctx.restoreState(undo);
-      ctx.render();
-      return false;
-    }
+  function saveChange(undo) {
+    if (ctx.saveState() !== false) return true;
+    ctx.restoreState(undo);
+    ctx.render();
+    return false;
+  }
 
-    function renderHabits() {
-      const activeDate = ctx.getActiveDate();
-      const habits = ctx.habitsForDate(activeDate);
-      ctx.els.habitList.replaceChildren();
-      habits.forEach((habit) => ctx.els.habitList.appendChild(createHabitNode(habit)));
-      ctx.els.habitEmpty.textContent = ctx.getState().habits.length
-        ? "На выбранный день привычек по расписанию нет."
-        : "Добавь первую привычку.";
-      ctx.els.habitEmpty.classList.toggle("is-visible", habits.length === 0);
-      renderHabitArchive();
-    }
+  function renderHabits() {
+    const activeDate = ctx.getActiveDate();
+    const habits = ctx.habitsForDate(activeDate);
+    ctx.els.habitList.replaceChildren();
+    habits.forEach((habit) => ctx.els.habitList.appendChild(createHabitNode(habit)));
+    ctx.els.habitEmpty.textContent = ctx.getState().habits.length
+      ? "На выбранный день привычек по расписанию нет."
+      : "Добавь первую привычку.";
+    ctx.els.habitEmpty.classList.toggle("is-visible", habits.length === 0);
+    renderHabitArchive();
+  }
 
-    function createHabitNode(habit) {
-      const activeDate = ctx.getActiveDate();
-      const node = ctx.els.habitTemplate.content.firstElementChild.cloneNode(true);
-      const title = node.querySelector("h3");
-      const streak = node.querySelector(".habit-streak");
-      const control = node.querySelector(".habit-control");
-      const habitTitle = ctx.habitTitleOnDate?.(habit, activeDate) || habit.title;
-      const habitConfig = ctx.habitConfigOnDate?.(habit, activeDate) || habit;
-      const status = ctx.habitStatusOnDate?.(habit, activeDate) || (ctx.isHabitComplete?.(habit, activeDate) ? "complete" : "missed");
+  function createHabitNode(habit) {
+    const activeDate = ctx.getActiveDate();
+    const node = ctx.els.habitTemplate.content.firstElementChild.cloneNode(true);
+    const title = node.querySelector("h3");
+    const streak = node.querySelector(".habit-streak");
+    const control = node.querySelector(".habit-control");
+    const habitTitle = ctx.habitTitleOnDate?.(habit, activeDate) || habit.title;
+    const habitConfig = ctx.habitConfigOnDate?.(habit, activeDate) || habit;
+    const status = ctx.habitStatusOnDate?.(habit, activeDate) || (ctx.isHabitComplete?.(habit, activeDate) ? "complete" : "missed");
 
-      node.draggable = true;
-      node.dataset.habitId = habit.id;
-      node.setAttribute("aria-grabbed", "false");
-      node.querySelector(".habit-drag-handle")?.setAttribute("title", "Перетащить привычку");
-      title.textContent = habitTitle;
-      streak.textContent = habitSubtitle(habit);
-      if (status === "frozen") node.classList.add("is-frozen");
-      attachHabitDrag(node, habit);
-      const dragHandle = node.querySelector(".habit-drag-handle");
-      dragHandle?.setAttribute("title", "Перетащить привычку или переместить стрелками");
-      dragHandle?.setAttribute("aria-label", `Переместить привычку ${habitTitle}. Стрелки вверх и вниз меняют порядок`);
-      attachHabitAccessibleMove(node, habit, dragHandle, habitTitle);
+    node.draggable = true;
+    node.dataset.habitId = habit.id;
+    node.setAttribute("aria-grabbed", "false");
+    node.querySelector(".habit-drag-handle")?.setAttribute("title", "Перетащить привычку");
+    title.textContent = habitTitle;
+    streak.textContent = habitSubtitle(habit);
+    if (status === "frozen") node.classList.add("is-frozen");
+    attachHabitDrag(node, habit);
+    const dragHandle = node.querySelector(".habit-drag-handle");
+    dragHandle?.setAttribute("title", "Перетащить привычку или переместить стрелками");
+    dragHandle?.setAttribute("aria-label", `Переместить привычку ${habitTitle}. Стрелки вверх и вниз меняют порядок`);
+    attachHabitAccessibleMove(node, habit, dragHandle, habitTitle);
 
-      if (status === "frozen") {
-        const row = document.createElement("div");
-        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        const label = document.createElement("span");
-        const restore = document.createElement("button");
-        row.className = "habit-frozen-row";
-        icon.classList.add("ui-icon");
-        icon.setAttribute("aria-hidden", "true");
-        use.setAttribute("href", "#icon-snowflake");
-        icon.appendChild(use);
-        label.className = "habit-frozen-label";
-        const progress = habitConfig.type === "number" ? ` · ${Number(habit.logs?.[activeDate] || 0)} / ${Number(habitConfig.goal || 1)} ${habitConfig.unit || ""}` : "";
-        label.textContent = `Заморожена${progress}`;
-        restore.type = "button";
-        restore.className = "subtle-button";
-        restore.textContent = "Снять заморозку";
-        restore.addEventListener("click", () => {
-          const undo = ctx.createUndoSnapshot();
-          global.RhythmHabitFreeze.setFrozen(habit, activeDate, false);
-          if (!saveChange(undo)) return;
-          ctx.render();
-          ctx.showToast("Заморозка снята", { undo });
-        });
-        row.append(icon, label, restore);
-        control.replaceChildren(row);
-      } else if (habitConfig.type === "number") {
-        const current = Number(habit.logs[activeDate] || 0);
-        const goal = Number(habitConfig.goal || 1);
-        const percent = Math.min(100, Math.round((current / goal) * 100));
-
-        const row = document.createElement("div");
-        const decrement = document.createElement("button");
-        const input = document.createElement("input");
-        const increment = document.createElement("button");
-        const value = document.createElement("span");
-        const track = document.createElement("div");
-        const fill = document.createElement("div");
-
-        row.className = "habit-number-row";
-        decrement.type = "button";
-        decrement.className = "habit-stepper";
-        const decrementIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        const decrementUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        decrementIcon.classList.add("ui-icon");
-        decrementIcon.setAttribute("aria-hidden", "true");
-        decrementUse.setAttribute("href", "#icon-minus");
-        decrementIcon.appendChild(decrementUse);
-        decrement.appendChild(decrementIcon);
-        decrement.setAttribute("aria-label", `Уменьшить ${habitTitle}`);
-        input.type = "number";
-        input.min = "0";
-        const step = habitNumberStep(habitConfig);
-        input.step = "any";
-        input.value = String(current);
-        input.setAttribute("aria-label", habitTitle);
-        increment.type = "button";
-        increment.className = "habit-stepper";
-        increment.textContent = `+${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-        increment.setAttribute("aria-label", `${habitTitle}: добавить ${step} ${habitConfig.unit || ""}`);
-        decrement.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
-        decrement.title = `Убрать ${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-        value.textContent = `/ ${goal} ${habitConfig.unit || ""}`;
-        track.className = "progress-track";
-        track.setAttribute("aria-hidden", "true");
-        fill.className = "progress-fill";
-        fill.style.width = `${percent}%`;
-        track.appendChild(fill);
-        row.append(decrement, input, increment, value);
-        control.replaceChildren(row, track);
-
-        const getLoggedValue = () => Number(ctx.getState().habits.find((item) => item.id === habit.id)?.logs?.[activeDate] || 0);
-        const updateValue = (nextRawValue) => {
-          // Saving can replace normalized state objects without rebuilding the numeric row.
-          const currentHabit = ctx.getState().habits.find((item) => item.id === habit.id);
-          if (!currentHabit) return;
-          const parsedValue = Number(nextRawValue || 0);
-          if (!Number.isFinite(parsedValue)) return;
-          const nextValue = Math.max(0, Math.round(parsedValue * 1000) / 1000);
-          if (nextValue === getLoggedValue()) {
-            input.value = String(nextValue);
-            return;
-          }
-          const undo = ctx.createUndoSnapshot();
-          if (nextValue > 0) {
-            currentHabit.logs[activeDate] = nextValue;
-          } else {
-            delete currentHabit.logs[activeDate];
-          }
-          currentHabit.updatedAt = new Date().toISOString();
-          if (!saveChange(undo)) return;
-          ctx.renderDailyPulse();
-          ctx.renderOverviewIfActive?.();
-          node.querySelector(".habit-streak").textContent = habitSubtitle(ctx.getState().habits.find((item) => item.id === habit.id) || currentHabit);
-          const loggedValue = getLoggedValue();
-          const nextPercent = Math.min(100, Math.round((loggedValue / goal) * 100));
-          fill.style.width = `${nextPercent}%`;
-          input.value = String(loggedValue);
-          ctx.showToast(`${habitTitle}: ${loggedValue} ${habitConfig.unit || ""}`.trim(), { undo });
-        };
-
-        input.addEventListener("change", (event) => {
-          if (input.validity.badInput) return;
-          updateValue(event.target.value);
-        });
-        decrement.addEventListener("click", () => updateValue(getLoggedValue() - step));
-        increment.addEventListener("click", () => updateValue(getLoggedValue() + step));
-        const quickAdds = document.createElement("div");
-        quickAdds.className = "habit-quick-adds";
-        quickAdds.setAttribute("role", "group");
-        quickAdds.setAttribute("aria-label", `Быстрые отметки: ${habitTitle}`);
-        const unit = (habitConfig.unit || "").trim().toLocaleLowerCase("ru-RU");
-        const amounts = ["мл", "ml"].includes(unit) ? [250, 500]
-          : ["л", "l"].includes(unit) ? [0.25, 0.5]
-          : ["мин", "мин.", "минут"].includes(unit) ? [5, 15]
-          : [...new Set([step, Math.min(goal, step * 5)])].filter((amount) => amount > 0);
-        amounts.filter((amount) => amount !== step).forEach((amount) => {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = "ghost-button compact-button";
-          button.textContent = `+${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-          button.addEventListener("click", () => { updateValue(getLoggedValue() + amount); closeNumberMenus(); });
-          quickAdds.appendChild(button);
-        });
-        if (quickAdds.childElementCount) {
-          const more = document.createElement("details"); more.className = "habit-number-more";
-          const summary = document.createElement("summary"); summary.className = "icon-button";
-          summary.setAttribute("aria-label", `Другие прибавления: ${habitTitle}`); summary.title = "Другие прибавления";
-          const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-          const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-          icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", "#icon-more"); icon.append(use); summary.append(icon);
-          more.append(summary, quickAdds); row.append(more);
-          const less = document.createElement("button"); less.type = "button";
-          less.className = "ghost-button compact-button habit-extra-decrement";
-          less.textContent = `−${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-          less.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
-          less.addEventListener("click", () => { updateValue(getLoggedValue() - step); closeNumberMenus(); });
-          quickAdds.prepend(less);
-          more.open = !global.matchMedia?.("(max-width: 680px)")?.matches;
-        }
-      } else {
-        node.classList.add("is-check-habit");
-        const done = habit.logs[activeDate] === true;
-        const row = document.createElement("div");
-        row.className = "habit-check-row";
-
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `check-button${done ? " is-checked" : ""}`;
-        button.setAttribute("aria-label", `Отметить ${habitTitle}`);
-        button.setAttribute("aria-pressed", String(done));
-
-        const label = document.createElement("span");
-        const weekly = habitConfig.repeat === "weeklyGoal" ? global.RhythmHabitSchedule.weekProgress(habit, activeDate, activeDate) : null;
-        label.textContent = done ? "Выполнено" : weekly ? weekly.achieved ? "Цель недели достигнута" : "Можно выполнить сегодня" : "Не отмечено";
-
-        button.addEventListener("click", () => {
-          const undo = ctx.createUndoSnapshot();
-          habit.logs[activeDate] = !done;
-          habit.updatedAt = new Date().toISOString();
-          if (!saveChange(undo)) return;
-          ctx.render();
-          ctx.showToast(done ? "Отметка снята" : "Привычка отмечена", { undo });
-        });
-
-        row.append(button, label);
-        control.append(row);
-      }
-
-      node.querySelector(".edit-habit").addEventListener("click", () => ctx.fillHabitForm(habit));
-      const freezeAction = node.querySelector(".freeze-habit");
-      if (freezeAction) {
-        if (status === "frozen") freezeAction.lastChild.textContent = "Снять заморозку…";
-        freezeAction.addEventListener("click", () => ctx.openFreezeDialog?.(habit.id, status === "frozen" ? "unfreeze" : "freeze"));
-      }
-      node.querySelector(".archive-habit")?.addEventListener("click", () => {
+    if (status === "frozen") {
+      const row = document.createElement("div");
+      const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      const label = document.createElement("span");
+      const restore = document.createElement("button");
+      row.className = "habit-frozen-row";
+      icon.classList.add("ui-icon");
+      icon.setAttribute("aria-hidden", "true");
+      use.setAttribute("href", "#icon-snowflake");
+      icon.appendChild(use);
+      label.className = "habit-frozen-label";
+      const progress = habitConfig.type === "number" ? ` · ${Number(habit.logs?.[activeDate] || 0)} / ${Number(habitConfig.goal || 1)} ${habitConfig.unit || ""}` : "";
+      label.textContent = `Заморожена${progress}`;
+      restore.type = "button";
+      restore.className = "subtle-button";
+      restore.textContent = "Снять заморозку";
+      restore.addEventListener("click", () => {
         const undo = ctx.createUndoSnapshot();
-        Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, false, activeDate));
+        habitFreeze.setFrozen(habit, activeDate, false);
         if (!saveChange(undo)) return;
         ctx.render();
-        ctx.showToast("Привычка убрана из активных", { undo });
+        ctx.showToast("Заморозка снята", { undo });
       });
-      node.querySelector(".delete-habit").addEventListener("click", async () => {
+      row.append(icon, label, restore);
+      control.replaceChildren(row);
+    } else if (habitConfig.type === "number") {
+      const current = Number(habit.logs[activeDate] || 0);
+      const goal = Number(habitConfig.goal || 1);
+      const percent = Math.min(100, Math.round((current / goal) * 100));
+
+      const row = document.createElement("div");
+      const decrement = document.createElement("button");
+      const input = document.createElement("input");
+      const increment = document.createElement("button");
+      const value = document.createElement("span");
+      const track = document.createElement("div");
+      const fill = document.createElement("div");
+
+      row.className = "habit-number-row";
+      decrement.type = "button";
+      decrement.className = "habit-stepper";
+      const decrementIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const decrementUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      decrementIcon.classList.add("ui-icon");
+      decrementIcon.setAttribute("aria-hidden", "true");
+      decrementUse.setAttribute("href", "#icon-minus");
+      decrementIcon.appendChild(decrementUse);
+      decrement.appendChild(decrementIcon);
+      decrement.setAttribute("aria-label", `Уменьшить ${habitTitle}`);
+      input.type = "number";
+      input.min = "0";
+      const step = habitNumberStep(habitConfig);
+      input.step = "any";
+      input.value = String(current);
+      input.setAttribute("aria-label", habitTitle);
+      increment.type = "button";
+      increment.className = "habit-stepper";
+      increment.textContent = `+${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+      increment.setAttribute("aria-label", `${habitTitle}: добавить ${step} ${habitConfig.unit || ""}`);
+      decrement.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
+      decrement.title = `Убрать ${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+      value.textContent = `/ ${goal} ${habitConfig.unit || ""}`;
+      track.className = "progress-track";
+      track.setAttribute("aria-hidden", "true");
+      fill.className = "progress-fill";
+      fill.style.width = `${percent}%`;
+      track.appendChild(fill);
+      row.append(decrement, input, increment, value);
+      control.replaceChildren(row, track);
+
+      const getLoggedValue = () => Number(ctx.getState().habits.find((item) => item.id === habit.id)?.logs?.[activeDate] || 0);
+      const updateValue = (nextRawValue) => {
+        // Saving can replace normalized state objects without rebuilding the numeric row.
+        const currentHabit = ctx.getState().habits.find((item) => item.id === habit.id);
+        if (!currentHabit) return;
+        const parsedValue = Number(nextRawValue || 0);
+        if (!Number.isFinite(parsedValue)) return;
+        const nextValue = Math.max(0, Math.round(parsedValue * 1000) / 1000);
+        if (nextValue === getLoggedValue()) {
+          input.value = String(nextValue);
+          return;
+        }
+        const undo = ctx.createUndoSnapshot();
+        if (nextValue > 0) {
+          currentHabit.logs[activeDate] = nextValue;
+        } else {
+          delete currentHabit.logs[activeDate];
+        }
+        currentHabit.updatedAt = new Date().toISOString();
+        if (!saveChange(undo)) return;
+        ctx.renderDailyPulse();
+        ctx.renderOverviewIfActive?.();
+        node.querySelector(".habit-streak").textContent = habitSubtitle(ctx.getState().habits.find((item) => item.id === habit.id) || currentHabit);
+        const loggedValue = getLoggedValue();
+        const nextPercent = Math.min(100, Math.round((loggedValue / goal) * 100));
+        fill.style.width = `${nextPercent}%`;
+        input.value = String(loggedValue);
+        ctx.showToast(`${habitTitle}: ${loggedValue} ${habitConfig.unit || ""}`.trim(), { undo });
+      };
+
+      input.addEventListener("change", (event) => {
+        if (input.validity.badInput) return;
+        updateValue(event.target.value);
+      });
+      decrement.addEventListener("click", () => updateValue(getLoggedValue() - step));
+      increment.addEventListener("click", () => updateValue(getLoggedValue() + step));
+      const quickAdds = document.createElement("div");
+      quickAdds.className = "habit-quick-adds";
+      quickAdds.setAttribute("role", "group");
+      quickAdds.setAttribute("aria-label", `Быстрые отметки: ${habitTitle}`);
+      const unit = (habitConfig.unit || "").trim().toLocaleLowerCase("ru-RU");
+      const amounts = ["мл", "ml"].includes(unit) ? [250, 500]
+        : ["л", "l"].includes(unit) ? [0.25, 0.5]
+        : ["мин", "мин.", "минут"].includes(unit) ? [5, 15]
+        : [...new Set([step, Math.min(goal, step * 5)])].filter((amount) => amount > 0);
+      amounts.filter((amount) => amount !== step).forEach((amount) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "ghost-button compact-button";
+        button.textContent = `+${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+        button.addEventListener("click", () => { updateValue(getLoggedValue() + amount); closeNumberMenus(); });
+        quickAdds.appendChild(button);
+      });
+      if (quickAdds.childElementCount) {
+        const more = document.createElement("details"); more.className = "habit-number-more";
+        const summary = document.createElement("summary"); summary.className = "icon-button";
+        summary.setAttribute("aria-label", `Другие прибавления: ${habitTitle}`); summary.title = "Другие прибавления";
+        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+        icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", "#icon-more"); icon.append(use); summary.append(icon);
+        more.append(summary, quickAdds); row.append(more);
+        const less = document.createElement("button"); less.type = "button";
+        less.className = "ghost-button compact-button habit-extra-decrement";
+        less.textContent = `−${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+        less.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
+        less.addEventListener("click", () => { updateValue(getLoggedValue() - step); closeNumberMenus(); });
+        quickAdds.prepend(less);
+        more.open = !globalThis.matchMedia?.("(max-width: 680px)")?.matches;
+      }
+    } else {
+      node.classList.add("is-check-habit");
+      const done = habit.logs[activeDate] === true;
+      const row = document.createElement("div");
+      row.className = "habit-check-row";
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `check-button${done ? " is-checked" : ""}`;
+      button.setAttribute("aria-label", `Отметить ${habitTitle}`);
+      button.setAttribute("aria-pressed", String(done));
+
+      const label = document.createElement("span");
+      const weekly = habitConfig.repeat === "weeklyGoal" ? habitSchedule.weekProgress(habit, activeDate, activeDate) : null;
+      label.textContent = done ? "Выполнено" : weekly ? weekly.achieved ? "Цель недели достигнута" : "Можно выполнить сегодня" : "Не отмечено";
+
+      button.addEventListener("click", () => {
+        const undo = ctx.createUndoSnapshot();
+        habit.logs[activeDate] = !done;
+        habit.updatedAt = new Date().toISOString();
+        if (!saveChange(undo)) return;
+        ctx.render();
+        ctx.showToast(done ? "Отметка снята" : "Привычка отмечена", { undo });
+      });
+
+      row.append(button, label);
+      control.append(row);
+    }
+
+    node.querySelector(".edit-habit").addEventListener("click", () => ctx.fillHabitForm(habit));
+    const freezeAction = node.querySelector(".freeze-habit");
+    if (freezeAction) {
+      if (status === "frozen") freezeAction.lastChild.textContent = "Снять заморозку…";
+      freezeAction.addEventListener("click", () => ctx.openFreezeDialog?.(habit.id, status === "frozen" ? "unfreeze" : "freeze"));
+    }
+    node.querySelector(".archive-habit")?.addEventListener("click", () => {
+      const undo = ctx.createUndoSnapshot();
+      Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, false, activeDate));
+      if (!saveChange(undo)) return;
+      ctx.render();
+      ctx.showToast("Привычка убрана из активных", { undo });
+    });
+    node.querySelector(".delete-habit").addEventListener("click", async () => {
+      const state = ctx.getState();
+      const confirmed = await ctx.confirmAction({
+        confirmLabel: "Удалить",
+        message: `Удалить привычку «${habitTitle}» вместе со всей историей отметок?`,
+        tone: "danger",
+        title: "Удалить привычку?",
+      });
+      if (!confirmed || ctx.getState() !== state) return;
+      const undo = ctx.createUndoSnapshot();
+      ctx.deleteHabit(habit.id);
+      if (!saveChange(undo)) return;
+      ctx.render();
+      ctx.showToast("Привычка удалена", { undo });
+    });
+    node.querySelectorAll(".habit-more-menu button").forEach((button) => {
+      button.addEventListener("click", () => button.closest("details")?.removeAttribute("open"));
+    });
+
+    return node;
+  }
+
+  function renderHabitArchive() {
+    if (!ctx.els.habitArchivePanel) return;
+    const archived = ctx.getState().habits.filter((habit) => habit.archived === true);
+    ctx.els.habitArchivePanel.hidden = archived.length === 0;
+    ctx.els.habitArchiveCount.textContent = String(archived.length);
+    ctx.els.habitArchiveList.replaceChildren();
+    archived.forEach((habit) => {
+      const row = document.createElement("article");
+      const title = document.createElement("strong");
+      const actions = document.createElement("div");
+      const restore = createArchiveButton("Вернуть в активные");
+      const remove = createArchiveButton("Удалить", true);
+      row.className = "habit-archive-item";
+      title.textContent = habit.title;
+      restore.addEventListener("click", () => {
+        const undo = ctx.createUndoSnapshot();
+        Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, true, ctx.getActiveDate()));
+        if (!saveChange(undo)) return;
+        ctx.render();
+        ctx.showToast("Привычка снова активна", { undo });
+      });
+      remove.addEventListener("click", async () => {
         const state = ctx.getState();
         const confirmed = await ctx.confirmAction({
           confirmLabel: "Удалить",
-          message: `Удалить привычку «${habitTitle}» вместе со всей историей отметок?`,
+          message: `Удалить привычку «${habit.title}» вместе со всей историей отметок?`,
           tone: "danger",
-          title: "Удалить привычку?",
+          title: "Удалить привычку навсегда?",
         });
         if (!confirmed || ctx.getState() !== state) return;
         const undo = ctx.createUndoSnapshot();
@@ -253,210 +298,167 @@
         ctx.render();
         ctx.showToast("Привычка удалена", { undo });
       });
-      node.querySelectorAll(".habit-more-menu button").forEach((button) => {
-        button.addEventListener("click", () => button.closest("details")?.removeAttribute("open"));
-      });
+      actions.append(restore, remove);
+      row.append(title, actions);
+      ctx.els.habitArchiveList.appendChild(row);
+    });
+  }
 
-      return node;
-    }
+  function createArchiveButton(label, danger = false) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `ghost-button compact-button${danger ? " danger-button" : ""}`;
+    button.textContent = label;
+    return button;
+  }
 
-    function renderHabitArchive() {
-      if (!ctx.els.habitArchivePanel) return;
-      const archived = ctx.getState().habits.filter((habit) => habit.archived === true);
-      ctx.els.habitArchivePanel.hidden = archived.length === 0;
-      ctx.els.habitArchiveCount.textContent = String(archived.length);
-      ctx.els.habitArchiveList.replaceChildren();
-      archived.forEach((habit) => {
-        const row = document.createElement("article");
-        const title = document.createElement("strong");
-        const actions = document.createElement("div");
-        const restore = createArchiveButton("Вернуть в активные");
-        const remove = createArchiveButton("Удалить", true);
-        row.className = "habit-archive-item";
-        title.textContent = habit.title;
-        restore.addEventListener("click", () => {
-          const undo = ctx.createUndoSnapshot();
-          Object.assign(habit, ctx.applyHabitAvailabilityChange(habit, true, ctx.getActiveDate()));
-          if (!saveChange(undo)) return;
-          ctx.render();
-          ctx.showToast("Привычка снова активна", { undo });
-        });
-        remove.addEventListener("click", async () => {
-          const state = ctx.getState();
-          const confirmed = await ctx.confirmAction({
-            confirmLabel: "Удалить",
-            message: `Удалить привычку «${habit.title}» вместе со всей историей отметок?`,
-            tone: "danger",
-            title: "Удалить привычку навсегда?",
-          });
-          if (!confirmed || ctx.getState() !== state) return;
-          const undo = ctx.createUndoSnapshot();
-          ctx.deleteHabit(habit.id);
-          if (!saveChange(undo)) return;
-          ctx.render();
-          ctx.showToast("Привычка удалена", { undo });
-        });
-        actions.append(restore, remove);
-        row.append(title, actions);
-        ctx.els.habitArchiveList.appendChild(row);
-      });
-    }
+  function attachHabitDrag(node, habit) {
+    node.addEventListener("dragstart", (event) => {
+      const isHandleDrag = Boolean(event.target.closest(".habit-drag-handle"));
+      if (!isHandleDrag && event.target.closest("input, button, textarea, select")) {
+        event.preventDefault();
+        return;
+      }
+      draggedHabitId = habit.id;
+      node.classList.add("is-dragging");
+      node.setAttribute("aria-grabbed", "true");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", habit.id);
+      event.dataTransfer.setData("application/x-rhythm-habit", habit.id);
+    });
+    node.addEventListener("dragend", () => {
+      draggedHabitId = "";
+      node.classList.remove("is-dragging");
+      node.setAttribute("aria-grabbed", "false");
+      clearHabitDropTargets();
+    });
+    node.addEventListener("dragover", (event) => {
+      const sourceId = readHabitDragId(event);
+      if (!sourceId || sourceId === habit.id) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      node.classList.add("is-drop-target");
+    });
+    node.addEventListener("dragleave", (event) => {
+      if (!node.contains(event.relatedTarget)) node.classList.remove("is-drop-target");
+    });
+    node.addEventListener("drop", (event) => {
+      event.preventDefault();
+      const sourceId = readHabitDragId(event);
+      clearHabitDropTargets();
+      if (!sourceId || sourceId === habit.id) return;
+      const undo = ctx.createUndoSnapshot();
+      ctx.reorderHabit(sourceId, habit.id);
+      if (!saveChange(undo)) return;
+      ctx.render();
+      ctx.showToast("Порядок привычек обновлен", { undo });
+    });
+  }
 
-    function createArchiveButton(label, danger = false) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `ghost-button compact-button${danger ? " danger-button" : ""}`;
-      button.textContent = label;
-      return button;
-    }
+  function readHabitDragId(event) {
+    return event.dataTransfer?.getData("application/x-rhythm-habit") || event.dataTransfer?.getData("text/plain") || draggedHabitId;
+  }
 
-    function attachHabitDrag(node, habit) {
-      node.addEventListener("dragstart", (event) => {
-        const isHandleDrag = Boolean(event.target.closest(".habit-drag-handle"));
-        if (!isHandleDrag && event.target.closest("input, button, textarea, select")) {
-          event.preventDefault();
+  function attachHabitAccessibleMove(node, habit, handle, habitTitle = habit.title) {
+    if (!handle) return;
+    handle.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+      const items = [...ctx.els.habitList.querySelectorAll(".habit-item")];
+      const index = items.indexOf(node);
+      const target = items[index + (event.key === "ArrowUp" ? -1 : 1)];
+      if (!target?.dataset.habitId) return;
+      event.preventDefault();
+      commitHabitReorder(habit.id, target.dataset.habitId, habitTitle);
+    });
+
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== undefined && event.button !== 0) return;
+      event.preventDefault();
+      const startY = event.clientY;
+      let targetId = "";
+      let moved = false;
+      handle.setPointerCapture?.(event.pointerId);
+      node.classList.add("is-dragging");
+      node.setAttribute("aria-grabbed", "true");
+
+      const onMove = (moveEvent) => {
+        moveEvent.preventDefault();
+        moved = moved || Math.abs(moveEvent.clientY - startY) > 5;
+        if (!moved || typeof document.elementFromPoint !== "function") return;
+        const target = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)?.closest?.(".habit-item");
+        clearHabitDropTargets();
+        if (!target || target === node) {
+          targetId = "";
           return;
         }
-        draggedHabitId = habit.id;
-        node.classList.add("is-dragging");
-        node.setAttribute("aria-grabbed", "true");
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", habit.id);
-        event.dataTransfer.setData("application/x-rhythm-habit", habit.id);
-      });
-      node.addEventListener("dragend", () => {
-        draggedHabitId = "";
+        targetId = target.dataset.habitId || "";
+        target.classList.add("is-drop-target");
+      };
+
+      const cleanup = (finishEvent) => {
+        handle.releasePointerCapture?.(finishEvent.pointerId);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", finish);
+        window.removeEventListener("pointercancel", cancel);
         node.classList.remove("is-dragging");
         node.setAttribute("aria-grabbed", "false");
         clearHabitDropTargets();
-      });
-      node.addEventListener("dragover", (event) => {
-        const sourceId = readHabitDragId(event);
-        if (!sourceId || sourceId === habit.id) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        node.classList.add("is-drop-target");
-      });
-      node.addEventListener("dragleave", (event) => {
-        if (!node.contains(event.relatedTarget)) node.classList.remove("is-drop-target");
-      });
-      node.addEventListener("drop", (event) => {
-        event.preventDefault();
-        const sourceId = readHabitDragId(event);
-        clearHabitDropTargets();
-        if (!sourceId || sourceId === habit.id) return;
-        const undo = ctx.createUndoSnapshot();
-        ctx.reorderHabit(sourceId, habit.id);
-        if (!saveChange(undo)) return;
-        ctx.render();
-        ctx.showToast("Порядок привычек обновлен", { undo });
-      });
-    }
+      };
+      const finish = (finishEvent) => {
+        cleanup(finishEvent);
+        if (moved && targetId) commitHabitReorder(habit.id, targetId, habitTitle);
+      };
+      const cancel = (cancelEvent) => {
+        targetId = "";
+        cleanup(cancelEvent);
+      };
 
-    function readHabitDragId(event) {
-      return event.dataTransfer?.getData("application/x-rhythm-habit") || event.dataTransfer?.getData("text/plain") || draggedHabitId;
-    }
-
-    function attachHabitAccessibleMove(node, habit, handle, habitTitle = habit.title) {
-      if (!handle) return;
-      handle.addEventListener("keydown", (event) => {
-        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
-        const items = [...ctx.els.habitList.querySelectorAll(".habit-item")];
-        const index = items.indexOf(node);
-        const target = items[index + (event.key === "ArrowUp" ? -1 : 1)];
-        if (!target?.dataset.habitId) return;
-        event.preventDefault();
-        commitHabitReorder(habit.id, target.dataset.habitId, habitTitle);
-      });
-
-      handle.addEventListener("pointerdown", (event) => {
-        if (event.button !== undefined && event.button !== 0) return;
-        event.preventDefault();
-        const startY = event.clientY;
-        let targetId = "";
-        let moved = false;
-        handle.setPointerCapture?.(event.pointerId);
-        node.classList.add("is-dragging");
-        node.setAttribute("aria-grabbed", "true");
-
-        const onMove = (moveEvent) => {
-          moveEvent.preventDefault();
-          moved = moved || Math.abs(moveEvent.clientY - startY) > 5;
-          if (!moved || typeof document.elementFromPoint !== "function") return;
-          const target = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY)?.closest?.(".habit-item");
-          clearHabitDropTargets();
-          if (!target || target === node) {
-            targetId = "";
-            return;
-          }
-          targetId = target.dataset.habitId || "";
-          target.classList.add("is-drop-target");
-        };
-
-        const cleanup = (finishEvent) => {
-          handle.releasePointerCapture?.(finishEvent.pointerId);
-          window.removeEventListener("pointermove", onMove);
-          window.removeEventListener("pointerup", finish);
-          window.removeEventListener("pointercancel", cancel);
-          node.classList.remove("is-dragging");
-          node.setAttribute("aria-grabbed", "false");
-          clearHabitDropTargets();
-        };
-        const finish = (finishEvent) => {
-          cleanup(finishEvent);
-          if (moved && targetId) commitHabitReorder(habit.id, targetId, habitTitle);
-        };
-        const cancel = (cancelEvent) => {
-          targetId = "";
-          cleanup(cancelEvent);
-        };
-
-        window.addEventListener("pointermove", onMove, { passive: false });
-        window.addEventListener("pointerup", finish);
-        window.addEventListener("pointercancel", cancel);
-      });
-    }
-
-    function commitHabitReorder(sourceId, targetId, title = "") {
-      if (!sourceId || !targetId || sourceId === targetId) return;
-      const undo = ctx.createUndoSnapshot();
-      ctx.reorderHabit(sourceId, targetId);
-      if (!saveChange(undo)) return;
-      ctx.render();
-      ctx.showToast(title ? `${title}: порядок обновлен` : "Порядок привычек обновлен", { undo });
-    }
-
-    function clearHabitDropTargets() {
-      ctx.els.habitList.querySelectorAll(".habit-item.is-drop-target").forEach((item) => item.classList.remove("is-drop-target"));
-    }
-
-    function habitSubtitle(habit) {
-      const effective = ctx.habitConfigOnDate?.(habit, ctx.getActiveDate()) || habit;
-      const repeat = ctx.formatHabitRepeat({ ...habit, ...effective });
-      const saved = ctx.habitStatusOnDate?.(habit, ctx.getActiveDate()) === "frozen" ? " · сохранена" : "";
-      const weekly = effective.repeat === "weeklyGoal" ? global.RhythmHabitSchedule.weekProgress(habit, ctx.getActiveDate(), ctx.getActiveDate()) : null;
-      const progress = weekly ? `За неделю: ${weekly.completed} из ${weekly.target}${weekly.achieved ? " · цель достигнута" : weekly.target === 0 ? " · на паузе" : ""} · ` : "";
-      const pending = ctx.getActiveDate() === ctx.todayKey() && !weekly?.achieved && !["complete", "frozen"].includes(ctx.habitStatusOnDate(habit, ctx.getActiveDate())) ? " · Сегодня ещё не выполнено" : "";
-      return `${progress}Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} ${weekly ? "нед." : "дн."}${saved} · ${repeat}${pending}${habit.reminderTime ? ` · Напоминание ${habit.reminderTime}` : ""}`;
-    }
-
-    return {
-      createHabitNode,
-      habitSubtitle,
-      renderHabits,
-    };
+      window.addEventListener("pointermove", onMove, { passive: false });
+      window.addEventListener("pointerup", finish);
+      window.addEventListener("pointercancel", cancel);
+    });
   }
 
-  function habitNumberStep(habit) {
-    if (Number.isFinite(Number(habit?.numberStep)) && Number(habit.numberStep) > 0) return Number(habit.numberStep);
-    const goal = Math.max(1, Number(habit?.goal || 1));
-    if (goal <= 20) return 1;
-    if (goal <= 100) return 5;
-    if (goal <= 1000) return 50;
-    return 100;
+  function commitHabitReorder(sourceId, targetId, title = "") {
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    const undo = ctx.createUndoSnapshot();
+    ctx.reorderHabit(sourceId, targetId);
+    if (!saveChange(undo)) return;
+    ctx.render();
+    ctx.showToast(title ? `${title}: порядок обновлен` : "Порядок привычек обновлен", { undo });
   }
 
-  const api = { createHabitsView, habitNumberStep };
-  global.RhythmHabitsView = api;
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-})(typeof window !== "undefined" ? window : globalThis);
+  function clearHabitDropTargets() {
+    ctx.els.habitList.querySelectorAll(".habit-item.is-drop-target").forEach((item) => item.classList.remove("is-drop-target"));
+  }
+
+  function habitSubtitle(habit) {
+    const effective = ctx.habitConfigOnDate?.(habit, ctx.getActiveDate()) || habit;
+    const repeat = ctx.formatHabitRepeat({ ...habit, ...effective });
+    const saved = ctx.habitStatusOnDate?.(habit, ctx.getActiveDate()) === "frozen" ? " · сохранена" : "";
+    const weekly = effective.repeat === "weeklyGoal" ? habitSchedule.weekProgress(habit, ctx.getActiveDate(), ctx.getActiveDate()) : null;
+    const progress = weekly ? `За неделю: ${weekly.completed} из ${weekly.target}${weekly.achieved ? " · цель достигнута" : weekly.target === 0 ? " · на паузе" : ""} · ` : "";
+    const pending = ctx.getActiveDate() === ctx.todayKey() && !weekly?.achieved && !["complete", "frozen"].includes(ctx.habitStatusOnDate(habit, ctx.getActiveDate())) ? " · Сегодня ещё не выполнено" : "";
+    return `${progress}Серия: ${ctx.habitStreak(habit, ctx.getActiveDate())} ${weekly ? "нед." : "дн."}${saved} · ${repeat}${pending}${habit.reminderTime ? ` · Напоминание ${habit.reminderTime}` : ""}`;
+  }
+
+  return {
+    createHabitNode,
+    habitSubtitle,
+    renderHabits,
+  };
+}
+
+function habitNumberStep(habit) {
+  if (Number.isFinite(Number(habit?.numberStep)) && Number(habit.numberStep) > 0) return Number(habit.numberStep);
+  const goal = Math.max(1, Number(habit?.goal || 1));
+  if (goal <= 20) return 1;
+  if (goal <= 100) return 5;
+  if (goal <= 1000) return 50;
+  return 100;
+}
+
+const api = { createHabitsView, habitNumberStep };
+
+export { createHabitsView, habitNumberStep };
+export default api;

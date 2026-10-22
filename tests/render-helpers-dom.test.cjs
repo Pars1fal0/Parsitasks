@@ -6,19 +6,12 @@ function loadDomModules() {
   const taskPaneTabs = document.createElement("div");
   taskPaneTabs.className = "task-pane-tabs";
   document.body.appendChild(taskPaneTabs);
-  global.RhythmHeatmapView = { createHeatmapView: () => ({ renderHeatmap() {} }) };
-  global.RhythmActivityCharts = { createActivityCharts: () => ({ render() {} }) };
-  delete require.cache[require.resolve("../app/src/tasks/archive-view.js")];
-  delete require.cache[require.resolve("../app/src/calendar/calendar-view.js")];
-  delete require.cache[require.resolve("../app/src/tasks/categories.js")];
-  delete require.cache[require.resolve("../app/src/habits/habits-view.js")];
-  delete require.cache[require.resolve("../app/src/tasks/tasks-view.js")];
   const archive = require("../app/src/tasks/archive-view.js");
   const calendar = require("../app/src/calendar/calendar-view.js");
   const tasks = require("../app/src/tasks/tasks-view.js");
-  require("../app/src/tasks/categories.js");
+  const categories = require("../app/src/tasks/categories.js");
   const habits = require("../app/src/habits/habits-view.js");
-  return { archive, calendar, categories: global.RhythmCategories, habits, tasks };
+  return { archive, calendar, categories, habits, tasks };
 }
 
 function createHabitTemplate() {

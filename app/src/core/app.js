@@ -1,10 +1,93 @@
-﻿const documentState = window.RhythmDocumentState;
-/* exported parseQuickTaskInput -- called by the desktop smoke test through the page global scope. */
+import * as documentState from "./document-state.js";
+import * as profileSettings from "../settings/profile-settings.js";
+import * as appUtilsModule from "./app-utils.js";
+import * as syncMetadata from "../sync/sync-metadata.js";
+import * as storageModule from "./storage.js";
+import * as settingsStateModule from "../settings/settings-state.js";
+import * as navigationStateModule from "./navigation-state.js";
+import * as stateControllerModule from "./state-controller.js";
+import * as stateMerge from "./state-merge.js";
+import * as navigationPreferencesModule from "../settings/navigation-preferences.js";
+import * as reminderPolicy from "../platform/reminder-policy.js";
+import * as overdueControllerModule from "../tasks/overdue-controller.js";
+import * as taskStateModule from "../tasks/task-state.js";
+import * as pwaControllerModule from "../platform/pwa-controller.js";
+import * as toastModule from "../ui/toast.js";
+import * as saveStatusModule from "../sync/save-status.js";
+import * as confirmDialogModule from "../ui/confirm-dialog.js";
+import * as formDialog from "../ui/form-dialog.js";
+import * as remoteSyncModule from "../sync/remote-sync.js";
+import * as remoteAuthModule from "../auth/remote-auth.js";
+import * as authGate from "../auth/auth-gate.js";
+import * as googleCalendarApiModule from "../integrations/google-calendar-api.js";
+import * as googleCalendarControllerModule from "../integrations/google-calendar-controller.js";
+import * as syncHistoryModule from "../sync/sync-history.js";
+import * as taskSchedule from "../tasks/task-schedule.js";
+import * as calendarDragControllerModule from "../calendar/calendar-drag-controller.js";
+import * as taskSubtasks from "../tasks/task-subtasks.js";
+import * as tasksViewModule from "../tasks/tasks-view.js";
+import * as habitsViewModule from "../habits/habits-view.js";
+import * as habitConfigHistory from "../habits/habit-config-history.js";
+import * as habitTitleHistory from "../habits/habit-title-history.js";
+import * as habitFreezeDialogModule from "../habits/habit-freeze-dialog.js";
+import * as goalCheckpointEditorModule from "../goals/goal-checkpoint-editor.js";
+import * as goalsViewModule from "../goals/goals-view.js";
+import * as calendarViewModule from "../calendar/calendar-view.js";
+import * as timelineControllerModule from "../timeline/timeline-controller.js";
+import * as calendarScheduleModule from "../calendar/calendar-schedule.js";
+import * as taskMoves from "../tasks/task-moves.js";
+import * as timelineViewModule from "../timeline/timeline-view.js";
+import * as archiveViewModule from "../tasks/archive-view.js";
+import * as journalViewModule from "../journal/journal-view.js";
+import * as journalModel from "../journal/journal-model.js";
+import * as notesViewModule from "../notes/notes-view.js";
+import * as boardAssetsModule from "../board/board-assets.js";
+import * as boardViewModule from "../board/board-view.js";
+import * as boardModel from "../board/board-model.js";
+import * as boardLinks from "../board/board-links.js";
+import * as globalSearchModule from "../ui/global-search.js";
+import * as nutritionControllerModule from "../nutrition/nutrition-controller.js";
+import * as nutritionModel from "../nutrition/nutrition-model.js";
+import * as nutritionViewModule from "../nutrition/nutrition-view.js";
+import * as taskFormModule from "../tasks/task-form.js";
+import * as habitFormModule from "../habits/habit-form.js";
+import * as recurrence from "../tasks/recurrence.js";
+import * as categoriesModule from "../tasks/categories.js";
+import * as importExport from "../settings/import-export.js";
+import * as settingsTransferModule from "../settings/settings-transfer.js";
+import * as settingsControllerModule from "../settings/settings-controller.js";
+import * as remoteSyncController from "../sync/remote-sync-controller.js";
+import * as remoteAuthControllerModule from "../auth/remote-auth-controller.js";
+import * as remoteDataControllerModule from "../sync/remote-data-controller.js";
+import * as syncDiagnosticsModule from "../sync/sync-diagnostics.js";
+import * as deviceSyncControllerModule from "../sync/device-sync-controller.js";
+import * as mcpActivityControllerModule from "../integrations/mcp-activity-controller.js";
+import * as mcpActivity from "../integrations/mcp-activity.js";
+import * as notifications from "../platform/notifications.js";
+import * as dailyPulse from "./daily-pulse.js";
+import * as studyControllerModule from "../study/study-controller.js";
+import * as viewRendererModule from "./view-renderer.js";
+import * as appShellControllerModule from "./app-shell-controller.js";
+import * as workspaceGuideModule from "../settings/workspace-guide.js";
+import { shellVersion } from "../platform/shell-version.js";
+import * as appEventsModule from "./app-events.js";
+import * as goalActivity from "../goals/goal-activity.js";
+import * as hostedConfig from "../auth/hosted-config.js";
+import * as dateRollover from "./date-rollover.js";
+import * as studyModel from "../study/study-model.js";
+import * as quickInput from "../tasks/quick-input.js";
+import * as habitSchedule from "../habits/habit-schedule.js";
+import * as habitFreeze from "../habits/habit-freeze.js";
+import * as accentColors from "../settings/accent-colors.js";
+import * as desktopUpdateController from "../platform/desktop-update-controller.js";
+import "../ui/disclosure-menus.js";
+import { exposePageGlobals } from "./page-globals.js";
+
 const SCHEMA_VERSION = documentState.SCHEMA_VERSION;
 const VALID_BACKUP_SCHEDULES = ["0", "5", "15", "30", "60"];
 const VALID_VIEWS = ["tasks", "timeline", "habits", "goals", "overview", "study", "nutrition", "journal", "board", "archive", "settings"];
 
-const appUtils = window.RhythmAppUtils.createAppUtils({
+const appUtils = appUtilsModule.createAppUtils({
   getFirstDayOfWeek: () => firstDayOfWeek,
   getTimeFormat: () => timeFormat,
 });
@@ -31,30 +114,29 @@ const {
   toTimeValue,
 } = appUtils;
 
-const syncMetadataTracker = window.RhythmSyncMetadata.createSyncMetadataTracker();
+const syncMetadataTracker = syncMetadata.createSyncMetadataTracker();
 
-const storage = window.RhythmStorage.createLocalStorageAdapter({
+const storage = storageModule.createLocalStorageAdapter({
   appName: "Parsitasks",
   schemaVersion: SCHEMA_VERSION,
 });
 const initialStateLoad = storage.loadStateWithRecovery();
-const settingsState = window.RhythmSettingsState.createSettingsState({
+const settingsState = settingsStateModule.createSettingsState({
   cleanText,
   validBackupSchedules: VALID_BACKUP_SCHEDULES,
 });
-const profileSettings = window.RhythmProfileSettings;
 
 const initialUiState = storage.loadUiState();
-const initialRoute = window.RhythmNavigationState.parseHash(window.location.hash);
-const stateController = window.RhythmStateController.createStateController({
-  clone: window.RhythmSyncMetadata.clone,
+const initialRoute = navigationStateModule.parseHash(window.location.hash);
+const stateController = stateControllerModule.createStateController({
+  clone: syncMetadata.clone,
   initialState: initialStateLoad.state,
   normalizeState,
   schemaVersion: SCHEMA_VERSION,
   storage,
   getOwner: () => remoteAuth.getSession()?.user?.id || remoteSyncAccountId || "",
-  mergeStates: window.RhythmStateMerge.mergeStates,
-  sameValue: window.RhythmSyncMetadata.sameValue,
+  mergeStates: stateMerge.mergeStates,
+  sameValue: syncMetadata.sameValue,
   trackChanges: (previous, next) => syncMetadataTracker.trackChanges(previous, next),
 });
 let state = stateController.getState();
@@ -85,8 +167,8 @@ let overdueHidden = initialUiState.overdueHidden === true;
 let themePreference = normalizeThemePreference(initialUiState.themePreference);
 let accentPreference = normalizeAccentPreference(initialUiState.accentPreference);
 let notificationSetting = normalizeNotificationSetting(initialUiState.notificationSetting);
-let navigationPreferences = window.RhythmNavigationPreferences.normalize(initialUiState.navigationPreferences);
-let quietHours = window.RhythmReminderPolicy.normalizeQuietHours(initialUiState.quietHours);
+let navigationPreferences = navigationPreferencesModule.normalize(initialUiState.navigationPreferences);
+let quietHours = reminderPolicy.normalizeQuietHours(initialUiState.quietHours);
 let backupSchedule = normalizeBackupSchedule(initialUiState.backupSchedule);
 let firstDayOfWeek = normalizeFirstDayOfWeek(initialUiState.firstDayOfWeek);
 let densityPreference = normalizeDensityPreference(initialUiState.densityPreference);
@@ -117,7 +199,7 @@ let localStorageError = initialStateLoad.status === "newer" || initialStateLoad.
     ? "Backup открыт, но локальное сохранение недоступно"
     : "";
 
-const overdueController = window.RhythmOverdueController.createOverdueController({
+const overdueController = overdueControllerModule.createOverdueController({
   getCacheKey: () => localStateUpdatedAt,
   getTaskDeadlineDate,
   getTasks: () => state.tasks,
@@ -127,7 +209,7 @@ const overdueController = window.RhythmOverdueController.createOverdueController
   taskScheduledOn,
   toDateKey,
 });
-const taskState = window.RhythmTaskState.createTaskState({ getState: () => state });
+const taskState = taskStateModule.createTaskState({ getState: () => state });
 
 const els = {
   activeDate: document.querySelector("#activeDate"),
@@ -462,7 +544,7 @@ const els = {
 });
 
 let pendingUpdateRegistration = null;
-const pwaController = window.RhythmPwaController.createPwaController({
+const pwaController = pwaControllerModule.createPwaController({
   onUpdateAvailable: (registration) => {
     pendingUpdateRegistration = registration;
     if (els.updateBanner) els.updateBanner.hidden = false;
@@ -474,33 +556,33 @@ els.applyUpdateButton?.addEventListener("click", () => {
   els.applyUpdateButton.textContent = "Обновляем...";
 });
 
-const toastController = window.RhythmToast.createToastController({
+const toastController = toastModule.createToastController({
   element: els.toast,
   restoreUndoSnapshot,
 });
-const saveStatusView = window.RhythmSaveStatus.createSaveStatus({
+const saveStatusView = saveStatusModule.createSaveStatus({
   element: els.saveStatus,
   formatTime,
   toTimeValue,
 });
 
-const confirmDialog = window.RhythmConfirmDialog.createConfirmDialog({ els });
-window.RhythmFormDialog.createFormDialogManager({
+const confirmDialog = confirmDialogModule.createConfirmDialog({ els });
+formDialog.createFormDialogManager({
   backdrop: els.formBackdrop,
   panels: [els.taskFormPanel, els.habitFormPanel, els.goalFormPanel],
 });
-const remoteSync = window.RhythmRemoteSync.createRemoteSync();
-const remoteAuth = window.RhythmRemoteAuth.createRemoteAuth({
+const remoteSync = remoteSyncModule.createRemoteSync();
+const remoteAuth = remoteAuthModule.createRemoteAuth({
   getConfig: () => ({ anonKey: remoteSyncAnonKey, supabaseUrl: remoteSyncUrl }),
   onSessionChange: (session) => {
-    if (session || window.RhythmAuthGate.isAutomationLocation()) return;
-    queueMicrotask(() => window.RhythmAuthGate.redirectAfterSignOut());
+    if (session || authGate.isAutomationLocation()) return;
+    queueMicrotask(() => authGate.redirectAfterSignOut());
   },
 });
-const googleCalendarApi = window.RhythmGoogleCalendarApi.createGoogleCalendarApi({
+const googleCalendarApi = googleCalendarApiModule.createGoogleCalendarApi({
   getAccessToken: async () => (await remoteAuth.ensureFreshSession().catch(() => null))?.access_token || "",
 });
-const googleCalendarController = window.RhythmGoogleCalendarController.createGoogleCalendarController({
+const googleCalendarController = googleCalendarControllerModule.createGoogleCalendarController({
   api: googleCalendarApi,
   confirmAction,
   createId,
@@ -514,9 +596,9 @@ const googleCalendarController = window.RhythmGoogleCalendarController.createGoo
   saveState,
   showToast,
 });
-const syncHistory = window.RhythmSyncHistory.createSyncHistory();
+const syncHistory = syncHistoryModule.createSyncHistory();
 let syncDiagnosticsController = null;
-const taskScheduleController = window.RhythmTaskSchedule.createTaskSchedule({
+const taskScheduleController = taskSchedule.createTaskSchedule({
   cleanTimeValue,
   els,
   minutesToTime,
@@ -537,7 +619,7 @@ const priorityLabels = {
   low: "Низкий",
 };
 
-const calendarDragController = window.RhythmCalendarDragController.createCalendarDragController({
+const calendarDragController = calendarDragControllerModule.createCalendarDragController({
   addDays,
   getActiveDate: () => activeDate,
   moveTaskToDate,
@@ -550,7 +632,7 @@ function saveSubtaskChange(task, dateKey, scope, changes) {
   const removing = Object.hasOwn(changes, "itemId");
   let saved;
   try {
-    const mutate = removing ? window.RhythmTaskSubtasks.removeSubtask : window.RhythmTaskSubtasks.appendSubtask;
+    const mutate = removing ? taskSubtasks.removeSubtask : taskSubtasks.appendSubtask;
     saved = mutate({ state, task, dateKey, scope, createId, ...changes });
   } catch (error) { return { error: error.message }; }
   if (saveState() === false) {
@@ -566,7 +648,7 @@ function saveSubtaskChange(task, dateKey, scope, changes) {
   return { id: saved.id };
 }
 
-const tasksView = window.RhythmTasksView.createTasksView({
+const tasksView = tasksViewModule.createTasksView({
   getPane: () => taskPane,
   onPaneChange: (value) => { taskPane = value; saveUiState(); updateQuickTaskPreview(); },
   deferTasks: deferSelectedTasks,
@@ -651,9 +733,9 @@ const tasksView = window.RhythmTasksView.createTasksView({
   toDateKey,
 });
 
-const habitsView = window.RhythmHabitsView.createHabitsView({
+const habitsView = habitsViewModule.createHabitsView({
   todayKey: () => toDateKey(new Date()),
-  applyHabitAvailabilityChange: window.RhythmHabitConfigHistory.applyHabitAvailabilityChange,
+  applyHabitAvailabilityChange: habitConfigHistory.applyHabitAvailabilityChange,
   els,
   confirmAction,
   createUndoSnapshot,
@@ -669,7 +751,7 @@ const habitsView = window.RhythmHabitsView.createHabitsView({
   habitStatusOnDate,
   openFreezeDialog: (habitId, operation) => habitFreezeDialog.open(habitId, operation),
   habitConfigOnDate,
-  habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
+  habitTitleOnDate: habitTitleHistory.habitTitleOnDate,
   habitsForDate,
   render: renderHabitSurfaces,
   renderDailyPulse,
@@ -681,26 +763,26 @@ const habitsView = window.RhythmHabitsView.createHabitsView({
   showToast,
 });
 
-const habitFreezeDialog = window.RhythmHabitFreezeDialog.createHabitFreezeDialog({
+const habitFreezeDialog = habitFreezeDialogModule.createHabitFreezeDialog({
   els,
   createUndoSnapshot,
   restoreState: restoreFailedSave,
   getActiveDate: () => activeDate,
   getState: () => state,
   habitStatusOnDate,
-  habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
+  habitTitleOnDate: habitTitleHistory.habitTitleOnDate,
   render,
   saveState,
   showToast,
 });
 els.openHabitFreeze.addEventListener("click", () => habitFreezeDialog.open());
 
-const goalCheckpointEditor = window.RhythmGoalCheckpointEditor.createGoalCheckpointEditor({
+const goalCheckpointEditor = goalCheckpointEditorModule.createGoalCheckpointEditor({
   createId,
   els,
 });
 
-const goalsView = window.RhythmGoalsView.createGoalsView({
+const goalsView = goalsViewModule.createGoalsView({
   confirmDiscardOpenForms,
   checkpointEditor: goalCheckpointEditor,
   els,
@@ -732,7 +814,7 @@ const goalsView = window.RhythmGoalsView.createGoalsView({
   },
 });
 
-const calendarView = window.RhythmCalendarView.createCalendarView({
+const calendarView = calendarViewModule.createCalendarView({
   toggleTaskDone: toggleCalendarTaskDone,
   renderSchedule: (mode) => calendarSchedule.render(mode),
   selectCalendarDate: (dateKey) => { activeDate = dateKey; saveUiState(); render(); },
@@ -763,7 +845,7 @@ const calendarView = window.RhythmCalendarView.createCalendarView({
   toDateKey,
 });
 
-const timelineController = window.RhythmTimelineController.createTimelineController({
+const timelineController = timelineControllerModule.createTimelineController({
   markFormPristine,
   cleanTimeValue,
   confirmAction,
@@ -808,7 +890,7 @@ const timelineController = window.RhythmTimelineController.createTimelineControl
   timeToMinutes,
 });
 
-const calendarSchedule = window.RhythmCalendarSchedule.createCalendarSchedule({
+const calendarSchedule = calendarScheduleModule.createCalendarSchedule({
   confirmClose: confirmDiscardOpenForms,
   changeMode: async (mode) => {
     if (!(await confirmDiscardOpenForms())) return false;
@@ -906,7 +988,7 @@ async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime) {
   }
   const undo = createUndoSnapshot();
   let moved = task;
-  window.RhythmTaskMoves.postponeTask({ state, task, sourceDateKey: sourceDate, targetDateKey: targetDate,
+  taskMoves.postponeTask({ state, task, sourceDateKey: sourceDate, targetDateKey: targetDate,
     options: { separateOccurrence: true }, helpers: { createId, taskScheduledOn } });
   if (task.repeat !== "none") moved = state.tasks.at(-1);
   const duration = isTimeBlock(task) ? timeToMinutes(task.endTime) - timeToMinutes(task.startTime) : 60;
@@ -923,7 +1005,7 @@ async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime) {
   return true;
 }
 
-const timelineView = window.RhythmTimelineView.createTimelineView({
+const timelineView = timelineViewModule.createTimelineView({
   getStudyEvents,
   openStudyLesson,
   addDays,
@@ -948,7 +1030,7 @@ const timelineView = window.RhythmTimelineView.createTimelineView({
   toDateKey,
 });
 
-const archiveView = window.RhythmArchiveView.createArchiveView({
+const archiveView = archiveViewModule.createArchiveView({
   addDays,
   initialPeriod: archivePeriod,
   els,
@@ -977,8 +1059,8 @@ const archiveView = window.RhythmArchiveView.createArchiveView({
   toDateKey,
 });
 
-const journalView = window.RhythmJournalView.createJournalView({
-  buildMonth: window.RhythmJournalModel.buildJournalMonth,
+const journalView = journalViewModule.createJournalView({
+  buildMonth: journalModel.buildJournalMonth,
   confirmRestore: () => confirmAction({
     title: "Восстановить эту версию?",
     message: "Текущий текст останется в истории, поэтому его можно будет вернуть.",
@@ -997,14 +1079,14 @@ const journalView = window.RhythmJournalView.createJournalView({
     minute: "2-digit",
   }).format(new Date(timestamp)),
   getActiveDate: () => activeDate,
-  getEntry: (dateKey) => window.RhythmJournalModel.journalEntryForDate(state.journalEntries, dateKey),
+  getEntry: (dateKey) => journalModel.journalEntryForDate(state.journalEntries, dateKey),
   getEntries: () => state.journalEntries,
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   getFirstDayOfWeek: () => firstDayOfWeek,
-  maxLength: window.RhythmJournalModel.MAX_JOURNAL_LENGTH,
+  maxLength: journalModel.MAX_JOURNAL_LENGTH,
   restoreRevision: (dateKey, savedAt) => {
     const previous = state.journalEntries;
-    const result = window.RhythmJournalModel.restoreJournalRevision(
+    const result = journalModel.restoreJournalRevision(
       state.journalEntries,
       dateKey,
       savedAt,
@@ -1015,10 +1097,10 @@ const journalView = window.RhythmJournalView.createJournalView({
     if (saveState() === false) { state.journalEntries = previous; return { changed: false, saved: false }; }
     return result;
   },
-  searchEntries: window.RhythmJournalModel.searchJournalEntries,
+  searchEntries: journalModel.searchJournalEntries,
   saveEntry: (dateKey, text) => {
     const previous = state.journalEntries;
-    const result = window.RhythmJournalModel.upsertJournalEntry(
+    const result = journalModel.upsertJournalEntry(
       state.journalEntries,
       { date: dateKey, text },
       { createId, forceRevision: true },
@@ -1040,7 +1122,7 @@ const journalView = window.RhythmJournalView.createJournalView({
   showToast,
 });
 
-const notesView = window.RhythmNotesView.createNotesView({
+const notesView = notesViewModule.createNotesView({
   createTaskFromNote: (note, text) => {
     const undo = createUndoSnapshot();
     const now = new Date().toISOString();
@@ -1063,7 +1145,7 @@ const notesView = window.RhythmNotesView.createNotesView({
   showToast,
 });
 
-const boardAssets = window.RhythmBoardAssets.createBoardAssetStore({
+const boardAssets = boardAssetsModule.createBoardAssetStore({
   getOwner: () => remoteAuth.getSession()?.user?.id ? JSON.stringify([remoteSyncUrl, remoteAuth.getSession().user.id]) : "",
   getRemoteConfig: async () => {
     const session = await remoteAuth.ensureFreshSession().catch(() => remoteAuth.getSession());
@@ -1077,12 +1159,12 @@ const boardAssets = window.RhythmBoardAssets.createBoardAssetStore({
   },
 });
 boardAssets.pruneCache().catch(() => {});
-const boardView = window.RhythmBoardView.createBoardView({
+const boardView = boardViewModule.createBoardView({
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   assets: boardAssets,
   commitItems: (items, options = {}) => {
     const previous = createUndoSnapshot();
-    const normalized = window.RhythmBoardModel.normalizeItems(items, { createId });
+    const normalized = boardModel.normalizeItems(items, { createId });
     state.boardItems = normalized;
     state.tombstones.boardItems ||= {};
     (options.deletedIds || []).forEach((id) => {
@@ -1101,14 +1183,14 @@ const boardView = window.RhythmBoardView.createBoardView({
   els,
   getState: () => state,
   getItems: () => state.boardItems,
-  links: window.RhythmBoardLinks,
-  model: window.RhythmBoardModel,
+  links: boardLinks,
+  model: boardModel,
   openSource: openBoardSource,
   showToast,
   todayKey: () => toDateKey(new Date()),
 });
 
-const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
+const globalSearch = globalSearchModule.createGlobalSearch({
   els,
   formatDate: formatLongDate,
   getState: () => state,
@@ -1164,15 +1246,15 @@ const globalSearch = window.RhythmGlobalSearch.createGlobalSearch({
       });
     }
   },
-  search: window.RhythmGlobalSearch.searchWorkspace,
+  search: globalSearchModule.searchWorkspace,
 });
 
-const nutritionController = window.RhythmNutritionController.createNutritionController({
+const nutritionController = nutritionControllerModule.createNutritionController({
   confirmAction,
   createId,
   createUndoSnapshot,
   getState: () => state,
-  model: window.RhythmNutritionModel,
+  model: nutritionModel,
   now: () => new Date().toISOString(),
   onRollback: syncDesktopReminders,
   render,
@@ -1180,7 +1262,7 @@ const nutritionController = window.RhythmNutritionController.createNutritionCont
   showToast,
 });
 
-const nutritionView = window.RhythmNutritionView.createNutritionView({
+const nutritionView = nutritionViewModule.createNutritionView({
   ...nutritionController,
   createId,
   els,
@@ -1203,7 +1285,7 @@ const nutritionView = window.RhythmNutritionView.createNutritionView({
   getState: () => state,
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   confirmAction,
-  model: window.RhythmNutritionModel,
+  model: nutritionModel,
   setActiveDate: (dateKey) => {
     activeDate = dateKey;
     els.activeDate.value = activeDate;
@@ -1214,7 +1296,7 @@ const nutritionView = window.RhythmNutritionView.createNutritionView({
   today: () => toDateKey(new Date()),
 });
 
-const taskFormController = window.RhythmTaskForm.createTaskForm({
+const taskFormController = taskFormModule.createTaskForm({
   els,
   afterClose: closeFloatingTaskForm,
   restoreState: (snapshot) => { replaceState(JSON.parse(snapshot.state)); render(); },
@@ -1255,7 +1337,7 @@ const taskFormController = window.RhythmTaskForm.createTaskForm({
   syncCustomRepeatPanel,
   syncTaskScheduleMode,
   syncTaskTimePresets,
-  updateRecurringTask: (task, editedTask, dateKey, scope) => window.RhythmTaskMoves.updateRecurringTaskDetails({
+  updateRecurringTask: (task, editedTask, dateKey, scope) => taskMoves.updateRecurringTaskDetails({
     state,
     task,
     editedTask,
@@ -1274,7 +1356,7 @@ const taskFormController = window.RhythmTaskForm.createTaskForm({
   },
 });
 
-const subtaskController = window.RhythmTaskSubtasks.createSubtaskDialog({
+const subtaskController = taskSubtasks.createSubtaskDialog({
   getState: () => state, createId, createUndoSnapshot, saveState, showToast, formatLongDate,
   restoreState: restoreFailedSave,
   render: renderTaskSurfaces,
@@ -1282,9 +1364,9 @@ const subtaskController = window.RhythmTaskSubtasks.createSubtaskDialog({
   expandChecklist: (taskId, dateKey) => tasksView.expandChecklist(taskId, dateKey),
 });
 
-const habitFormController = window.RhythmHabitForm.createHabitForm({
-  applyHabitConfigChange: window.RhythmHabitConfigHistory.applyHabitConfigChange,
-  applyHabitTitleChange: window.RhythmHabitTitleHistory.applyHabitTitleChange,
+const habitFormController = habitFormModule.createHabitForm({
+  applyHabitConfigChange: habitConfigHistory.applyHabitConfigChange,
+  applyHabitTitleChange: habitTitleHistory.applyHabitTitleChange,
   els,
   cleanText,
   cleanTimeValue,
@@ -1295,10 +1377,10 @@ const habitFormController = window.RhythmHabitForm.createHabitForm({
   getActiveDate: () => activeDate,
   getHabitCustomRepeatFromForm,
   habitConfigOnDate,
-  habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
+  habitTitleOnDate: habitTitleHistory.habitTitleOnDate,
   markFormPristine,
   normalizeHabitRepeat,
-  normalizeCustomRepeat: window.RhythmRecurrence.normalizeCustomRepeat,
+  normalizeCustomRepeat: recurrence.normalizeCustomRepeat,
   render,
   saveState,
   setHabitCustomRepeatForm,
@@ -1316,7 +1398,7 @@ const habitFormController = window.RhythmHabitForm.createHabitForm({
   },
 });
 
-const categoriesController = window.RhythmCategories.createCategories({
+const categoriesController = categoriesModule.createCategories({
   els,
   cleanText,
   confirmAction,
@@ -1338,7 +1420,7 @@ const categoriesController = window.RhythmCategories.createCategories({
   showToast,
 });
 
-const importExportController = window.RhythmImportExport.createImportExport({
+const importExportController = importExport.createImportExport({
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   els,
   confirmAction,
@@ -1354,7 +1436,7 @@ const importExportController = window.RhythmImportExport.createImportExport({
   toDateKey,
 });
 
-const settingsTransfer = window.RhythmSettingsTransfer.createSettingsTransfer({
+const settingsTransfer = settingsTransferModule.createSettingsTransfer({
   applyImportedSettings: (settings, keys = profileSettings.preferenceKeys) => {
     const previousSettings = getUiSettings();
     applyImportedSettings(settings);
@@ -1378,7 +1460,7 @@ const settingsTransfer = window.RhythmSettingsTransfer.createSettingsTransfer({
   toDateKey,
 });
 
-const settingsController = window.RhythmSettingsController.createSettingsController({
+const settingsController = settingsControllerModule.createSettingsController({
   els,
   exportData,
   exportSettings: settingsTransfer.exportSettings,
@@ -1399,7 +1481,7 @@ const settingsController = window.RhythmSettingsController.createSettingsControl
   updateTimeZone,
 });
 
-const remoteSyncWorkflow = window.RhythmRemoteSyncController.createRemoteSyncWorkflow({
+const remoteSyncWorkflow = remoteSyncController.createRemoteSyncWorkflow({
   confirmAction,
   createImportSafetyBackup,
   createUndoSnapshot,
@@ -1424,9 +1506,9 @@ const remoteSyncWorkflow = window.RhythmRemoteSyncController.createRemoteSyncWor
   isWorkspaceReady: () => !remoteSyncAccountId || remoteSyncAccountId === remoteAuth.getSession()?.user?.id,
   isRemoteVersionNewer: settingsState.isRemoteVersionNewer,
   latestIsoDate,
-  mergeStates: window.RhythmStateMerge.mergeStates,
+  mergeStates: stateMerge.mergeStates,
   remoteSync,
-  statesEqual: (left, right) => window.RhythmSyncMetadata.sameValue(normalizeState(left), normalizeState(right)),
+  statesEqual: (left, right) => syncMetadata.sameValue(normalizeState(left), normalizeState(right)),
   recordSyncEvent: (type, detail) => {
     syncHistory.record(type, detail);
     syncHistory.render(els.remoteSyncHistory, formatBackupDate);
@@ -1447,7 +1529,7 @@ const remoteSyncWorkflow = window.RhythmRemoteSyncController.createRemoteSyncWor
   syncControls: () => settingsController.syncControls(),
 });
 
-const remoteAuthController = window.RhythmRemoteAuthController.createRemoteAuthController({
+const remoteAuthController = remoteAuthControllerModule.createRemoteAuthController({
   auth: remoteAuth,
   els,
   renderSyncStatus: () => remoteSyncWorkflow.renderStatus(),
@@ -1459,7 +1541,7 @@ const remoteAuthController = window.RhythmRemoteAuthController.createRemoteAuthC
     return result;
   },
 });
-const remoteDataController = window.RhythmRemoteDataController.createRemoteDataController({
+const remoteDataController = remoteDataControllerModule.createRemoteDataController({
   afterAccountDeleted: async () => {
     remoteSyncEnabled = "off";
     remoteSyncPending = false;
@@ -1498,7 +1580,7 @@ const remoteDataController = window.RhythmRemoteDataController.createRemoteDataC
   saveState,
   showToast,
 });
-syncDiagnosticsController = window.RhythmSyncDiagnostics.createSyncDiagnostics({
+syncDiagnosticsController = syncDiagnosticsModule.createSyncDiagnostics({
   container: els.syncDiagnostics,
   describeError: describeRemoteSyncError,
   formatDate: formatBackupDate,
@@ -1518,7 +1600,7 @@ syncDiagnosticsController = window.RhythmSyncDiagnostics.createSyncDiagnostics({
     };
   },
 });
-const deviceSyncController = window.RhythmDeviceSyncController.createDeviceSyncController({
+const deviceSyncController = deviceSyncControllerModule.createDeviceSyncController({
   ensureFreshSession: () => remoteAuth.ensureFreshSession().catch(() => null),
   onOnline: () => {
     renderSaveStatus();
@@ -1527,8 +1609,8 @@ const deviceSyncController = window.RhythmDeviceSyncController.createDeviceSyncC
   syncLatest: (options) => remoteSyncWorkflow.syncLatest(options),
 });
 syncHistory.render(els.remoteSyncHistory, formatBackupDate);
-const mcpActivityController = window.RhythmMcpActivityController.createMcpActivityController({
-  activityApi: window.RhythmMcpActivity,
+const mcpActivityController = mcpActivityControllerModule.createMcpActivityController({
+  activityApi: mcpActivity,
   confirmAction,
   container: els.mcpActivityList,
   formatDate: formatBackupDate,
@@ -1539,7 +1621,7 @@ const mcpActivityController = window.RhythmMcpActivityController.createMcpActivi
   showToast,
 });
 
-const notificationsController = window.RhythmNotifications.createNotifications({
+const notificationsController = notifications.createNotifications({
   els,
   enableNotifications: requestNotifications,
   cleanTimeValue,
@@ -1548,7 +1630,7 @@ const notificationsController = window.RhythmNotifications.createNotifications({
   getQuietHours: () => quietHours,
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   getState: () => state,
-  habitTitleOnDate: window.RhythmHabitTitleHistory.habitTitleOnDate,
+  habitTitleOnDate: habitTitleHistory.habitTitleOnDate,
   isTaskDone,
   parseDate,
   saveState,
@@ -1558,7 +1640,7 @@ const notificationsController = window.RhythmNotifications.createNotifications({
   toDateKey,
 });
 
-const dailyPulseController = window.RhythmDailyPulse.createDailyPulse({
+const dailyPulseController = dailyPulse.createDailyPulse({
   els,
   getHabits: habitsForDate,
   getTasks: getOrderedTasksForDate,
@@ -1568,7 +1650,7 @@ const dailyPulseController = window.RhythmDailyPulse.createDailyPulse({
   taskDetails,
 });
 
-const studyController = window.RhythmStudyController.createStudyController({
+const studyController = studyControllerModule.createStudyController({
   confirmAction,
   createId,
   deleteTask: (id) => taskState.deleteTask(id),
@@ -1589,7 +1671,7 @@ const studyController = window.RhythmStudyController.createStudyController({
   showToast,
 });
 
-const viewRenderer = window.RhythmViewRenderer.createViewRenderer({
+const viewRenderer = viewRendererModule.createViewRenderer({
   renderArchive,
   renderCategories,
   renderDailyPulse,
@@ -1608,7 +1690,7 @@ const viewRenderer = window.RhythmViewRenderer.createViewRenderer({
   renderWeekdayLabels,
 });
 
-const appShellController = window.RhythmAppShellController.createAppShellController({
+const appShellController = appShellControllerModule.createAppShellController({
   scrollActiveViewStart: (view) => view === "timeline" ? timelineView.scrollToRelevantTime({ keepUnscheduledVisible: false }) : false,
   els,
   formatLongDate,
@@ -1616,7 +1698,7 @@ const appShellController = window.RhythmAppShellController.createAppShellControl
   getActiveView: () => activeView,
   getOverviewMode: () => overviewMode,
   isMobilePinned: (view) => navigationController.isPinned(view),
-  navigationState: window.RhythmNavigationState,
+  navigationState: navigationStateModule,
   renderSaveStatus,
   restoreTaskFormPanel,
   saveUiState,
@@ -1626,19 +1708,19 @@ const appShellController = window.RhythmAppShellController.createAppShellControl
   viewRenderer,
 });
 
-const navigationController = window.RhythmNavigationPreferences.createNavigationPreferences({
+const navigationController = navigationPreferencesModule.createNavigationPreferences({
   els,
   getPreferences: () => navigationPreferences,
   updatePreferences: (value) => updateSetting("navigationPreferences", value),
 });
 
-const workspaceGuide = window.RhythmWorkspaceGuide.createWorkspaceGuide({
+const workspaceGuide = workspaceGuideModule.createWorkspaceGuide({
   applyPreferences: (value) => updateSetting("navigationPreferences", value),
   getPreferences: () => navigationPreferences,
   getState: () => state,
   getUserId: () => remoteAuth.getSession()?.user?.id || "",
   getSupportSnapshot: () => ({
-    version: window.RhythmShellVersion,
+    version: shellVersion,
     schemaVersion: SCHEMA_VERSION,
     desktop: Boolean(window.rhythmDesktop),
     online: navigator.onLine !== false,
@@ -1656,7 +1738,7 @@ const workspaceGuide = window.RhythmWorkspaceGuide.createWorkspaceGuide({
   showToast,
 });
 
-const appEvents = window.RhythmAppEvents.createAppEvents({
+const appEvents = appEventsModule.createAppEvents({
   confirmDiscardOpenForms,
   hasUnsavedForms: () => [
     [els.taskForm, els.taskFormPanel],
@@ -1817,7 +1899,7 @@ async function init() {
       delete incoming._localOwner;
       state = stateController.receiveExternal(incoming);
       // Repair a simultaneous write without starting a storage-event loop.
-      if (!window.RhythmSyncMetadata.sameValue(state, normalizeState(storage.loadState()))) {
+      if (!syncMetadata.sameValue(state, normalizeState(storage.loadState()))) {
         if (saveState({ skipChangeTracking: true, skipBackup: true })) scheduleRemotePush();
       }
       applyAccountPreferences();
@@ -1871,7 +1953,7 @@ async function init() {
   renderSettingsBackupStatus();
   renderRemoteSyncStatus();
   updateFileBackupStatus();
-  if (window.RhythmGoalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate })) {
+  if (goalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate })) {
     saveState({ skipBackup: true });
   }
   render();
@@ -1894,7 +1976,7 @@ async function init() {
 }
 
 async function initializeHostedConfig() {
-  const result = await window.RhythmHostedConfig.loadHostedConfig();
+  const result = await hostedConfig.loadHostedConfig();
   if (!result.managed) {
     await googleCalendarController.initialize();
     await studyController.initialize();
@@ -1968,7 +2050,7 @@ async function synchronizeAuthenticatedAccount() {
 
 function handleDateRollover() {
   const nextToday = toDateKey(new Date());
-  const rollover = window.RhythmDateRollover.resolveDateRollover(activeDate, currentToday, nextToday);
+  const rollover = dateRollover.resolveDateRollover(activeDate, currentToday, nextToday);
   if (!rollover.changed) return;
   currentToday = rollover.today;
   if (rollover.activeDate !== activeDate) {
@@ -2034,8 +2116,6 @@ function renderTasks() {
 function renderTimeline() {
   timelineView.renderTimeline();
 }
-
-
 
 
 function excludeTaskDate(task, dateKey) {
@@ -2170,7 +2250,7 @@ async function openLinkedHabit(habit) {
 }
 
 function getStudyEvents(dateKey) {
-  return showStudyEvents ? window.RhythmStudyModel.eventsForDate(state, dateKey) : [];
+  return showStudyEvents ? studyModel.eventsForDate(state, dateKey) : [];
 }
 
 async function openStudyLesson(lessonId, dateKey) {
@@ -2283,7 +2363,7 @@ async function moveTaskToDate(taskId, sourceDateKey, targetDateKey) {
     if (!scope) return;
     if (scope === true) {
       const undo = createUndoSnapshot();
-      const movedSeries = window.RhythmTaskMoves.moveRecurringSeriesFollowing({
+      const movedSeries = taskMoves.moveRecurringSeriesFollowing({
         state,
         task,
         sourceDateKey: sourceDate,
@@ -2329,7 +2409,7 @@ function postponeTask(task, sourceDateKey, targetDateKey, options = {}) {
     return;
   }
   const undo = options.undo || createUndoSnapshot();
-  window.RhythmTaskMoves.postponeTask({
+  taskMoves.postponeTask({
     state,
     task,
     sourceDateKey,
@@ -2353,7 +2433,7 @@ function renderHabits() {
 }
 
 async function chooseRepeatMoveStrategy(entries, targetDateKey) {
-  const groups = window.RhythmTaskMoves.recurringBacklogGroups({ state, entries, targetDateKey, helpers: { taskScheduledOn, toDateKey } });
+  const groups = taskMoves.recurringBacklogGroups({ state, entries, targetDateKey, helpers: { taskScheduledOn, toDateKey } });
   if (!groups.size) return "each";
   const userId = remoteAuth.getSession()?.user?.id || "";
   const snapshot = state;
@@ -2371,7 +2451,7 @@ async function moveSelectedTasks(entries, targetDateKey) {
   const recurringMode = await chooseRepeatMoveStrategy(entries, targetDate);
   if (!recurringMode) return false;
   const undo = createUndoSnapshot();
-  const result = window.RhythmTaskMoves.moveTasksToDate({
+  const result = taskMoves.moveTasksToDate({
     state, entries, targetDateKey: targetDate, recurringMode,
     helpers: { cleanTimeValue, createId, taskScheduledOn, toDateKey },
   });
@@ -2395,7 +2475,7 @@ async function deferSelectedTasks(entries) {
   const recurringMode = await chooseRepeatMoveStrategy(entries, null);
   if (!recurringMode) return false;
   const undo = createUndoSnapshot();
-  const result = window.RhythmTaskMoves.moveTasksToLater({ state, entries, recurringMode, helpers: { createId, taskScheduledOn, toDateKey } });
+  const result = taskMoves.moveTasksToLater({ state, entries, recurringMode, helpers: { createId, taskScheduledOn, toDateKey } });
   if (!result.moved) { showToast("Выполненные и уже отложенные задачи не изменены"); return false; }
   if (saveState() === false) { replaceState(JSON.parse(undo.state)); render(); return false; }
   render(); showToast(result.consolidated ? "В Позже: по одному действию на серию" : `В Позже: ${result.moved}`, { undo });
@@ -2423,18 +2503,14 @@ function renderGoals() {
 }
 
 
-
 function renderOverview() {
   return calendarView.renderOverview();
 }
 
 
-
-
 function renderArchive() {
   return archiveView.renderArchive();
 }
-
 
 function renderCategories() {
   categoriesController.renderCategories();
@@ -2564,7 +2640,7 @@ function createQuickPreviewChips(details) {
 }
 
 function parseQuickTaskPreview(value) {
-  return window.RhythmQuickInput.parseQuickTaskInput(value, {
+  return quickInput.parseQuickTaskInput(value, {
     activeDate,
     cleanText,
     getOrCreateCategory: (categoryValue) => {
@@ -2581,26 +2657,26 @@ function parseQuickTaskPreview(value) {
 function getCustomRepeatFromForm() {
   const activeMode = document.querySelector("[data-repeat-mode].is-active")?.dataset.repeatMode || "weekdays";
   if (activeMode === "monthDay") {
-    return window.RhythmRecurrence.normalizeCustomRepeat({
+    return recurrence.normalizeCustomRepeat({
       type: "monthDay",
       day: Number(els.customRepeatMonthDay.value || 15),
     });
   }
   if (activeMode === "interval") {
-    return window.RhythmRecurrence.normalizeCustomRepeat({
+    return recurrence.normalizeCustomRepeat({
       type: "interval",
       every: Number(els.customRepeatInterval.value || 5),
     });
   }
 
-  return window.RhythmRecurrence.normalizeCustomRepeat({
+  return recurrence.normalizeCustomRepeat({
     type: "weekdays",
     weekdays: [...document.querySelectorAll("[data-weekday].is-active")].map((button) => Number(button.dataset.weekday)),
   });
 }
 
 function setCustomRepeatForm(value = {}) {
-  const custom = window.RhythmRecurrence.normalizeCustomRepeat(value);
+  const custom = recurrence.normalizeCustomRepeat(value);
   setCustomRepeatMode(custom.type);
   const activeWeekdays = custom.weekdays || [1, 3, 5];
   document.querySelectorAll("[data-weekday]").forEach((button) => {
@@ -2631,25 +2707,25 @@ function setCustomRepeatMode(mode = "weekdays") {
 }
 
 function updateCustomRepeatSummary() {
-  els.customRepeatSummary.textContent = window.RhythmRecurrence.customRepeatLabel(getCustomRepeatFromForm());
+  els.customRepeatSummary.textContent = recurrence.customRepeatLabel(getCustomRepeatFromForm());
 }
 
 function getHabitCustomRepeatFromForm() {
   const activeMode = document.querySelector("[data-habit-repeat-mode].is-active")?.dataset.habitRepeatMode || "weekdays";
   if (activeMode === "monthDay") {
-    return window.RhythmRecurrence.normalizeCustomRepeat({
+    return recurrence.normalizeCustomRepeat({
       type: "monthDay",
       day: Number(els.habitCustomRepeatMonthDay.value || 15),
     });
   }
   if (activeMode === "interval") {
-    return window.RhythmRecurrence.normalizeCustomRepeat({
+    return recurrence.normalizeCustomRepeat({
       type: "interval",
       every: Number(els.habitCustomRepeatInterval.value || 5),
     });
   }
 
-  return window.RhythmRecurrence.normalizeCustomRepeat({
+  return recurrence.normalizeCustomRepeat({
     type: "weekdays",
     weekdays: [...document.querySelectorAll("[data-habit-weekday].is-active")].map((button) =>
       Number(button.dataset.habitWeekday),
@@ -2658,7 +2734,7 @@ function getHabitCustomRepeatFromForm() {
 }
 
 function setHabitCustomRepeatForm(value = {}) {
-  const custom = window.RhythmRecurrence.normalizeCustomRepeat(value);
+  const custom = recurrence.normalizeCustomRepeat(value);
   setHabitCustomRepeatMode(custom.type);
   const activeWeekdays = custom.weekdays || [1, 3, 5];
   document.querySelectorAll("[data-habit-weekday]").forEach((button) => {
@@ -2696,7 +2772,7 @@ function setHabitCustomRepeatMode(mode = "weekdays") {
 }
 
 function updateHabitCustomRepeatSummary() {
-  els.habitCustomRepeatSummary.textContent = window.RhythmRecurrence.customRepeatLabel(getHabitCustomRepeatFromForm());
+  els.habitCustomRepeatSummary.textContent = recurrence.customRepeatLabel(getHabitCustomRepeatFromForm());
 }
 
 async function fillTaskForm(task) {
@@ -2853,7 +2929,7 @@ function taskOccursOn(task, dateKey) {
 }
 
 function taskScheduledOn(task, dateKey) {
-  return window.RhythmRecurrence.taskScheduledOn(task, dateKey);
+  return recurrence.taskScheduledOn(task, dateKey);
 }
 
 function isTaskExcluded(task, dateKey) {
@@ -2885,13 +2961,13 @@ function overdueTaskEntries(referenceDateKey = activeDate) {
 
 function habitsForDate(dateKey) {
   return state.habits.filter((habit) => {
-    const hiddenByArchive = window.RhythmHabitConfigHistory.habitIsArchivedOnDate(habit, dateKey);
+    const hiddenByArchive = habitConfigHistory.habitIsArchivedOnDate(habit, dateKey);
     return !hiddenByArchive && habitOccursOn(habit, dateKey);
   });
 }
 
 function habitOccursOn(habit, dateKey) {
-  return window.RhythmHabitSchedule.occursOn(habit, dateKey);
+  return habitSchedule.occursOn(habit, dateKey);
 }
 
 function isTaskDone(task, dateKey) {
@@ -2900,22 +2976,22 @@ function isTaskDone(task, dateKey) {
 
 function isHabitComplete(habit, dateKey) {
   const effective = habitConfigOnDate(habit, dateKey);
-  return window.RhythmHabitFreeze.isComplete(habit, dateKey, effective);
+  return habitFreeze.isComplete(habit, dateKey, effective);
 }
 
 function habitStatusOnDate(habit, dateKey) {
-  return window.RhythmHabitSchedule.statusOnDate(habit, dateKey);
+  return habitSchedule.statusOnDate(habit, dateKey);
 }
 
 function habitConfigOnDate(habit, dateKey) {
-  return window.RhythmHabitConfigHistory.habitConfigOnDate(habit, dateKey, {
-    normalizeCustomRepeat: window.RhythmRecurrence.normalizeCustomRepeat,
+  return habitConfigHistory.habitConfigOnDate(habit, dateKey, {
+    normalizeCustomRepeat: recurrence.normalizeCustomRepeat,
     normalizeRepeat: normalizeHabitRepeat,
   });
 }
 
 function habitStreak(habit, dateKey = toDateKey(new Date())) {
-  return window.RhythmHabitSchedule.streak(habit, dateKey, toDateKey(new Date()));
+  return habitSchedule.streak(habit, dateKey, toDateKey(new Date()));
 }
 
 function sortTasks(a, b, orderMap = new Map()) {
@@ -3023,7 +3099,7 @@ function timeValue(value) {
 }
 
 function formatTaskRepeat(task) {
-  const label = window.RhythmRecurrence.repeatLabel(task);
+  const label = recurrence.repeatLabel(task);
   return task.repeatUntil ? `${label} · до ${formatShortDate(task.repeatUntil)}` : label;
 }
 
@@ -3036,7 +3112,7 @@ function formatHabitRepeat(habit) {
     const count = habit.weeklyTarget || 3;
     return `${count} ${count === 1 ? "раз" : count < 5 ? "раза" : "раз"} в неделю`;
   }
-  return window.RhythmRecurrence.repeatLabel({
+  return recurrence.repeatLabel({
     repeat: normalizeHabitRepeat(habit.repeat),
     customRepeat: habit.customRepeat,
   });
@@ -3121,11 +3197,9 @@ async function openBackupFolder() {
 }
 
 
-
 function getTaskDeadlineDate(task, dateKey) {
   return notificationsController.getTaskDeadlineDate(task, dateKey);
 }
-
 
 async function shiftDate(days) {
   if (!(await confirmDiscardOpenForms())) return;
@@ -3287,13 +3361,13 @@ function applyThemePreference() {
   const resolvedTheme = themePreference === "system" ? (prefersLight ? "light" : "dark") : themePreference;
   document.documentElement.dataset.theme = resolvedTheme;
   document.documentElement.dataset.themePreference = themePreference;
-  window.RhythmAccentColors.apply(document.documentElement, accentPreference, resolvedTheme);
+  accentColors.apply(document.documentElement, accentPreference, resolvedTheme);
   if (els.themePreference) els.themePreference.value = themePreference;
 }
 
 function applySettingsPreferences() {
   document.documentElement.dataset.accent = accentPreference;
-  window.RhythmAccentColors.apply(document.documentElement, accentPreference, document.documentElement.dataset.theme);
+  accentColors.apply(document.documentElement, accentPreference, document.documentElement.dataset.theme);
   document.documentElement.dataset.density = densityPreference;
   navigationController.apply();
   navigationController.renderControls();
@@ -3381,7 +3455,7 @@ function updateDeviceSetting(name, value) {
   switch (name) {
     case "navigationPreferences": {
       const previous = navigationPreferences;
-      navigationPreferences = window.RhythmNavigationPreferences.normalize(value);
+      navigationPreferences = navigationPreferencesModule.normalize(value);
       if (!saveUiState()) {
         navigationPreferences = previous;
         navigationController.renderControls();
@@ -3394,7 +3468,7 @@ function updateDeviceSetting(name, value) {
       return true;
     }
     case "quietHours":
-      quietHours = window.RhythmReminderPolicy.normalizeQuietHours(value);
+      quietHours = reminderPolicy.normalizeQuietHours(value);
       saveUiState();
       settingsController.syncControls();
       syncDesktopReminders();
@@ -3499,7 +3573,7 @@ function resetInterfacePreferences() {
   densityPreference = "comfortable";
   timeFormat = "24";
   firstDayOfWeek = "monday";
-  navigationPreferences = window.RhythmNavigationPreferences.normalize();
+  navigationPreferences = navigationPreferencesModule.normalize();
   if (!saveAccountPreferences(["themePreference", "accentPreference", "densityPreference", "timeFormat", "firstDayOfWeek", "navigationPreferences"])) {
     applyImportedSettings(previousSettings);
     saveUiState();
@@ -3682,11 +3756,11 @@ function normalizeState(raw) {
 
 function replaceState(nextState) {
   state = stateController.replaceState(nextState);
-  window.RhythmGoalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
+  goalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
 }
 
 function saveState(options = {}) {
-  window.RhythmGoalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
+  goalActivity.reconcileGoalStatuses(state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
   try {
     state = stateController.saveState(state, options);
     localStorageError = "";
@@ -3726,7 +3800,6 @@ function restoreBackup() {
   return importExportController.restoreBackup();
 }
 
-
 function updateBackupStatus() {
   importExportController.updateBackupStatus();
 }
@@ -3765,7 +3838,6 @@ function renderWeekdayLabels() {
   );
 }
 
-
 function createUndoSnapshot() {
   return {
     userId: remoteAuth.getSession()?.user?.id || "",
@@ -3796,7 +3868,7 @@ function restoreUndoSnapshot(snapshot) {
   };
   try {
     const before = JSON.parse(snapshot.state);
-    replaceState(snapshot.afterState ? window.RhythmStateMerge.undoChanges(before, JSON.parse(snapshot.afterState), state) : before);
+    replaceState(snapshot.afterState ? stateMerge.undoChanges(before, JSON.parse(snapshot.afterState), state) : before);
     activeDate = normalizeDateKey(snapshot.activeDate, toDateKey(new Date()));
     activeView = snapshot.activeView || "tasks";
     if (saveState() === false) {
@@ -3821,3 +3893,336 @@ function showToast(message, options = {}) {
 function confirmAction(options = {}) {
   return confirmDialog.confirm(options);
 }
+
+// Module namespaces that UI tests and the desktop smoke check inspect directly.
+exposePageGlobals({
+  RhythmBoardAssets: [() => boardAssetsModule],
+  RhythmBoardModel: [() => boardModel],
+  RhythmDesktopUpdateController: [() => desktopUpdateController],
+  RhythmRecurrence: [() => recurrence],
+  RhythmStateMerge: [() => stateMerge],
+  RhythmStudyModel: [() => studyModel],
+});
+
+exposePageGlobals({
+  SCHEMA_VERSION: [() => SCHEMA_VERSION],
+  VALID_BACKUP_SCHEDULES: [() => VALID_BACKUP_SCHEDULES],
+  VALID_VIEWS: [() => VALID_VIEWS],
+  appUtils: [() => appUtils],
+  addDays: [() => addDays],
+  cleanText: [() => cleanText],
+  cleanTimeValue: [() => cleanTimeValue],
+  createId: [() => createId],
+  escapeHtml: [() => escapeHtml],
+  formatLongDate: [() => formatLongDate],
+  formatMonthLabel: [() => formatMonthLabel],
+  formatShortDate: [() => formatShortDate],
+  formatTime: [() => formatTime],
+  formatWeekday: [() => formatWeekday],
+  getMonthCalendarDates: [() => getMonthCalendarDates],
+  getWeekDates: [() => getWeekDates],
+  heatAlpha: [() => heatAlpha],
+  minutesToTime: [() => minutesToTime],
+  normalizeDateKey: [() => normalizeDateKey],
+  parseDate: [() => parseDate],
+  randomCategoryColor: [() => randomCategoryColor],
+  timeToMinutes: [() => timeToMinutes],
+  toDateKey: [() => toDateKey],
+  toTimeValue: [() => toTimeValue],
+  syncMetadataTracker: [() => syncMetadataTracker],
+  storage: [() => storage],
+  initialStateLoad: [() => initialStateLoad],
+  settingsState: [() => settingsState],
+  initialUiState: [() => initialUiState],
+  initialRoute: [() => initialRoute],
+  stateController: [() => stateController],
+  startupToday: [() => startupToday],
+  storedActiveDate: [() => storedActiveDate],
+  storedToday: [() => storedToday],
+  formSnapshots: [() => formSnapshots],
+  overdueController: [() => overdueController],
+  taskState: [() => taskState],
+  els: [() => els],
+  pwaController: [() => pwaController],
+  toastController: [() => toastController],
+  saveStatusView: [() => saveStatusView],
+  confirmDialog: [() => confirmDialog],
+  remoteSync: [() => remoteSync],
+  remoteAuth: [() => remoteAuth],
+  googleCalendarApi: [() => googleCalendarApi],
+  googleCalendarController: [() => googleCalendarController],
+  syncHistory: [() => syncHistory],
+  taskScheduleController: [() => taskScheduleController],
+  getTaskScheduleMode: [() => getTaskScheduleMode],
+  setTaskScheduleMode: [() => setTaskScheduleMode],
+  syncTaskScheduleMode: [() => syncTaskScheduleMode],
+  syncTaskTimePresets: [() => syncTaskTimePresets],
+  taskFormHome: [() => taskFormHome],
+  priorityLabels: [() => priorityLabels],
+  calendarDragController: [() => calendarDragController],
+  saveSubtaskChange: [() => saveSubtaskChange],
+  tasksView: [() => tasksView],
+  habitsView: [() => habitsView],
+  habitFreezeDialog: [() => habitFreezeDialog],
+  goalCheckpointEditor: [() => goalCheckpointEditor],
+  goalsView: [() => goalsView],
+  calendarView: [() => calendarView],
+  timelineController: [() => timelineController],
+  calendarSchedule: [() => calendarSchedule],
+  toggleCalendarTaskDone: [() => toggleCalendarTaskDone],
+  calendarScheduleTask: [() => calendarScheduleTask],
+  timelineView: [() => timelineView],
+  archiveView: [() => archiveView],
+  journalView: [() => journalView],
+  notesView: [() => notesView],
+  boardAssets: [() => boardAssets],
+  boardView: [() => boardView],
+  globalSearch: [() => globalSearch],
+  nutritionController: [() => nutritionController],
+  nutritionView: [() => nutritionView],
+  taskFormController: [() => taskFormController],
+  subtaskController: [() => subtaskController],
+  habitFormController: [() => habitFormController],
+  categoriesController: [() => categoriesController],
+  importExportController: [() => importExportController],
+  settingsTransfer: [() => settingsTransfer],
+  settingsController: [() => settingsController],
+  remoteSyncWorkflow: [() => remoteSyncWorkflow],
+  remoteAuthController: [() => remoteAuthController],
+  remoteDataController: [() => remoteDataController],
+  deviceSyncController: [() => deviceSyncController],
+  mcpActivityController: [() => mcpActivityController],
+  notificationsController: [() => notificationsController],
+  dailyPulseController: [() => dailyPulseController],
+  studyController: [() => studyController],
+  viewRenderer: [() => viewRenderer],
+  appShellController: [() => appShellController],
+  navigationController: [() => navigationController],
+  workspaceGuide: [() => workspaceGuide],
+  appEvents: [() => appEvents],
+  init: [() => init],
+  initializeHostedConfig: [() => initializeHostedConfig],
+  synchronizeAuthenticatedAccount: [() => synchronizeAuthenticatedAccount],
+  handleDateRollover: [() => handleDateRollover],
+  render: [() => render],
+  scrollWorkspaceTop: [() => scrollWorkspaceTop],
+  syncNavigationRoute: [() => syncNavigationRoute],
+  handleNavigationChange: [() => handleNavigationChange],
+  renderSaveStatus: [() => renderSaveStatus],
+  renderTaskSurfaces: [() => renderTaskSurfaces],
+  renderHabitSurfaces: [() => renderHabitSurfaces],
+  renderGoalSurfaces: [() => renderGoalSurfaces],
+  renderDailyPulse: [() => renderDailyPulse],
+  renderTasks: [() => renderTasks],
+  renderTimeline: [() => renderTimeline],
+  excludeTaskDate: [() => excludeTaskDate],
+  acknowledgeOverdueTask: [() => acknowledgeOverdueTask],
+  acknowledgeAllOverdueTasks: [() => acknowledgeAllOverdueTasks],
+  restoreOverdueTask: [() => restoreOverdueTask],
+  restoreTaskDate: [() => restoreTaskDate],
+  stopTaskSeries: [() => stopTaskSeries],
+  commitTaskChange: [() => commitTaskChange],
+  deleteTask: [() => deleteTask],
+  deleteMovedReplacement: [() => deleteMovedReplacement],
+  deleteHabit: [() => deleteHabit],
+  reorderHabit: [() => reorderHabit],
+  deleteGoal: [() => deleteGoal],
+  openDateTasks: [() => openDateTasks],
+  openLinkedHabit: [() => openLinkedHabit],
+  getStudyEvents: [() => getStudyEvents],
+  openStudyLesson: [() => openStudyLesson],
+  openLinkedNote: [() => openLinkedNote],
+  notesForTask: [() => notesForTask],
+  openNotesForTask: [() => openNotesForTask],
+  openBoardSource: [() => openBoardSource],
+  openNotesForSubject: [() => openNotesForSubject],
+  moveTaskToDate: [() => moveTaskToDate],
+  attachTaskDropZone: [() => attachTaskDropZone],
+  attachTaskChipDrag: [() => attachTaskChipDrag],
+  clearTaskDragState: [() => clearTaskDragState],
+  postponeTask: [() => postponeTask],
+  renderHabits: [() => renderHabits],
+  chooseRepeatMoveStrategy: [() => chooseRepeatMoveStrategy],
+  moveSelectedTasks: [() => moveSelectedTasks],
+  deferSelectedTasks: [() => deferSelectedTasks],
+  dismissSelectedTasks: [() => dismissSelectedTasks],
+  renderGoals: [() => renderGoals],
+  renderOverview: [() => renderOverview],
+  renderArchive: [() => renderArchive],
+  renderCategories: [() => renderCategories],
+  saveTaskFromForm: [() => saveTaskFromForm],
+  saveGoalFromForm: [() => saveGoalFromForm],
+  resetGoalForm: [() => resetGoalForm],
+  saveQuickTask: [() => saveQuickTask],
+  updateQuickTaskPreview: [() => updateQuickTaskPreview],
+  createQuickPreviewSummary: [() => createQuickPreviewSummary],
+  createQuickPreviewChips: [() => createQuickPreviewChips],
+  parseQuickTaskPreview: [() => parseQuickTaskPreview],
+  getCustomRepeatFromForm: [() => getCustomRepeatFromForm],
+  setCustomRepeatForm: [() => setCustomRepeatForm],
+  syncCustomRepeatPanel: [() => syncCustomRepeatPanel],
+  setCustomRepeatMode: [() => setCustomRepeatMode],
+  updateCustomRepeatSummary: [() => updateCustomRepeatSummary],
+  getHabitCustomRepeatFromForm: [() => getHabitCustomRepeatFromForm],
+  setHabitCustomRepeatForm: [() => setHabitCustomRepeatForm],
+  syncHabitCustomRepeatPanel: [() => syncHabitCustomRepeatPanel],
+  syncHabitTypeFields: [() => syncHabitTypeFields],
+  setHabitCustomRepeatMode: [() => setHabitCustomRepeatMode],
+  updateHabitCustomRepeatSummary: [() => updateHabitCustomRepeatSummary],
+  fillTaskForm: [() => fillTaskForm],
+  resetTaskForm: [() => resetTaskForm],
+  saveHabitFromForm: [() => saveHabitFromForm],
+  fillHabitForm: [() => fillHabitForm],
+  resetHabitForm: [() => resetHabitForm],
+  markFormPristine: [() => markFormPristine],
+  isFormDirty: [() => isFormDirty],
+  serializeForm: [() => serializeForm],
+  clearTaskFilters: [() => clearTaskFilters],
+  closeFormWithConfirmation: [() => closeFormWithConfirmation],
+  confirmDiscardOpenForms: [() => confirmDiscardOpenForms],
+  saveCategoryFromForm: [() => saveCategoryFromForm],
+  openFloatingTaskForm: [() => openFloatingTaskForm],
+  closeFloatingTaskForm: [() => closeFloatingTaskForm],
+  restoreTaskFormPanel: [() => restoreTaskFormPanel],
+  exportData: [() => exportData],
+  importData: [() => importData],
+  tasksForDate: [() => tasksForDate],
+  getOrderedTasksForDate: [() => getOrderedTasksForDate],
+  reorderTask: [() => reorderTask],
+  taskOccursOn: [() => taskOccursOn],
+  taskScheduledOn: [() => taskScheduledOn],
+  isTaskExcluded: [() => isTaskExcluded],
+  excludedTasksForDate: [() => excludedTasksForDate],
+  overdueTaskEntries: [() => overdueTaskEntries],
+  habitsForDate: [() => habitsForDate],
+  habitOccursOn: [() => habitOccursOn],
+  isTaskDone: [() => isTaskDone],
+  isHabitComplete: [() => isHabitComplete],
+  habitStatusOnDate: [() => habitStatusOnDate],
+  habitConfigOnDate: [() => habitConfigOnDate],
+  habitStreak: [() => habitStreak],
+  sortTasks: [() => sortTasks],
+  taskDetails: [() => taskDetails],
+  matchesCategoryFilter: [() => matchesCategoryFilter],
+  taskMatchesSearch: [() => taskMatchesSearch],
+  archiveEntryMatchesSearch: [() => archiveEntryMatchesSearch],
+  taskMetaItems: [() => taskMetaItems],
+  categoryLabel: [() => categoryLabel],
+  timeValue: [() => timeValue],
+  formatTaskRepeat: [() => formatTaskRepeat],
+  normalizeHabitRepeat: [() => normalizeHabitRepeat],
+  formatHabitRepeat: [() => formatHabitRepeat],
+  reminderLabel: [() => reminderLabel],
+  statsForDate: [() => statsForDate],
+  archiveEntries: [() => archiveEntries],
+  getCategory: [() => getCategory],
+  checkDueNotifications: [() => checkDueNotifications],
+  requestNotifications: [() => requestNotifications],
+  updateNotificationButton: [() => updateNotificationButton],
+  syncDesktopReminders: [() => syncDesktopReminders],
+  syncDesktopBackup: [() => syncDesktopBackup],
+  updateFileBackupStatus: [() => updateFileBackupStatus],
+  openBackupFolder: [() => openBackupFolder],
+  getTaskDeadlineDate: [() => getTaskDeadlineDate],
+  shiftDate: [() => shiftDate],
+  goToday: [() => goToday],
+  shiftMonth: [() => shiftMonth],
+  saveUiState: [() => saveUiState],
+  normalizeThemePreference: [() => normalizeThemePreference],
+  normalizeAccentPreference: [() => normalizeAccentPreference],
+  normalizeNotificationSetting: [() => normalizeNotificationSetting],
+  normalizeBackupSchedule: [() => normalizeBackupSchedule],
+  normalizeFirstDayOfWeek: [() => normalizeFirstDayOfWeek],
+  normalizeDensityPreference: [() => normalizeDensityPreference],
+  normalizeTimeFormat: [() => normalizeTimeFormat],
+  normalizeRemoteSyncEnabled: [() => normalizeRemoteSyncEnabled],
+  updateTimeZone: [() => updateTimeZone],
+  updateJournalPermission: [() => updateJournalPermission],
+  applyThemePreference: [() => applyThemePreference],
+  applySettingsPreferences: [() => applySettingsPreferences],
+  getUiSettings: [() => getUiSettings],
+  getRemoteUiSettings: [() => getRemoteUiSettings],
+  updateSetting: [() => updateSetting],
+  saveAccountPreferences: [() => saveAccountPreferences],
+  migrateAccountPreferences: [() => migrateAccountPreferences],
+  applyAccountPreferences: [() => applyAccountPreferences],
+  updateDeviceSetting: [() => updateDeviceSetting],
+  resetInterfacePreferences: [() => resetInterfacePreferences],
+  applyImportedSettings: [() => applyImportedSettings],
+  renderSettingsBackupStatus: [() => renderSettingsBackupStatus],
+  isRemoteSyncReady: [() => isRemoteSyncReady],
+  renderRemoteSyncStatus: [() => renderRemoteSyncStatus],
+  scheduleRemotePush: [() => scheduleRemotePush],
+  pushRemoteState: [() => pushRemoteState],
+  checkRemoteConnection: [() => checkRemoteConnection],
+  pullRemoteState: [() => pullRemoteState],
+  latestIsoDate: [() => latestIsoDate],
+  describeRemoteSyncError: [() => describeRemoteSyncError],
+  scheduleAutoBackup: [() => scheduleAutoBackup],
+  cleanSearchQuery: [() => cleanSearchQuery],
+  formatTaskTime: [() => formatTaskTime],
+  isTimeBlock: [() => isTimeBlock],
+  isValidTimeBlock: [() => isValidTimeBlock],
+  taskHasSchedule: [() => taskHasSchedule],
+  taskSortTime: [() => taskSortTime],
+  formatTaskWindow: [() => formatTaskWindow],
+  formatTaskScheduleLabel: [() => formatTaskScheduleLabel],
+  parseQuickTaskInput: [() => parseQuickTaskInput],
+  getOrCreateCategory: [() => getOrCreateCategory],
+  normalizeQuickCategoryName: [() => normalizeQuickCategoryName],
+  normalizeState: [() => normalizeState],
+  replaceState: [() => replaceState],
+  saveState: [() => saveState],
+  createBackup: [() => createBackup],
+  createImportSafetyBackup: [() => createImportSafetyBackup],
+  restoreBackup: [() => restoreBackup],
+  updateBackupStatus: [() => updateBackupStatus],
+  formatBackupDate: [() => formatBackupDate],
+  seedIfEmpty: [() => seedIfEmpty],
+  renderWeekdayLabels: [() => renderWeekdayLabels],
+  createUndoSnapshot: [() => createUndoSnapshot],
+  restoreFailedSave: [() => restoreFailedSave],
+  restoreUndoSnapshot: [() => restoreUndoSnapshot],
+  showToast: [() => showToast],
+  confirmAction: [() => confirmAction],
+  state: [() => state, (value) => { state = value; }],
+  activeDate: [() => activeDate, (value) => { activeDate = value; }],
+  currentToday: [() => currentToday, (value) => { currentToday = value; }],
+  taskFilter: [() => taskFilter, (value) => { taskFilter = value; }],
+  activeView: [() => activeView, (value) => { activeView = value; }],
+  taskPane: [() => taskPane, (value) => { taskPane = value; }],
+  showStudyEvents: [() => showStudyEvents, (value) => { showStudyEvents = value; }],
+  overviewMode: [() => overviewMode, (value) => { overviewMode = value; }],
+  taskCategoryFilter: [() => taskCategoryFilter, (value) => { taskCategoryFilter = value; }],
+  taskSearchQuery: [() => taskSearchQuery, (value) => { taskSearchQuery = value; }],
+  archiveCategoryFilter: [() => archiveCategoryFilter, (value) => { archiveCategoryFilter = value; }],
+  archiveSearchQuery: [() => archiveSearchQuery, (value) => { archiveSearchQuery = value; }],
+  archivePeriod: [() => archivePeriod, (value) => { archivePeriod = value; }],
+  overdueHidden: [() => overdueHidden, (value) => { overdueHidden = value; }],
+  themePreference: [() => themePreference, (value) => { themePreference = value; }],
+  accentPreference: [() => accentPreference, (value) => { accentPreference = value; }],
+  notificationSetting: [() => notificationSetting, (value) => { notificationSetting = value; }],
+  navigationPreferences: [() => navigationPreferences, (value) => { navigationPreferences = value; }],
+  quietHours: [() => quietHours, (value) => { quietHours = value; }],
+  backupSchedule: [() => backupSchedule, (value) => { backupSchedule = value; }],
+  firstDayOfWeek: [() => firstDayOfWeek, (value) => { firstDayOfWeek = value; }],
+  densityPreference: [() => densityPreference, (value) => { densityPreference = value; }],
+  timeFormat: [() => timeFormat, (value) => { timeFormat = value; }],
+  appliedAccountPreferences: [() => appliedAccountPreferences, (value) => { appliedAccountPreferences = value; }],
+  remoteSyncEnabled: [() => remoteSyncEnabled, (value) => { remoteSyncEnabled = value; }],
+  remoteSyncUrl: [() => remoteSyncUrl, (value) => { remoteSyncUrl = value; }],
+  remoteSyncAnonKey: [() => remoteSyncAnonKey, (value) => { remoteSyncAnonKey = value; }],
+  remoteSyncAccountId: [() => remoteSyncAccountId, (value) => { remoteSyncAccountId = value; }],
+  authenticatedSyncGeneration: [() => authenticatedSyncGeneration, (value) => { authenticatedSyncGeneration = value; }],
+  remoteSyncLastPushedAt: [() => remoteSyncLastPushedAt, (value) => { remoteSyncLastPushedAt = value; }],
+  remoteSyncLastPulledAt: [() => remoteSyncLastPulledAt, (value) => { remoteSyncLastPulledAt = value; }],
+  remoteSyncPending: [() => remoteSyncPending, (value) => { remoteSyncPending = value; }],
+  managedRemoteConfig: [() => managedRemoteConfig, (value) => { managedRemoteConfig = value; }],
+  localStateUpdatedAt: [() => localStateUpdatedAt, (value) => { localStateUpdatedAt = value; }],
+  autoBackupTimerId: [() => autoBackupTimerId, (value) => { autoBackupTimerId = value; }],
+  lastAutoBackupAt: [() => lastAutoBackupAt, (value) => { lastAutoBackupAt = value; }],
+  nextAutoBackupAt: [() => nextAutoBackupAt, (value) => { nextAutoBackupAt = value; }],
+  localStorageError: [() => localStorageError, (value) => { localStorageError = value; }],
+  pendingUpdateRegistration: [() => pendingUpdateRegistration, (value) => { pendingUpdateRegistration = value; }],
+  syncDiagnosticsController: [() => syncDiagnosticsController, (value) => { syncDiagnosticsController = value; }],
+});

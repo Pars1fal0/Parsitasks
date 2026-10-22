@@ -1,339 +1,341 @@
-(function (global) {
-  function createTaskForm(ctx) {
-    let editingOccurrenceDate = "";
-    const deferredControl = ctx.els.taskForm.querySelector("#taskDeferred");
-    const scopePanel = ctx.els.taskRepeatEditScope;
-    const extraPanel = ctx.els.taskForm.querySelector("#taskExtraFields");
-    const workPanel = ctx.els.taskForm.querySelector("#taskWorkFields");
-    const duePanel = ctx.els.taskForm.querySelector("#taskDueSection");
-    const dueDateField = ctx.els.taskForm.querySelector("#taskDueDate");
-    const dueTimeField = ctx.els.taskForm.querySelector("#taskDueTime");
-    const dueReminderField = ctx.els.taskForm.querySelector("#taskDueReminder");
-    const settingsSummary = document.createElement("span");
-    settingsSummary.className = "task-settings-summary";
-    extraPanel.querySelector("summary").append(settingsSummary);
-    ctx.els.taskForm.addEventListener("input", updateSettingsSummary);
-    ctx.els.taskForm.addEventListener("change", updateSettingsSummary);
-    extraPanel.addEventListener("toggle", updateSettingsSummary);
-    ctx.els.taskForm.addEventListener("invalid", (event) => {
-      let section = event.target.closest("details");
-      while (section) { section.open = true; section = section.parentElement.closest("details"); }
-    }, true);
+import * as goalCheckpointEditor from "../goals/goal-checkpoint-editor.js";
+import * as taskChecklist from "./task-checklist.js";
 
-    function updateSettingsSummary() {
-      const parts = [];
-      if (ctx.els.taskRepeat.value !== "none") parts.push(ctx.els.taskRepeat.selectedOptions[0]?.textContent);
-      if (ctx.els.taskCategoryId.value) parts.push(ctx.els.taskCategoryId.selectedOptions[0]?.textContent);
-      if (ctx.els.taskPriority.value !== "medium") parts.push(ctx.els.taskPriority.selectedOptions[0]?.textContent);
-      settingsSummary.textContent = parts.filter(Boolean).join(" · ");
-      ctx.els.taskForm.querySelector("#taskWorkSummary").textContent = ctx.getTaskScheduleMode() === "block"
-        ? [ctx.els.taskStartTime.value, ctx.els.taskEndTime.value].filter(Boolean).join("–")
-        : ctx.getTaskScheduleMode() === "deadline" ? ctx.els.taskTime.value : "";
-      ctx.els.taskForm.querySelector("#taskDueSummary").textContent = dueDateField.value
-        ? `${formatDate(dueDateField.value)}${dueTimeField.value ? ` · ${dueTimeField.value}` : ""}` : "";
-    }
-    if (scopePanel && extraPanel) extraPanel.before(scopePanel);
-    deferredControl?.addEventListener("change", () => setDeferred(deferredControl.checked));
-    const checklistEditor = global.RhythmGoalCheckpointEditor?.createGoalCheckpointEditor({
-      createId: ctx.createId, itemLabel: "Подзадача", itemsLabel: "Подзадачи", removeLabel: "Удалить подзадачу", maxItems: 50, showToast: ctx.showToast,
-      els: {
-        goalCheckpointInput: ctx.els.taskForm.querySelector("#taskChecklistInput"),
-        goalCheckpointList: ctx.els.taskForm.querySelector("#taskChecklistEditorList"),
-        goalCheckpointEmpty: ctx.els.taskForm.querySelector("#taskChecklistEmpty"),
-        addGoalCheckpoint: ctx.els.taskForm.querySelector("#addTaskChecklistItem"),
-      },
-    });
+function createTaskForm(ctx) {
+  let editingOccurrenceDate = "";
+  const deferredControl = ctx.els.taskForm.querySelector("#taskDeferred");
+  const scopePanel = ctx.els.taskRepeatEditScope;
+  const extraPanel = ctx.els.taskForm.querySelector("#taskExtraFields");
+  const workPanel = ctx.els.taskForm.querySelector("#taskWorkFields");
+  const duePanel = ctx.els.taskForm.querySelector("#taskDueSection");
+  const dueDateField = ctx.els.taskForm.querySelector("#taskDueDate");
+  const dueTimeField = ctx.els.taskForm.querySelector("#taskDueTime");
+  const dueReminderField = ctx.els.taskForm.querySelector("#taskDueReminder");
+  const settingsSummary = document.createElement("span");
+  settingsSummary.className = "task-settings-summary";
+  extraPanel.querySelector("summary").append(settingsSummary);
+  ctx.els.taskForm.addEventListener("input", updateSettingsSummary);
+  ctx.els.taskForm.addEventListener("change", updateSettingsSummary);
+  extraPanel.addEventListener("toggle", updateSettingsSummary);
+  ctx.els.taskForm.addEventListener("invalid", (event) => {
+    let section = event.target.closest("details");
+    while (section) { section.open = true; section = section.parentElement.closest("details"); }
+  }, true);
 
-    function saveTaskFromForm(event) {
-      event.preventDefault();
-      const title = ctx.cleanText(ctx.els.taskTitle.value);
-      if (!title) {
-        ctx.showToast("Укажи название задачи");
-        ctx.els.taskTitle.focus();
-        return;
-      }
-      const undo = ctx.createUndoSnapshot();
-      const id = ctx.els.taskId.value || ctx.createId();
-      const existing = ctx.findTask(id);
-      const previousDate = existing?.date || existing?.deferredFromDate || "";
-      const deferred = deferredControl?.checked === true;
-      const scheduleMode = deferred ? "none" : ctx.getTaskScheduleMode();
-      const startTime = scheduleMode === "block" ? ctx.cleanTimeValue(ctx.els.taskStartTime.value) : "";
-      const endTime = scheduleMode === "block" ? ctx.cleanTimeValue(ctx.els.taskEndTime.value) : "";
-      const deadlineTime = ctx.cleanTimeValue(ctx.els.taskTime.value);
-      const repeatUntil = deferred || ctx.els.taskRepeat.value === "none" ? "" : ctx.normalizeDateKey(ctx.els.taskRepeatUntil.value, "");
-      if (scheduleMode === "block" && !ctx.isValidTimeBlock(startTime, endTime)) {
-        ctx.showToast("Укажи корректный временной блок");
-        return;
-      }
-      if (scheduleMode === "deadline" && !deadlineTime) {
-        ctx.showToast("Укажи время в плане или выбери режим «Без времени»");
-        ctx.els.taskTime.focus();
-        return;
-      }
-      if (repeatUntil && repeatUntil < (ctx.els.taskDate.value || ctx.getActiveDate())) {
-        ctx.showToast("Дата окончания повтора не может быть раньше начала");
-        ctx.els.taskRepeatUntil.focus();
-        return;
-      }
-      let checklist;
-      try {
-        checklist = global.RhythmTaskChecklist.normalizeItems(checklistEditor.getSteps(), ctx.createId);
-      } catch (error) {
-        ctx.showToast(error.message);
-        return;
-      }
-      const task = {
-        id,
-        title,
-        date: deferred ? null : ctx.els.taskDate.value || ctx.getActiveDate(),
-        dueDate: ctx.normalizeDateKey(dueDateField.value, ""),
-        dueTime: dueTimeField.value,
-        dueReminderOffset: dueTimeField.value && dueDateField.value ? dueReminderField.value : "none",
-        deferredFromDate: deferred ? existing?.date || existing?.deferredFromDate || "" : "",
-        scheduleMode,
-        startTime,
-        endTime,
-        time: scheduleMode === "block" ? endTime : scheduleMode === "none" ? "" : deadlineTime,
-        categoryId: ctx.els.taskCategoryId.value,
-        priority: ctx.els.taskPriority.value,
-        repeat: deferred ? "none" : ctx.els.taskRepeat.value,
-        repeatUntil,
-        sourceTaskId: existing?.sourceTaskId || "",
-        movedFromDate: existing?.movedFromDate || "",
-        customRepeat: !deferred && ctx.els.taskRepeat.value === "custom" ? ctx.getCustomRepeatFromForm() : {},
-        reminderOffset: scheduleMode === "none" ? "none" : ctx.els.taskReminder.value,
-        completed: existing?.completed || {},
-        acknowledgedOverdue: existing?.acknowledgedOverdue || {},
-        excludedDates: existing?.excludedDates || {},
-        notified: { ...(existing?.notified || {}) },
-        workNotified: { ...(existing?.workNotified || {}) },
-        checklist,
-        checklistLogs: existing?.checklistLogs || {},
-        createdAt: existing?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        studySubjectId: existing?.studySubjectId || "",
-        studyDetails: existing?.studyDetails || "",
-        studyAssignedDate: existing?.studyAssignedDate || "",
-        studyFileIds: existing?.studyFileIds || [],
-        sourceNoteId: existing?.sourceNoteId || "",
-      };
-      if (task.repeat !== "none" && task.dueDate) {
-        ctx.showToast("Отдельный срок доступен для разовой задачи. Для повтора используй время каждого дня.");
-        return;
-      }
-      if (dueTimeField.value && !task.dueDate) { ctx.showToast("Выбери дату сдачи"); dueDateField.focus(); return; }
+  function updateSettingsSummary() {
+    const parts = [];
+    if (ctx.els.taskRepeat.value !== "none") parts.push(ctx.els.taskRepeat.selectedOptions[0]?.textContent);
+    if (ctx.els.taskCategoryId.value) parts.push(ctx.els.taskCategoryId.selectedOptions[0]?.textContent);
+    if (ctx.els.taskPriority.value !== "medium") parts.push(ctx.els.taskPriority.selectedOptions[0]?.textContent);
+    settingsSummary.textContent = parts.filter(Boolean).join(" · ");
+    ctx.els.taskForm.querySelector("#taskWorkSummary").textContent = ctx.getTaskScheduleMode() === "block"
+      ? [ctx.els.taskStartTime.value, ctx.els.taskEndTime.value].filter(Boolean).join("–")
+      : ctx.getTaskScheduleMode() === "deadline" ? ctx.els.taskTime.value : "";
+    ctx.els.taskForm.querySelector("#taskDueSummary").textContent = dueDateField.value
+      ? `${formatDate(dueDateField.value)}${dueTimeField.value ? ` · ${dueTimeField.value}` : ""}` : "";
+  }
+  if (scopePanel && extraPanel) extraPanel.before(scopePanel);
+  deferredControl?.addEventListener("change", () => setDeferred(deferredControl.checked));
+  const checklistEditor = goalCheckpointEditor?.createGoalCheckpointEditor({
+    createId: ctx.createId, itemLabel: "Подзадача", itemsLabel: "Подзадачи", removeLabel: "Удалить подзадачу", maxItems: 50, showToast: ctx.showToast,
+    els: {
+      goalCheckpointInput: ctx.els.taskForm.querySelector("#taskChecklistInput"),
+      goalCheckpointList: ctx.els.taskForm.querySelector("#taskChecklistEditorList"),
+      goalCheckpointEmpty: ctx.els.taskForm.querySelector("#taskChecklistEmpty"),
+      addGoalCheckpoint: ctx.els.taskForm.querySelector("#addTaskChecklistItem"),
+    },
+  });
 
-      const isRecurringEdit = Boolean(existing && existing.repeat !== "none" && !existing.sourceTaskId);
-      if (existing && !isRecurringEdit && task.date && existing.date !== task.date) {
-        global.RhythmTaskChecklist.moveDate(task, existing.date || existing.deferredFromDate, task.date);
-        const previousDate = existing.date || (existing.completed?.[existing.dueDate] === true ? existing.dueDate : existing.deferredFromDate);
-        if (previousDate && task.completed[previousDate] === true) {
-          delete task.completed[previousDate];
-          task.completed[task.date] = true;
-        }
-      }
-      const repeatEditScope = getRepeatEditScope();
-      const notificationChanged = Boolean(existing && notificationScheduleChanged(existing, task));
-      const workChanged = existing && ["date", "scheduleMode", "startTime", "endTime", "time", "reminderOffset"].some((field) => String(existing[field] || "") !== String(task[field] || ""));
-      const dueChanged = existing && ["dueDate", "dueTime", "dueReminderOffset"].some((field) => String(existing[field] || "") !== String(task[field] || ""));
-      const savedTask = isRecurringEdit
-        ? ctx.updateRecurringTask(existing, task, editingOccurrenceDate || ctx.getActiveDate(), repeatEditScope)
-        : (ctx.upsertTask(task), task);
-      if (notificationChanged) {
-        clearStaleNotificationFlags(savedTask, {
-          currentDate: editingOccurrenceDate || task.date,
-          previousDate,
-          scope: isRecurringEdit ? repeatEditScope : "occurrence",
-          fields: task.dueDate ? [...(workChanged ? ["workNotified"] : []), ...(dueChanged ? ["notified"] : [])] : ["notified", "workNotified"],
-        });
-      }
-      if (ctx.saveState() === false) {
-        ctx.restoreState?.(undo);
-        return;
-      }
-      if (savedTask.date) ctx.setActiveDate(isRecurringEdit ? editingOccurrenceDate || ctx.getActiveDate() : savedTask.date);
-      resetTaskForm({ open: false });
-      ctx.render();
-      if (!savedTask.date) {
-        const later = document.querySelector("#laterTaskPanel");
-        if (later) later.open = true;
-      }
-      ctx.showToast(existing ? "Задача обновлена" : "Задача создана", { undo });
-      ctx.afterSave?.(savedTask, existing);
-    }
-
-    function fillTaskForm(task) {
-      resetInlineCategory();
-      ctx.els.taskFormPanel.classList.remove("is-collapsed");
-      if (ctx.els.taskFormHeading) ctx.els.taskFormHeading.textContent = "Редактировать задачу";
-      ctx.els.taskForm.querySelector('button[type="submit"]').textContent = "Сохранить";
-      if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Отмена";
-      ctx.els.taskId.value = task.id;
-      ctx.els.taskTitle.value = task.title;
-      checklistEditor.setSteps(task.checklist || []);
-      const isRecurringSeries = task.repeat !== "none" && !task.sourceTaskId;
-      editingOccurrenceDate = isRecurringSeries ? ctx.getActiveDate() : task.date;
-      ctx.els.taskDate.value = editingOccurrenceDate;
-      ctx.els.taskDate.disabled = isRecurringSeries;
-      if (deferredControl) {
-        deferredControl.disabled = isRecurringSeries || Boolean(task.studySubjectId);
-        deferredControl.checked = task.date === null;
-      }
-      ctx.els.taskTime.value = ctx.cleanTimeValue(task.time);
-      dueDateField.value = task.dueDate || (task.studySubjectId ? task.date : "") || "";
-      dueTimeField.value = task.dueTime || "";
-      dueReminderField.value = task.dueReminderOffset || "none";
-      ctx.setTaskScheduleMode(ctx.isTimeBlock(task) ? "block" : ctx.cleanTimeValue(task.time) ? "deadline" : "none");
-      ctx.els.taskStartTime.value = ctx.cleanTimeValue(task.startTime);
-      ctx.els.taskEndTime.value = ctx.cleanTimeValue(task.endTime);
-      ctx.els.taskCategoryId.value = task.categoryId || "";
-      ctx.els.taskPriority.value = task.priority || "medium";
-      ctx.els.taskRepeat.value = task.repeat || "none";
-      ctx.els.taskRepeatUntil.value = task.repeatUntil || "";
-      ctx.setCustomRepeatForm(task.customRepeat);
-      ctx.els.taskReminder.value = task.reminderOffset ?? (task.time ? "15" : "none");
-      ctx.syncTaskScheduleMode();
-      ctx.syncCustomRepeatPanel();
-      ctx.syncTaskTimePresets();
-      syncRepeatEditScope(isRecurringSeries, editingOccurrenceDate);
-      setDeferred(task.date === null);
-      const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
-      if (extra) extra.open = Boolean(task.categoryId || task.priority === "high" || task.priority === "low"
-        || task.repeat !== "none" || task.checklist?.length);
-      workPanel.open = ctx.getTaskScheduleMode() !== "none";
-      duePanel.open = Boolean(dueDateField.value);
-      ctx.markFormPristine?.(ctx.els.taskForm);
+  function saveTaskFromForm(event) {
+    event.preventDefault();
+    const title = ctx.cleanText(ctx.els.taskTitle.value);
+    if (!title) {
+      ctx.showToast("Укажи название задачи");
       ctx.els.taskTitle.focus();
-      updateSettingsSummary();
+      return;
     }
-
-    function resetTaskForm(options = {}) {
-      ctx.els.taskFormPanel.classList.toggle("is-collapsed", options.open === false);
-      if (ctx.els.taskFormHeading) ctx.els.taskFormHeading.textContent = "Новая задача";
-      ctx.els.taskForm.querySelector('button[type="submit"]').textContent = "Создать";
-      if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Очистить";
-      ctx.els.taskForm.reset();
-      checklistEditor.setSteps();
-      resetInlineCategory();
-      ctx.els.taskId.value = "";
-      editingOccurrenceDate = "";
-      ctx.els.taskDate.value = ctx.getActiveDate();
-      ctx.els.taskDate.disabled = false;
-      if (deferredControl) { deferredControl.checked = false; deferredControl.disabled = false; }
-      ctx.els.taskTime.value = "";
-      dueDateField.value = "";
-      dueTimeField.value = "";
-      dueReminderField.value = "none";
-      ctx.setTaskScheduleMode("none");
-      ctx.els.taskStartTime.value = "";
-      ctx.els.taskEndTime.value = "";
-      ctx.els.taskCategoryId.value = ctx.getDefaultCategoryId?.() || "";
-      ctx.els.taskPriority.value = "medium";
-      ctx.els.taskRepeat.value = "none";
-      ctx.els.taskRepeatUntil.value = "";
-      ctx.setCustomRepeatForm();
-      ctx.syncCustomRepeatPanel();
-      ctx.syncTaskScheduleMode();
-      ctx.els.taskReminder.value = "none";
-      ctx.syncTaskTimePresets();
-      syncRepeatEditScope(false);
-      const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
-      if (extra) extra.open = false;
-      workPanel.open = false;
-      duePanel.open = false;
-      setDeferred(false);
-      ctx.markFormPristine?.(ctx.els.taskForm);
-      updateSettingsSummary();
-      if (options.open === false) ctx.afterClose?.();
+    const undo = ctx.createUndoSnapshot();
+    const id = ctx.els.taskId.value || ctx.createId();
+    const existing = ctx.findTask(id);
+    const previousDate = existing?.date || existing?.deferredFromDate || "";
+    const deferred = deferredControl?.checked === true;
+    const scheduleMode = deferred ? "none" : ctx.getTaskScheduleMode();
+    const startTime = scheduleMode === "block" ? ctx.cleanTimeValue(ctx.els.taskStartTime.value) : "";
+    const endTime = scheduleMode === "block" ? ctx.cleanTimeValue(ctx.els.taskEndTime.value) : "";
+    const deadlineTime = ctx.cleanTimeValue(ctx.els.taskTime.value);
+    const repeatUntil = deferred || ctx.els.taskRepeat.value === "none" ? "" : ctx.normalizeDateKey(ctx.els.taskRepeatUntil.value, "");
+    if (scheduleMode === "block" && !ctx.isValidTimeBlock(startTime, endTime)) {
+      ctx.showToast("Укажи корректный временной блок");
+      return;
     }
-
-    function setDeferred(value) {
-      if (!deferredControl) return;
-      deferredControl.checked = value;
-      ctx.els.taskDate.required = !value;
-      const editingTask = ctx.els.taskId.value ? ctx.findTask(ctx.els.taskId.value) : null;
-      ctx.els.taskDate.disabled = value || Boolean(editingTask && editingTask.repeat !== "none" && !editingTask.sourceTaskId);
-      ctx.els.taskForm.classList.toggle("is-deferred", value);
-      if (value) {
-        ctx.setTaskScheduleMode("none");
-        ctx.els.taskRepeat.value = "none";
-        ctx.els.taskReminder.value = "none";
-        ctx.syncTaskScheduleMode();
-        ctx.syncCustomRepeatPanel();
-      }
-      ctx.els.taskRepeat.disabled = value;
+    if (scheduleMode === "deadline" && !deadlineTime) {
+      ctx.showToast("Укажи время в плане или выбери режим «Без времени»");
+      ctx.els.taskTime.focus();
+      return;
     }
-
-    function resetInlineCategory() {
-      const panel = ctx.els.taskForm.querySelector("#taskInlineCategory");
-      const name = ctx.els.taskForm.querySelector("#taskInlineCategoryName");
-      const color = ctx.els.taskForm.querySelector("#taskInlineCategoryColor");
-      if (panel) panel.open = false;
-      if (name) {
-        name.value = "";
-        name.setCustomValidity("");
-      }
-      if (color) color.value = "#00a78e";
+    if (repeatUntil && repeatUntil < (ctx.els.taskDate.value || ctx.getActiveDate())) {
+      ctx.showToast("Дата окончания повтора не может быть раньше начала");
+      ctx.els.taskRepeatUntil.focus();
+      return;
     }
-
-    function getRepeatEditScope() {
-      return ctx.els.taskRepeatEditScope?.querySelector('input[name="taskRepeatEditScope"]:checked')?.value || "occurrence";
+    let checklist;
+    try {
+      checklist = taskChecklist.normalizeItems(checklistEditor.getSteps(), ctx.createId);
+    } catch (error) {
+      ctx.showToast(error.message);
+      return;
     }
-
-    function syncRepeatEditScope(visible, dateKey = "") {
-      if (!ctx.els.taskRepeatEditScope) return;
-      ctx.els.taskRepeatEditScope.hidden = !visible;
-      if (!visible) return;
-      const occurrenceOption = ctx.els.taskRepeatEditScope.querySelector('input[value="occurrence"]');
-      if (occurrenceOption) occurrenceOption.checked = true;
-      updateRepeatEditHint("occurrence", dateKey);
+    const task = {
+      id,
+      title,
+      date: deferred ? null : ctx.els.taskDate.value || ctx.getActiveDate(),
+      dueDate: ctx.normalizeDateKey(dueDateField.value, ""),
+      dueTime: dueTimeField.value,
+      dueReminderOffset: dueTimeField.value && dueDateField.value ? dueReminderField.value : "none",
+      deferredFromDate: deferred ? existing?.date || existing?.deferredFromDate || "" : "",
+      scheduleMode,
+      startTime,
+      endTime,
+      time: scheduleMode === "block" ? endTime : scheduleMode === "none" ? "" : deadlineTime,
+      categoryId: ctx.els.taskCategoryId.value,
+      priority: ctx.els.taskPriority.value,
+      repeat: deferred ? "none" : ctx.els.taskRepeat.value,
+      repeatUntil,
+      sourceTaskId: existing?.sourceTaskId || "",
+      movedFromDate: existing?.movedFromDate || "",
+      customRepeat: !deferred && ctx.els.taskRepeat.value === "custom" ? ctx.getCustomRepeatFromForm() : {},
+      reminderOffset: scheduleMode === "none" ? "none" : ctx.els.taskReminder.value,
+      completed: existing?.completed || {},
+      acknowledgedOverdue: existing?.acknowledgedOverdue || {},
+      excludedDates: existing?.excludedDates || {},
+      notified: { ...(existing?.notified || {}) },
+      workNotified: { ...(existing?.workNotified || {}) },
+      checklist,
+      checklistLogs: existing?.checklistLogs || {},
+      createdAt: existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      studySubjectId: existing?.studySubjectId || "",
+      studyDetails: existing?.studyDetails || "",
+      studyAssignedDate: existing?.studyAssignedDate || "",
+      studyFileIds: existing?.studyFileIds || [],
+      sourceNoteId: existing?.sourceNoteId || "",
+    };
+    if (task.repeat !== "none" && task.dueDate) {
+      ctx.showToast("Отдельный срок доступен для разовой задачи. Для повтора используй время каждого дня.");
+      return;
     }
+    if (dueTimeField.value && !task.dueDate) { ctx.showToast("Выбери дату сдачи"); dueDateField.focus(); return; }
 
-    function updateRepeatEditHint(scope = getRepeatEditScope(), dateKey = editingOccurrenceDate) {
-      if (!ctx.els.taskRepeatEditHint) return;
-      const dateLabel = formatDate(dateKey);
-      if (scope === "following") {
-        ctx.els.taskRepeatEditHint.textContent = `Новая версия серии начнется ${dateLabel}. Прошлые дни не изменятся.`;
-      } else if (scope === "series") {
-        ctx.els.taskRepeatEditHint.textContent = "Изменения применятся ко всей серии, включая будущие даты.";
-      } else {
-        ctx.els.taskRepeatEditHint.textContent = `Изменится только ${dateLabel}. Остальная серия останется прежней.`;
+    const isRecurringEdit = Boolean(existing && existing.repeat !== "none" && !existing.sourceTaskId);
+    if (existing && !isRecurringEdit && task.date && existing.date !== task.date) {
+      taskChecklist.moveDate(task, existing.date || existing.deferredFromDate, task.date);
+      const previousDate = existing.date || (existing.completed?.[existing.dueDate] === true ? existing.dueDate : existing.deferredFromDate);
+      if (previousDate && task.completed[previousDate] === true) {
+        delete task.completed[previousDate];
+        task.completed[task.date] = true;
       }
     }
-
-    function formatDate(dateKey) {
-      const [year, month, day] = String(dateKey).split("-").map(Number);
-      if (!year || !month || !day) return dateKey;
-      return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" }).format(new Date(year, month - 1, day));
-    }
-
-    function notificationScheduleChanged(previous, next) {
-      return ["date", "scheduleMode", "startTime", "endTime", "time", "reminderOffset", "dueDate", "dueTime", "dueReminderOffset"]
-        .some((field) => String(previous?.[field] || "") !== String(next?.[field] || ""));
-    }
-
-    function clearStaleNotificationFlags(task, options = {}) {
-      (options.fields || ["notified", "workNotified"]).forEach((field) => {
-        task[field] ||= {};
-        if (options.scope === "series") {
-          Object.keys(task[field]).forEach((dateKey) => {
-            if (!options.currentDate || dateKey >= options.currentDate) delete task[field][dateKey];
-          });
-        } else {
-          delete task[field][options.currentDate]; delete task[field][options.previousDate];
-        }
+    const repeatEditScope = getRepeatEditScope();
+    const notificationChanged = Boolean(existing && notificationScheduleChanged(existing, task));
+    const workChanged = existing && ["date", "scheduleMode", "startTime", "endTime", "time", "reminderOffset"].some((field) => String(existing[field] || "") !== String(task[field] || ""));
+    const dueChanged = existing && ["dueDate", "dueTime", "dueReminderOffset"].some((field) => String(existing[field] || "") !== String(task[field] || ""));
+    const savedTask = isRecurringEdit
+      ? ctx.updateRecurringTask(existing, task, editingOccurrenceDate || ctx.getActiveDate(), repeatEditScope)
+      : (ctx.upsertTask(task), task);
+    if (notificationChanged) {
+      clearStaleNotificationFlags(savedTask, {
+        currentDate: editingOccurrenceDate || task.date,
+        previousDate,
+        scope: isRecurringEdit ? repeatEditScope : "occurrence",
+        fields: task.dueDate ? [...(workChanged ? ["workNotified"] : []), ...(dueChanged ? ["notified"] : [])] : ["notified", "workNotified"],
       });
     }
-
-    ctx.els.taskRepeatEditScope?.addEventListener("change", (event) => {
-      if (event.target?.name === "taskRepeatEditScope") updateRepeatEditHint(event.target.value);
-    });
-
-    return { fillTaskForm, resetTaskForm, saveTaskFromForm, setDeferred };
+    if (ctx.saveState() === false) {
+      ctx.restoreState?.(undo);
+      return;
+    }
+    if (savedTask.date) ctx.setActiveDate(isRecurringEdit ? editingOccurrenceDate || ctx.getActiveDate() : savedTask.date);
+    resetTaskForm({ open: false });
+    ctx.render();
+    if (!savedTask.date) {
+      const later = document.querySelector("#laterTaskPanel");
+      if (later) later.open = true;
+    }
+    ctx.showToast(existing ? "Задача обновлена" : "Задача создана", { undo });
+    ctx.afterSave?.(savedTask, existing);
   }
 
-  const api = { createTaskForm };
-  global.RhythmTaskForm = api;
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-})(typeof window !== "undefined" ? window : globalThis);
+  function fillTaskForm(task) {
+    resetInlineCategory();
+    ctx.els.taskFormPanel.classList.remove("is-collapsed");
+    if (ctx.els.taskFormHeading) ctx.els.taskFormHeading.textContent = "Редактировать задачу";
+    ctx.els.taskForm.querySelector('button[type="submit"]').textContent = "Сохранить";
+    if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Отмена";
+    ctx.els.taskId.value = task.id;
+    ctx.els.taskTitle.value = task.title;
+    checklistEditor.setSteps(task.checklist || []);
+    const isRecurringSeries = task.repeat !== "none" && !task.sourceTaskId;
+    editingOccurrenceDate = isRecurringSeries ? ctx.getActiveDate() : task.date;
+    ctx.els.taskDate.value = editingOccurrenceDate;
+    ctx.els.taskDate.disabled = isRecurringSeries;
+    if (deferredControl) {
+      deferredControl.disabled = isRecurringSeries || Boolean(task.studySubjectId);
+      deferredControl.checked = task.date === null;
+    }
+    ctx.els.taskTime.value = ctx.cleanTimeValue(task.time);
+    dueDateField.value = task.dueDate || (task.studySubjectId ? task.date : "") || "";
+    dueTimeField.value = task.dueTime || "";
+    dueReminderField.value = task.dueReminderOffset || "none";
+    ctx.setTaskScheduleMode(ctx.isTimeBlock(task) ? "block" : ctx.cleanTimeValue(task.time) ? "deadline" : "none");
+    ctx.els.taskStartTime.value = ctx.cleanTimeValue(task.startTime);
+    ctx.els.taskEndTime.value = ctx.cleanTimeValue(task.endTime);
+    ctx.els.taskCategoryId.value = task.categoryId || "";
+    ctx.els.taskPriority.value = task.priority || "medium";
+    ctx.els.taskRepeat.value = task.repeat || "none";
+    ctx.els.taskRepeatUntil.value = task.repeatUntil || "";
+    ctx.setCustomRepeatForm(task.customRepeat);
+    ctx.els.taskReminder.value = task.reminderOffset ?? (task.time ? "15" : "none");
+    ctx.syncTaskScheduleMode();
+    ctx.syncCustomRepeatPanel();
+    ctx.syncTaskTimePresets();
+    syncRepeatEditScope(isRecurringSeries, editingOccurrenceDate);
+    setDeferred(task.date === null);
+    const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
+    if (extra) extra.open = Boolean(task.categoryId || task.priority === "high" || task.priority === "low"
+      || task.repeat !== "none" || task.checklist?.length);
+    workPanel.open = ctx.getTaskScheduleMode() !== "none";
+    duePanel.open = Boolean(dueDateField.value);
+    ctx.markFormPristine?.(ctx.els.taskForm);
+    ctx.els.taskTitle.focus();
+    updateSettingsSummary();
+  }
+
+  function resetTaskForm(options = {}) {
+    ctx.els.taskFormPanel.classList.toggle("is-collapsed", options.open === false);
+    if (ctx.els.taskFormHeading) ctx.els.taskFormHeading.textContent = "Новая задача";
+    ctx.els.taskForm.querySelector('button[type="submit"]').textContent = "Создать";
+    if (ctx.els.resetTaskForm) ctx.els.resetTaskForm.textContent = "Очистить";
+    ctx.els.taskForm.reset();
+    checklistEditor.setSteps();
+    resetInlineCategory();
+    ctx.els.taskId.value = "";
+    editingOccurrenceDate = "";
+    ctx.els.taskDate.value = ctx.getActiveDate();
+    ctx.els.taskDate.disabled = false;
+    if (deferredControl) { deferredControl.checked = false; deferredControl.disabled = false; }
+    ctx.els.taskTime.value = "";
+    dueDateField.value = "";
+    dueTimeField.value = "";
+    dueReminderField.value = "none";
+    ctx.setTaskScheduleMode("none");
+    ctx.els.taskStartTime.value = "";
+    ctx.els.taskEndTime.value = "";
+    ctx.els.taskCategoryId.value = ctx.getDefaultCategoryId?.() || "";
+    ctx.els.taskPriority.value = "medium";
+    ctx.els.taskRepeat.value = "none";
+    ctx.els.taskRepeatUntil.value = "";
+    ctx.setCustomRepeatForm();
+    ctx.syncCustomRepeatPanel();
+    ctx.syncTaskScheduleMode();
+    ctx.els.taskReminder.value = "none";
+    ctx.syncTaskTimePresets();
+    syncRepeatEditScope(false);
+    const extra = ctx.els.taskForm.querySelector("#taskExtraFields");
+    if (extra) extra.open = false;
+    workPanel.open = false;
+    duePanel.open = false;
+    setDeferred(false);
+    ctx.markFormPristine?.(ctx.els.taskForm);
+    updateSettingsSummary();
+    if (options.open === false) ctx.afterClose?.();
+  }
+
+  function setDeferred(value) {
+    if (!deferredControl) return;
+    deferredControl.checked = value;
+    ctx.els.taskDate.required = !value;
+    const editingTask = ctx.els.taskId.value ? ctx.findTask(ctx.els.taskId.value) : null;
+    ctx.els.taskDate.disabled = value || Boolean(editingTask && editingTask.repeat !== "none" && !editingTask.sourceTaskId);
+    ctx.els.taskForm.classList.toggle("is-deferred", value);
+    if (value) {
+      ctx.setTaskScheduleMode("none");
+      ctx.els.taskRepeat.value = "none";
+      ctx.els.taskReminder.value = "none";
+      ctx.syncTaskScheduleMode();
+      ctx.syncCustomRepeatPanel();
+    }
+    ctx.els.taskRepeat.disabled = value;
+  }
+
+  function resetInlineCategory() {
+    const panel = ctx.els.taskForm.querySelector("#taskInlineCategory");
+    const name = ctx.els.taskForm.querySelector("#taskInlineCategoryName");
+    const color = ctx.els.taskForm.querySelector("#taskInlineCategoryColor");
+    if (panel) panel.open = false;
+    if (name) {
+      name.value = "";
+      name.setCustomValidity("");
+    }
+    if (color) color.value = "#00a78e";
+  }
+
+  function getRepeatEditScope() {
+    return ctx.els.taskRepeatEditScope?.querySelector('input[name="taskRepeatEditScope"]:checked')?.value || "occurrence";
+  }
+
+  function syncRepeatEditScope(visible, dateKey = "") {
+    if (!ctx.els.taskRepeatEditScope) return;
+    ctx.els.taskRepeatEditScope.hidden = !visible;
+    if (!visible) return;
+    const occurrenceOption = ctx.els.taskRepeatEditScope.querySelector('input[value="occurrence"]');
+    if (occurrenceOption) occurrenceOption.checked = true;
+    updateRepeatEditHint("occurrence", dateKey);
+  }
+
+  function updateRepeatEditHint(scope = getRepeatEditScope(), dateKey = editingOccurrenceDate) {
+    if (!ctx.els.taskRepeatEditHint) return;
+    const dateLabel = formatDate(dateKey);
+    if (scope === "following") {
+      ctx.els.taskRepeatEditHint.textContent = `Новая версия серии начнется ${dateLabel}. Прошлые дни не изменятся.`;
+    } else if (scope === "series") {
+      ctx.els.taskRepeatEditHint.textContent = "Изменения применятся ко всей серии, включая будущие даты.";
+    } else {
+      ctx.els.taskRepeatEditHint.textContent = `Изменится только ${dateLabel}. Остальная серия останется прежней.`;
+    }
+  }
+
+  function formatDate(dateKey) {
+    const [year, month, day] = String(dateKey).split("-").map(Number);
+    if (!year || !month || !day) return dateKey;
+    return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" }).format(new Date(year, month - 1, day));
+  }
+
+  function notificationScheduleChanged(previous, next) {
+    return ["date", "scheduleMode", "startTime", "endTime", "time", "reminderOffset", "dueDate", "dueTime", "dueReminderOffset"]
+      .some((field) => String(previous?.[field] || "") !== String(next?.[field] || ""));
+  }
+
+  function clearStaleNotificationFlags(task, options = {}) {
+    (options.fields || ["notified", "workNotified"]).forEach((field) => {
+      task[field] ||= {};
+      if (options.scope === "series") {
+        Object.keys(task[field]).forEach((dateKey) => {
+          if (!options.currentDate || dateKey >= options.currentDate) delete task[field][dateKey];
+        });
+      } else {
+        delete task[field][options.currentDate]; delete task[field][options.previousDate];
+      }
+    });
+  }
+
+  ctx.els.taskRepeatEditScope?.addEventListener("change", (event) => {
+    if (event.target?.name === "taskRepeatEditScope") updateRepeatEditHint(event.target.value);
+  });
+
+  return { fillTaskForm, resetTaskForm, saveTaskFromForm, setDeferred };
+}
+
+const api = { createTaskForm };
+
+export { createTaskForm };
+export default api;

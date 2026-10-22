@@ -5,7 +5,7 @@ const { pathToFileURL } = require("node:url");
 const { chromium } = require("playwright-core");
 
 (async () => {
-  const browser = await chromium.launch({ channel: "chrome", headless: true });
+  const browser = await chromium.launch({ channel: "chrome", headless: true, args: ["--allow-file-access-from-files"] });
   const captures = path.resolve(__dirname, "../.wrangler"); fs.mkdirSync(captures, { recursive: true });
   try {
     for (const width of [390, 1440]) {

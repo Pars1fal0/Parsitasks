@@ -1,30 +1,30 @@
-(function (global) {
-  const SESSION_KEY = "rhythm-supabase-session-v1";
+const SESSION_KEY = "rhythm-supabase-session-v1";
 
-  function hasSession() {
-    try {
-      const session = JSON.parse(global.localStorage?.getItem(SESSION_KEY) || "null");
-      return Boolean(session?.access_token && session?.user?.id);
-    } catch {
-      return false;
-    }
+function hasSession() {
+  try {
+    const session = JSON.parse(globalThis.localStorage?.getItem(SESSION_KEY) || "null");
+    return Boolean(session?.access_token && session?.user?.id);
+  } catch {
+    return false;
   }
+}
 
-  function route(path) {
-    if (global.location?.protocol !== "file:") return path;
-    if (path.startsWith("/auth")) return `auth.html${path.includes("?") ? path.slice(path.indexOf("?")) : ""}`;
-    if (path === "/app") return "index.html";
-    return "landing.html";
-  }
+function route(path) {
+  if (globalThis.location?.protocol !== "file:") return path;
+  if (path.startsWith("/auth")) return `auth.html${path.includes("?") ? path.slice(path.indexOf("?")) : ""}`;
+  if (path === "/app") return "index.html";
+  return "landing.html";
+}
 
-  const recoveryHash = String(global.location?.hash || "");
+function initialize() {
+  const recoveryHash = String(globalThis.location?.hash || "");
   if (recoveryHash.includes("type=recovery") && recoveryHash.includes("access_token=")) {
-    global.location.replace(`${route("/auth")}${recoveryHash}`);
+    globalThis.location.replace(`${route("/auth")}${recoveryHash}`);
     return;
   }
 
   document.querySelectorAll("a[href^='/']").forEach((link) => {
-    const url = new URL(link.href, global.location.href);
+    const url = new URL(link.href, globalThis.location.href);
     link.href = route(`${url.pathname}${url.search}`);
   });
 
@@ -37,4 +37,6 @@
     link.href = route("/app");
     link.textContent = "Моё пространство";
   });
-})(typeof window !== "undefined" ? window : globalThis);
+}
+
+initialize();

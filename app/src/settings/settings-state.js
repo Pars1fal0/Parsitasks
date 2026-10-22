@@ -1,82 +1,85 @@
-(function (global) {
-  function createSettingsState(options = {}) {
-    const validBackupSchedules = options.validBackupSchedules || ["0", "5", "15", "30", "60"];
+import * as accentColors from "./accent-colors.js";
+import * as navigationPreferencesModule from "./navigation-preferences.js";
+import * as reminderPolicy from "../platform/reminder-policy.js";
 
-    function normalizeThemePreference(value) {
-      return ["dark", "light", "system"].includes(value) ? value : "dark";
-    }
+function createSettingsState(options = {}) {
+  const validBackupSchedules = options.validBackupSchedules || ["0", "5", "15", "30", "60"];
 
-    function normalizeAccentPreference(value) {
-      const colors = global.RhythmAccentColors || require("./accent-colors.js");
-      return colors.normalize(value);
-    }
+  function normalizeThemePreference(value) {
+    return ["dark", "light", "system"].includes(value) ? value : "dark";
+  }
 
-    function normalizeNotificationSetting(value) {
-      return value === "off" ? "off" : "on";
-    }
+  function normalizeAccentPreference(value) {
+    const colors = accentColors;
+    return colors.normalize(value);
+  }
 
-    function normalizeBackupSchedule(value) {
-      const schedule = String(value ?? "5");
-      return validBackupSchedules.includes(schedule) ? schedule : "5";
-    }
+  function normalizeNotificationSetting(value) {
+    return value === "off" ? "off" : "on";
+  }
 
-    function normalizeFirstDayOfWeek(value) {
-      return value === "sunday" ? "sunday" : "monday";
-    }
+  function normalizeBackupSchedule(value) {
+    const schedule = String(value ?? "5");
+    return validBackupSchedules.includes(schedule) ? schedule : "5";
+  }
 
-    function normalizeDensityPreference(value) {
-      return value === "compact" ? "compact" : "comfortable";
-    }
+  function normalizeFirstDayOfWeek(value) {
+    return value === "sunday" ? "sunday" : "monday";
+  }
 
-    function normalizeTimeFormat(value) {
-      return value === "12" ? "12" : "24";
-    }
+  function normalizeDensityPreference(value) {
+    return value === "compact" ? "compact" : "comfortable";
+  }
 
-    function normalizeRemoteSyncEnabled(value) {
-      return value === true || value === "on" ? "on" : "off";
-    }
+  function normalizeTimeFormat(value) {
+    return value === "12" ? "12" : "24";
+  }
 
-    function normalizeImportedSettings(settings = {}) {
-      return {
-        accentPreference: normalizeAccentPreference(settings.accentPreference),
-        backupSchedule: normalizeBackupSchedule(settings.backupSchedule),
-        densityPreference: normalizeDensityPreference(settings.densityPreference),
-        firstDayOfWeek: normalizeFirstDayOfWeek(settings.firstDayOfWeek),
-        notificationSetting: normalizeNotificationSetting(settings.notificationSetting),
-        navigationPreferences: global.RhythmNavigationPreferences?.normalize(settings.navigationPreferences) || { hidden: [], mobile: ["tasks", "timeline", "habits", "overview"] },
-        quietHours: global.RhythmReminderPolicy?.normalizeQuietHours(settings.quietHours) || { enabled: false, start: "22:00", end: "08:00" },
-        themePreference: normalizeThemePreference(settings.themePreference),
-        timeFormat: normalizeTimeFormat(settings.timeFormat),
-      };
-    }
+  function normalizeRemoteSyncEnabled(value) {
+    return value === true || value === "on" ? "on" : "off";
+  }
 
-    function createRemoteUiSettings() {
-      // Account preferences live in state.profile; credentials and device settings never enter ui_state.
-      return {};
-    }
-
-    function isRemoteVersionNewer(remoteUpdatedAt, ...localAnchors) {
-      if (!remoteUpdatedAt) return false;
-      const latestLocal = localAnchors.filter(Boolean).sort().at(-1) || "";
-      return !latestLocal || remoteUpdatedAt > latestLocal;
-    }
-
+  function normalizeImportedSettings(settings = {}) {
     return {
-      createRemoteUiSettings,
-      isRemoteVersionNewer,
-      normalizeBackupSchedule,
-      normalizeAccentPreference,
-      normalizeDensityPreference,
-      normalizeFirstDayOfWeek,
-      normalizeImportedSettings,
-      normalizeNotificationSetting,
-      normalizeRemoteSyncEnabled,
-      normalizeThemePreference,
-      normalizeTimeFormat,
+      accentPreference: normalizeAccentPreference(settings.accentPreference),
+      backupSchedule: normalizeBackupSchedule(settings.backupSchedule),
+      densityPreference: normalizeDensityPreference(settings.densityPreference),
+      firstDayOfWeek: normalizeFirstDayOfWeek(settings.firstDayOfWeek),
+      notificationSetting: normalizeNotificationSetting(settings.notificationSetting),
+      navigationPreferences: navigationPreferencesModule?.normalize(settings.navigationPreferences) || { hidden: [], mobile: ["tasks", "timeline", "habits", "overview"] },
+      quietHours: reminderPolicy?.normalizeQuietHours(settings.quietHours) || { enabled: false, start: "22:00", end: "08:00" },
+      themePreference: normalizeThemePreference(settings.themePreference),
+      timeFormat: normalizeTimeFormat(settings.timeFormat),
     };
   }
 
-  const api = { createSettingsState };
-  global.RhythmSettingsState = api;
-  if (typeof module !== "undefined" && module.exports) module.exports = api;
-})(typeof window !== "undefined" ? window : globalThis);
+  function createRemoteUiSettings() {
+    // Account preferences live in state.profile; credentials and device settings never enter ui_state.
+    return {};
+  }
+
+  function isRemoteVersionNewer(remoteUpdatedAt, ...localAnchors) {
+    if (!remoteUpdatedAt) return false;
+    const latestLocal = localAnchors.filter(Boolean).sort().at(-1) || "";
+    return !latestLocal || remoteUpdatedAt > latestLocal;
+  }
+
+  return {
+    createRemoteUiSettings,
+    isRemoteVersionNewer,
+    normalizeBackupSchedule,
+    normalizeAccentPreference,
+    normalizeDensityPreference,
+    normalizeFirstDayOfWeek,
+    normalizeImportedSettings,
+    normalizeNotificationSetting,
+    normalizeRemoteSyncEnabled,
+    normalizeThemePreference,
+    normalizeTimeFormat,
+  };
+}
+
+const api = { createSettingsState };
+
+export { createSettingsState };
+export default api;
