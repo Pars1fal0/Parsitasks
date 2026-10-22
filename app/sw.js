@@ -99,6 +99,7 @@ const APP_SHELL = [
   "src/journal/journal-editor.js",
   "src/journal/journal-view.js",
   "src/notes/notes-view.js",
+  "src/board/board-geometry.js",
   "src/board/board-view.js",
   "src/nutrition/nutrition-model.js",
   "src/nutrition/nutrition-controller.js",
