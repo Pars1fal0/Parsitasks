@@ -95,6 +95,7 @@ export function wireServices() {
   });
 
   googleCalendarApi = googleCalendarApiModule.createGoogleCalendarApi({
+    getOwner: () => remoteAuth.getSession()?.user?.id || "",
     getAccessToken: async () => (await remoteAuth.ensureFreshSession().catch(() => null))?.access_token || "",
   });
 
@@ -107,6 +108,8 @@ export function wireServices() {
     formatDate: formatBackupDate,
     getAccessToken: () => remoteAuth.getSession()?.access_token || "",
     getState: () => app.state,
+    getOwner: () => remoteAuth.getSession()?.user?.id || "",
+    replaceState: (state) => { app.state = state; },
     getTimeZone: () => app.state.profile?.timeZone || "Europe/Moscow",
     render,
     saveState,

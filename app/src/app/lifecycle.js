@@ -14,7 +14,7 @@ import { habitStatusOnDate } from "./queries.js";
 import { confirmDialog, googleCalendarController, pwaController, remoteAuth, remoteSync, saveStatusView } from "./services.js";
 import { applyAccountPreferences, applySettingsPreferences, applyThemePreference, latestIsoDate, migrateAccountPreferences, renderRemoteSyncStatus, renderSettingsBackupStatus, saveUiState, scheduleRemotePush } from "./settings.js";
 import { appEvents, appShellController, dailyPulseController, notificationsController, studyController, viewRenderer, workspaceGuide } from "./shell.js";
-import { cleanText, initialStateLoad, parseDate, stateController, storage, toDateKey } from "./state.js";
+import { cleanText, initialStateLoad, parseDate, stateController, storage, todayKey, toDateKey } from "./state.js";
 import { deviceSyncController, remoteAuthController, remoteDataController, remoteSyncWorkflow, settingsController } from "./sync.js";
 import { renderGoals, resetGoalForm } from "./task-actions.js";
 import { goalsView, journalView, notesView, tasksView, timelineView } from "./views.js";
@@ -87,7 +87,7 @@ export async function init() {
   renderSettingsBackupStatus();
   renderRemoteSyncStatus();
   updateFileBackupStatus();
-  if (goalActivity.reconcileGoalStatuses(app.state, { todayKey: toDateKey(new Date()), habitStatusOnDate })) {
+  if (goalActivity.reconcileGoalStatuses(app.state, { todayKey: todayKey(), habitStatusOnDate })) {
     saveState({ skipBackup: true });
   }
   render();
@@ -183,7 +183,7 @@ export async function synchronizeAuthenticatedAccount() {
 }
 
 export function handleDateRollover() {
-  const nextToday = toDateKey(new Date());
+  const nextToday = todayKey();
   const rollover = dateRollover.resolveDateRollover(app.activeDate, app.currentToday, nextToday);
   if (!rollover.changed) return;
   app.currentToday = rollover.today;
@@ -197,6 +197,12 @@ export function handleDateRollover() {
 }
 
 export function render() {
+  const rollover = dateRollover.resolveDateRollover(app.activeDate, app.currentToday, todayKey());
+  if (rollover.changed) {
+    app.currentToday = rollover.today;
+    app.activeDate = rollover.activeDate;
+    saveUiState();
+  }
   applyAccountPreferences();
   appShellController.render();
   workspaceGuide.render();
@@ -266,7 +272,7 @@ export async function shiftDate(days) {
 
 export async function goToday() {
   if (!(await confirmDiscardOpenForms())) return;
-  app.activeDate = toDateKey(new Date());
+  app.activeDate = todayKey();
   saveUiState();
   resetTaskForm({ open: false });
   resetHabitForm({ open: false });

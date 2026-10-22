@@ -79,13 +79,14 @@ const { chromium } = require("playwright-core");
     assert.equal(await page.locator("#appToast").isVisible(), false);
 
     await go("habits", "#habitsView");
-    const waterQuickAdd = page.locator('[data-habit-id="water"] .habit-quick-adds button');
+    const waterQuickAdd = page.locator('[data-habit-id="water"] .habit-quick-adds button:not(.habit-extra-decrement)');
     assert.equal(await waterQuickAdd.count(), 1);
-    assert.match(await waterQuickAdd.innerText(), /\+5/);
+    assert.match(await waterQuickAdd.textContent(), /\+5/);
     await page.locator('[data-habit-id="water"] .habit-stepper').last().click();
     assert.equal((await stored()).habits[0].logs[dates.today], 3);
     await page.locator("#appToast").getByRole("button", { name: "Отменить", exact: true }).click();
     assert.equal((await stored()).habits[0].logs[dates.today], 2);
+    await page.locator('[data-habit-id="water"] .habit-number-more > summary').click();
     await waterQuickAdd.click();
     assert.equal((await stored()).habits[0].logs[dates.today], 7);
     await page.locator("#appToast .toast-close").click();
@@ -121,7 +122,7 @@ const { chromium } = require("playwright-core");
 
     await go("calendar/week", "#calendarSchedule");
     assert.equal(await page.locator(".calendar-time-column").count(), 7);
-    const dayButton = page.locator(`.calendar-time-column:has(.calendar-time-day[data-date="${dates.tomorrow}"]) .calendar-time-heading`);
+    const dayButton = page.locator(`.calendar-week-strip-day[data-date="${dates.tomorrow}"]`);
     if (await dayButton.count()) {
       await dayButton.click();
       assert.equal(await page.locator("#activeDate").inputValue(), dates.tomorrow);
@@ -142,7 +143,10 @@ const { chromium } = require("playwright-core");
           assert.equal(await page.locator(".habit-number-row").evaluateAll((rows) => rows.every((row) => {
             const input = row.querySelector("input"), plus = row.querySelectorAll(".habit-stepper")[1];
             const field = input.getBoundingClientRect(), button = plus.getBoundingClientRect(), bounds = row.getBoundingClientRect();
-            return field.width >= 90 && Math.abs(field.top - button.top) < 2 && button.left - field.right <= 8
+            const style = getComputedStyle(input), canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d"); context.font = style.font;
+            const textWidth = context.measureText(input.value).width + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            return field.width >= textWidth && Math.abs(field.top - button.top) < 2 && button.left - field.right <= 8
               && [...row.children].every((child) => child.getBoundingClientRect().right <= bounds.right + 1);
           })), true, `number habit controls are clipped or separated at ${width}`);
         }

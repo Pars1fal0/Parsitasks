@@ -58,7 +58,7 @@ export function searchKnowledge(state, query, options = {}) {
       results.push({
         id: `task:${task.id}`,
         title: task.title || "Задача",
-        url: `${baseUrl}/#tasks`,
+        url: `${baseUrl}/app#tasks`,
         type: "task",
       });
     }
@@ -69,7 +69,7 @@ export function searchKnowledge(state, query, options = {}) {
       results.push({
         id: `habit:${habit.id}`,
         title: habit.title || "Привычка",
-        url: `${baseUrl}/#habits`,
+        url: `${baseUrl}/app#habits`,
         type: "habit",
       });
     }
@@ -81,7 +81,7 @@ export function searchKnowledge(state, query, options = {}) {
       results.push({
         id: `goal:${goal.id}`,
         title: goal.title || "Цель",
-        url: `${baseUrl}/#goals`,
+        url: `${baseUrl}/app#goals`,
         type: "goal",
       });
     }
@@ -93,7 +93,7 @@ export function searchKnowledge(state, query, options = {}) {
       results.push({
         id: `journal:${entry.id}`,
         title: `Дневник за ${entry.date}`,
-        url: `${baseUrl}/#journal`,
+        url: `${baseUrl}/app#journal`,
         type: "journal",
       });
     }
@@ -141,7 +141,7 @@ export function fetchKnowledge(state, compoundId, options = {}) {
         repeatUntil: task.repeatUntil || "",
         category,
       }),
-      url: `${baseUrl}/#tasks`,
+      url: `${baseUrl}/app#tasks`,
       metadata: { type: "task" },
     };
   }
@@ -160,7 +160,7 @@ export function fetchKnowledge(state, compoundId, options = {}) {
         repeat: habit.repeat || "daily",
         archived: habit.archived === true,
       }),
-      url: `${baseUrl}/#habits`,
+      url: `${baseUrl}/app#habits`,
       metadata: { type: "habit" },
     };
   }
@@ -173,7 +173,7 @@ export function fetchKnowledge(state, compoundId, options = {}) {
       id: compoundId,
       title: `Дневник за ${entry.date}`,
       text: entry.text || "",
-      url: `${baseUrl}/#journal`,
+      url: `${baseUrl}/app#journal`,
       metadata: { type: "journal", date: entry.date },
     };
   }
@@ -184,7 +184,7 @@ export function fetchKnowledge(state, compoundId, options = {}) {
     id: compoundId,
     title: goal.title || "Цель",
     text: JSON.stringify(serializeGoal(goal, state, options.today || new Date().toISOString().slice(0, 10))),
-    url: `${baseUrl}/#goals`,
+    url: `${baseUrl}/app#goals`,
     metadata: { type: "goal" },
   };
 }

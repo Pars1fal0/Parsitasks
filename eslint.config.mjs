@@ -3,7 +3,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["node_modules/", "dist/", "web-dist/", ".web-build-*/", ".wrangler-build/", ".release-candidate/", "docs/", "app/assets/vendor/"],
+    ignores: ["node_modules/", "dist/", "web-dist/", ".web-build-*/", ".wrangler/", ".wrangler-build/", ".release-candidate/", "docs/", "app/assets/vendor/"],
   },
   js.configs.recommended,
   {

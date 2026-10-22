@@ -6,6 +6,7 @@ const WEEKDAYS = ["Воскресенье", "Понедельник", "Втор�
 const BASE_URL = "https://parsitasks.ru";
 
 function createStudyController(ctx) {
+  const today = () => ctx.todayKey?.() || localDateKey(new Date());
   const root = document.querySelector("#studyView");
   const homeworkForm = root.querySelector("#studyHomeworkForm");
   const lessonForm = root.querySelector("#studyLessonForm");
@@ -344,7 +345,7 @@ function createStudyController(ctx) {
       suggestedTime = "";
       deadlineTimeEdited = false;
       homeworkForm.elements.id.value = "";
-      homeworkForm.elements.date.value = localDateKey(new Date());
+      homeworkForm.elements.date.value = today();
       draftOwner = local.owner();
       const restored = homeworkDraft.restore();
       deadlineTimeEdited = Boolean(restored);
@@ -357,7 +358,7 @@ function createStudyController(ctx) {
     viewedDateKey = ctx.getActiveDate();
     viewedWeekMonday = studyModel.mondayKey(viewedDateKey);
     if (!local.read("study-homework-draft") && !homeworkForm.elements.id.value && !homeworkForm.elements.title.value) {
-      homeworkForm.elements.date.value = localDateKey(new Date());
+      homeworkForm.elements.date.value = today();
     }
     renderHomework(state);
     syncWeekCycleForm(state.studyWeekCycle);
@@ -368,7 +369,7 @@ function createStudyController(ctx) {
     const open = (state.tasks || []).filter((task) => task.studySubjectId && task.completed?.[task.date || task.dueDate] !== true).length;
     root.querySelector("#studySummary").textContent = open ? `${open} ${plural(open, "задание", "задания", "заданий")} ${open === 1 ? "ждёт" : "ждут"} выполнения`
       : state.tasks.some((task) => task.studySubjectId) ? "Все домашние задания выполнены" : "Домашних заданий пока нет";
-    if (!homeworkForm.elements.id.value && !homeworkForm.elements.date.value) homeworkForm.elements.date.value = localDateKey(new Date());
+    if (!homeworkForm.elements.id.value && !homeworkForm.elements.date.value) homeworkForm.elements.date.value = today();
     if (ctx.getUserId() && ctx.getUserId() !== statusUserId && !busy) refreshStatus();
   }
 
@@ -376,7 +377,7 @@ function createStudyController(ctx) {
     const filter = root.querySelector("#studyHomeworkFilter").value;
     const subjects = new Map(state.studySubjects.map((item) => [item.id, item]));
     const files = new Map(state.studyFiles.map((item) => [item.id, item]));
-    const todayKey = localDateKey(new Date());
+    const todayKey = today();
     const tasks = state.tasks.filter((task) => task.studySubjectId && includesSubject(subjects.get(task.studySubjectId)) && (homeworkHistory ? !studyModel.isHomeworkVisible(task, todayKey) : studyModel.isHomeworkVisible(task, todayKey)) && (filter === "all" || task.studySubjectId === filter))
       .sort((a, b) => Number(a.completed?.[a.date || a.dueDate] === true) - Number(b.completed?.[b.date || b.dueDate] === true)
         || String(a.dueDate || a.date).localeCompare(String(b.dueDate || b.date)) || String(a.dueTime || a.time).localeCompare(String(b.dueTime || b.time)));
@@ -437,8 +438,8 @@ function createStudyController(ctx) {
     scheduleDate.value = viewedDateKey;
     root.querySelectorAll("[data-study-schedule-mode]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.studyScheduleMode === scheduleMode)));
     root.querySelector("#studyCurrentWeek").disabled = scheduleMode === "day"
-      ? viewedDateKey === localDateKey(new Date())
-      : viewedWeekMonday === studyModel.mondayKey(localDateKey(new Date()));
+      ? viewedDateKey === today()
+      : viewedWeekMonday === studyModel.mondayKey(today());
     for (const [id, dayLabel, weekLabel] of [["studyPreviousWeek", "Предыдущий день", "Предыдущая неделя"], ["studyNextWeek", "Следующий день", "Следующая неделя"]]) {
       const button = root.querySelector(`#${id}`);
       const label = scheduleMode === "day" ? dayLabel : weekLabel;
@@ -484,7 +485,7 @@ function createStudyController(ctx) {
   function syncWeekCycleForm(cycle = {}) {
     const key = `${cycle.anchorMonday || ""}|${cycle.anchorParity || ""}|${cycle.updatedAt || ""}`;
     if (key === displayedCycleKey) return;
-    weekCycleForm.elements.anchorMonday.value = cycle.anchorMonday || studyModel.mondayKey(localDateKey(new Date()));
+    weekCycleForm.elements.anchorMonday.value = cycle.anchorMonday || studyModel.mondayKey(today());
     weekCycleForm.elements.anchorParity.value = cycle.anchorParity || "even";
     displayedCycleKey = key;
   }
@@ -497,7 +498,7 @@ function createStudyController(ctx) {
   }
 
   function changePeriod(direction) {
-    const dateKey = direction === 0 ? localDateKey(new Date())
+    const dateKey = direction === 0 ? today()
       : addDaysKey(ctx.getActiveDate(), direction * (scheduleMode === "day" ? 1 : 7));
     ctx.setActiveDate(dateKey);
   }
@@ -631,7 +632,7 @@ function createStudyController(ctx) {
       reminderOffset: existing?.reminderOffset || "none",
       completed: { ...existing?.completed }, acknowledgedOverdue: { ...existing?.acknowledgedOverdue }, excludedDates: {}, notified: {},
       checklist: existing?.checklist || [], checklistLogs: JSON.parse(JSON.stringify(existing?.checklistLogs || {})),
-      studySubjectId: form.subjectId.value, studyDetails: form.details.value.trim(), studyAssignedDate: existing?.studyAssignedDate || localDateKey(new Date()),
+      studySubjectId: form.subjectId.value, studyDetails: form.details.value.trim(), studyAssignedDate: existing?.studyAssignedDate || today(),
       studyFileIds: [...root.querySelectorAll('#studyHomeworkFiles input[type="checkbox"]:checked')].map((input) => input.value),
       createdAt: existing?.createdAt || now, updatedAt: now,
     };
@@ -661,7 +662,7 @@ function createStudyController(ctx) {
     homeworkForm.reset(); homeworkForm.elements.id.value = "";
     suggestedTime = "";
     deadlineTimeEdited = false;
-    homeworkForm.elements.date.value = localDateKey(new Date());
+    homeworkForm.elements.date.value = today();
     root.querySelector("#studyDeadlineSuggestion").textContent = "";
     draftStatus.textContent = "";
     discardDraftButton.hidden = true;
@@ -674,8 +675,8 @@ function createStudyController(ctx) {
     const subjectId = homeworkForm.elements.subjectId.value;
     const state = ctx.getState();
     const now = new Date();
-    const referenceDate = localDateKey(now);
-    const time = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const referenceDate = today();
+    const time = ctx.currentTime?.() || `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     const lesson = studyModel.nextLessonOccurrence(state.studyLessons, subjectId, referenceDate, state.studyWeekCycle, time);
     const nextDate = lesson?.date || "";
     const hint = root.querySelector("#studyDeadlineSuggestion");

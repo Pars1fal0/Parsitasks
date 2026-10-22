@@ -7,7 +7,7 @@ import * as accentColors from "../settings/accent-colors.js";
 import { app } from "./store.js";
 import { els } from "./dom.js";
 import { syncCustomRepeatPanel, syncHabitCustomRepeatPanel } from "./forms.js";
-import { render, renderSaveStatus } from "./lifecycle.js";
+import { handleDateRollover, render, renderSaveStatus } from "./lifecycle.js";
 import { createUndoSnapshot, formatBackupDate, renderWeekdayLabels, restoreFailedSave, saveState, scheduleAutoBackup, showToast } from "./persistence.js";
 import { syncDesktopReminders, updateNotificationButton } from "./platform.js";
 import { saveStatusView } from "./services.js";
@@ -109,6 +109,7 @@ export function updateTimeZone(value) {
     return;
   }
   settingsController.syncControls();
+  handleDateRollover();
   render();
   showToast(`Часовой пояс: ${normalized}`);
 }

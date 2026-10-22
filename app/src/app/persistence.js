@@ -11,7 +11,7 @@ import { syncDesktopBackup, syncDesktopReminders } from "./platform.js";
 import { habitStatusOnDate } from "./queries.js";
 import { confirmDialog, googleCalendarController, remoteAuth, toastController } from "./services.js";
 import { renderSettingsBackupStatus, saveUiState, scheduleRemotePush } from "./settings.js";
-import { createId, initialStateLoad, normalizeDateKey, stateController, toDateKey } from "./state.js";
+import { createId, initialStateLoad, normalizeDateKey, stateController, todayKey } from "./state.js";
 import { importExportController } from "./sync.js";
 
 export function scheduleAutoBackup() {
@@ -49,11 +49,11 @@ export function normalizeState(raw) {
 
 export function replaceState(nextState) {
   app.state = stateController.replaceState(nextState);
-  goalActivity.reconcileGoalStatuses(app.state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
+  goalActivity.reconcileGoalStatuses(app.state, { todayKey: todayKey(), habitStatusOnDate });
 }
 
 export function saveState(options = {}) {
-  goalActivity.reconcileGoalStatuses(app.state, { todayKey: toDateKey(new Date()), habitStatusOnDate });
+  goalActivity.reconcileGoalStatuses(app.state, { todayKey: todayKey(), habitStatusOnDate });
   try {
     app.state = stateController.saveState(app.state, options);
     app.localStorageError = "";
@@ -162,7 +162,7 @@ export function restoreUndoSnapshot(snapshot) {
   try {
     const before = JSON.parse(snapshot.state);
     replaceState(snapshot.afterState ? stateMerge.undoChanges(before, JSON.parse(snapshot.afterState), app.state) : before);
-    app.activeDate = normalizeDateKey(snapshot.activeDate, toDateKey(new Date()));
+    app.activeDate = normalizeDateKey(snapshot.activeDate, todayKey());
     app.activeView = snapshot.activeView || "tasks";
     if (saveState() === false) {
       rollback();

@@ -116,7 +116,7 @@ function createRemoteAuth(options = {}) {
       body: JSON.stringify({ refresh_token: current.refresh_token }),
     });
     const data = await readResponse(response);
-    if (session !== current) return session;
+    if (session !== current) return null;
     if (!response.ok) {
       if ([400, 401, 403].includes(response.status)) saveSession(null);
       throw createAuthError(response, data);
@@ -132,7 +132,7 @@ function createRemoteAuth(options = {}) {
       headers: { ...authHeaders(config), Authorization: `Bearer ${current.access_token}` },
     });
     const data = await readResponse(response);
-    if (session !== current) return session;
+    if (session !== current) return null;
     if (!response.ok) {
       if ([401, 403].includes(response.status)) saveSession(null);
       throw createAuthError(response, data);

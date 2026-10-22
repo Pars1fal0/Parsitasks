@@ -12,6 +12,7 @@ import * as workspaceGuideModule from "../settings/workspace-guide.js";
 import { shellVersion } from "../platform/shell-version.js";
 import * as appEventsModule from "../core/app-events.js";
 import { app } from "./store.js";
+import { todayKey, dateAtTime, toTimeValue } from "./state.js";
 import { els } from "./dom.js";
 import { boardView, nutritionView } from "./editors.js";
 import { closeFloatingTaskForm, closeFormWithConfirmation, confirmDiscardOpenForms, exportData, importData, isFormDirty, markFormPristine, resetHabitForm, resetTaskForm, restoreTaskFormPanel, saveCategoryFromForm, saveHabitFromForm, saveQuickTask, setCustomRepeatMode, setHabitCustomRepeatMode, syncCustomRepeatPanel, syncHabitCustomRepeatPanel, syncHabitTypeFields, updateCustomRepeatSummary, updateHabitCustomRepeatSummary, updateQuickTaskPreview } from "./forms.js";
@@ -30,6 +31,9 @@ export let notificationsController, dailyPulseController, studyController, viewR
 
 export function wireShell() {
   notificationsController = notifications.createNotifications({
+    todayKey,
+    dateAtTime,
+    getTimeZone: () => app.state.profile.timeZone,
     els,
     enableNotifications: requestNotifications,
     cleanTimeValue,
@@ -59,6 +63,8 @@ export function wireShell() {
   });
 
   studyController = studyControllerModule.createStudyController({
+    todayKey,
+    currentTime: () => toTimeValue(new Date()),
     confirmAction,
     createId,
     deleteTask: (id) => taskState.deleteTask(id),
@@ -170,7 +176,7 @@ export function wireShell() {
         els.activeDate.value = app.activeDate;
         return;
       }
-      app.activeDate = value || toDateKey(new Date());
+      app.activeDate = value || todayKey();
       saveUiState();
       resetTaskForm({ open: false });
       resetHabitForm({ open: false });

@@ -25,7 +25,7 @@ function createGoalsView(ctx) {
           selectedTaskIds.add(id);
           const task = ctx.getState().tasks.find((item) => item.id === id);
           selectedTaskTargets.set(id, { taskId: id, mode: task?.repeat !== "none" ? "count" : "once",
-            targetCount: task?.repeat !== "none" ? 7 : 1, startDate: task?.repeat !== "none" ? ctx.toDateKey(new Date()) : "" });
+            targetCount: task?.repeat !== "none" ? 7 : 1, startDate: task?.repeat !== "none" ? (ctx.todayKey?.() || ctx.toDateKey(new Date())) : "" });
         } else { selectedTaskIds.delete(id); selectedTaskTargets.delete(id); }
       } else {
         const target = selectedTaskTargets.get(id);
@@ -33,7 +33,7 @@ function createGoalsView(ctx) {
         if (control.dataset.goalTaskMode) {
           target.mode = control.value;
           target.targetCount = target.mode === "count" ? Math.max(1, target.targetCount) : 1;
-          target.startDate = target.mode === "legacy" ? "" : target.startDate || ctx.toDateKey(new Date());
+          target.startDate = target.mode === "legacy" ? "" : target.startDate || (ctx.todayKey?.() || ctx.toDateKey(new Date()));
         } else if (control.dataset.goalTaskCount) target.targetCount = Number(control.value);
         else target.startDate = control.value;
       }
@@ -45,7 +45,7 @@ function createGoalsView(ctx) {
       const habitId = control.dataset.goalHabitLink || control.dataset.goalHabitCount || control.dataset.goalHabitStart;
       if (!habitId) return;
       if (control.dataset.goalHabitLink) {
-        if (control.checked) selectedHabits.set(habitId, { habitId, targetCount: 7, startDate: ctx.toDateKey(new Date()) });
+        if (control.checked) selectedHabits.set(habitId, { habitId, targetCount: 7, startDate: (ctx.todayKey?.() || ctx.toDateKey(new Date())) });
         else selectedHabits.delete(habitId);
         renderHabitOptions();
       } else {
@@ -60,7 +60,7 @@ function createGoalsView(ctx) {
 
   function renderGoals() {
     const allGoals = ctx.getState().goals || [];
-    const todayKey = ctx.toDateKey(new Date());
+    const todayKey = (ctx.todayKey?.() || ctx.toDateKey(new Date()));
     const goals = allGoals.filter((goal) => goalMatchesFilter(goal, goalFilter.value, todayKey));
     const stats = goalStats(allGoals, todayKey);
 
@@ -83,7 +83,7 @@ function createGoalsView(ctx) {
     renderGoals();
   }
 
-  function createGoalNode(goal, todayKey = ctx.toDateKey(new Date())) {
+  function createGoalNode(goal, todayKey = (ctx.todayKey?.() || ctx.toDateKey(new Date()))) {
     const item = document.createElement("article");
     const header = document.createElement("header");
     const identity = document.createElement("div");
@@ -135,8 +135,8 @@ function createGoalsView(ctx) {
     const existing = ctx.getState().goals.find((goal) => goal.id === id);
     const steps = ctx.checkpointEditor.getSteps();
     const linkedTaskIds = goalActivity.normalizeLinkedTaskIds([...selectedTaskIds]);
-    const taskTargets = goalActivity.normalizeTaskTargets([...selectedTaskTargets.values()], ctx.toDateKey(new Date()));
-    const habitTargets = goalActivity.normalizeHabitTargets([...selectedHabits.values()], ctx.toDateKey(new Date()));
+    const taskTargets = goalActivity.normalizeTaskTargets([...selectedTaskTargets.values()], (ctx.todayKey?.() || ctx.toDateKey(new Date())));
+    const habitTargets = goalActivity.normalizeHabitTargets([...selectedHabits.values()], (ctx.todayKey?.() || ctx.toDateKey(new Date())));
 
     if (!title) {
       ctx.showToast("Напиши название цели");
@@ -164,7 +164,7 @@ function createGoalsView(ctx) {
       createdAt: existing?.createdAt || now,
       updatedAt: now,
     };
-    const done = goalActivity.goalActivity(goal, ctx.getState(), { todayKey: ctx.toDateKey(new Date()), habitStatusOnDate: ctx.habitStatusOnDate }).achieved;
+    const done = goalActivity.goalActivity(goal, ctx.getState(), { todayKey: (ctx.todayKey?.() || ctx.toDateKey(new Date())), habitStatusOnDate: ctx.habitStatusOnDate }).achieved;
     goal.status = done ? "done" : "active";
     goal.completedAt = done ? existing?.completedAt || now : "";
     ctx.upsertGoal(goal);
@@ -216,7 +216,7 @@ function createGoalsView(ctx) {
     selectedTaskIds.forEach((id) => selectedTaskTargets.set(id, stored.find((item) => item.taskId === id)
       || { taskId: id, mode: "legacy", targetCount: 1, startDate: "" }));
     selectedHabits.clear();
-    goalActivity.normalizeHabitTargets(goal.habitTargets, ctx.toDateKey(new Date()))
+    goalActivity.normalizeHabitTargets(goal.habitTargets, (ctx.todayKey?.() || ctx.toDateKey(new Date())))
       .forEach((target) => selectedHabits.set(target.habitId, target));
     ctx.els.goalTaskSearch.value = "";
     ctx.els.goalHabitSearch.value = "";
@@ -280,7 +280,7 @@ function createGoalsView(ctx) {
           start.value = target.startDate; start.dataset.goalTaskStart = task.id; label.append(start); controls.append(label);
         }
         const preview = document.createElement("small");
-        const result = goalActivity.goalActivity({ linkedTaskIds: [task.id], taskTargets: [target] }, ctx.getState(), { todayKey: ctx.toDateKey(new Date()) }).taskResults[0];
+        const result = goalActivity.goalActivity({ linkedTaskIds: [task.id], taskTargets: [target] }, ctx.getState(), { todayKey: (ctx.todayKey?.() || ctx.toDateKey(new Date())) }).taskResults[0];
         preview.textContent = `Уже засчитано: ${Math.min(result.count, result.targetCount)} из ${result.targetCount}${target.mode === "legacy" ? " · включая прошлую историю" : ""}`;
         controls.append(preview);
         row.append(controls);
@@ -346,7 +346,7 @@ function createGoalsView(ctx) {
 
   function activityFor(goal) {
     return goalActivity.goalActivity(goal, ctx.getState(), {
-      todayKey: ctx.toDateKey(new Date()),
+      todayKey: (ctx.todayKey?.() || ctx.toDateKey(new Date())),
       habitStatusOnDate: ctx.habitStatusOnDate,
     });
   }

@@ -11,6 +11,8 @@ function createGoogleCalendarController(ctx) {
   let lastLocalFingerprint = "";
   let timer = null;
   let interval = null;
+  let queuedSync = false;
+  const owner = () => ctx.getOwner?.() ?? ctx.getAccessToken();
 
   function bindEvents() {
     ctx.els.googleCalendarConnect?.addEventListener("click", connect);
@@ -78,13 +80,14 @@ function createGoogleCalendarController(ctx) {
 
   async function disconnect() {
     if (inFlight || !connected) return;
+    const startedOwner = owner();
     const confirmed = await ctx.confirmAction({
       title: "Отключить Google Calendar?",
       message: "Уже созданные события останутся в Google. Новые изменения больше не будут синхронизироваться.",
       confirmText: "Отключить",
       danger: true,
     });
-    if (!confirmed) return;
+    if (!confirmed || owner() !== startedOwner) return;
     setBusy(true);
     try {
       await ctx.api.disconnect();
@@ -101,7 +104,8 @@ function createGoogleCalendarController(ctx) {
   }
 
   function schedule(delay = 2500) {
-    if (!connected || inFlight || globalThis.navigator?.onLine === false) return;
+    if (!connected || globalThis.navigator?.onLine === false) return;
+    if (inFlight) { queuedSync = true; return; }
     const fingerprint = payloadFingerprint(buildPayload(ctx.getState(), direction, ctx.getTimeZone()));
     if (fingerprint === lastLocalFingerprint) return;
     lastLocalFingerprint = fingerprint;
@@ -113,31 +117,47 @@ function createGoogleCalendarController(ctx) {
     if (!connected || inFlight || !ctx.getAccessToken() || globalThis.navigator?.onLine === false) return null;
     setBusy(true);
     lastError = "";
+    const startedOwner = owner();
+    const baseline = structuredClone(ctx.getState());
     try {
-      const payload = buildPayload(ctx.getState(), direction, ctx.getTimeZone());
+      const payload = structuredClone(buildPayload(ctx.getState(), direction, ctx.getTimeZone()));
       const result = await ctx.api.sync(payload);
+      if (owner() !== startedOwner) { connected = false; queuedSync = false; return null; }
       if (result.connected === false) {
         connected = false;
         throw new Error(result.message || "Google Calendar не подключён");
       }
-      applyResult(result);
-      lastLocalFingerprint = payloadFingerprint(buildPayload(ctx.getState(), direction, ctx.getTimeZone()));
+      const changedDuringRequest = payloadFingerprint(buildPayload(ctx.getState(), direction, ctx.getTimeZone())) !== payloadFingerprint(payload);
+      applyResult(result, baseline);
+      queuedSync ||= changedDuringRequest;
+      lastLocalFingerprint = queuedSync ? "" : payloadFingerprint(buildPayload(ctx.getState(), direction, ctx.getTimeZone()));
       lastSyncedAt = result.lastSyncedAt || new Date().toISOString();
       lastSummary = result.summary || null;
       if (options.announce) ctx.showToast(summaryText(lastSummary));
       return result;
     } catch (error) {
+      if (owner() !== startedOwner) return null;
+      lastLocalFingerprint = "";
       lastError = describeError(error);
       if (!options.silent || error?.status === 401) ctx.showToast(lastError);
       return null;
     } finally {
       setBusy(false);
+      if (queuedSync && owner() === startedOwner) { queuedSync = false; schedule(); }
     }
   }
 
-  function applyResult(result) {
-    applyCalendarResult(ctx.getState(), result, ctx);
-    ctx.saveState({ skipGoogleCalendar: true });
+  function applyResult(result, baseline) {
+    const current = ctx.getState();
+    const previous = structuredClone(current);
+    try {
+      applyCalendarResult(current, result, ctx, baseline);
+      if (ctx.saveState({ skipGoogleCalendar: true }) === false) throw new Error("Не удалось сохранить результат Google Calendar. Локальные изменения сохранены.");
+    } catch (error) {
+      if (ctx.replaceState) ctx.replaceState(previous);
+      else { Object.keys(current).forEach((key) => delete current[key]); Object.assign(current, previous); }
+      throw error;
+    }
     ctx.render();
   }
 
@@ -184,11 +204,28 @@ function createGoogleCalendarController(ctx) {
   return { bindEvents, initialize, refreshStatus, render, schedule, sync };
 }
 
-function applyCalendarResult(state, result = {}, ctx) {
-  state.googleCalendarLinks = result.links && typeof result.links === "object" ? result.links : {};
+function applyCalendarResult(state, result = {}, ctx, baseline) {
+  const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+  const currentTasks = new Map(state.tasks.map((task) => [task.id, task]));
+  const oldTasks = new Map((baseline?.tasks || []).map((task) => [task.id, task]));
+  const changedIds = new Set(baseline ? [...new Set([...currentTasks.keys(), ...oldTasks.keys(),
+    ...Object.keys(state.tombstones?.tasks || {}), ...Object.keys(baseline.tombstones?.tasks || {})])]
+    .filter((id) => !same(currentTasks.get(id), oldTasks.get(id)) || !same(state.tombstones?.tasks?.[id], baseline.tombstones?.tasks?.[id])) : []);
+  const safe = (patch) => !changedIds.has(patch.id) && !changedIds.has(patch.sourceTaskId)
+    && !state.tombstones?.tasks?.[patch.id] && (!patch.sourceTaskId || !state.tombstones?.tasks?.[patch.sourceTaskId]);
+  const links = result.links && typeof result.links === "object" ? structuredClone(result.links) : {};
+  if (baseline) {
+    for (const id of new Set([...Object.keys(baseline.googleCalendarLinks || {}), ...Object.keys(state.googleCalendarLinks || {})])) {
+      if (same(state.googleCalendarLinks?.[id], baseline.googleCalendarLinks?.[id])) continue;
+      if (state.googleCalendarLinks?.[id]) links[id] = structuredClone(state.googleCalendarLinks[id]);
+      else delete links[id];
+    }
+  }
+  state.googleCalendarLinks = links;
   const googleCategoryId = result.upserts?.length ? ensureGoogleCategory(state, ctx.createId) : "";
   const taskById = new Map(state.tasks.map((task) => [task.id, task]));
   (result.upserts || []).forEach((patch) => {
+    if (!safe(patch)) return;
     const source = patch.sourceTaskId ? taskById.get(patch.sourceTaskId) : null;
     if (source && patch.occurrenceDate) {
       source.excludedDates ||= {};
@@ -221,6 +258,7 @@ function applyCalendarResult(state, result = {}, ctx) {
   });
   (result.deletions || []).forEach((value) => {
     const deletion = typeof value === "string" ? { id: value } : value || {};
+    if (!safe(deletion)) return;
     const source = deletion.sourceTaskId ? taskById.get(deletion.sourceTaskId) : null;
     if (source && deletion.occurrenceDate) {
       source.excludedDates ||= {};
@@ -274,6 +312,7 @@ function summaryText(summary = {}) {
 function payloadFingerprint(payload) {
   return JSON.stringify({
     direction: payload.direction,
+    timeZone: payload.timeZone,
     links: payload.links,
     outOfRangeTaskIds: payload.outOfRangeTaskIds,
     tasks: payload.tasks,

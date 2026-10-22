@@ -22,6 +22,7 @@ import { normalizeAccentPreference, normalizeBackupSchedule, normalizeDensityPre
 export let appUtils, addDays, cleanText, cleanTimeValue, createId, escapeHtml, formatLongDate, formatMonthLabel, formatShortDate, formatTime, formatWeekday, getMonthCalendarDates, getWeekDates, heatAlpha, minutesToTime, normalizeDateKey, parseDate, randomCategoryColor, timeToMinutes, toDateKey, toTimeValue, syncMetadataTracker, storage, initialStateLoad, settingsState, initialUiState, initialRoute, stateController, startupToday, storedActiveDate, storedToday, formSnapshots, overdueController, taskState;
 
 export const SCHEMA_VERSION = documentState.SCHEMA_VERSION;
+export let todayKey, nowInTimeZone, dateAtTime;
 
 export const VALID_BACKUP_SCHEDULES = ["0", "5", "15", "30", "60"];
 
@@ -31,7 +32,9 @@ export function setupState() {
   appUtils = appUtilsModule.createAppUtils({
     getFirstDayOfWeek: () => app.firstDayOfWeek,
     getTimeFormat: () => app.timeFormat,
+    getTimeZone: () => app.state?.profile?.timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone,
   });
+  ({ todayKey, nowInTimeZone, dateAtTime } = appUtils);
 
   ({
     addDays,
@@ -88,7 +91,7 @@ export function setupState() {
 
   app.state = stateController.getState();
 
-  startupToday = toDateKey(new Date());
+  startupToday = todayKey();
 
   storedActiveDate = normalizeDateKey(initialUiState.activeDate, "");
 

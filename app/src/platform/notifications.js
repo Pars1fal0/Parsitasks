@@ -11,7 +11,10 @@ function createNotifications(ctx) {
   });
   const desktop = () => globalThis.rhythmDesktop || globalThis.window?.rhythmDesktop;
   const nowDate = () => ctx.getNow?.() || new Date();
-  const allowed = (date) => reminderPolicy?.nextAllowed(date, ctx.getQuietHours?.()) || new Date(date);
+  const dayKey = (date) => ctx.todayKey?.(date) || ctx.toDateKey(date);
+  const formatReminderTime = (date) => date.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", ...(ctx.getTimeZone?.() ? { timeZone: ctx.getTimeZone() } : {}) });
+  const quietHours = () => ({ ...ctx.getQuietHours?.(), ...(ctx.getTimeZone?.() ? { timeZone: ctx.getTimeZone() } : {}) });
+  const allowed = (date) => reminderPolicy?.nextAllowed(date, quietHours()) || new Date(date);
   const reminderKey = (kind, id, date) => JSON.stringify([kind, id, date]);
   const acknowledgementKey = (kind, id, date, until) => JSON.stringify([ctx.getUserId?.() || "local", kind, id, date, until]);
   function snoozes() {
@@ -38,7 +41,7 @@ function createNotifications(ctx) {
     const dates = new Set();
     const queue = snoozes();
     for (let offset = -1; offset <= days; offset += 1) {
-      const day = new Date(now); day.setDate(day.getDate() + offset); dates.add(ctx.toDateKey(day));
+      const day = ctx.parseDate(dayKey(now)); day.setDate(day.getDate() + offset); dates.add(ctx.toDateKey(day));
     }
     Object.entries(queue).forEach(([key, entry]) => {
       if (entry?.delivered || !Number.isFinite(Date.parse(entry?.until))) return;
@@ -50,7 +53,7 @@ function createNotifications(ctx) {
       tasks.forEach((task) => { const item = reminderFor(task, date, task.dueDate ? "task-work" : "task", queue); if (item) reminders.push(item); });
       (state.habits || []).forEach((habit) => {
         const item = reminderFor(habit, date, "habit", queue);
-        if (item && (date >= ctx.toDateKey(now) || item.snooze || item.at >= new Date(now.getTime() - 86400000))) reminders.push(item);
+        if (item && (date >= dayKey(now) || item.snooze || item.at >= new Date(now.getTime() - 86400000))) reminders.push(item);
       });
     });
     const seen = new Set(reminders.map((item) => reminderKey(item.kind, item.entity.id, item.dateKey)));
@@ -84,14 +87,14 @@ function createNotifications(ctx) {
     if (!entity || (kind !== "habit" && !ctx.taskOccursOn(entity, dateKey) && !(entity.date === null && entity.dueDate === dateKey)) || !reminderFor(entity, dateKey, kind)) {
       renderCenter(); ctx.showToast?.("Это событие больше не требует напоминания"); return false;
     }
-    const until = allowed(reminderPolicy.snoozeUntil(nowDate(), choice)).toISOString();
+    const until = allowed(reminderPolicy.snoozeUntil(nowDate(), choice, ctx.getTimeZone?.())).toISOString();
     const entries = snoozes();
     // Keep the local queue bounded without removing pending reminders.
     Object.entries(entries).forEach(([key, entry]) => { if (entry.delivered && Date.parse(entry.until) < nowDate().getTime() - 30 * 86400000) delete entries[key]; });
     entries[reminderKey(kind, id, dateKey)] = { until, delivered: false };
     if (!local?.write("reminder-snoozes", entries)) return false;
     syncDesktopReminders(); renderCenter();
-    ctx.showToast?.(`Напоминание отложено до ${new Date(until).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`);
+    ctx.showToast?.(`Напоминание отложено до ${formatReminderTime(new Date(until))}`);
     return true;
   }
 
@@ -144,7 +147,7 @@ function createNotifications(ctx) {
       const title = document.createElement("strong"); title.textContent = item.kind === "habit" ? ctx.habitTitleOnDate?.(item.entity, item.dateKey) || item.entity.title : item.entity.title;
       const detail = document.createElement("small");
       const occurrence = ctx.parseDate(item.kind === "task-work" ? item.dateKey : item.entity.dueDate || item.dateKey).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
-      detail.textContent = `${item.kind === "habit" ? "Привычка за" : item.kind === "task-work" ? "Начать работу" : item.entity.dueDate ? "Сдать до" : "Задача за"} ${occurrence} · ${item.snooze ? "Отложено: " : wasDelivered(item) ? "Отправлено: " : ""}${item.at.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}`;
+      detail.textContent = `${item.kind === "habit" ? "Привычка за" : item.kind === "task-work" ? "Начать работу" : item.entity.dueDate ? "Сдать до" : "Задача за"} ${occurrence} · ${item.snooze ? "Отложено: " : wasDelivered(item) ? "Отправлено: " : ""}${formatReminderTime(item.at)}`;
       const actions = document.createElement("div"); actions.className = "feature-row-actions";
       const select = document.createElement("select"); select.setAttribute("aria-label", `Отложить: ${title.textContent}`);
       [["10", "10 минут"], ["30", "30 минут"], ["60", "1 час"], ["tomorrow", "Завтра, 09:00"]].forEach(([value, text]) => select.add(new Option(text, value)));
@@ -250,7 +253,7 @@ function createNotifications(ctx) {
       return;
     }
     const reminders = collectReminders(60).filter((item) => (!wasDelivered(item) || item.snooze)
-      && (item.kind !== "habit" || item.dateKey >= ctx.toDateKey(now) || item.snooze || ctx.toDateKey(item.at) >= ctx.toDateKey(now))).map(({ entity, dateKey, kind, at, snooze }) => ({
+      && (item.kind !== "habit" || item.dateKey >= dayKey(now) || item.snooze || dayKey(item.at) >= dayKey(now))).map(({ entity, dateKey, kind, at, snooze }) => ({
       id: `${kind}-${entity.id}-${dateKey}:${at.toISOString()}`,
       [kind === "habit" ? "habitId" : "taskId"]: entity.id,
       reminderKind: kind,
@@ -260,14 +263,14 @@ function createNotifications(ctx) {
       category: kind === "habit" ? "Привычка" : ctx.getCategory(entity.categoryId)?.name || "",
       priority: entity.priority,
     }));
-    desktop().syncReminders({ generatedAt: now.toISOString(), reminders, quietHours: ctx.getQuietHours?.() });
+    desktop().syncReminders({ generatedAt: now.toISOString(), reminders, quietHours: quietHours() });
   }
 
   function candidateReminderDates(task, now) {
     const dates = [];
     for (let offset = -1; offset <= 1; offset += 1) {
-      const date = new Date(now);
-      date.setDate(now.getDate() + offset);
+      const date = ctx.parseDate(dayKey(now));
+      date.setDate(date.getDate() + offset);
       const dateKey = ctx.toDateKey(date);
       if (ctx.taskOccursOn(task, dateKey)) dates.push(dateKey);
     }
@@ -277,6 +280,7 @@ function createNotifications(ctx) {
   function habitReminderDate(habit, dateKey) {
     const time = ctx.cleanTimeValue(habit.reminderTime);
     if (!time) return null;
+    if (ctx.dateAtTime) return ctx.dateAtTime(dateKey, time);
     const date = ctx.parseDate(dateKey);
     const [hours, minutes] = time.split(":").map(Number);
     date.setHours(hours, minutes, 0, 0);
@@ -290,6 +294,7 @@ function createNotifications(ctx) {
   function getDueDate(task, dateKey, type) {
     const due = task.dueDate && type !== "work";
     const [hours, minutes] = (ctx.cleanTimeValue(due ? task.dueTime : type === "work" && task.scheduleMode === "block" ? task.startTime : task.time) || "09:00").split(":").map(Number);
+    if (ctx.dateAtTime) return ctx.dateAtTime(due ? task.dueDate : dateKey, `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`);
     const date = ctx.parseDate(due ? task.dueDate : dateKey);
     date.setHours(hours || 0, minutes || 0, 0, 0);
     return date;
@@ -298,6 +303,11 @@ function createNotifications(ctx) {
   function getTaskDeadlineDate(task, dateKey) {
     const date = ctx.parseDate(task.dueDate || dateKey);
     const time = ctx.cleanTimeValue(task.dueDate ? task.dueTime : task.time);
+    if (ctx.dateAtTime) {
+      const instant = ctx.dateAtTime(task.dueDate || dateKey, time || "23:59");
+      if (!time) instant.setSeconds(59, 999);
+      return instant;
+    }
     if (!time) {
       date.setHours(23, 59, 59, 999);
       return date;
@@ -316,6 +326,7 @@ function createNotifications(ctx) {
     if (!reminderTime || reminderOffset === "none") return null;
     const offset = Number(reminderOffset || 0);
     if (!Number.isFinite(offset)) return null;
+    if (ctx.dateAtTime) return new Date(ctx.dateAtTime(due ? task.dueDate : dateKey, reminderTime).getTime() - offset * 60000);
     const reminder = ctx.parseDate(due ? task.dueDate : dateKey);
     const [hours, minutes] = reminderTime.split(":").map(Number);
     reminder.setHours(hours, minutes, 0, 0);

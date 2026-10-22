@@ -17,6 +17,7 @@ import * as journalViewModule from "../journal/journal-view.js";
 import * as journalModel from "../journal/journal-model.js";
 import * as notesViewModule from "../notes/notes-view.js";
 import { app } from "./store.js";
+import { todayKey, nowInTimeZone } from "./state.js";
 import { els } from "./dom.js";
 import { subtaskController, taskFormController } from "./editors.js";
 import { confirmDiscardOpenForms, fillHabitForm, fillTaskForm, markFormPristine, openFloatingTaskForm, resetHabitForm, resetTaskForm, updateQuickTaskPreview } from "./forms.js";
@@ -86,6 +87,7 @@ export async function calendarScheduleTask(taskId, sourceDate, targetDate, start
 
 export function wireViews() {
   tasksView = tasksViewModule.createTasksView({
+    todayKey,
     getPane: () => app.taskPane,
     onPaneChange: (value) => { app.taskPane = value; saveUiState(); updateQuickTaskPreview(); },
     deferTasks: deferSelectedTasks,
@@ -171,7 +173,7 @@ export function wireViews() {
   });
 
   habitsView = habitsViewModule.createHabitsView({
-    todayKey: () => toDateKey(new Date()),
+    todayKey,
     applyHabitAvailabilityChange: habitConfigHistory.applyHabitAvailabilityChange,
     els,
     confirmAction,
@@ -221,6 +223,7 @@ export function wireViews() {
   });
 
   goalsView = goalsViewModule.createGoalsView({
+    todayKey,
     confirmDiscardOpenForms,
     checkpointEditor: goalCheckpointEditor,
     els,
@@ -253,6 +256,7 @@ export function wireViews() {
   });
 
   calendarView = calendarViewModule.createCalendarView({
+    todayKey,
     toggleTaskDone: toggleCalendarTaskDone,
     renderSchedule: (mode) => calendarSchedule.render(mode),
     selectCalendarDate: (dateKey) => { app.activeDate = dateKey; saveUiState(); render(); },
@@ -347,7 +351,8 @@ export function wireViews() {
     getWeekDates,
     getCategory,
     isTaskDone,
-    todayKey: () => toDateKey(new Date()),
+    todayKey,
+    getNow: nowInTimeZone,
     formatLongDate,
     formatShortDate,
     openLesson: (lesson, date) => openStudyLesson(lesson.id, date),
@@ -391,6 +396,8 @@ export function wireViews() {
   });
 
   timelineView = timelineViewModule.createTimelineView({
+    todayKey,
+    getNow: nowInTimeZone,
     getStudyEvents,
     openStudyLesson,
     addDays,
@@ -416,6 +423,7 @@ export function wireViews() {
   });
 
   archiveView = archiveViewModule.createArchiveView({
+    todayKey,
     addDays,
     initialPeriod: app.archivePeriod,
     els,

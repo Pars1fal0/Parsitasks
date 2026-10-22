@@ -10,7 +10,7 @@ import { confirmAction, createUndoSnapshot, restoreFailedSave, saveState, showTo
 import { formatTaskTime, formatTaskWindow, getCategory, getOrCreateCategory, matchesCategoryFilter, normalizeQuickCategoryName, taskMatchesSearch } from "./queries.js";
 import { priorityLabels, taskFormHome } from "./services.js";
 import { saveUiState } from "./settings.js";
-import { cleanText, createId, formSnapshots, formatLongDate, normalizeDateKey, toDateKey, toTimeValue } from "./state.js";
+import { cleanText, createId, formSnapshots, formatLongDate, normalizeDateKey, nowInTimeZone, toDateKey } from "./state.js";
 import { importExportController } from "./sync.js";
 import { openDateTasks } from "./task-actions.js";
 import { notesView, tasksView } from "./views.js";
@@ -128,6 +128,7 @@ export function createQuickPreviewChips(details) {
 
 export function parseQuickTaskPreview(value) {
   return quickInput.parseQuickTaskInput(value, {
+    now: nowInTimeZone(),
     activeDate: app.activeDate,
     cleanText,
     getOrCreateCategory: (categoryValue) => {
@@ -137,7 +138,6 @@ export function parseQuickTaskPreview(value) {
     normalizeCategoryName: normalizeQuickCategoryName,
     normalizeDateKey,
     toDateKey,
-    toTimeValue,
   });
 }
 

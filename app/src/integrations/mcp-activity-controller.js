@@ -2,18 +2,28 @@ function createMcpActivityController(ctx) {
   async function undo(actionId) {
     const activity = ctx.getState().mcpActivity?.find((item) => item.id === actionId);
     if (!activity || activity.status === "undone") return;
+    const owner = ctx.getOwner?.();
     const confirmed = await ctx.confirmAction({
       title: "Отменить действие ChatGPT?",
       message: activity.summary || activity.title,
       acceptText: "Отменить действие",
     });
-    if (!confirmed) return;
-    const result = ctx.activityApi.undoActivity(ctx.getState(), actionId);
-    if (!result.changed) return;
-    ctx.replaceState(result.state);
-    ctx.saveState();
-    ctx.render();
-    ctx.showToast("Действие ChatGPT отменено");
+    if (!confirmed || ctx.getOwner?.() !== owner) return;
+    const previous = structuredClone(ctx.getState());
+    let applied = false;
+    try {
+      const result = ctx.activityApi.undoActivity(ctx.getState(), actionId);
+      if (!result.changed) return;
+      ctx.replaceState(result.state);
+      applied = true;
+      if (ctx.saveState() === false) throw new Error("Не удалось сохранить отмену. Данные не изменены, попробуй снова.");
+    } catch (error) {
+      if (applied) ctx.replaceState(previous);
+      ctx.render();
+      ctx.showToast(error.message || "Не удалось отменить действие ChatGPT");
+      return;
+    }
+    ctx.render(); ctx.showToast("Действие ChatGPT отменено");
   }
 
   function render() {

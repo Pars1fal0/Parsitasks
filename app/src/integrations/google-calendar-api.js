@@ -3,11 +3,17 @@ const HOSTED_BASE_URL = "https://parsitasks.ru";
 function createGoogleCalendarApi(options = {}) {
   const fetchFn = options.fetch || globalThis.fetch?.bind(globalThis);
   const getAccessToken = options.getAccessToken || (() => "");
+  const getOwner = options.getOwner || (() => undefined);
   const baseUrl = resolveBaseUrl(options.location || globalThis.location);
 
   async function request(path, requestOptions = {}) {
     if (!fetchFn) throw new Error("Сеть недоступна");
+    const owner = getOwner();
+    const assertOwner = () => {
+      if (getOwner() !== owner) throw Object.assign(new Error("Аккаунт изменился. Запрос Google Calendar отменён."), { code: "account-changed" });
+    };
     const accessToken = await getAccessToken();
+    assertOwner();
     if (!accessToken) throw new Error("Сначала войдите в аккаунт Parsitasks");
     const response = await fetchFn(`${baseUrl}/api/google-calendar/${path}`, {
       ...requestOptions,
@@ -19,6 +25,7 @@ function createGoogleCalendarApi(options = {}) {
       },
     });
     const data = await readJson(response);
+    assertOwner();
     if (!response.ok) {
       const error = new Error(data?.message || data?.error || "Google Calendar недоступен");
       error.status = response.status;

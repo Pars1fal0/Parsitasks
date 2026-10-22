@@ -674,7 +674,7 @@ function createTimelineView(ctx) {
   function scrollToUpcomingTask() {
     const tasks = [...ctx.els.timelineGrid.querySelectorAll(".timeline-task.is-scheduled")];
     if (!tasks.length) return false;
-    const now = new Date();
+    const now = ctx.getNow?.() || new Date();
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
     const upcoming = ctx.getActiveDate() === ctx.toDateKey(now)
       ? tasks.find((task) => Number(task.dataset.startMinutes) >= currentMinutes && !task.classList.contains("is-done"))

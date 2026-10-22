@@ -220,8 +220,8 @@ function createTasksView(ctx) {
         const priority = document.createElement("span"); priority.className = `task-meta-chip priority-${task.priority}`; priority.textContent = ctx.priorityLabels[task.priority]; meta.append(priority);
       }
       identity.append(title, meta);
-      appendChecklist(identity, task, task.deferredFromDate || task.dueDate || ctx.toDateKey(new Date()));
-      const today = ctx.toDateKey(new Date());
+      appendChecklist(identity, task, task.deferredFromDate || task.dueDate || (ctx.todayKey?.() || ctx.toDateKey(new Date())));
+      const today = (ctx.todayKey?.() || ctx.toDateKey(new Date()));
       row.classList.toggle("is-due-overdue", Boolean(task.dueDate && task.dueDate < today));
       row.classList.toggle("is-due-soon", Boolean(task.dueDate && task.dueDate >= today && task.dueDate <= ctx.addDays(today, 1)));
       const actions = document.createElement("div");
@@ -265,7 +265,7 @@ function createTasksView(ctx) {
   function backlogEntries() {
     const entries = planningHistory.buildBacklogEntries({ addDays: ctx.addDays, includeYesterday: true,
       isTaskDone: ctx.isTaskDone, isTaskExcluded: ctx.isTaskExcluded, taskOccursOn: ctx.taskOccursOn,
-      tasks: ctx.getState().tasks, todayKey: ctx.toDateKey(new Date()) });
+      tasks: ctx.getState().tasks, todayKey: (ctx.todayKey?.() || ctx.toDateKey(new Date())) });
     return entries;
   }
 
@@ -331,7 +331,7 @@ function createTasksView(ctx) {
       });
       open.addEventListener("click", () => ctx.openDate(dateKey));
       acknowledge.addEventListener("click", () => ctx.acknowledgeOverdueTask(task, dateKey));
-      today.addEventListener("click", () => ctx.postponeTask(task, dateKey, ctx.toDateKey(new Date()), { clearPastTimeToday: true }));
+      today.addEventListener("click", () => ctx.postponeTask(task, dateKey, (ctx.todayKey?.() || ctx.toDateKey(new Date())), { clearPastTimeToday: true }));
       destination.appendChild(row);
       });
     });
@@ -774,7 +774,7 @@ function createTasksView(ctx) {
       });
 
       todayButton.addEventListener("click", () => {
-        ctx.postponeTask(entry.task, entry.dateKey, ctx.toDateKey(new Date()), { clearPastTimeToday: true });
+        ctx.postponeTask(entry.task, entry.dateKey, (ctx.todayKey?.() || ctx.toDateKey(new Date())), { clearPastTimeToday: true });
       });
 
       doneButton.addEventListener("click", () => {

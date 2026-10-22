@@ -149,7 +149,7 @@ function createCalendarView(ctx) {
       const label = `${ctx.formatLongDate(dateKey)}: ${openTasks.length} открыто, ${doneCount} готово, ${lessons.length} занятий, ${dueTasks.length} сроков`;
       column.setAttribute("aria-label", label);
       column.classList.toggle("is-active", dateKey === activeDate);
-      column.classList.toggle("is-today", dateKey === ctx.toDateKey(new Date()));
+      column.classList.toggle("is-today", dateKey === (ctx.todayKey?.() || ctx.toDateKey(new Date())));
       header.className = "week-board-header";
       header.type = "button";
       header.setAttribute("aria-label", label);
@@ -245,7 +245,7 @@ function createCalendarView(ctx) {
       dayCell.setAttribute("aria-label", `${ctx.formatLongDate(dateKey)}: ${details.join(", ") || "нет задач"}`);
       dayCell.classList.toggle("is-outside", date.getMonth() !== currentMonth);
       dayCell.classList.toggle("is-active", dateKey === activeDate);
-      dayCell.classList.toggle("is-today", dateKey === ctx.toDateKey(new Date()));
+      dayCell.classList.toggle("is-today", dateKey === (ctx.todayKey?.() || ctx.toDateKey(new Date())));
       dayCell.classList.toggle("has-events", Boolean(tasks.length || lessons.length || deadlines(dateKey).length));
       head.className = "month-day-head";
       head.type = "button";

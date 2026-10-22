@@ -565,16 +565,26 @@ function createBoardView(ctx) {
     if (!images.length || imageUploadBusy) return;
     imageUploadBusy = true;
     ctx.els.boardAddImage.disabled = true;
-    const before = cloneItems(ctx.getItems());
+    const owner = local?.owner();
+    const targetBoardId = activeBoardId;
+    const assertTarget = () => {
+      if (local?.owner() !== owner) throw new Error("Аккаунт изменился. Загрузка на доску отменена.");
+      if (targetBoardId && !getAllItems().some((item) => item.id === targetBoardId && item.type === "board")) {
+        throw new Error("Доска удалена во время загрузки. Изображение не добавлено.");
+      }
+    };
     const added = [];
     const anchor = screenToWorld(point.x, point.y);
     try {
       for (let index = 0; index < images.length; index += 1) {
         try {
           setStatus(`Загружаю фото ${index + 1} из ${images.length} в Supabase…`, "loading");
+          assertTarget();
           const prepared = await ctx.assets.prepareImage(images[index]);
+          assertTarget();
           const assetId = ctx.createId();
           const remotePath = await ctx.assets.uploadPrepared(assetId, prepared);
+          assertTarget();
           cacheImageUrl(assetId, prepared.blob);
           const fit = fitImage(prepared.width, prepared.height);
           const item = ctx.model.createImageItem({
@@ -597,10 +607,18 @@ function createBoardView(ctx) {
         }
       }
       if (added.length) {
-        recordUndo(before);
-        selectedId = added.at(-1).id;
-        selectedIds = new Set([selectedId]);
-        if (!commit([...before, ...added])) return;
+        assertTarget();
+        if (activeBoardId === targetBoardId) {
+          recordUndo(cloneItems(ctx.getItems()));
+          selectedId = added.at(-1).id;
+          selectedIds = new Set([selectedId]);
+          if (!commit([...ctx.getItems(), ...added])) return;
+        } else {
+          if (commitAllItems([...getAllItems(), ...added.map((item) => ({ ...item, boardId: targetBoardId }))]) === false) {
+            throw new Error("Не удалось сохранить изображение на доске");
+          }
+          render();
+        }
         setStatus(
           added.length === 1
             ? "Фото сохранено в Supabase Storage"
@@ -608,6 +626,8 @@ function createBoardView(ctx) {
           "cloud",
         );
       }
+    } catch (error) {
+      showImageError(error);
     } finally {
       imageUploadBusy = false;
       ctx.els.boardAddImage.disabled = false;

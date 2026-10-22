@@ -24,16 +24,8 @@ const retries = Math.max(0, Number(option("--retries") ?? process.env.E2E_RETRIE
 const timeoutMs = Number(process.env.E2E_SUITE_TIMEOUT_MS) || 15 * 60 * 1000;
 const filters = args;
 
-// Suites that already failed before they joined the full run; run them by name until fixed.
-// ux-polish expects one quick-add button for the water habit, the app now renders two.
-const quarantined = new Set(["ux-polish-e2e.cjs"]);
-
 let suites = fs.readdirSync(__dirname).filter((file) => file.endsWith("-e2e.cjs") && file !== path.basename(__filename)).sort();
 if (filters.length) suites = suites.filter((file) => filters.some((filter) => file.includes(filter)));
-else {
-  suites.filter((file) => quarantined.has(file)).forEach((file) => console.log(`skipped ${file} (quarantined)`));
-  suites = suites.filter((file) => !quarantined.has(file));
-}
 if (shard) {
   const [index, total] = shard.split("/").map(Number);
   if (!(index >= 1 && index <= total)) throw new Error(`Invalid --shard ${shard}; expected N/TOTAL`);
@@ -63,6 +55,11 @@ function runSuite(file) {
 }
 
 (async () => {
+  // Electron installs its binary lazily. Resolve it once before parallel workers use it.
+  if (suites.some((file) => /require\("electron"\)/.test(fs.readFileSync(path.join(__dirname, file), "utf8")))) {
+    const executable = require("electron");
+    if (!fs.existsSync(executable)) throw new Error("Electron executable is missing");
+  }
   console.log(`Running ${suites.length} UI suite(s), ${jobs} at a time`);
   const started = Date.now();
   const queue = [...suites];
@@ -87,4 +84,4 @@ function runSuite(file) {
   for (const result of failed) console.error(`\n--- ${result.file} ---\n${result.output.trim()}`);
   console.log(`\n${results.length - failed.length}/${results.length} UI suites passed in ${Math.round((Date.now() - started) / 1000)}s`);
   if (failed.length) process.exitCode = 1;
-})();
+})().catch((error) => { console.error(error); process.exitCode = 1; });

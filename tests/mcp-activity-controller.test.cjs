@@ -4,6 +4,29 @@ const activityApi = require("../app/src/integrations/mcp-activity.js");
 const { createMcpActivityController } = require("../app/src/integrations/mcp-activity-controller.js");
 
 module.exports = [
+  { name: "MCP undo reports storage and conflict failures without changing the workspace", async fn() {
+    let state = { tasks: [{ id: "task", title: "Keep me" }], mcpActivity: [{ id: "action", createdAt: "2026-10-21T10:00:00Z",
+      inverse: { entities: { tasks: { removeIds: ["task"], restore: [] } } } }] };
+    const original = structuredClone(state), messages = [];
+    const controller = createMcpActivityController({ activityApi, getState: () => state, confirmAction: async () => true,
+      replaceState: (value) => { state = value; }, saveState: () => false, render() {}, showToast: (text) => messages.push(text) });
+    await controller.undo("action");
+    assert.deepEqual(state, original);
+    assert.ok(messages.at(-1).includes("Не удалось сохранить"));
+    state.mcpActivity[0].inverse.entities.tasks.expected = [{ id: "task", value: { id: "task", title: "Old title" } }];
+    const beforeConflict = structuredClone(state);
+    await assert.doesNotReject(controller.undo("action"));
+    assert.deepEqual(state, beforeConflict);
+    assert.ok(messages.at(-1).includes("данные изменились"));
+  } },
+  { name: "MCP undo refuses confirmation from a previous account", async fn() {
+    let owner = "one", accept, writes = 0;
+    const state = { mcpActivity: [{ id: "action" }] };
+    const controller = createMcpActivityController({ getState: () => state, getOwner: () => owner,
+      confirmAction: () => new Promise((resolve) => { accept = resolve; }), saveState: () => { writes++; } });
+    const pending = controller.undo("action"); owner = "two"; accept(true); await pending;
+    assert.equal(writes, 0);
+  } },
   {
     name: "MCP activity controller renders changes and undoes them without innerHTML",
     async fn() {

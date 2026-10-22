@@ -58,7 +58,7 @@ function createArchiveView(ctx) {
       return (
         ctx.matchesCategoryFilter(entry.task, ctx.getArchiveCategoryFilter()) &&
         ctx.archiveEntryMatchesSearch(entry, ctx.getArchiveSearchQuery()) &&
-        planningHistory.archiveEntryInPeriod(entry.dateKey, period, ctx.toDateKey(new Date()), ctx.addDays)
+        planningHistory.archiveEntryInPeriod(entry.dateKey, period, (ctx.todayKey?.() || ctx.toDateKey(new Date())), ctx.addDays)
       );
     });
     visibleEntries = filteredEntries.slice(0, visibleLimit);
@@ -183,7 +183,7 @@ function createArchiveView(ctx) {
       entry.task.completed[entry.dateKey] = false;
       entry.task.updatedAt = new Date().toISOString();
       if (choice !== "secondary") {
-        ctx.postponeTask(entry.task, entry.dateKey, ctx.toDateKey(new Date()), { undo });
+        ctx.postponeTask(entry.task, entry.dateKey, (ctx.todayKey?.() || ctx.toDateKey(new Date())), { undo });
         return;
       }
       if (!saveChange(undo)) return;

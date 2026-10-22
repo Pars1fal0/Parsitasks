@@ -226,6 +226,7 @@ export function wireSync() {
     container: els.mcpActivityList,
     formatDate: formatBackupDate,
     getState: () => app.state,
+    getOwner: () => JSON.stringify([remoteAuth.getSession()?.user?.id || "", app.authenticatedSyncGeneration]),
     render,
     replaceState,
     saveState,

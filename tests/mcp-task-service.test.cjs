@@ -245,7 +245,14 @@ module.exports = [
       const fetched = service.fetchKnowledge(state, search.results[0].id, { baseUrl: "https://parsitasks.ru" });
       assert.equal(search.results[0].id, "goal:goal-1");
       assert.match(fetched.text, /Деплой/);
-      assert.equal(fetched.url, "https://parsitasks.ru/#goals");
+      assert.equal(fetched.url, "https://parsitasks.ru/app#goals");
+      assert.equal(search.results[0].url, fetched.url);
+      state.habits.push({ id: "habit", title: "Audit habit" });
+      state.journalEntries.push({ id: "journal", date: "2026-10-21", text: "Audit journal" });
+      for (const id of ["task:task-1", "habit:habit", "journal:journal", "goal:goal-1"]) {
+        const link = new URL(service.fetchKnowledge(state, id, { baseUrl: "https://parsitasks.ru" }).url);
+        assert.equal(link.pathname, "/app");
+      }
     },
   },
 ];

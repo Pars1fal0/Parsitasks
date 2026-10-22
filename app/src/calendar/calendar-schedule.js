@@ -446,6 +446,7 @@ function createCalendarSchedule(ctx) {
     }));
     return layout.buildTimelineModel({ activeDate: date, tasks: [...ctx.getTasks(date), ...lessons],
       formatTime: (value) => value, getCategory: ctx.getCategory, priorityLabels: {},
+      now: ctx.getNow?.() || new Date(),
       isTaskDone: (task) => task.studyEvent ? false : ctx.isTaskDone(task, date), todayKey: ctx.todayKey() });
   }
 
@@ -615,7 +616,7 @@ function createCalendarSchedule(ctx) {
     preservedViewport = null;
     if (key !== viewportKey) {
       const first = models[dates.indexOf(date)].timedTasks[0]?.minutes;
-      scrollHour = date === ctx.todayKey() ? Math.max(0, new Date().getHours() - 1) : Math.max(0, (first ?? 540) / 60 - 1);
+      scrollHour = date === ctx.todayKey() ? Math.max(0, (ctx.getNow?.() || new Date()).getHours() - 1) : Math.max(0, (first ?? 540) / 60 - 1);
       scrollLeft = 0;
     }
     viewportKey = key;
@@ -628,7 +629,7 @@ function createCalendarSchedule(ctx) {
       const today = ctx.todayKey();
       if (await ctx.selectDate(today) === false) return;
       const scroller = root.querySelector(".calendar-time-scroll");
-      const current = new Date();
+      const current = ctx.getNow?.() || new Date();
       scroller.scrollTop = Math.max(0, current.getHours() - 1) * hourHeight;
       const currentColumn = scroller.querySelector(`.calendar-time-day[data-date="${today}"]`);
       if (currentColumn) scroller.scrollLeft = Math.max(0, currentColumn.parentElement.offsetLeft - 48);
@@ -723,6 +724,7 @@ function createCalendarSchedule(ctx) {
         const count = models[index].timedTasks.length + models[index].unscheduledTasks.length;
         const dueCount = ctx.getState().tasks.filter((task) => task.dueDate === day).length;
         const item = button(`calendar-week-strip-day${day === date ? " is-selected" : ""}`, "", () => ctx.selectDate(day));
+        item.dataset.date = day;
         item.append(element("small", "", weekdayFormatter.format(new Date(`${day}T12:00:00`))), " ", element("strong", "", String(new Date(`${day}T12:00:00`).getDate())), " ", element("span", "", count ? `${count}` : "—"));
         item.classList.toggle("has-deadlines", dueCount > 0); item.setAttribute("aria-pressed", String(day === date));
         item.setAttribute("aria-label", `${item.textContent}. ${ctx.formatLongDate(day)}: ${count} дел и занятий, ${dueCount} сроков сдачи`);

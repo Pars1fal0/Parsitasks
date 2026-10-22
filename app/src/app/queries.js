@@ -5,10 +5,11 @@ import * as habitConfigHistory from "../habits/habit-config-history.js";
 import * as recurrence from "../tasks/recurrence.js";
 import * as habitSchedule from "../habits/habit-schedule.js";
 import * as habitFreeze from "../habits/habit-freeze.js";
+import { todayKey } from "./state.js";
 import { app } from "./store.js";
 import { parseQuickTaskPreview } from "./forms.js";
 import { priorityLabels } from "./services.js";
-import { cleanText, cleanTimeValue, createId, formatLongDate, formatShortDate, formatTime, normalizeDateKey, overdueController, parseDate, randomCategoryColor, timeToMinutes, toDateKey } from "./state.js";
+import { cleanText, cleanTimeValue, createId, formatLongDate, formatShortDate, formatTime, normalizeDateKey, overdueController, parseDate, randomCategoryColor, timeToMinutes } from "./state.js";
 
 export function tasksForDate(dateKey) {
   return app.state.tasks.filter((task) => taskOccursOn(task, dateKey));
@@ -103,8 +104,8 @@ export function habitConfigOnDate(habit, dateKey) {
   });
 }
 
-export function habitStreak(habit, dateKey = toDateKey(new Date())) {
-  return habitSchedule.streak(habit, dateKey, toDateKey(new Date()));
+export function habitStreak(habit, dateKey = todayKey()) {
+  return habitSchedule.streak(habit, dateKey, todayKey());
 }
 
 export function sortTasks(a, b, orderMap = new Map()) {

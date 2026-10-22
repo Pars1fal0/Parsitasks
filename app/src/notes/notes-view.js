@@ -290,20 +290,28 @@ function createNotesView(ctx) {
 
   async function deleteNote() {
     const note = currentNote();
+    const owner = ctx.getUserId?.();
     if (!note || !(await ctx.confirmAction({
       title: "Удалить заметку?",
       message: `Заметка «${note.title}» будет удалена. Связанные задачи и предметы останутся.`,
       confirmLabel: "Удалить",
       tone: "danger",
     }))) return;
+    if (ctx.getUserId?.() !== owner) return;
     const undo = ctx.createUndoSnapshot();
     const state = ctx.getState();
     state.notes = state.notes.filter((item) => item.id !== note.id);
     state.tombstones.notes ||= {};
     state.tombstones.notes[note.id] = new Date().toISOString();
+    if (ctx.saveState() === false) {
+      ctx.restoreState?.(undo);
+      persistDraft();
+      els.noteStatus.textContent = "Не удалось удалить заметку. Заметка и черновик сохранены.";
+      renderList();
+      return;
+    }
     local?.remove(draftKey(note.id));
     if (local?.read("note-active-draft") === note.id) local.remove("note-active-draft");
-    ctx.saveState();
     resetSelection();
     render();
     ctx.showToast("Заметка удалена", { undo });

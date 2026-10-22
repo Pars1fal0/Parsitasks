@@ -1,6 +1,48 @@
 function createAppUtils(options = {}) {
   const getFirstDayOfWeek = options.getFirstDayOfWeek || (() => "monday");
   const getTimeFormat = options.getTimeFormat || (() => "24");
+  const getTimeZone = options.getTimeZone || (() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  let clockZone;
+  let clockFormatter;
+
+  function clockParts(date = new Date()) {
+    const zone = getTimeZone();
+    if (!clockFormatter || clockZone !== zone) {
+      clockFormatter = new Intl.DateTimeFormat("en-GB", { timeZone: zone, year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" });
+      clockZone = zone;
+    }
+    return Object.fromEntries(clockFormatter.formatToParts(date).filter((part) => part.type !== "literal").map((part) => [part.type, Number(part.value)]));
+  }
+
+  function todayKey(date = new Date()) {
+    const p = clockParts(date);
+    return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
+  }
+
+  function nowInTimeZone(date = new Date()) {
+    const p = clockParts(date);
+    return new Date(p.year, p.month - 1, p.day, p.hour, p.minute, p.second, date.getMilliseconds());
+  }
+
+  function dateAtTime(dateKey, time) {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    const [hour, minute] = time.split(":").map(Number);
+    const target = Date.UTC(year, month - 1, day, hour, minute);
+    let instant = target;
+    const seen = new Set();
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const p = clockParts(new Date(instant));
+      const delta = target - Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+      if (!delta) break;
+      const next = instant + delta;
+      // A missing DST wall time moves forward across the gap, never before the requested time.
+      if (seen.has(next)) return new Date(Math.max(instant, next));
+      seen.add(instant);
+      instant = next;
+    }
+    return new Date(instant);
+  }
 
   function cleanText(value) {
     return String(value || "").trim().replace(/\s+/g, " ");
@@ -39,7 +81,7 @@ function createAppUtils(options = {}) {
     return `${safeDate.getFullYear()}-${String(safeDate.getMonth() + 1).padStart(2, "0")}-${String(safeDate.getDate()).padStart(2, "0")}`;
   }
 
-  function normalizeDateKey(value, fallback = toDateKey(new Date())) {
+  function normalizeDateKey(value, fallback = todayKey()) {
     const dateKey = String(value || "").trim();
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
     if (!match) return fallback;
@@ -94,6 +136,9 @@ function createAppUtils(options = {}) {
     cleanText,
     cleanTimeValue,
     createId,
+    todayKey,
+    nowInTimeZone,
+    dateAtTime,
     escapeHtml: (value) => String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;"),
     firstDayIndex,
     formatLongDate: (key) => formatDate(key, { weekday: "long", day: "numeric", month: "long" }),
@@ -113,7 +158,8 @@ function createAppUtils(options = {}) {
     toDateKey,
     toTimeValue: (date) => {
       const safeDate = date instanceof Date && Number.isFinite(date.getTime()) ? date : new Date();
-      return `${String(safeDate.getHours()).padStart(2, "0")}:${String(safeDate.getMinutes()).padStart(2, "0")}`;
+      const p = clockParts(safeDate);
+      return `${String(p.hour).padStart(2, "0")}:${String(p.minute).padStart(2, "0")}`;
     },
   };
 }

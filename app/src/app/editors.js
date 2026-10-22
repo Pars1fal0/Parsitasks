@@ -17,6 +17,7 @@ import * as habitFormModule from "../habits/habit-form.js";
 import * as recurrence from "../tasks/recurrence.js";
 import * as categoriesModule from "../tasks/categories.js";
 import { app } from "./store.js";
+import { todayKey } from "./state.js";
 import { els } from "./dom.js";
 import { clearTaskFilters, closeFloatingTaskForm, confirmDiscardOpenForms, getCustomRepeatFromForm, getHabitCustomRepeatFromForm, markFormPristine, resetHabitForm, resetTaskForm, setCustomRepeatForm, setHabitCustomRepeatForm, syncCustomRepeatPanel, syncHabitCustomRepeatPanel, syncHabitTypeFields } from "./forms.js";
 import { render, renderTaskSurfaces, renderTasks, scrollWorkspaceTop, syncNavigationRoute } from "./lifecycle.js";
@@ -26,7 +27,7 @@ import { habitConfigOnDate, isTaskDone, isTimeBlock, isValidTimeBlock, matchesCa
 import { getTaskScheduleMode, remoteAuth, setTaskScheduleMode, syncTaskScheduleMode, syncTaskTimePresets } from "./services.js";
 import { saveUiState } from "./settings.js";
 import { studyController } from "./shell.js";
-import { cleanText, cleanTimeValue, createId, escapeHtml, formatLongDate, normalizeDateKey, toDateKey } from "./state.js";
+import { cleanText, cleanTimeValue, createId, escapeHtml, formatLongDate, normalizeDateKey } from "./state.js";
 import { openBoardSource, resetGoalForm } from "./task-actions.js";
 import { archiveView, goalsView, notesView, tasksView } from "./views.js";
 
@@ -77,7 +78,7 @@ export function wireEditors() {
     model: boardModel,
     openSource: openBoardSource,
     showToast,
-    todayKey: () => toDateKey(new Date()),
+    todayKey,
   });
 
   globalSearch = globalSearchModule.createGlobalSearch({
@@ -183,7 +184,7 @@ export function wireEditors() {
       render();
     },
     showToast,
-    today: () => toDateKey(new Date()),
+    today: todayKey,
   });
 
   taskFormController = taskFormModule.createTaskForm({
@@ -250,7 +251,7 @@ export function wireEditors() {
     getState: () => app.state, createId, createUndoSnapshot, saveState, showToast, formatLongDate,
     restoreState: restoreFailedSave,
     render: renderTaskSurfaces,
-    today: () => toDateKey(new Date()),
+    today: todayKey,
     expandChecklist: (taskId, dateKey) => tasksView.expandChecklist(taskId, dateKey),
   });
 

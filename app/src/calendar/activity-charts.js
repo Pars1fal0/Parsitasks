@@ -26,7 +26,7 @@ function createActivityCharts(ctx) {
   function render() {
     charts.forEach((chart) => chart.destroy()); charts = [];
     root.replaceChildren();
-    const series = buildActivitySeries({ endDate: ctx.getActiveDate(), days, today: ctx.toDateKey(new Date()), ...ctx });
+    const series = buildActivitySeries({ endDate: ctx.getActiveDate(), days, today: (ctx.todayKey?.() || ctx.toDateKey(new Date())), ...ctx });
     const toolbar = element("div", "activity-chart-toolbar");
     const period = element("div", "activity-chart-period");
     period.append(element("h2", "", "Динамика"), element("span", "muted", `${ctx.formatShortDate(series[0].date)} — ${ctx.formatShortDate(series.at(-1).date)}`));
@@ -130,7 +130,7 @@ function createActivityCharts(ctx) {
       row.append(date, element("td", "", point.taskTotal ? `${point.taskDone} / ${point.taskTotal} · ${point.taskPercent}%` : "—"), element("td", "", point.habitTotal ? `${point.habitDone} / ${point.habitTotal} · ${point.habitPercent}%` : "—")); body.append(row); });
     table.append(caption, head, body); details.append(table); root.append(details);
   }
-  return { render, getDates: () => buildActivitySeries({ endDate: ctx.getActiveDate(), days, today: ctx.toDateKey(new Date()), ...ctx }).map((point) => point.date) };
+  return { render, getDates: () => buildActivitySeries({ endDate: ctx.getActiveDate(), days, today: (ctx.todayKey?.() || ctx.toDateKey(new Date())), ...ctx }).map((point) => point.date) };
 }
 const api = { buildActivitySeries, createActivityCharts };
 

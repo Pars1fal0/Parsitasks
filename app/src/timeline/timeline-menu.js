@@ -26,7 +26,7 @@ function createTimelineMenu(ctx) {
     menu.setAttribute("role", "menu");
     menu.hidden = true;
     const activeDate = ctx.getActiveDate();
-    const today = ctx.toDateKey(new Date());
+    const today = (ctx.todayKey?.() || ctx.toDateKey(new Date()));
     menu.append(
       createMenuItem(entry.done ? "Снова активна" : "Завершить", "complete", () => ctx.toggleTaskDone?.(entry.task.id)),
       ...(!entry.done ? [
