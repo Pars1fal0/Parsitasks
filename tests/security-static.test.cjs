@@ -53,7 +53,9 @@ module.exports = [
     name: "does not contain backend Supabase or common private key material",
     fn() {
       const trackedSources = [
-        "app/src/core/app.js",
+        "app/src/main.js",
+        "app/src/app/state.js",
+        "app/src/app/services.js",
         "app/src/auth/hosted-config.js",
         "app/src/auth/remote-auth.js",
         "app/src/sync/remote-sync.js",
