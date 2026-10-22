@@ -49,9 +49,13 @@ const { chromium } = require("playwright-core");
         await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         await fits(".calendar-schedule-controls > button, .calendar-touch-options > summary");
         if (mobile) {
-          const now = await page.locator(".calendar-schedule-controls").getByRole("button", { name: "Сейчас", exact: true }).boundingBox();
-          const settings = await page.locator(".calendar-touch-options > summary").boundingBox();
-          assert.ok(Math.abs(now.y - settings.y) < 1 && Math.abs(now.height - settings.height) < 1, "calendar actions align");
+          // Measure both controls in one frame; separate measurements can straddle a scroll.
+          const { now, settings } = await page.evaluate(() => {
+            const box = (node) => { const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width, height: rect.height }; };
+            const nowButton = [...document.querySelectorAll(".calendar-schedule-controls button")].find((node) => node.textContent.trim() === "Сейчас");
+            return { now: box(nowButton), settings: box(document.querySelector(".calendar-touch-options > summary")) };
+          });
+          assert.ok(Math.abs(now.y - settings.y) < 1 && Math.abs(now.height - settings.height) < 1, `calendar actions align: ${JSON.stringify({ now, settings })}`);
           assert.ok(settings.x - now.x - now.width <= 10, "Now and settings are adjacent");
           const grid = await page.locator(".calendar-time-scroll").boundingBox();
           assert.ok(grid.height >= 280 && grid.y + grid.height <= 724, `timeline leaves page scrolling space: ${width}/${mode} ${JSON.stringify(grid)}`);
