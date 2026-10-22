@@ -52,8 +52,12 @@ module.exports = [
   { name: "local release verification runs the same checks as CI and the legacy source-build route fails closed", fn() {
     const { releaseChecks } = require("../scripts/verify-release.cjs");
     const checks = releaseChecks();
-    assert.ok(checks.length >= 30);
-    for (const script of ["test:sql-isolation", "test:auth-recovery", "test:save-failures", "test:mobile-completion", "build:worker"]) assert.ok(checks.some((check) => check.args[1] === script));
+    assert.equal(new Set(checks.map((check) => check.args.join(" "))).size, checks.length, "each release check runs once");
+    for (const script of ["test:sql-isolation", "test:e2e", "desktop:smoke", "build:worker"]) assert.ok(checks.some((check) => check.args[1] === script));
+    // test:e2e discovers every UI suite by its file name.
+    for (const suite of ["auth-recovery", "save-failure-workspaces", "mobile-completion-controls", "release-reliability"]) {
+      assert.ok(fs.existsSync(path.resolve(__dirname, `${suite}-e2e.cjs`)), suite);
+    }
     const legacy = require("node:child_process").spawnSync(process.execPath, [path.resolve(__dirname, "../scripts/legacy-cloudflare-build.cjs")], { encoding: "utf8" });
     assert.equal(legacy.status, 2); assert.match(legacy.stderr, /sealed artifact/);
   } },

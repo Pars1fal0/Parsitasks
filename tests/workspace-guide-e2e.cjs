@@ -90,7 +90,10 @@ const { _electron: electron, chromium } = require("playwright-core");
       downloaded = { filename: download.suggestedFilename(), state: "completed" };
     }
     assert.deepEqual(downloaded, { filename: "parsitasks-diagnostics.json", state: "completed" });
-    assert.deepEqual(JSON.parse(fs.readFileSync(downloadedFile, "utf8")), report);
+    // A background save may clear the earlier simulated write failure between preview and download.
+    const downloadedReport = JSON.parse(fs.readFileSync(downloadedFile, "utf8"));
+    assert.equal(typeof downloadedReport.localSaveError, "boolean");
+    assert.deepEqual({ ...downloadedReport, localSaveError: report.localSaveError }, report);
     await page.locator("#helpNavigationButton").click();
     assert.equal(await page.locator("#navigationPreferences").isVisible(), true);
     await page.locator("#helpSyncButton").click();

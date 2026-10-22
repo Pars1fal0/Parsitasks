@@ -47,11 +47,37 @@ jobs:
       - name: Validate Worker bundle
         run: npm run build:worker
 
-  verify:
+  # Every tests/*-e2e.cjs suite, split across parallel Windows runners.
+  e2e:
+    name: UI scenarios (${{ matrix.shard }}/3)
     needs: quick
     if: github.event_name != 'pull_request'
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run UI scenarios
+        run: npm run test:e2e -- --shard ${{ matrix.shard }}/3
+
+  verify:
+    needs: [quick, e2e]
+    if: github.event_name != 'pull_request'
+    runs-on: windows-latest
+    timeout-minutes: 30
     outputs:
       candidate_seal: ${{ steps.seal.outputs.candidate_seal_sha256 }}
     steps:
@@ -66,74 +92,6 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Audit dependencies
-        run: npm run test:dependencies
-      - name: Run unit tests
-        run: npm test
-      - name: Verify database migration on disposable PostgreSQL
-        run: npm run test:sql-reliability
-      - name: Verify full database isolation, recovery and account deletion
-        run: npm run test:sql-isolation
-      - name: Run lint
-        run: npm run lint
-      - name: Run UI scenarios
-        run: npm run test:e2e
-      - name: Verify planning and recovery workflows
-        run: npm run test:planning
-      - name: Verify audit regressions in isolated profiles
-        run: npm run test:audit
-      - name: Verify the simplified daily workspace and unified calendar
-        run: npm run test:minimal
-      - name: Verify full-day calendar and interactive activity charts
-        run: npm run test:calendar-activity
-      - name: Verify subtasks, palettes, compact layout and homework dates
-        run: npm run test:requested-polish
-      - name: Verify daily flow, calendar precision and study dialogs
-        run: npm run test:daily-flow
-      - name: Verify habits and timeline rollback after storage failures
-        run: npm run test:save-failures
-      - name: Verify storage failure and backup recovery
-        run: npm run test:reliability
-      - name: Verify image cache ownership, retention and transaction failures
-        run: npm run test:board-cache
-      - name: Verify cloud recovery and account deletion with mocked accounts
-        run: npm run test:account-recovery
-      - name: Verify password recovery with all Auth requests mocked
-        run: npm run test:auth-recovery
-      - name: Verify setup and private support diagnostics
-        run: npm run test:onboarding
-      - name: Verify account preferences across isolated devices
-        run: npm run test:settings-sync
-      - name: Verify settings imports and persistence failures in isolated profiles
-        run: npm run test:settings-reliability
-      - name: Verify accent palette and settings layout
-        run: npm run test:appearance
-      - name: Verify button icons on desktop and mobile
-        run: npm run test:icons
-      - name: Verify task and archive rollback, checklist limits and late calendar intervals
-        run: npm run test:task-recovery
-      - name: Verify archive layout, shared checkboxes and stable background
-        run: npm run test:archive
-      - name: Verify task editor closure and calendar completion
-        run: npm run test:task-editor
-      - name: Verify goals, notes and board panels across themes and viewports
-        run: npm run test:workspace-panels
-      - name: Verify cross-tab edits, mobile calendar and failed Drive metadata saves
-        run: npm run test:audit-fixes
-      - name: Verify calendar pinch, one-finger scrolling and long-press scheduling
-        run: npm run test:calendar-touch
-      - name: Verify expanded calendar, Back navigation and touch resizing
-        run: npm run test:calendar-expanded
-      - name: Verify mobile forms, study controls and short-event selection
-        run: npm run test:mobile-workspace
-      - name: Verify study material toolbar and empty upload dialog
-        run: npm run test:study-materials
-      - name: Mobile board and calendar layout
-        run: npm run test:mobile-layout
-      - name: Mobile numeric habit controls and repeated value persistence
-        run: npm run test:habit-numbers
-      - name: Mobile completion and drag target separation
-        run: npm run test:mobile-completion
       - name: Smoke test desktop
         run: npm run desktop:smoke
       - name: Build website

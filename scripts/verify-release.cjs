@@ -5,12 +5,13 @@ const yaml = require("yaml");
 
 function releaseChecks(root = path.resolve(__dirname, "..")) {
   const workflow = yaml.parse(fs.readFileSync(path.join(root, ".github/workflows/verification.yml"), "utf8"));
-  const checks = workflow.jobs.verify.steps.flatMap((step) => {
+  // Replay the CI jobs in order; a sharded UI step runs every suite locally.
+  const checks = ["quick", "e2e", "verify"].flatMap((job) => workflow.jobs[job].steps).flatMap((step) => {
     if (step.run === "npm test") return [{ name: step.name, args: ["test"] }];
-    const match = /^npm run ([a-z0-9:-]+)$/.exec(step.run || "");
+    const match = /^npm run ([a-z0-9:-]+)(?: -- --shard .+)?$/.exec(step.run || "");
     return match ? [{ name: step.name, args: ["run", match[1]] }] : [];
-  });
-  for (const script of ["test:dependencies", "test:sql-isolation", "test:e2e", "test:save-failures", "test:reliability", "build:web", "build:worker"]) {
+  }).filter((check, index, all) => all.findIndex((other) => other.args.join(" ") === check.args.join(" ")) === index);
+  for (const script of ["test:dependencies", "test:sql-isolation", "test:e2e", "desktop:smoke", "build:web", "build:worker"]) {
     if (!checks.some((check) => check.args[1] === script)) throw new Error(`Missing release check: ${script}`);
   }
   return checks;
