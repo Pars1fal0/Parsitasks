@@ -1,0 +1,106 @@
+/* Habit cards and controls. */
+.habit-item {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 16px;
+  overflow: hidden;
+  padding: 16px 16px 16px 10px;
+}
+
+.habit-item::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--teal);
+  content: "";
+}
+
+.habit-main p {
+  margin: 5px 0 0;
+  font-size: 13px;
+}
+
+.habit-drag-handle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  min-width: 30px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--muted);
+  cursor: grab;
+  touch-action: none;
+}
+
+.habit-drag-handle:hover,
+.habit-drag-handle:focus-visible {
+  background: var(--surface-soft);
+  color: var(--text-strong);
+}
+
+.habit-drag-handle:active {
+  cursor: grabbing;
+}
+
+.habit-main {
+  min-width: 0;
+}
+
+.habit-control {
+  grid-column: 2;
+}
+
+.habit-control {
+  display: grid;
+  gap: 10px;
+  padding-left: 2px;
+}
+
+.habit-number-row {
+  flex-wrap: wrap;
+}
+
+.habit-number-row input {
+  width: 84px;
+  min-width: 0;
+  text-align: center;
+}
+
+.habit-stepper {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-soft);
+  color: var(--text-strong);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.habit-stepper:hover,
+.habit-stepper:focus-visible {
+  border-color: rgb(var(--accent-rgb) / 44%);
+  background: rgb(var(--accent-rgb) / 10%);
+}
+
+.habit-number-row span,
+.habit-check-row span {
+  color: var(--text-soft);
+  font-weight: 610;
+}
+
+.progress-track {
+  height: 9px;
+}
+
+.progress-fill {
+  width: 0%;
+  background: var(--teal);
+}

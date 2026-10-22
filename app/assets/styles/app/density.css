@@ -1,0 +1,41 @@
+/* Compact density. */
+:root[data-density="compact"] .workspace {
+  padding: 24px;
+}
+
+:root[data-density="compact"] .focus-board {
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+:root[data-density="compact"] .panel,
+:root[data-density="compact"] .focus-card,
+:root[data-density="compact"] .stat-card {
+  border-radius: var(--radius-sm);
+}
+
+:root[data-density="compact"] .main-panel,
+:root[data-density="compact"] .form-panel,
+:root[data-density="compact"] .metric-panel,
+:root[data-density="compact"] .month-panel,
+:root[data-density="compact"] .week-panel,
+:root[data-density="compact"] .week-board-panel,
+:root[data-density="compact"] .heatmap-panel,
+:root[data-density="compact"] .timeline-panel,
+:root[data-density="compact"] .timeline-unscheduled-panel,
+:root[data-density="compact"] .goal-metric,
+:root[data-density="compact"] .settings-panel {
+  padding: 14px;
+}
+
+:root[data-density="compact"] .task-item,
+:root[data-density="compact"] .habit-item,
+:root[data-density="compact"] .goal-item,
+:root[data-density="compact"] .archive-item {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+:root[data-density="compact"] .timeline-hour-slot {
+  min-height: 96px;
+}

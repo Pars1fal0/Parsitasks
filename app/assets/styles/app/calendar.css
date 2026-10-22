@@ -1,0 +1,457 @@
+/* Overview, week board, month calendar and heatmap. */
+.timeline-scale-control button {
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+}
+
+.timeline-scale-control button.is-active {
+  color: var(--text-strong);
+  border-color: var(--teal-deep);
+  background: var(--teal-soft);
+}
+
+.timeline-unscheduled-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.timeline-task.is-unscheduled .timeline-task-top span {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+}
+
+.week-board-panel,
+.month-panel,
+.week-panel,
+.heatmap-panel {
+  grid-column: 1 / -1;
+}
+
+.metric-panel {
+  display: grid;
+  gap: 9px;
+  min-height: 150px;
+}
+
+#overviewView .metric-panel {
+  min-height: 92px;
+  padding: 14px 16px;
+}
+
+#overviewView .metric-panel strong {
+  font-size: 30px;
+}
+
+.metric-panel strong {
+  color: var(--text-strong);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.metric-panel-dark {
+  background: rgb(var(--accent-rgb) / 8%);
+}
+
+.metric-panel-light {
+  background: rgba(139, 145, 255, 0.08);
+}
+
+.week-strip,
+.week-board-grid,
+.month-weekdays,
+.month-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.week-strip,
+.month-weekdays,
+.month-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.week-board-grid {
+  width: 100%;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  overflow: visible;
+  padding-bottom: 4px;
+}
+
+.mobile-scroll-hint {
+  display: none;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.week-board-day,
+.month-day,
+.day-cell {
+  display: grid;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease),
+    box-shadow 160ms var(--ease),
+    background 160ms var(--ease);
+}
+
+.week-board-day {
+  gap: 8px;
+  min-height: 220px;
+  padding: 10px;
+}
+
+.month-day {
+  gap: 7px;
+  min-width: 0;
+  min-height: 116px;
+  padding: 10px;
+  text-align: left;
+  user-select: none;
+}
+
+.day-cell {
+  gap: 9px;
+  min-height: 112px;
+  padding: 12px;
+}
+
+.week-board-day:hover,
+.month-day:hover,
+.day-cell:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 8px 18px rgba(20, 38, 32, 0.06);
+}
+
+.week-board-day.is-active,
+.month-day.is-active {
+  border-color: rgb(var(--accent-rgb) / 58%);
+  box-shadow: 0 0 0 4px rgb(var(--accent-strong-rgb) / 9%);
+}
+
+.month-day.is-outside {
+  background: var(--surface-soft);
+}
+
+.month-day.is-outside .month-day-head strong {
+  color: var(--text-soft);
+}
+
+.week-board-day.is-today .week-board-header strong,
+.month-day.is-today .month-day-head strong {
+  background: var(--button-primary);
+  color: #ffffff;
+}
+
+.week-board-header,
+.month-day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 680;
+  width: 100%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.week-board-header strong,
+.month-day-head strong {
+  display: grid;
+  min-width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-strong);
+  font-size: 13px;
+}
+
+.week-board-count,
+.day-name,
+.month-day-head span,
+.heatmap-legend {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 640;
+}
+
+.week-board-list,
+.month-day-items,
+.day-bars {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.week-task-chip,
+.month-task-chip {
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xs);
+  background: var(--surface-soft);
+  color: var(--text-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week-task-chip {
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+}
+
+.week-task-chip span,
+.week-task-chip small {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.week-task-chip span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.week-task-chip small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.month-task-chip {
+  padding: 3px 6px;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.week-task-chip.is-done {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.week-task-chip.is-done span,
+.week-task-chip.is-done small {
+  color: var(--text-soft);
+}
+
+.week-task-chip.is-done span {
+  text-decoration: line-through;
+}
+
+.week-board-empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-xs);
+  color: var(--muted);
+  padding: 10px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.month-weekdays {
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.month-day-hidden {
+  display: none;
+  gap: 4px;
+}
+
+.month-day.is-expanded .month-day-hidden {
+  display: grid;
+}
+
+.month-task-chip {
+  border-left: 3px solid var(--chip-color, var(--muted-2));
+  cursor: grab;
+  touch-action: pan-x pan-y;
+}
+
+.month-task-chip:active {
+  cursor: grabbing;
+}
+
+.month-task-chip:focus-visible,
+.week-task-chip:focus-visible {
+  outline: 3px solid rgb(var(--accent-strong-rgb) / 26%);
+  outline-offset: 2px;
+}
+
+.month-day-items .month-day-more {
+  width: fit-content;
+  min-height: 25px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--teal-soft);
+  color: var(--teal-deep);
+  font-weight: 700;
+  padding: 3px 6px;
+}
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heatmap-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.heatmap-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heatmap-legend span::before {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--teal);
+  content: "";
+}
+
+.heatmap-legend .heatmap-legend-habits::before {
+  background: var(--coral);
+}
+
+.heatmap-legend .heatmap-legend-perfect::before {
+  background: #e6b94f;
+}
+
+.heatmap-grid {
+  --heatmap-gap: clamp(1px, 0.28vw, 4px);
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px 8px;
+  overflow: visible;
+  padding: 8px 0 4px;
+}
+
+.heatmap-half {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.heatmap-half .heatmap-cells {
+  aspect-ratio: var(--heatmap-columns) / 7;
+}
+
+.heatmap-months {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: repeat(var(--heatmap-columns), minmax(0, 1fr));
+  gap: var(--heatmap-gap);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.heatmap-months span {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.heatmap-weekdays {
+  display: grid;
+  grid-template-rows: repeat(7, 1fr);
+  gap: var(--heatmap-gap);
+  min-height: 0;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.heatmap-weekdays span {
+  display: flex;
+  align-items: center;
+}
+
+.heatmap-cells {
+  display: grid;
+  grid-template-columns: repeat(var(--heatmap-columns), minmax(0, 1fr));
+  grid-template-rows: repeat(7, minmax(0, 1fr));
+  grid-auto-flow: column;
+  gap: var(--heatmap-gap);
+  min-width: 0;
+  aspect-ratio: 53 / 7;
+}
+
+.heatmap-cell,
+.heatmap-empty-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 4px;
+  border: 1px solid rgba(226, 240, 235, 0.08);
+  border-radius: 4px;
+}
+
+.heatmap-cell {
+  background:
+    linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
+    #111816;
+}
+
+:root[data-theme="light"] .heatmap-cell {
+  border-color: rgba(15, 30, 24, 0.06);
+  background:
+    linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
+    #eef3f1;
+}
+
+.heatmap-cell.is-perfect-day {
+  border-color: #f4d58b;
+  background: #e6b94f;
+}
+
+:root[data-theme="light"] .heatmap-cell.is-perfect-day {
+  border-color: #b78317;
+  background: #e6b94f;
+}
+
+.heatmap-empty-cell {
+  border-color: transparent;
+  background: transparent;
+}
+
+.heatmap-cell:hover,
+.heatmap-cell:focus-visible,
+.heatmap-cell:focus,
+.heatmap-cell.is-current {
+  transform: scale(1.18);
+  box-shadow: 0 0 0 3px rgb(var(--accent-strong-rgb) / 12%);
+}

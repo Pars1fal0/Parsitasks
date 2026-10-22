@@ -10,8 +10,7 @@ function createSettingsState(options = {}) {
   }
 
   function normalizeAccentPreference(value) {
-    const colors = accentColors;
-    return colors.normalize(value);
+    return accentColors.normalize(value);
   }
 
   function normalizeNotificationSetting(value) {

@@ -1,0 +1,115 @@
+/* Archive, inline task details and active task. */
+.archive-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  content-visibility: auto;
+  contain-intrinsic-size: 76px;
+}
+
+.archive-toolbar {
+  justify-content: end;
+  flex: 0 1 auto;
+}
+
+.archive-date-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 720;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  padding: 8px 2px 2px;
+}
+
+.archive-item p {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.task-inline-category > summary {
+  width: fit-content;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.task-inline-category-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px 40px;
+  align-items: end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.task-inline-category-fields input[type="color"],
+.task-inline-category-fields > button {
+  width: 40px;
+  min-width: 0;
+  height: 40px;
+  padding: 4px;
+}
+
+.habit-quick-adds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.habit-quick-adds > button {
+  min-height: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
+#tasksView .quick-task-form {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 12px 0;
+}
+
+#tasksView .task-item h3,
+#habitsView .habit-item h3 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+#tasksView .task-meta-chip,
+#habitsView .habit-streak {
+  font-size: 12px;
+  font-weight: 450;
+  line-height: 1.5;
+}
+
+.active-task-filters:not([hidden]) {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.active-task-filters > span {
+  flex: 1 1 180px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

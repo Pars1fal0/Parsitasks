@@ -174,8 +174,7 @@ function mergeProfile(local = {}, remote = {}) {
   const localUpdatedAt = String(local?.updatedAt || "");
   const remoteUpdatedAt = String(remote?.updatedAt || "");
   const newest = !localUpdatedAt ? remote : !remoteUpdatedAt ? local : remoteUpdatedAt >= localUpdatedAt ? remote : local;
-  const profileApi = profileSettings;
-  return { ...clone(newest), preferences: profileApi.mergePreferences(local?.preferences, remote?.preferences) };
+  return { ...clone(newest), preferences: profileSettings.mergePreferences(local?.preferences, remote?.preferences) };
 }
 
 function mergeEntities(local = [], remote = [], mergeEntity = chooseNewest) {

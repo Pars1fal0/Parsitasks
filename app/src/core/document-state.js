@@ -1,20 +1,20 @@
-import * as appUtilsApi from "./app-utils.js";
+import * as appUtils from "./app-utils.js";
 import * as dataNormalizersApi from "./data-normalizers.js";
-import * as habitConfigHistoryApi from "../habits/habit-config-history.js";
-import * as goalActivityApi from "../goals/goal-activity.js";
-import * as nutritionModelApi from "../nutrition/nutrition-model.js";
-import * as studyModelApi from "../study/study-model.js";
-import * as syncMetadataApi from "../sync/sync-metadata.js";
-import * as taskChecklistApi from "../tasks/task-checklist.js";
+import * as habitConfigHistory from "../habits/habit-config-history.js";
+import * as goalActivity from "../goals/goal-activity.js";
+import * as nutritionModel from "../nutrition/nutrition-model.js";
+import * as studyModel from "../study/study-model.js";
+import * as syncMetadata from "../sync/sync-metadata.js";
+import * as taskChecklist from "../tasks/task-checklist.js";
 import * as stateNormalizerApi from "./state-normalizer.js";
-import * as habitFreezeApi from "../habits/habit-freeze.js";
-import * as habitTitleHistoryApi from "../habits/habit-title-history.js";
-import * as mcpActivityApi from "../integrations/mcp-activity.js";
-import * as boardModelApi from "../board/board-model.js";
-import * as journalModelApi from "../journal/journal-model.js";
-import * as notesModelApi from "../notes/notes-model.js";
-import * as profileSettingsApi from "../settings/profile-settings.js";
-import * as tombstoneRetentionApi from "../sync/tombstone-retention.js";
+import * as habitFreeze from "../habits/habit-freeze.js";
+import * as habitTitleHistory from "../habits/habit-title-history.js";
+import * as mcpActivity from "../integrations/mcp-activity.js";
+import * as boardModel from "../board/board-model.js";
+import * as journalModel from "../journal/journal-model.js";
+import * as notesModel from "../notes/notes-model.js";
+import * as profileSettings from "../settings/profile-settings.js";
+import * as tombstoneRetention from "../sync/tombstone-retention.js";
 import * as recurrenceApi from "../tasks/recurrence.js";
 
 const SCHEMA_VERSION = 26;
@@ -35,19 +35,13 @@ function normalizeReminderOffset(value, hasTime = true) {
 }
 
 function createNormalizer() {
-  const utils = appUtilsApi.createAppUtils({
+  const utils = appUtils.createAppUtils({
     getFirstDayOfWeek: () => 1,
     getTimeFormat: () => "24",
   });
   const dataNormalizers = dataNormalizersApi.createDataNormalizers({
     normalizeDateKey: utils.normalizeDateKey,
   });
-  const habitConfigHistory = habitConfigHistoryApi;
-  const goalActivity = goalActivityApi;
-  const nutritionModel = nutritionModelApi;
-  const studyModel = studyModelApi;
-  const syncMetadata = syncMetadataApi;
-  const taskChecklist = taskChecklistApi;
 
   return stateNormalizerApi.createStateNormalizer({
     schemaVersion: SCHEMA_VERSION,
@@ -59,16 +53,16 @@ function createNormalizer() {
     normalizeHabitLogs: dataNormalizers.normalizeHabitLogs,
     normalizeTaskChecklist: taskChecklist.normalizeItems,
     normalizeTaskChecklistLogs: taskChecklist.normalizeLogs,
-    normalizeHabitFreezeDays: habitFreezeApi.normalizeFreezeDays,
+    normalizeHabitFreezeDays: habitFreeze.normalizeFreezeDays,
     normalizeHabitRepeat,
     normalizeHabitConfigHistory: habitConfigHistory.normalizeHabitConfigHistory,
     normalizeHabitAvailabilityHistory: habitConfigHistory.normalizeHabitAvailabilityHistory,
-    normalizeHabitTitleHistory: habitTitleHistoryApi.normalizeHabitTitleHistory,
+    normalizeHabitTitleHistory: habitTitleHistory.normalizeHabitTitleHistory,
     normalizeReminderOffset,
-    normalizeMcpActivity: mcpActivityApi.normalizeActivity,
-    normalizeBoardItems: boardModelApi.normalizeItems,
-    normalizeJournalEntries: journalModelApi.normalizeJournalEntries,
-    normalizeNotes: notesModelApi.normalizeNotes,
+    normalizeMcpActivity: mcpActivity.normalizeActivity,
+    normalizeBoardItems: boardModel.normalizeItems,
+    normalizeJournalEntries: journalModel.normalizeJournalEntries,
+    normalizeNotes: notesModel.normalizeNotes,
     normalizeLinkedTaskIds: goalActivity.normalizeLinkedTaskIds,
     normalizeTaskTargets: goalActivity.normalizeTaskTargets,
     normalizeHabitTargets: goalActivity.normalizeHabitTargets,
@@ -76,8 +70,8 @@ function createNormalizer() {
     normalizeNutritionMeal: nutritionModel.normalizeMeal,
     normalizeNutritionSettings: nutritionModel.normalizeSettings,
     normalizeNutritionTemplate: nutritionModel.normalizeTemplate,
-    normalizeProfile: profileSettingsApi.normalizeProfile,
-    pruneTombstones: tombstoneRetentionApi.pruneTombstones,
+    normalizeProfile: profileSettings.normalizeProfile,
+    pruneTombstones: tombstoneRetention.pruneTombstones,
     normalizeSyncMeta: syncMetadata.normalizeSyncMeta,
     pruneSyncMeta: syncMetadata.pruneSyncMeta,
     normalizeTaskFlags: dataNormalizers.normalizeTaskFlags,

@@ -1,0 +1,412 @@
+/* Theme tokens, accents, reset and native form controls. */
+:root {
+  color-scheme: dark;
+  --font-sans: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  --bg: color-mix(in srgb, var(--teal) 2%, #0d0f11);
+  --bg-2: color-mix(in srgb, var(--teal) 3%, #121416);
+  --sidebar: color-mix(in srgb, var(--teal) 4%, #101214);
+  --surface: color-mix(in srgb, var(--teal) 2%, #17191b);
+  --surface-elevated: color-mix(in srgb, var(--teal) 3%, #1b1e20);
+  --surface-soft: color-mix(in srgb, var(--teal) 3%, #121517);
+  --surface-input: color-mix(in srgb, var(--teal) 2%, #0f1113);
+  --logo-filter: none;
+  --text: #e5eeeb;
+  --text-strong: #f8fffc;
+  --text-soft: #b7c5c0;
+  --muted: #81908b;
+  --muted-2: #5f6d68;
+  --line: rgba(226, 240, 235, 0.11);
+  --line-strong: rgba(226, 240, 235, 0.2);
+  --teal: #27c6a5;
+  --teal-deep: #29b99c;
+  --button-primary: #08745f;
+  --teal-soft: rgba(39, 198, 165, 0.14);
+  --accent-rgb: 39 198 165;
+  --accent-strong-rgb: 15 143 120;
+  --violet: #8b91ff;
+  --violet-soft: rgba(139, 145, 255, 0.14);
+  --coral: #ff8068;
+  --coral-soft: rgba(255, 128, 104, 0.13);
+  --amber: #f0bf58;
+  --amber-soft: rgba(240, 191, 88, 0.14);
+  --danger: #ff6464;
+  --danger-soft: rgba(255, 100, 100, 0.13);
+  --success: #27b486;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.18), 0 18px 46px rgba(0, 0, 0, 0.26);
+  --shadow-lift: 0 8px 18px rgba(0, 0, 0, 0.24), 0 28px 78px rgba(0, 0, 0, 0.38);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  font-family: var(--font-sans);
+}
+
+html:not([data-auth-ready]) body {
+  visibility: hidden;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f7f8;
+  --bg-2: #eef2f3;
+  --sidebar: #ffffff;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-soft: #f7f9fa;
+  --surface-input: #ffffff;
+  --text: #17201c;
+  --text-strong: #0b1411;
+  --text-soft: #46554f;
+  --muted: #718079;
+  --muted-2: #9aa7a2;
+  --line: #dfe7e4;
+  --line-strong: #cbd8d3;
+  --teal: #0f8f78;
+  --teal-deep: #0b705f;
+  --button-primary: #0b705f;
+  --teal-soft: #e7f5f1;
+  --accent-rgb: 15 143 120;
+  --accent-strong-rgb: 11 112 95;
+  --violet: #5d62c6;
+  --violet-soft: #eeeffb;
+  --coral: #d9644a;
+  --coral-soft: #fff0eb;
+  --amber: #b98219;
+  --amber-soft: #fff6df;
+  --danger: #c43f3f;
+  --danger-soft: #fff0f0;
+  --success: #16845f;
+  --shadow-soft: 0 1px 2px rgba(20, 38, 32, 0.05), 0 14px 38px rgba(20, 38, 32, 0.07);
+  --shadow-lift: 0 8px 18px rgba(20, 38, 32, 0.08), 0 24px 70px rgba(20, 38, 32, 0.12);
+}
+
+:root[data-accent="blue"] {
+  --logo-filter: hue-rotate(75deg);
+  --teal: #5aa7ff;
+  --teal-deep: #7bb8ff;
+  --button-primary: #1769b0;
+  --teal-soft: rgb(90 167 255 / 14%);
+  --accent-rgb: 90 167 255;
+  --accent-strong-rgb: 38 119 199;
+}
+
+:root[data-accent="orange"] {
+  --logo-filter: hue-rotate(235deg);
+  --teal: #ff9b45;
+  --teal-deep: #ffad68;
+  --button-primary: #a84f0c;
+  --teal-soft: rgb(255 155 69 / 14%);
+  --accent-rgb: 255 155 69;
+  --accent-strong-rgb: 190 82 18;
+}
+
+:root[data-accent="violet"] {
+  --logo-filter: hue-rotate(125deg);
+  --teal: #a78bfa;
+  --teal-deep: #baa6ff;
+  --button-primary: #6d49bf;
+  --teal-soft: rgb(167 139 250 / 15%);
+  --accent-rgb: 167 139 250;
+  --accent-strong-rgb: 112 76 199;
+}
+
+:root[data-theme="light"][data-accent="blue"] {
+  --teal: #2478c8;
+  --teal-deep: #175d9e;
+  --button-primary: #175d9e;
+  --teal-soft: #e8f2fc;
+  --accent-rgb: 36 120 200;
+  --accent-strong-rgb: 23 93 158;
+}
+
+:root[data-theme="light"][data-accent="orange"] {
+  --teal: #d96a18;
+  --teal-deep: #a94c0c;
+  --button-primary: #a94c0c;
+  --teal-soft: #fff0e3;
+  --accent-rgb: 217 106 24;
+  --accent-strong-rgb: 169 76 12;
+}
+
+:root[data-theme="light"][data-accent="violet"] {
+  --teal: #7654c7;
+  --teal-deep: #593a9d;
+  --button-primary: #593a9d;
+  --teal-soft: #f0ebfc;
+  --accent-rgb: 118 84 199;
+  --accent-strong-rgb: 89 58 157;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+html {
+  min-width: 320px;
+  background: var(--bg);
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 78% 0%, rgb(var(--accent-rgb) / 11%), transparent 34%),
+    linear-gradient(180deg, var(--bg-2) 0, var(--bg) 440px);
+  background-color: var(--bg);
+  background-size: 100% 900px, 100% 100%;
+  background-repeat: no-repeat;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 450;
+  line-height: 1.62;
+  text-rendering: optimizeLegibility;
+}
+
+.skip-link {
+  position: fixed;
+  z-index: 5000;
+  top: 10px;
+  left: 10px;
+  transform: translateY(-160%);
+  border-radius: var(--radius-xs);
+  padding: 9px 12px;
+  background: var(--text-strong);
+  color: var(--surface);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:root[data-theme="light"] body {
+  background: linear-gradient(180deg, #fbfcfc 0, var(--bg) 420px);
+}
+
+body::selection {
+  background: rgb(var(--accent-rgb) / 26%);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.icon-sprite {
+  display: none;
+}
+
+.ui-icon {
+  display: block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.ambient-grid {
+  display: none;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  color: var(--text-strong);
+  font-size: clamp(30px, 3vw, 44px);
+  font-weight: 720;
+  letter-spacing: 0;
+  line-height: 1.06;
+}
+
+h2 {
+  margin-bottom: 0;
+  color: var(--text-strong);
+  font-size: 18px;
+  font-weight: 680;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+h3 {
+  margin-bottom: 0;
+  color: var(--text-strong);
+  font-size: 15px;
+  font-weight: 630;
+  letter-spacing: 0;
+  line-height: 1.38;
+}
+
+p {
+  line-height: 1.62;
+}
+
+select,
+input[type="date"],
+input[type="time"],
+input[type="search"],
+input[type="text"],
+input[type="url"],
+input[type="password"],
+input[type="number"],
+textarea {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background-color: var(--surface-input);
+  background-repeat: no-repeat;
+  color: var(--text);
+  color-scheme: dark;
+  outline: none;
+  padding: 0 12px;
+  transition:
+    border-color 160ms var(--ease),
+    box-shadow 160ms var(--ease),
+    background 160ms var(--ease);
+}
+
+textarea {
+  min-height: 112px;
+  padding-block: 10px;
+  resize: vertical;
+}
+
+:root[data-theme="light"] select,
+:root[data-theme="light"] input[type="date"],
+:root[data-theme="light"] input[type="time"],
+:root[data-theme="light"] input[type="search"],
+:root[data-theme="light"] input[type="text"],
+:root[data-theme="light"] input[type="url"],
+:root[data-theme="light"] input[type="password"],
+:root[data-theme="light"] input[type="number"],
+:root[data-theme="light"] textarea {
+  color-scheme: light;
+}
+
+select {
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23718079' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 12px center;
+  background-size: 14px 14px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.72;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-2);
+}
+
+option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgb(var(--accent-strong-rgb) / 18%);
+  outline-offset: 2px;
+}
+
+/* Keep native input semantics, with one visual treatment for visible checkboxes. */
+:root input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--surface-input);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: border-color 140ms var(--ease), background-color 140ms var(--ease), box-shadow 140ms var(--ease);
+}
+
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input))::before {
+  content: "";
+  width: 72%;
+  height: 72%;
+  background: var(--bg);
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E") center / contain no-repeat;
+  opacity: 0;
+}
+
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):is(:checked, :indeterminate) {
+  background: var(--teal);
+  border-color: var(--teal);
+}
+
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):is(:checked, :indeterminate)::before { opacity: 1; }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):indeterminate::before { width: 56%; height: 2px; border-radius: 1px; mask: none; }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):hover:not(:disabled) { border-color: var(--teal); box-shadow: 0 0 0 3px var(--teal-soft); }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):focus-visible { outline: 2px solid var(--teal); outline-offset: 3px; }
+input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)):disabled { opacity: .45; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  input[type="checkbox"] { transition: none; }
+}
+@media (forced-colors: active) {
+  :root input[type="checkbox"]:not(:where(#nutritionView input, #notePinned, .goal-step input)) { appearance: auto; -webkit-appearance: auto; }
+  input[type="checkbox"]::before { display: none; }
+}

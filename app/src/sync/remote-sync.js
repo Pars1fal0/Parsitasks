@@ -8,8 +8,7 @@ function createRemoteSync(options = {}) {
   const requestTimeoutMs = Math.max(100, Math.min(60_000, Number(options.requestTimeoutMs) || 30_000));
 
   function currentSchemaVersion() {
-    const api = documentState;
-    return api.SCHEMA_VERSION;
+    return documentState.SCHEMA_VERSION;
   }
 
   function normalizeConfig(config = {}) {

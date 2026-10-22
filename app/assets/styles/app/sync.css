@@ -1,0 +1,237 @@
+/* Account sync, diagnostics and MCP activity. */
+.sync-account {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.sync-account small,
+.sync-account strong {
+  display: block;
+}
+
+.sync-account small {
+  margin-top: var(--space-1);
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.sync-account-session {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sync-account-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+  color: var(--teal-bright);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.sync-account-identity {
+  min-width: 0;
+}
+
+.sync-account-identity small {
+  margin: 0;
+}
+
+.sync-account-identity strong {
+  overflow: hidden;
+  color: var(--text-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sync-history {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.sync-diagnostics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: var(--space-3);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--line);
+}
+
+.sync-diagnostic-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--surface-soft);
+}
+
+.sync-diagnostic-row > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.sync-diagnostic-row strong,
+.sync-diagnostic-row small {
+  overflow-wrap: anywhere;
+}
+
+.sync-diagnostic-row strong {
+  color: var(--text-strong);
+  font-size: 0.78rem;
+}
+
+.sync-diagnostic-row small {
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.sync-diagnostic-marker {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--muted-2);
+}
+
+.sync-diagnostic-row.is-ok .sync-diagnostic-marker {
+  background: var(--success);
+}
+
+.sync-diagnostic-row.is-warning .sync-diagnostic-marker {
+  background: var(--amber);
+}
+
+.sync-diagnostic-row.is-error .sync-diagnostic-marker {
+  background: var(--danger);
+}
+
+.remote-snapshot-preview {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.remote-snapshot-preview strong {
+  color: var(--text-strong);
+}
+
+.remote-snapshot-preview small,
+.remote-snapshot-preview p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.remote-snapshot-preview.is-error {
+  border-color: var(--danger);
+}
+
+.sync-history-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.sync-history-row small {
+  color: var(--muted);
+  text-align: right;
+}
+
+.sync-history-row.is-error strong {
+  color: var(--danger);
+}
+
+.mcp-activity-list {
+  display: grid;
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--line);
+}
+
+.mcp-activity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--surface-elevated);
+}
+
+.mcp-activity-row > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.mcp-activity-row strong,
+.mcp-activity-row span,
+.mcp-activity-row small {
+  overflow-wrap: anywhere;
+}
+
+.mcp-activity-row span,
+.mcp-activity-row small,
+.mcp-activity-empty {
+  color: var(--muted);
+}
+
+.mcp-activity-row.is-undone {
+  opacity: 0.62;
+}
+
+.mcp-activity-empty {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-elevated);
+}
+
+@media (max-width: 540px) {
+  .mcp-activity-row {
+    grid-template-columns: 1fr;
+  }
+
+  .mcp-activity-row .compact-button {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 640px) {
+  .sync-diagnostics {
+    grid-template-columns: 1fr;
+  }
+
+  .sync-account-session {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .sync-account-session .compact-button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
