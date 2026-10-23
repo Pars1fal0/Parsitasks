@@ -859,7 +859,16 @@ function createCalendarSchedule(ctx) {
     }
     if (focusedControl) [...root.querySelectorAll("[data-calendar-focus]")].find((node) => node.dataset.calendarFocus === focusedControl)?.focus({ preventScroll: true });
   }
-  return { render };
+  function refreshNow() {
+    const now = ctx.getNow?.() || new Date();
+    const minute = now.getHours() * 60 + now.getMinutes();
+    document.querySelectorAll(".calendar-now-line").forEach((node) => {
+      node.dataset.minute = String(minute);
+      node.style.top = `${minute / 60 * hourHeight}px`;
+    });
+  }
+
+  return { refreshNow, render };
 }
 const api = { createCalendarSchedule, freeIntervals, quarterMinute, zoomHeight, anchoredScroll };
 

@@ -13,11 +13,11 @@ import { checkDueNotifications, syncDesktopReminders, updateFileBackupStatus, up
 import { habitStatusOnDate } from "./queries.js";
 import { confirmDialog, googleCalendarController, pwaController, remoteAuth, remoteSync, saveStatusView } from "./services.js";
 import { applyAccountPreferences, applySettingsPreferences, applyThemePreference, latestIsoDate, migrateAccountPreferences, renderRemoteSyncStatus, renderSettingsBackupStatus, saveUiState, scheduleRemotePush } from "./settings.js";
-import { appEvents, appShellController, dailyPulseController, notificationsController, studyController, viewRenderer, workspaceGuide } from "./shell.js";
+import { appEvents, appShellController, dailyPulseController, focusTimer, notificationsController, studyController, viewRenderer, workspaceGuide } from "./shell.js";
 import { cleanText, initialStateLoad, parseDate, stateController, storage, todayKey, toDateKey } from "./state.js";
 import { deviceSyncController, remoteAuthController, remoteDataController, remoteSyncWorkflow, settingsController } from "./sync.js";
 import { renderGoals, resetGoalForm } from "./task-actions.js";
-import { goalsView, journalView, notesView, tasksView, timelineView } from "./views.js";
+import { calendarSchedule, goalsView, journalView, notesView, tasksView, timelineView } from "./views.js";
 
 export async function init() {
   window.addEventListener("storage", (event) => {
@@ -77,6 +77,7 @@ export async function init() {
   notificationsController.bindEvents();
   appEvents.bind();
   workspaceGuide.bindEvents();
+  focusTimer.bindEvents();
   syncNavigationRoute({ replace: true });
   resetTaskForm({ open: false });
   resetHabitForm({ open: false });
@@ -106,6 +107,12 @@ export async function init() {
   setInterval(checkDueNotifications, 30000);
   setInterval(syncDesktopReminders, 60000);
   setInterval(handleDateRollover, 30000);
+  setInterval(refreshNowMarkers, 30000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    handleDateRollover();
+    refreshNowMarkers();
+  });
   scheduleAutoBackup();
 }
 
@@ -194,6 +201,13 @@ export function handleDateRollover() {
   }
   saveUiState();
   render();
+}
+
+// Clock-driven markers update in place; a full render would interrupt drags and open menus.
+export function refreshNowMarkers() {
+  if (document.hidden) return;
+  timelineView?.refreshNow?.();
+  calendarSchedule?.refreshNow?.();
 }
 
 export function render() {

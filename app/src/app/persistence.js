@@ -180,7 +180,10 @@ export function restoreUndoSnapshot(snapshot) {
 
 export function showToast(message, options = {}) {
   if (options.undo?.state && !options.undo.afterState) options.undo.afterState = JSON.stringify(app.state);
-  toastController.showToast(message, options);
+  // A day-complete note raised during the render of this same action rides along, keeping its undo button.
+  const note = app.pendingToastNote;
+  app.pendingToastNote = "";
+  toastController.showToast(note ? `${message} · ${note}` : message, options);
 }
 
 export function confirmAction(options = {}) {

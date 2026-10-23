@@ -144,6 +144,7 @@ const APP_SHELL = [
   "src/timeline/timeline-view.js",
   "src/timeline/timeline-controller.js",
   "src/core/daily-pulse.js",
+  "src/core/focus-timer.js",
   "src/core/view-renderer.js",
   "src/core/app-shell-controller.js",
   "src/ui/toast.js",

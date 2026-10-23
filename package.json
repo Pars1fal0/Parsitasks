@@ -27,6 +27,7 @@
     "test:mobile-workspace": "node tests/mobile-workspace-e2e.cjs",
     "test:mobile-layout": "node tests/mobile-board-calendar-layout-e2e.cjs",
     "test:habit-numbers": "node tests/habit-number-mobile-e2e.cjs",
+    "test:productivity": "node tests/productivity-boosts-e2e.cjs",
     "test:mobile-completion": "node tests/mobile-completion-controls-e2e.cjs",
     "test:study-materials": "node tests/study-material-toolbar-e2e.cjs",
     "test:requested-polish": "node tests/requested-polish-e2e.cjs",

@@ -493,3 +493,41 @@ body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; back
   .board-card-list { grid-template-columns: minmax(0, 1fr); }
   .historical-task-actions { flex-wrap: wrap; }
 }
+
+/* Focus sessions and day-complete celebration */
+.focus-start-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; font-size: 12px; font-weight: 600; }
+.focus-start-button[hidden] { display: none; }
+.focus-start-button > span:empty { display: none; }
+.day-progress > .focus-start-button { flex: 0 0 auto; margin-left: auto; min-height: 40px; }
+.focus-timer { position: fixed; z-index: 29; bottom: 22px; left: 50%; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; border: 1px solid color-mix(in srgb, var(--coral) 45%, var(--line)); border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-lift, 0 8px 24px rgb(0 0 0 / 12%)); color: var(--text-strong); transform: translateX(-50%); }
+.focus-timer[hidden] { display: none; }
+.focus-timer.is-break { border-color: color-mix(in srgb, var(--teal) 45%, var(--line)); }
+.focus-timer-mode { color: var(--muted); font-size: 12px; font-weight: 600; }
+.focus-timer-clock { min-width: 5ch; font-size: 18px; font-variant-numeric: tabular-nums; }
+.focus-timer-stop { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--coral-soft); color: var(--coral); font-weight: 600; cursor: pointer; }
+.focus-timer.is-break .focus-timer-stop { background: var(--teal-soft); color: var(--teal-deep); }
+.sidebar-pulse, .day-progress { position: relative; }
+.day-celebration { position: absolute; z-index: 3; top: 50%; left: 50%; width: 1px; height: 1px; pointer-events: none; }
+.day-celebration i { position: absolute; width: 7px; height: 3px; border-radius: 1px; background: var(--teal); opacity: 0; animation: day-confetti 900ms ease-out var(--day-particle-delay) both; }
+.day-celebration i:nth-child(3n + 2) { background: var(--coral); }
+.day-celebration i:nth-child(3n) { background: #e7b84a; }
+.sidebar-pulse.is-celebrating, .day-progress.is-celebrating { animation: day-complete 900ms ease-out both; }
+@keyframes day-confetti {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--day-particle-x), var(--day-particle-y)) rotate(160deg); }
+}
+@keyframes day-complete {
+  0%, 100% { transform: scale(1); }
+  35% { transform: scale(1.03); }
+}
+@media (max-width: 900px) {
+  .focus-timer { bottom: 92px; }
+  body:has(.toast.is-visible) .focus-timer { bottom: 152px; }
+  .day-progress > .focus-start-button { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .day-celebration { display: none; }
+  .sidebar-pulse.is-celebrating, .day-progress.is-celebrating { animation: none; }
+  .timeline-now-line { transition: none; }
+}

@@ -8,6 +8,13 @@
 .habit-number-more { display: contents; }
 .habit-number-more > summary, .habit-extra-decrement { display: none; }
 .habit-number-more > .habit-quick-adds { display: flex; }
+.habit-sign-switch { display: inline-flex; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; }
+.habit-sign-switch > .habit-sign-option { min-width: 36px; min-height: 42px; padding: 0 10px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 15px; font-weight: 700; cursor: pointer; }
+.habit-sign-switch > .habit-sign-option + .habit-sign-option { border-left: 1px solid var(--line); }
+.habit-sign-switch > .habit-sign-option.is-active { background: var(--teal-soft); color: var(--teal-deep); }
+.habit-sign-switch > .habit-sign-option[data-sign-mode="subtract"].is-active { background: var(--coral-soft); color: var(--coral); }
+.habit-sign-switch > .habit-sign-option:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
+.habit-quick-adds.is-subtracting > button { border-color: color-mix(in srgb, var(--coral) 45%, var(--line)); color: var(--coral); }
 .archive-grouping-control { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .archive-grouping-control input { width: 18px; height: 18px; min-height: 18px; margin: 0; }
 .archive-series { border-bottom: 1px solid var(--line); }
@@ -89,6 +96,7 @@
   #habitsView .habit-number-more > .habit-quick-adds { position: static; grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; width: 100%; margin: 4px 0 0; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-elevated); box-shadow: none; gap: 6px; }
   #habitsView .habit-number-more:not([open]) > .habit-quick-adds { display: none; }
   #habitsView .habit-extra-decrement { display: none; }
+  #habitsView .habit-quick-adds > .habit-sign-switch { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
   #habitsView .habit-quick-adds button { width: 100%; min-width: 0; text-align: center; min-height: 44px; padding: 6px; white-space: normal; overflow-wrap: anywhere; }
 
   .global-search-result { grid-template-columns: minmax(0, 1fr); gap: 4px; }

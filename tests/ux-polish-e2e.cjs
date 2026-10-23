@@ -79,7 +79,7 @@ const { chromium } = require("playwright-core");
     assert.equal(await page.locator("#appToast").isVisible(), false);
 
     await go("habits", "#habitsView");
-    const waterQuickAdd = page.locator('[data-habit-id="water"] .habit-quick-adds button:not(.habit-extra-decrement)');
+    const waterQuickAdd = page.locator('[data-habit-id="water"] .habit-quick-adds > button');
     assert.equal(await waterQuickAdd.count(), 1);
     assert.match(await waterQuickAdd.textContent(), /\+5/);
     await page.locator('[data-habit-id="water"] .habit-stepper').last().click();

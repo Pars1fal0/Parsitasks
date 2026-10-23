@@ -5,6 +5,7 @@ import * as navigationPreferencesModule from "../settings/navigation-preferences
 import * as habitTitleHistory from "../habits/habit-title-history.js";
 import * as notifications from "../platform/notifications.js";
 import * as dailyPulse from "../core/daily-pulse.js";
+import * as focusTimerModule from "../core/focus-timer.js";
 import * as studyControllerModule from "../study/study-controller.js";
 import * as viewRendererModule from "../core/view-renderer.js";
 import * as appShellControllerModule from "../core/app-shell-controller.js";
@@ -27,7 +28,7 @@ import { mcpActivityController, remoteSyncWorkflow, settingsController } from ".
 import { openLinkedNote, openNotesForSubject, openNotesForTask, renderArchive, renderCategories, renderGoals, renderHabits, renderOverview, resetGoalForm, saveGoalFromForm, saveTaskFromForm } from "./task-actions.js";
 import { archiveView, notesView, timelineView } from "./views.js";
 
-export let notificationsController, dailyPulseController, studyController, viewRenderer, appShellController, navigationController, workspaceGuide, appEvents;
+export let notificationsController, dailyPulseController, focusTimer, studyController, viewRenderer, appShellController, navigationController, workspaceGuide, appEvents;
 
 export function wireShell() {
   notificationsController = notifications.createNotifications({
@@ -59,7 +60,14 @@ export function wireShell() {
     isHabitComplete,
     habitStatusOnDate,
     isTaskDone,
+    onDayComplete: celebrateDay,
     taskDetails,
+  });
+
+  focusTimer = focusTimerModule.createFocusTimer({
+    notificationsEnabled: () => app.notificationSetting === "on",
+    showToast,
+    todayKey,
   });
 
   studyController = studyControllerModule.createStudyController({
@@ -295,4 +303,36 @@ export function wireShell() {
     updateHabitCustomRepeatSummary,
     updateQuickTaskPreview,
   });
+}
+
+function celebrateDay({ streak }) {
+  [els.sideProgressValue?.closest(".sidebar-pulse"), els.dayProgressValue?.closest(".day-progress")].forEach((panel) => {
+    if (!panel) return;
+    panel.querySelector(".day-celebration")?.remove();
+    const burst = document.createElement("div");
+    burst.className = "day-celebration";
+    burst.setAttribute("aria-hidden", "true");
+    for (let index = 0; index < 14; index += 1) {
+      const particle = document.createElement("i");
+      const angle = (index / 14) * Math.PI * 2;
+      particle.style.setProperty("--day-particle-x", `${Math.round(Math.cos(angle) * (48 + (index % 3) * 14))}px`);
+      particle.style.setProperty("--day-particle-y", `${Math.round(Math.sin(angle) * (30 + (index % 4) * 8))}px`);
+      particle.style.setProperty("--day-particle-delay", `${index * 18}ms`);
+      burst.appendChild(particle);
+    }
+    panel.classList.add("is-celebrating");
+    panel.appendChild(burst);
+    setTimeout(() => {
+      panel.classList.remove("is-celebrating");
+      burst.remove();
+    }, 1400);
+  });
+  // The action that closed the day usually shows its own toast right after this render; join it.
+  const note = streak >= 2 ? `День закрыт на 100% · серия ${streak} ${dailyPulse.pluralDays(streak)}` : "День закрыт на 100%";
+  app.pendingToastNote = note;
+  setTimeout(() => {
+    if (app.pendingToastNote !== note) return;
+    app.pendingToastNote = "";
+    showToast(`${note} · отличная работа`);
+  }, 0);
 }

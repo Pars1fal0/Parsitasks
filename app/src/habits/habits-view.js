@@ -3,6 +3,8 @@ import * as habitSchedule from "./habit-schedule.js";
 
 function createHabitsView(ctx) {
   let draggedHabitId = "";
+  // Quick amounts can add or subtract; the chosen direction survives re-renders within the session.
+  const subtractingHabitIds = new Set();
   function closeNumberMenus(except = null) {
     if (!globalThis.matchMedia?.("(max-width: 680px)")?.matches) return;
     ctx.els.habitList.querySelectorAll(".habit-number-more[open]").forEach((menu) => {
@@ -174,16 +176,58 @@ function createHabitsView(ctx) {
         : ["л", "l"].includes(unit) ? [0.25, 0.5]
         : ["мин", "мин.", "минут"].includes(unit) ? [5, 15]
         : [...new Set([step, Math.min(goal, step * 5)])].filter((amount) => amount > 0);
-      amounts.filter((amount) => amount !== step).forEach((amount) => {
+      const quickButtons = amounts.filter((amount) => amount !== step).map((amount) => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "ghost-button compact-button";
-        button.textContent = stepLabel(amount, habitConfig.unit);
-        button.title = `Добавить ${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-        if (habitConfig.unit && !button.textContent.endsWith(habitConfig.unit)) button.setAttribute("aria-label", `${habitTitle}: ${button.title.toLowerCase()}`);
-        button.addEventListener("click", () => { updateValue(getLoggedValue() + amount); closeNumberMenus(); });
+        button.addEventListener("click", () => {
+          const sign = subtractingHabitIds.has(habit.id) ? -1 : 1;
+          updateValue(getLoggedValue() + sign * amount);
+          closeNumberMenus();
+        });
         quickAdds.appendChild(button);
+        return { amount, button };
       });
+      const signSwitch = document.createElement("div");
+      signSwitch.className = "habit-sign-switch";
+      signSwitch.setAttribute("role", "group");
+      signSwitch.setAttribute("aria-label", `Режим быстрых отметок: ${habitTitle}`);
+      const signOptions = [["add", "+", "Прибавлять"], ["subtract", "−", "Убавлять"]].map(([mode, text, label]) => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "habit-sign-option";
+        option.dataset.signMode = mode;
+        option.textContent = text;
+        option.title = label;
+        option.setAttribute("aria-label", `${habitTitle}: ${label.toLowerCase()}`);
+        option.addEventListener("click", () => {
+          if (mode === "subtract") subtractingHabitIds.add(habit.id);
+          else subtractingHabitIds.delete(habit.id);
+          syncQuickButtons();
+        });
+        signSwitch.appendChild(option);
+        return option;
+      });
+      const syncQuickButtons = () => {
+        const subtracting = subtractingHabitIds.has(habit.id);
+        quickAdds.classList.toggle("is-subtracting", subtracting);
+        signOptions.forEach((option) => {
+          const active = (option.dataset.signMode === "subtract") === subtracting;
+          option.classList.toggle("is-active", active);
+          option.setAttribute("aria-pressed", String(active));
+        });
+        quickButtons.forEach(({ amount, button }) => {
+          const verb = subtracting ? "Убрать" : "Добавить";
+          button.textContent = subtracting ? stepLabel(amount, habitConfig.unit).replace("+", "−") : stepLabel(amount, habitConfig.unit);
+          button.title = `${verb} ${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+          button.removeAttribute("aria-label");
+          if (habitConfig.unit && !button.textContent.endsWith(habitConfig.unit)) button.setAttribute("aria-label", `${habitTitle}: ${button.title.toLowerCase()}`);
+        });
+      };
+      if (quickButtons.length) {
+        quickAdds.appendChild(signSwitch);
+        syncQuickButtons();
+      }
       if (quickAdds.childElementCount) {
         const more = document.createElement("details"); more.className = "habit-number-more";
         const summary = document.createElement("summary"); summary.className = "icon-button";
@@ -192,12 +236,6 @@ function createHabitsView(ctx) {
         const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
         icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", "#icon-more"); icon.append(use); summary.append(icon);
         more.append(summary, quickAdds); row.append(more);
-        const less = document.createElement("button"); less.type = "button";
-        less.className = "ghost-button compact-button habit-extra-decrement";
-        less.textContent = `−${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-        less.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
-        less.addEventListener("click", () => { updateValue(getLoggedValue() - step); closeNumberMenus(); });
-        quickAdds.prepend(less);
         more.open = !globalThis.matchMedia?.("(max-width: 680px)")?.matches;
       }
     } else {

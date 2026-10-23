@@ -82,7 +82,7 @@ function createTimelineView(ctx) {
       attachSlotCreate(slot, row.hour);
 
       if (model.nowLine?.hour === row.hour) {
-        slot.appendChild(createNowLine(model.nowLine.offsetPercent));
+        slot.appendChild(createNowLine(model.nowLine.offsetPercent, now));
       }
 
       row.tasks.forEach((entry) => {
@@ -120,7 +120,10 @@ function createTimelineView(ctx) {
     card.classList.toggle("is-deadline-marker", Number.isFinite(entry.minutes) && !entry.isTimeBlock);
     card.classList.toggle("is-just-scheduled", entry.task.id === justScheduledTaskId && entry.isTimeBlock);
     card.dataset.taskId = entry.task.id;
-    if (Number.isFinite(entry.minutes)) card.dataset.startMinutes = String(entry.minutes);
+    if (Number.isFinite(entry.minutes)) {
+      card.dataset.startMinutes = String(entry.minutes);
+      card.dataset.dueMinutes = String(entry.isTimeBlock ? entry.endMinutes : entry.minutes);
+    }
     if (!Number.isFinite(entry.minutes)) card.setAttribute("role", "listitem");
     if (!study && entry.categoryColor) card.style.setProperty("--timeline-color", entry.categoryColor);
     card.addEventListener("click", (event) => {
@@ -156,6 +159,8 @@ function createTimelineView(ctx) {
     time.textContent = entry.timeLabel || "Без времени";
     title.textContent = entry.title;
     title.title = entry.title;
+    meta.className = "timeline-task-meta";
+    meta.dataset.label = entry.metaLabel;
     meta.textContent = entry.isOverdue ? `${entry.metaLabel} · просрочено` : entry.metaLabel;
     if (study) meta.textContent = [study.typeLabel, study.room, study.teacher].filter(Boolean).join(" · ");
     top.append(time, title);
@@ -495,15 +500,45 @@ function createTimelineView(ctx) {
     ctx.shiftTaskTime(entry.task.id, offset);
   }
 
-  function createNowLine(offsetPercent) {
+  function createNowLine(offsetPercent, now) {
     const marker = document.createElement("span");
     const label = document.createElement("span");
     marker.className = "timeline-now-line";
     marker.style.setProperty("--now-offset", `${offsetPercent}%`);
     label.className = "timeline-now-label";
-    label.textContent = "Сейчас";
+    label.textContent = nowLabel(now);
     marker.appendChild(label);
     return marker;
+  }
+
+  function nowLabel(now) {
+    return `Сейчас · ${ctx.formatTime(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`)}`;
+  }
+
+  // Moves the "now" marker and refreshes overdue badges in place, so a running clock never rebuilds the grid mid-drag.
+  function refreshNow() {
+    const grid = ctx.els.timelineGrid;
+    if (!grid?.childElementCount) return;
+    const now = ctx.getNow?.() || new Date();
+    const isToday = ctx.getActiveDate() === ctx.toDateKey?.(now);
+    const minutes = now.getHours() * 60 + now.getMinutes();
+    let marker = grid.querySelector(".timeline-now-line");
+    if (!isToday) {
+      marker?.remove();
+      return;
+    }
+    const slot = grid.querySelector(`.timeline-hour-slot[data-hour="${Math.floor(minutes / 60)}"]`);
+    if (!slot) return;
+    if (!marker) marker = createNowLine(0, now);
+    if (marker.parentElement !== slot) slot.prepend(marker);
+    marker.style.setProperty("--now-offset", `${Math.round(((minutes % 60) / 60) * 100)}%`);
+    marker.querySelector(".timeline-now-label").textContent = nowLabel(now);
+    grid.querySelectorAll(".timeline-task.is-scheduled:not(.is-done):not(.is-overdue)").forEach((card) => {
+      if (!(Number(card.dataset.dueMinutes) < minutes)) return;
+      card.classList.add("is-overdue");
+      const meta = card.querySelector(".timeline-task-meta");
+      if (meta?.dataset.label && !card.classList.contains("is-study-event")) meta.textContent = `${meta.dataset.label} · просрочено`;
+    });
   }
 
   function attachSlotCreate(slot, hour) {
@@ -691,7 +726,7 @@ function createTimelineView(ctx) {
     return String(value || "").replace(/["\\]/g, "\\$&");
   }
 
-  return { renderTimeline, scrollToRelevantTime };
+  return { refreshNow, renderTimeline, scrollToRelevantTime };
 }
 
 const api = { buildTimelineModel, createTimelineView };

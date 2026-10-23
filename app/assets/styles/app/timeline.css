@@ -763,6 +763,7 @@
   height: 1px;
   background: var(--coral);
   pointer-events: none;
+  transition: top 0.6s ease;
 }
 
 .timeline-now-line::before {
