@@ -15,8 +15,7 @@
 .task-defer-toggle input { width: 18px; height: 18px; }
 #taskForm.is-deferred :is(.deadline-card, #taskRepeatUntilField, #customRepeatPanel, label:has(#taskRepeat), label:has(#taskReminder)) { display: none; }
 .task-selection-tools:empty { display: none; }
-#taskSelectMode { width: 44px; min-width: 44px; height: 44px; padding: 10px; }
-#taskSelectMode > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+#taskSelectMode { min-height: 44px; }
 #taskSelectMode[aria-pressed="true"] { color: var(--teal); background: var(--surface-input); }
 #taskSelectMode[hidden], .task-bulk-actions[hidden], #taskEmptyReset[hidden] { display: none; }
 .task-bulk-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 12px 0; border-bottom: 1px solid var(--line); margin-bottom: 8px; }

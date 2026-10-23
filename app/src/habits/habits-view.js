@@ -116,7 +116,7 @@ function createHabitsView(ctx) {
       input.setAttribute("aria-label", habitTitle);
       increment.type = "button";
       increment.className = "habit-stepper";
-      increment.textContent = `+${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+      increment.textContent = stepLabel(step, habitConfig.unit);
       increment.setAttribute("aria-label", `${habitTitle}: добавить ${step} ${habitConfig.unit || ""}`);
       decrement.setAttribute("aria-label", `${habitTitle}: убрать ${step} ${habitConfig.unit || ""}`);
       decrement.title = `Убрать ${step.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
@@ -178,7 +178,9 @@ function createHabitsView(ctx) {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "ghost-button compact-button";
-        button.textContent = `+${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+        button.textContent = stepLabel(amount, habitConfig.unit);
+        button.title = `Добавить ${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+        if (habitConfig.unit && !button.textContent.endsWith(habitConfig.unit)) button.setAttribute("aria-label", `${habitTitle}: ${button.title.toLowerCase()}`);
         button.addEventListener("click", () => { updateValue(getLoggedValue() + amount); closeNumberMenus(); });
         quickAdds.appendChild(button);
       });
@@ -456,6 +458,12 @@ function habitNumberStep(habit) {
   if (goal <= 100) return 5;
   if (goal <= 1000) return 50;
   return 100;
+}
+
+// Short units ("мл", "мин") read naturally after a number; full words would need declension ("+1 стаканов").
+function stepLabel(amount, unit = "") {
+  const text = String(unit || "").trim();
+  return `+${amount.toLocaleString("ru-RU")}${text && text.length <= 4 ? ` ${text}` : ""}`;
 }
 
 const api = { createHabitsView, habitNumberStep };

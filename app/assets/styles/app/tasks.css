@@ -906,3 +906,7 @@
   background: var(--category-color, var(--teal));
   vertical-align: -1px;
 }
+
+.task-item .task-content {
+  cursor: pointer;
+}

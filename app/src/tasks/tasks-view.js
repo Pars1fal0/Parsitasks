@@ -182,7 +182,7 @@ function createTasksView(ctx) {
       selectionButton.setAttribute("aria-pressed", String(selectionMode));
       selectionButton.title = selectionMode ? "Закончить выбор задач" : "Выбрать задачи для переноса";
       selectionButton.setAttribute("aria-label", selectionButton.title);
-      selectionButton.querySelector("span").textContent = selectionMode ? "Закончить выбор" : "Выбрать задачи";
+      selectionButton.querySelector("span").textContent = selectionMode ? "Готово" : "Выбрать";
     }
     if (!bulkForm) return;
     bulkForm.hidden = !selectionMode;
@@ -461,6 +461,12 @@ function createTasksView(ctx) {
     });
 
     node.querySelector(".edit-task").addEventListener("click", () => ctx.fillTaskForm(task));
+    // Clicking the task text opens its editor; controls, links, checklists and text selection keep their own behaviour.
+    node.querySelector(".task-content").addEventListener("click", (event) => {
+      if (selectionMode || event.target.closest("button, a, input, select, textarea, summary, label, .task-checklist")) return;
+      if (globalThis.getSelection?.()?.toString()) return;
+      ctx.fillTaskForm(task);
+    });
     node.querySelector(".duplicate-task").addEventListener("click", () => ctx.duplicateTask(task.id));
     const postponeTomorrow = () => {
       ctx.postponeTask(task, activeDate, ctx.addDays(activeDate, 1));

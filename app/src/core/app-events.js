@@ -28,6 +28,15 @@ function createAppEvents(ctx) {
     });
 
     document.querySelector("#closeTaskForm").addEventListener("click", ctx.closeTaskForm);
+    // Escape closes an open form; dirty forms still ask before discarding through the close handler.
+    [[els.taskFormPanel, ctx.closeTaskForm], [els.habitFormPanel, ctx.closeHabitForm], [els.goalFormPanel, ctx.closeGoalForm]].forEach(([panel, close]) => {
+      panel?.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || event.defaultPrevented || panel.classList.contains("is-collapsed")) return;
+        if (event.target.closest("select, .task-inline-category[open]")) return;
+        event.preventDefault();
+        close();
+      });
+    });
     els.openTaskForm.addEventListener("click", ctx.openTaskForm);
     els.resetTaskForm.addEventListener("click", async () => {
       if (await ctx.confirmDiscardOpenForms()) ctx.resetTaskForm({ open: true });
