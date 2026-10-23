@@ -27,7 +27,9 @@ const elements = {
 let auth = null;
 let captcha = null;
 let busy = false;
-let mode = new URLSearchParams(globalThis.location.search).get("mode") === "signup" ? "signup" : "signin";
+// Parsitasks is a personal workspace: new accounts are not offered. Sign-ups must also stay disabled in Supabase Auth.
+const SIGNUP_ENABLED = false;
+let mode = SIGNUP_ENABLED && new URLSearchParams(globalThis.location.search).get("mode") === "signup" ? "signup" : "signin";
 
 function route(path) {
   if (globalThis.location.protocol !== "file:") return path;
@@ -58,7 +60,7 @@ function oauthRedirectUrl() {
 }
 
 function setMode(nextMode) {
-  mode = nextMode === "signup" ? "signup" : "signin";
+  mode = SIGNUP_ENABLED && nextMode === "signup" ? "signup" : "signin";
   const isSignUp = mode === "signup";
   document.title = `${isSignUp ? "Регистрация" : "Вход"} — Parsitasks`;
   elements.title.textContent = isSignUp ? "Создать аккаунт" : "Вход";
@@ -130,6 +132,7 @@ async function initialize() {
   elements.homeLink.href = route("/");
   elements.backLink.href = route("/");
   bindEvents();
+  if (!SIGNUP_ENABLED) document.querySelector(".auth-mode")?.setAttribute("hidden", "");
   setMode(mode);
   setBusy(true, "Подключаем безопасный вход...");
   try {

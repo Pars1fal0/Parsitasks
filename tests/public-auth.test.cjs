@@ -42,6 +42,14 @@ module.exports = [
     },
   },
   {
+    name: "personal workspace does not offer new account sign-up",
+    fn() {
+      assert.match(authScript, /const SIGNUP_ENABLED = false;/);
+      assert.match(authScript, /mode = SIGNUP_ENABLED && nextMode === "signup"/);
+      assert.doesNotMatch(fs.readFileSync(path.join(root, "app", "landing.html"), "utf8"), /mode=signup/);
+    },
+  },
+  {
     name: "asset tools and legacy backup discovery remain reproducible",
     fn() {
       assert.equal(packageJson.devDependencies.sharp, "^0.35.5");
