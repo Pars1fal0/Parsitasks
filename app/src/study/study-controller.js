@@ -18,6 +18,7 @@ function createStudyController(ctx) {
   let configured = true;
   let setupRequired = false;
   let lastError = "";
+  let driveNeedsReconnect = false;
   let statusUserId = "";
   let busy = false;
   let scheduleMode = "week";
@@ -298,7 +299,9 @@ function createStudyController(ctx) {
     const connectButton = root.querySelector("#studyDriveConnect");
     const disconnectButton = root.querySelector("#studyDriveDisconnect");
     status.textContent = !ctx.getUserId() ? "Войдите в аккаунт для загрузки файлов" : lastError || (setupRequired ? "Нужно обновить схему Supabase" : !configured ? "Google Drive не настроен на сервере" : connected ? "Google Drive подключён" : "Google Drive не подключён");
-    connectButton.hidden = connected;
+    // Google revokes testing-mode grants weekly; reconnecting overwrites the stored grant without a disconnect first.
+    connectButton.hidden = connected && !driveNeedsReconnect;
+    connectButton.textContent = driveNeedsReconnect ? "Переподключить Google Drive" : "Подключить Google Drive";
     disconnectButton.hidden = !connected;
     connectButton.disabled = busy || !ctx.getUserId() || !configured;
     disconnectButton.disabled = busy;
@@ -747,7 +750,10 @@ function createStudyController(ctx) {
       pendingUpload = record; uploadOwner = owner;
       local.write("study-upload-pending", record);
       saveUploadedMaterial(record);
-    } catch (error) { status.textContent = error.message; ctx.showToast(error.message); }
+    } catch (error) {
+      driveNeedsReconnect = /Доступ к Google Drive истёк/.test(error.message);
+      status.textContent = error.message; ctx.showToast(error.message);
+    }
     finally { busy = false; renderDrive(); }
   }
 

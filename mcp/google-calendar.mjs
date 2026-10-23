@@ -85,7 +85,8 @@ export async function handleGoogleCalendarRequest(request, env, options = {}) {
     } catch (error) {
       const message = safeCalendarError(error);
       await upsertConnection(env, auth.accessToken, auth.user.id, { last_error: message }, fetchFn).catch(() => {});
-      return json({ error: "sync_failed", message }, error?.status === 401 ? 401 : 502);
+      const code = isRevokedGrant(error) ? "reauthorization_required" : "sync_failed";
+      return json({ error: code, message }, error?.status === 401 ? 401 : 502);
     }
   }
 
@@ -611,6 +612,7 @@ function apiError(message, response, data) {
   const details = data?.error_description || data?.error?.message || data?.message || response.statusText;
   const error = new Error(details ? `${message}: ${details}` : message);
   error.status = response.status;
+  if (typeof data?.error === "string") error.code = data.error;
   return error;
 }
 
@@ -631,9 +633,13 @@ function cleanText(value) {
   return String(value || "").trim();
 }
 
+function isRevokedGrant(error) {
+  return error?.code === "invalid_grant" || /invalid_grant/i.test(cleanText(error?.message));
+}
+
 function safeCalendarError(error) {
   const message = cleanText(error?.message);
-  if (/invalid_grant/i.test(message)) return "Доступ Google истёк. Отключите календарь и подключите его снова";
+  if (isRevokedGrant(error)) return "Доступ Google истёк. Нажмите «Переподключить Google Calendar»";
   if (/insufficient|forbidden|permission/i.test(message)) return "Google не разрешил изменение календаря";
   if (/quota|rate limit/i.test(message)) return "Лимит Google Calendar временно исчерпан. Повторите позже";
   return message.slice(0, 300) || "Не удалось синхронизировать Google Calendar";

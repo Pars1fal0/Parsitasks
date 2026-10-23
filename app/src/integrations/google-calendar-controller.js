@@ -1,6 +1,7 @@
 import * as occurrenceApi from "./google-calendar-occurrences.js";
 
 const HOSTED_APP_URL = "https://parsitasks.ru/app";
+const EXPIRED_ACCESS = /Доступ Google истёк/;
 
 function createGoogleCalendarController(ctx) {
   let connected = false;
@@ -8,6 +9,7 @@ function createGoogleCalendarController(ctx) {
   let direction = "export";
   let inFlight = false;
   let lastError = "";
+  let needsReconnect = false;
   let lastSyncedAt = "";
   let lastSummary = null;
   let lastLocalFingerprint = "";
@@ -52,6 +54,7 @@ function createGoogleCalendarController(ctx) {
       direction = normalizeDirection(status.direction);
       lastSyncedAt = status.lastSyncedAt || "";
       lastError = status.lastError || "";
+      needsReconnect = connected && EXPIRED_ACCESS.test(lastError);
     } catch (error) {
       connected = false;
       lastError = describeError(error);
@@ -134,6 +137,7 @@ function createGoogleCalendarController(ctx) {
       applyResult(result, baseline);
       queuedSync ||= changedDuringRequest;
       lastLocalFingerprint = queuedSync ? "" : payloadFingerprint(buildPayload(ctx.getState(), direction, ctx.getTimeZone()));
+      needsReconnect = false;
       lastSyncedAt = result.lastSyncedAt || new Date().toISOString();
       lastSummary = result.summary || null;
       if (options.announce) ctx.showToast(summaryText(lastSummary));
@@ -142,6 +146,7 @@ function createGoogleCalendarController(ctx) {
       if (owner() !== startedOwner) return null;
       lastLocalFingerprint = "";
       lastError = describeError(error);
+      needsReconnect = error?.code === "reauthorization_required";
       if (!options.silent || error?.status === 401) ctx.showToast(lastError);
       return null;
     } finally {
@@ -186,7 +191,11 @@ function createGoogleCalendarController(ctx) {
       ctx.els.googleCalendarDirection.value = direction;
       ctx.els.googleCalendarDirection.disabled = inFlight || !connected;
     }
-    if (ctx.els.googleCalendarConnect) ctx.els.googleCalendarConnect.hidden = connected;
+    if (ctx.els.googleCalendarConnect) {
+      // Google revokes testing-mode grants weekly; offer a one-step reconnect instead of disconnect + connect.
+      ctx.els.googleCalendarConnect.hidden = connected && !needsReconnect;
+      ctx.els.googleCalendarConnect.textContent = needsReconnect ? "Переподключить Google Calendar" : "Подключить Google Calendar";
+    }
     if (ctx.els.googleCalendarDisconnect) ctx.els.googleCalendarDisconnect.hidden = !connected;
     if (ctx.els.googleCalendarSync) {
       ctx.els.googleCalendarSync.hidden = !connected;
