@@ -153,6 +153,12 @@ function createTasksView(ctx) {
     const nonDayEmpty = pane !== "day" && !selectableEntries.length;
     ctx.els.taskEmpty.textContent = pane === "day" ? empty.message : hasActiveFilters ? "По этим фильтрам ничего не найдено"
       : pane === "later" ? "Отложенных задач пока нет" : "Нет незавершённых задач прошлых дней. Сегодняшние остаются во вкладке «День»";
+    if (pane === "day" && empty.hint) {
+      const hint = document.createElement("span");
+      hint.className = "empty-state-hint";
+      hint.textContent = empty.hint;
+      ctx.els.taskEmpty.append(hint);
+    }
     ctx.els.taskEmpty.classList.toggle("is-visible", pane === "day" ? empty.visible : nonDayEmpty);
     if (emptyReset) emptyReset.hidden = pane === "day" ? !empty.reset : !(nonDayEmpty && hasActiveFilters);
     ctx.els.taskCounter.textContent = hasActiveFilters
@@ -934,7 +940,7 @@ function taskEmptyState({ total = 0, done = 0, visible = 0, filtered = false, fi
     }
     return { message: "По этим фильтрам ничего не найдено", visible: true, reset: true };
   }
-  if (!total) return { message: "На этот день задач нет", visible: true, reset: false };
+  if (!total) return { message: "На этот день задач нет", hint: "Напишите задачу в строке выше, например «завтра 10:00 позвонить», и нажмите Enter или стрелку", visible: true, reset: false };
   return { message: "Все задачи выполнены", visible: done === total && !filtered, reset: false };
 }
 

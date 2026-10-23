@@ -57,6 +57,11 @@ const { chromium } = require("playwright-core");
           });
           assert.ok(Math.abs(now.y - settings.y) < 1 && Math.abs(now.height - settings.height) < 1, `calendar actions align: ${JSON.stringify({ now, settings })}`);
           assert.ok(settings.x - now.x - now.width <= 10, "Now and settings are adjacent");
+          // The grid height is fitted in a later animation frame; wait for that layout instead of the first frame.
+          await page.waitForFunction(() => {
+            const rect = document.querySelector(".calendar-time-scroll")?.getBoundingClientRect();
+            return rect && rect.height >= 280 && rect.bottom <= 724;
+          }, null, { timeout: 3000 }).catch(() => {});
           const grid = await page.locator(".calendar-time-scroll").boundingBox();
           assert.ok(grid.height >= 280 && grid.y + grid.height <= 724, `timeline leaves page scrolling space: ${width}/${mode} ${JSON.stringify(grid)}`);
         }

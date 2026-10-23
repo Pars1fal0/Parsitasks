@@ -107,7 +107,7 @@ const { _electron: electron } = require("playwright-core");
             const meal = await page.locator(".nutrition-meal-card").first().boundingBox();
             assert.ok(meal.width > width - 70, "day meals use the available mobile width");
           }
-          await page.screenshot({ path: path.join(os.tmpdir(), `parsitasks-clear-${view}-${theme}-${width}.png`), animations: "disabled" });
+          await page.screenshot({ path: path.join(os.tmpdir(), `parsitasks-clear-${view}-${theme}-${width}.png`), animations: "disabled", timeout: 30000 });
           if (view === "settings") {
             await page.locator('[aria-labelledby="appearanceHeading"] > summary').click();
             for (const heading of ["notificationsSettingsHeading", "dataSettingsHeading"]) {
@@ -115,7 +115,7 @@ const { _electron: electron } = require("playwright-core");
               await group.locator(":scope > summary").click();
               await page.evaluate(() => window.scrollTo(0, 0));
               assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-              await page.screenshot({ path: path.join(os.tmpdir(), `parsitasks-clear-${heading}-${theme}-${width}.png`), animations: "disabled" });
+              await page.screenshot({ path: path.join(os.tmpdir(), `parsitasks-clear-${heading}-${theme}-${width}.png`), animations: "disabled", timeout: 30000 });
               await group.locator(":scope > summary").click();
             }
             await page.locator('[aria-labelledby="appearanceHeading"] > summary').click();

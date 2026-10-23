@@ -483,6 +483,13 @@
   display: block;
 }
 
+.empty-state-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
 .excluded-panel {
   display: none;
   margin-top: 14px;

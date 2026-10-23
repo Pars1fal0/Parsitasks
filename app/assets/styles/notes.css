@@ -60,7 +60,7 @@ body[data-view="journal"].notes-mode .date-control > :not(.global-search-button)
 
 .notes-filters {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   border-bottom: 1px solid var(--line);
   padding: 14px;
