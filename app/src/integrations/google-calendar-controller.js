@@ -1,5 +1,7 @@
 import * as occurrenceApi from "./google-calendar-occurrences.js";
 
+const HOSTED_APP_URL = "https://parsitasks.ru/app";
+
 function createGoogleCalendarController(ctx) {
   let connected = false;
   let configured = true;
@@ -60,17 +62,18 @@ function createGoogleCalendarController(ctx) {
 
   async function connect() {
     if (inFlight) return;
+    if (globalThis.location.protocol === "file:") {
+      // OAuth state lives in a web-origin cookie, so the desktop app hands the connection off to the web version.
+      globalThis.open?.(`${HOSTED_APP_URL}#settings`, "_blank", "noopener");
+      ctx.showToast("Подключите Google Calendar в открытой веб-версии, затем вернитесь в приложение");
+      return;
+    }
     setBusy(true);
     lastError = "";
     try {
       const result = await ctx.api.connect();
       if (!result.authorizationUrl) throw new Error("Сервер не вернул адрес Google");
-      if (globalThis.location.protocol === "file:") {
-        globalThis.open?.(result.authorizationUrl, "_blank", "noopener");
-        ctx.showToast("Подключение Google Calendar открыто в браузере");
-      } else {
-        globalThis.location.assign(result.authorizationUrl);
-      }
+      globalThis.location.assign(result.authorizationUrl);
     } catch (error) {
       lastError = describeError(error);
       ctx.showToast(lastError);
@@ -305,8 +308,9 @@ function ensureGoogleCategory(state, createId) {
 
 function summaryText(summary = {}) {
   const changed = Number(summary.created || 0) + Number(summary.updated || 0) + Number(summary.imported || 0) + Number(summary.deleted || 0);
-  if (!changed) return summary.skipped ? `Без изменений · пропущено: ${summary.skipped}` : "Изменений нет";
-  return `Обновлено: ${changed}${summary.skipped ? ` · пропущено: ${summary.skipped}` : ""}`;
+  const skipped = summary.skipped ? ` · не поместились в синхронизацию: ${summary.skipped}, они останутся без изменений` : "";
+  if (!changed) return summary.skipped ? `Без изменений${skipped}` : "Изменений нет";
+  return `Обновлено: ${changed}${skipped}`;
 }
 
 function payloadFingerprint(payload) {

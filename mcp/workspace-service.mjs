@@ -58,7 +58,7 @@ export function command(state, input, type, operation, options = {}) {
   for (const [key, collection] of Object.entries(outputs)) if (result[key]?.id) result[key] = next[collection].find((item) => item.id === result[key].id) || result[key];
   syncMetadata.createSyncMetadataTracker({ now: () => now }).trackChanges(state, next);
   const summary = result.summary || type;
-  const activity = recordMcpActivity(state, next, { requestId: input.requestId, type, title: type, summary, guard: true }, now);
+  const activity = recordMcpActivity(state, next, { requestId: input.requestId, type, title: type, summary }, now);
   return { changed: true, state: next, ...result, summary, activity };
 }
 

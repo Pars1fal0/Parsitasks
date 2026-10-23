@@ -77,8 +77,13 @@ const axePath = require.resolve("axe-core/axe.min.js");
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 1000 });
         await perfectDay.waitFor({ state: "visible" });
-        assert.equal(await perfectDay.evaluate((node) => getComputedStyle(node).backgroundColor), "rgb(230, 185, 79)");
-        assert.equal(await page.locator(".heatmap-legend-perfect").evaluate((node) => getComputedStyle(node, "::before").backgroundColor), "rgb(230, 185, 79)");
+        // The heatmap re-renders on resize, so read styles in one page task instead of through a possibly detached handle.
+        const perfectColors = () => page.evaluate(() => [
+          getComputedStyle(document.querySelector('.heatmap-cell[data-date="2026-09-06"]')).backgroundColor,
+          getComputedStyle(document.querySelector(".heatmap-legend-perfect"), "::before").backgroundColor,
+        ]);
+        await page.waitForFunction(() => document.querySelector('.heatmap-cell[data-date="2026-09-06"]')?.isConnected);
+        assert.deepEqual(await perfectColors(), ["rgb(230, 185, 79)", "rgb(230, 185, 79)"]);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
         await page.locator(".heatmap-panel").screenshot({ path: path.join(captures, `perfect-days-${theme}-${width}.png`) });
       }

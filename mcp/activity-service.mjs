@@ -1,3 +1,5 @@
+import { prepareEntityUndo, prepareTaskOrderUndo } from "../app/src/integrations/mcp-undo-merge.js";
+
 const ENTITY_TYPES = [
   "tasks", "habits", "goals", "journalEntries", "categories",
   "nutritionFoods", "nutritionMeals", "nutritionTemplates",
@@ -7,7 +9,7 @@ const GLOBAL_FIELDS = ["profile", "studyWeekCycle", "nutritionSettings"];
 const MAX_ACTIVITY = 100;
 
 export function recordMcpActivity(beforeState, nextState, details, now = new Date().toISOString()) {
-  const inverse = createInversePatch(beforeState, nextState, details.guard === true);
+  const inverse = createInversePatch(beforeState, nextState);
   const activity = {
     id: `mcp-action-${details.requestId}`,
     requestId: details.requestId,
@@ -33,8 +35,9 @@ export function undoMcpActivity(state, actionId, now = new Date().toISOString())
   }
 
   const stateBeforeUndo = clone(nextState);
-  applyInversePatch(nextState, activity.inverse, now);
-  touchUndoMetadata(nextState, activity.inverse, now, stateBeforeUndo);
+  const prepared = prepareInversePatch(nextState, activity.inverse, activity.createdAt, now);
+  applyInversePatch(nextState, prepared, now);
+  touchUndoMetadata(nextState, prepared, now, stateBeforeUndo);
   activity.status = "undone";
   activity.undoneAt = now;
   activity.updatedAt = now;
@@ -74,7 +77,7 @@ export function mergeMcpActivity(local, remote) {
   return normalizeMcpActivity([...byId.values()]);
 }
 
-function createInversePatch(beforeState, nextState, guard) {
+function createInversePatch(beforeState, nextState) {
   const patch = { entities: {}, taskOrder: {}, tombstones: {}, globals: {}, expectedTaskOrder: {} };
   GLOBAL_FIELDS.forEach((field) => {
     if (!same(beforeState?.[field], nextState?.[field])) {
@@ -98,7 +101,7 @@ function createInversePatch(beforeState, nextState, guard) {
     });
     if (changedBefore.length || removeIds.length) {
       patch.entities[type] = { restore: changedBefore, removeIds,
-        ...(guard ? { expected: [...changedBefore.map((item) => item.id), ...removeIds].map((id) => ({ id, value: clone(after.get(id) ?? null) })) } : {}) };
+        expected: [...changedBefore.map((item) => item.id), ...removeIds].map((id) => ({ id, value: clone(after.get(id) ?? null) })) };
     }
   });
 
@@ -111,7 +114,7 @@ function createInversePatch(beforeState, nextState, guard) {
     const after = nextState?.taskOrder?.[dateKey];
     if (!same(before, after)) {
       patch.taskOrder[dateKey] = Array.isArray(before) ? [...before] : null;
-      if (guard) patch.expectedTaskOrder[dateKey] = Array.isArray(after) ? [...after] : null;
+      patch.expectedTaskOrder[dateKey] = Array.isArray(after) ? [...after] : null;
     }
   });
 
@@ -127,9 +130,19 @@ function createInversePatch(beforeState, nextState, guard) {
   return patch;
 }
 
-function applyInversePatch(state, patch, now) {
+function prepareInversePatch(state, patch, activityCreatedAt, now) {
   const normalized = normalizeInversePatch(patch);
   assertPatchCurrent(state, normalized);
+  return {
+    ...normalized,
+    entities: prepareEntityUndo(state, normalized.entities, activityCreatedAt, now),
+    taskOrder: prepareTaskOrderUndo(state, normalized),
+    expectedTaskOrder: {},
+  };
+}
+
+function applyInversePatch(state, patch, now) {
+  const normalized = normalizeInversePatch(patch);
   const restoredIds = Object.fromEntries(ENTITY_TYPES.map((type) => [type, new Map()]));
   ENTITY_TYPES.forEach((type) => {
     const tombstoneChanges = normalized.tombstones[type] || {};
@@ -278,17 +291,7 @@ function normalizeInversePatch(value) {
 }
 
 function assertPatchCurrent(state, patch) {
-  for (const [date, order] of Object.entries(patch.expectedTaskOrder)) {
-    if (!same(state.taskOrder?.[date] ?? null, order)) throw new Error("Порядок задач изменился после действия. Отмена не применена.");
-  }
   if (patch.habitOrder && !same((state.habits || []).map((item) => item.id), patch.habitOrder.expected)) throw new Error("Порядок привычек изменился после действия. Отмена не применена.");
-  for (const [type, change] of Object.entries(patch.entities)) {
-    for (const expected of change.expected || []) {
-      if (!same((state[type] || []).find((item) => item.id === expected.id) ?? null, expected.value)) {
-        throw new Error("После этого действия данные изменились. Отмена не применена, чтобы сохранить новые изменения.");
-      }
-    }
-  }
   for (const [field, change] of Object.entries(patch.globals)) {
     if (!same(state[field] ?? null, change.expected)) throw new Error("Настройки изменились после действия. Отмена не применена.");
   }

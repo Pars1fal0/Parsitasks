@@ -1,0 +1,28 @@
+[
+  {
+    "issue": "P1: undo overwrites later changes",
+    "taskCompletionLostInBackendAndUI": true,
+    "laterDiaryTextLost": true
+  },
+  {
+    "issue": "P1: calendar limit deletes a valid linked event",
+    "selectedTasks": 1000,
+    "skippedValidTasks": 1,
+    "wronglyDeleted": [
+      {
+        "url": "https://www.googleapis.com/calendar/v3/calendars/primary/events/event-1000",
+        "method": "DELETE"
+      }
+    ]
+  },
+  {
+    "issue": "P2: calendar response cannot be read from Electron file origin",
+    "status": 200,
+    "accessControlAllowOrigin": null
+  },
+  {
+    "issue": "P2: desktop blocks Drive materials and Calendar OAuth",
+    "driveLinkAllowed": false,
+    "googleOAuthAllowed": false
+  }
+]

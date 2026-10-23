@@ -65,13 +65,10 @@ export default {
         return publicConfigResponse(env);
       }
       if (url.pathname.startsWith("/api/google-calendar/")) {
-        return await handleGoogleCalendarRequest(request, env);
+        return withCors(await handleGoogleCalendarRequest(request, env));
       }
       if (url.pathname.startsWith("/api/google-drive/")) {
-        const response = await handleGoogleDriveRequest(request, env);
-        const headers = new Headers(response.headers);
-        headers.set("Access-Control-Allow-Origin", "*");
-        return new Response(response.body, { status: response.status, headers });
+        return withCors(await handleGoogleDriveRequest(request, env));
       }
       if (url.pathname === "/oauth/consent") {
         if (request.method !== "GET") return methodNotAllowed(["GET"]);
@@ -90,7 +87,7 @@ export default {
       const requestId = reportRequestFailure(request);
       return jsonResponse(
         { error: "internal_error", message: "Внутренняя ошибка Parsitasks MCP", requestId },
-        { status: 500, headers: { "X-Request-ID": requestId, ...(url.pathname.startsWith("/api/google-drive/") ? { "Access-Control-Allow-Origin": "*" } : {}) } },
+        { status: 500, headers: { "X-Request-ID": requestId, ...(isGoogleApiPath(url.pathname) ? { "Access-Control-Allow-Origin": "*" } : {}) } },
       );
     }
   },
@@ -843,6 +840,18 @@ function decodeJwtPayload(value) {
   } catch {
     return null;
   }
+}
+
+// Google API routes authenticate with a bearer header, never cookies, so the desktop file: origin may read them.
+function isGoogleApiPath(pathname) {
+  return pathname.startsWith("/api/google-drive/") || pathname.startsWith("/api/google-calendar/");
+}
+
+function withCors(response) {
+  if (response.status >= 300 && response.status < 400) return response;
+  const headers = new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin", "*");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 function corsResponse() {

@@ -249,10 +249,13 @@ function registerIpc() {
   });
 }
 
+// Study materials are stored as Google Drive links; Calendar OAuth is handed off to the web version.
+const EXTERNAL_HOSTS = new Set(["github.com", "parsitasks.ru", "www.parsitasks.ru", "drive.google.com", "docs.google.com"]);
+
 function isAllowedExternalUrl(value) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && ["github.com", "parsitasks.ru", "www.parsitasks.ru"].includes(url.hostname);
+    return url.protocol === "https:" && EXTERNAL_HOSTS.has(url.hostname);
   } catch {
     return false;
   }

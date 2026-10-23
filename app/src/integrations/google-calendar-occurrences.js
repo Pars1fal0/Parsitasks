@@ -16,7 +16,8 @@ function buildCalendarTasks(state = {}, range = {}, options = {}) {
   expanded.sort(compareCalendarTasks);
 
   const tasks = expanded.slice(0, limit);
-  const activeIds = new Set(tasks.map((task) => task.id));
+  // Occurrences cut by the batch limit still exist, so their linked events must never be treated as stale.
+  const activeIds = new Set(expanded.map((task) => task.id));
   const staleTaskIds = Object.entries(links)
     .filter(([linkId, link]) => managedSourceIds.has(link?.sourceTaskId || linkId) && !activeIds.has(linkId))
     .map(([linkId]) => linkId);

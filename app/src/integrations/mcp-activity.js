@@ -1,3 +1,5 @@
+import { prepareEntityUndo, prepareTaskOrderUndo } from "./mcp-undo-merge.js";
+
 const MAX_ACTIVITY = 100;
 const ENTITY_TYPES = [
   "tasks", "habits", "goals", "journalEntries", "categories",
@@ -45,29 +47,21 @@ function undoActivity(state, actionId, now = new Date().toISOString()) {
   const activity = nextState.mcpActivity.find((item) => item.id === actionId);
   if (!activity) throw new Error("Действие ChatGPT не найдено");
   if (activity.status === "undone") return { changed: false, state: nextState, activity };
-  applyPatch(nextState, activity.inverse, now);
+  applyPatch(nextState, activity.inverse, now, activity.createdAt);
   activity.status = "undone";
   activity.undoneAt = now;
   activity.updatedAt = now;
   return { changed: true, state: nextState, activity };
 }
 
-function applyPatch(state, value, now) {
+function applyPatch(state, value, now, activityCreatedAt) {
   const patch = normalizePatch(value);
-  for (const [date, order] of Object.entries(patch.expectedTaskOrder)) {
-    if (JSON.stringify(state.taskOrder?.[date] ?? null) !== JSON.stringify(order)) throw new Error("Порядок задач изменился после действия. Отмена не применена.");
-  }
   if (patch.habitOrder && JSON.stringify((state.habits || []).map((item) => item.id)) !== JSON.stringify(patch.habitOrder.expected)) throw new Error("Порядок привычек изменился после действия. Отмена не применена.");
-  for (const [type, change] of Object.entries(patch.entities)) {
-    for (const expected of change.expected || []) {
-      if (JSON.stringify((state[type] || []).find((item) => item.id === expected.id) ?? null) !== JSON.stringify(expected.value)) {
-        throw new Error("После этого действия данные изменились. Отмена не применена, чтобы сохранить новые изменения.");
-      }
-    }
-  }
   for (const [field, change] of Object.entries(patch.globals)) {
     if (JSON.stringify(state[field] ?? null) !== JSON.stringify(change.expected)) throw new Error("Настройки изменились после действия. Отмена не применена.");
   }
+  patch.entities = prepareEntityUndo(state, patch.entities, activityCreatedAt, now);
+  patch.taskOrder = prepareTaskOrderUndo(state, patch);
   const restoredIds = Object.fromEntries(ENTITY_TYPES.map((type) => [type, new Map()]));
   ENTITY_TYPES.forEach((type) => {
     patch.entities[type]?.restore.forEach((entity) => {

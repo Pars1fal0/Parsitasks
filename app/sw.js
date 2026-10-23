@@ -80,6 +80,7 @@ const APP_SHELL = [
   "src/tasks/task-subtasks.js",
   "src/habits/habit-freeze-dialog.js",
   "src/integrations/mcp-activity.js",
+  "src/integrations/mcp-undo-merge.js",
   "src/integrations/mcp-activity-controller.js",
   "src/platform/pwa-controller.js",
   "src/platform/desktop-update-controller.js",

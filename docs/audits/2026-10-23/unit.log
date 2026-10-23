@@ -1,0 +1,603 @@
+
+> rhythm-day@0.36.1 test
+> node tests/run-tests.cjs
+
+ok - accent-colors.test.cjs - accent presets and hex values normalize safely through settings and account preferences
+ok - accent-colors.test.cjs - custom colors keep accents and white button labels readable in both themes
+ok - accent-colors.test.cjs - switching from custom to legacy palette removes every inline accent token
+ok - account-clock.test.cjs - account clock agrees with MCP across midnight without shifting calendar arithmetic
+ok - account-clock.test.cjs - account clock follows preference changes and resolves DST reminders
+ok - account-clock.test.cjs - task and habit reminders use account time rather than device time
+ok - account-clock.test.cjs - quiet hours and tomorrow snoozes retain account time on desktop and web
+ok - account-recovery.test.cjs - account deletion enumerates nested storage and removes binaries before deleting the user
+ok - account-recovery.test.cjs - account cleanup finishes all pagination before removing any files
+ok - account-recovery.test.cjs - account cleanup stops before account deletion on storage errors or unsafe paths
+ok - account-recovery.test.cjs - restoring conflicts never falls back to an unprotected workspace overwrite
+ok - account-recovery.test.cjs - newer workspace schemas cannot be read, restored or uploaded by an outdated client
+ok - activity-charts.test.cjs - activity series ends on the selected historical day and includes both boundaries
+ok - activity-charts.test.cjs - future selections never create artificial missed days in activity charts
+ok - activity-charts.test.cjs - flexible weekly completions are not mistaken for mandatory daily habits
+ok - activity-charts.test.cjs - days without scheduled habits remain gaps rather than zero or perfect scores
+ok - activity-charts.test.cjs - task percentages compare days independently of their task counts
+ok - activity-charts.test.cjs - scheduled tasks without completions have a genuine zero percent
+ok - activity-charts.test.cjs - chart ranges cross leap years without duplicate or missing local dates
+ok - app-utils.test.cjs - keeps date and time helpers deterministic after extraction
+ok - archive-behavior.test.cjs - removes one recurring archive occurrence without resurrecting it as unfinished
+ok - archive-behavior.test.cjs - returns one-off task ids for permanent archive deletion
+ok - async-calendar-reliability.test.cjs - calendar disconnect confirmation cannot affect a replacement account
+ok - async-calendar-reliability.test.cjs - a time zone change during calendar sync queues the new zone
+ok - async-calendar-reliability.test.cjs - changing only the account time zone schedules a fresh calendar sync
+ok - async-calendar-reliability.test.cjs - calendar results preserve edits, deletions and unrelated new tasks made during a request
+ok - async-calendar-reliability.test.cjs - calendar imports can update multiple occurrences of an unchanged series
+ok - async-calendar-reliability.test.cjs - calendar sync rolls back storage failures, rejects changed owners and queues newer edits
+ok - auth-captcha.test.cjs - unconfigured CAPTCHA does not load third-party code or require tokens
+ok - auth-captcha.test.cjs - configured CAPTCHA fails closed and rejects expired or reset tokens
+ok - auth-gate.test.cjs - recognizes only a usable stored account session
+ok - auth-gate.test.cjs - sends web and desktop guests to the separate auth page
+ok - auth-gate.test.cjs - keeps recovery tokens in the URL fragment while moving to auth
+ok - board-assets.test.cjs - uploads a new board image to private Supabase Storage before creating metadata
+ok - board-assets.test.cjs - refuses local-only image creation when cloud sync is unavailable
+ok - board-assets.test.cjs - explains that the board image bucket needs the current SQL schema
+ok - board-assets.test.cjs - downloads a private board image with auth headers and preserves its image type
+ok - board-assets.test.cjs - rejects an empty successful response instead of rendering a broken image
+ok - board-camera.test.cjs - fits distant board content into the visible viewport
+ok - board-camera.test.cjs - keeps the world point under the cursor stable while zooming
+ok - board-camera.test.cjs - loads only valid persisted cameras and clamps legacy zoom
+ok - board-links.test.cjs - board link cards store only source references and reject invalid types
+ok - board-links.test.cjs - board cards reflect live task state and missing sources
+ok - board-links.test.cjs - board source search filters already linked objects without duplicating content
+ok - board-links.test.cjs - recurring task cards do not stay completed after an earlier occurrence
+ok - board-model.test.cjs - normalizes text and image items without embedding image data
+ok - board-model.test.cjs - builds bounds for focusing the board content
+ok - board-view.test.cjs - linked card resize keeps its aspect ratio from corner and side handles
+ok - board-view.test.cjs - allows a near-infinite board zoom range
+ok - board-view.test.cjs - resizes an image from its north-west corner without changing aspect ratio
+ok - board-view.test.cjs - resizes text freely from any side
+ok - board-view.test.cjs - snaps a moving selection to nearby object centers
+ok - brand-icons.test.cjs - all brand pages use the supplied bitmap and generated favicon
+ok - brand-icons.test.cjs - generated application icons retain transparency and valid Windows entries
+web build ok - 5 files - cache 3c43ccf49b29
+ok - build-web.test.cjs - a successful web build replaces stale assets and fingerprints the installed files
+ok - build-web.test.cjs - a compilation failure leaves the previous web build byte-identical
+ok - build-web.test.cjs - a locked output or failed installation cannot delete the previous web build
+ok - builder-downloader.test.cjs - builder downloader verifies a local artifact with the fetch-based dependency
+ok - calendar-account-isolation.test.cjs - an outdated token refresh cannot hand the replacement account to its caller
+ok - calendar-account-isolation.test.cjs - an outdated account validation cannot hand the replacement account to its caller
+ok - calendar-account-isolation.test.cjs - calendar requests never send old workspace data after an account switch during refresh
+ok - calendar-account-isolation.test.cjs - every calendar operation guards token acquisition and late response bodies
+ok - calendar-account-isolation.test.cjs - normal token refresh for the same account still allows calendar requests
+ok - calendar-schedule.test.cjs - calendar touch zoom bounds and keeps the same hour under the fingers
+ok - calendar-schedule.test.cjs - calendar clicks and drops use the quarter hour under the pointer
+ok - calendar-schedule.test.cjs - day calendar has a stable deep link
+ok - calendar-schedule.test.cjs - free time merges overlapping blocks and lessons, not deadline markers
+ok - calendar-schedule.test.cjs - free time is clipped to the requested day range
+ok - daily-pulse.test.cjs - calculates a balanced task and habit pulse
+ok - daily-pulse.test.cjs - keeps empty progress at zero
+ok - daily-pulse.test.cjs - shows a neutral state when nothing is planned
+ok - daily-pulse.test.cjs - omits empty categories from the day summary
+ok - daily-pulse.test.cjs - treats an all-frozen habit day as neutral
+ok - database-guards.test.cjs - production preflight requires all database guards without accessing account data
+ok - date-rollover.test.cjs - advances the viewed day when midnight passes
+ok - date-rollover.test.cjs - keeps a deliberately browsed date when midnight passes
+ok - desktop-update-manager.test.cjs - rejects update IPC from an untrusted renderer
+ok - desktop-update-manager.test.cjs - keeps update checks offline in development builds
+ok - desktop-update-manager.test.cjs - turns network errors into a useful message
+ok - desktop-update-manager.test.cjs - exposes a downloaded update and installs it on request
+ok - device-sync-controller.test.cjs - checks another device periodically and when the app becomes visible
+ok - device-sync-controller.test.cjs - does not poll while the app is hidden or offline
+ok - disclosure-menus.test.cjs - opens a disclosure menu down when it fits below the trigger
+ok - disclosure-menus.test.cjs - opens a disclosure menu up near the bottom of the viewport
+ok - disclosure-menus.test.cjs - uses the side with more room when a menu cannot fully fit
+ok - disclosure-menus.test.cjs - shifts a menu back inside a narrow viewport
+ok - disclosure-menus.test.cjs - limits a disclosure menu to the room on its chosen side
+ok - document-state.test.cjs - empty document uses schema 26 and the client normalizer shape
+ok - document-state.test.cjs - existing documents keep their version and records while missing collections are added
+ok - document-state.test.cjs - a missing schema version becomes 26 and a non-object becomes an empty document
+ok - form-dialog.test.cjs - exports focusable lookup for shared task, habit, and goal dialogs
+ok - global-search.test.cjs - finds checklist text with task context and distinguishes unknown food calories
+ok - global-search.test.cjs - searches tasks, habits, goals, and journal entries together
+ok - global-search.test.cjs - does not duplicate a completed task and shows the matching journal fragment
+ok - global-search.test.cjs - finds nutrition meals by ingredient and opens the nutrition week
+ok - goal-activity.test.cjs - counts only completed linked activity inside the selected week and before today
+ok - goal-activity.test.cjs - normalizes goal links while preserving old checkpoints
+ok - goal-activity.test.cjs - counts linked tasks once and habit completions only from the chosen date
+ok - goal-activity.test.cjs - reconciles goal completion when linked actions change
+ok - goal-activity.test.cjs - merges linked goal fields without treating manual checkpoints as the whole goal
+ok - goal-checkpoint-editor.test.cjs - moves a goal checkpoint down without mutating the original list
+ok - goal-checkpoint-editor.test.cjs - moves a goal checkpoint up and ignores invalid moves
+ok - goals-view.test.cjs - counts active overdue and done goals
+ok - goals-view.test.cjs - calculates progress only from goal checkpoints
+ok - goals-view.test.cjs - calculates checklist progress and preserves edited steps
+ok - goals-view.test.cjs - sorts achieved goals after active and overdue goals
+ok - google-calendar-occurrences.test.cjs - expands a recurring block while respecting exclusions and repeat end
+ok - google-calendar-occurrences.test.cjs - marks links for excluded or out-of-range occurrences as stale
+ok - google-calendar.test.cjs - Google Calendar OAuth requests offline event access with protected state
+ok - google-calendar.test.cjs - calendar connection requires a Parsitasks session and stores OAuth state in an HttpOnly cookie
+ok - google-calendar.test.cjs - Google Calendar converts a same-day event into a Parsitasks block
+ok - google-calendar.test.cjs - calendar payload expands recurring blocks into safe independent occurrences
+ok - google-calendar.test.cjs - a Google edit replaces only one recurring occurrence
+ok - google-calendar.test.cjs - a deleted Google occurrence excludes only that recurring day
+ok - google-calendar.test.cjs - calendar API keeps credentials in the Authorization header
+ok - habit-config-history.test.cjs - keeps an archived habit visible on dates before it was archived
+ok - habit-config-history.test.cjs - keeps a past pause after the habit is restored
+ok - habit-config-history.test.cjs - merges pause and restore history from different devices
+ok - habit-config-history.test.cjs - keeps old habit targets and units before a dated settings change
+ok - habit-config-history.test.cjs - preserves historical numeric settings after switching to a check habit
+ok - habit-config-history.test.cjs - merges configuration versions created on different devices
+ok - habit-freeze.test.cjs - enumerates calendar days across leap day and month boundaries
+ok - habit-freeze.test.cjs - freeze preserves but does not increase a completion streak
+ok - habit-freeze.test.cjs - numeric partial value remains and off-schedule freeze is neutral
+ok - habit-freeze.test.cjs - merges independent dates and keeps a newer cancellation
+ok - habit-freeze.test.cjs - normalizes old habits and preserves valid freeze records in imports
+ok - habit-freeze.test.cjs - MCP overview excludes frozen days and rejects a value change
+ok - habit-schedule.test.cjs - an unfinished today preserves yesterday's streak, a missed past day does not
+ok - habit-schedule.test.cjs - flexible goals never create daily misses and count distinct complete days
+ok - habit-schedule.test.cjs - freezes, pauses, numeric progress and shortened first weeks reduce only impossible targets
+ok - habit-schedule.test.cjs - history and calendar week boundaries preserve flexible goals
+ok - habit-schedule.test.cjs - fixed habits retain their previous daily streak behavior
+ok - habit-title-history.test.cjs - keeps an old habit title before a dated rename
+ok - habit-title-history.test.cjs - supports several successive habit title versions
+ok - habit-title-history.test.cjs - merges title versions created on different devices
+ok - habit-title-history.test.cjs - normalizes legacy habits into one initial title version
+ok - habits-view.test.cjs - scales a numeric habit step to its target
+ok - heatmap-view.test.cjs - builds a year model with month labels and dated tooltips
+ok - heatmap-view.test.cjs - marks a perfect day only when both tasks and habits are fully completed
+ok - heatmap-view.test.cjs - shows frozen habits separately from required completions
+ok - hosted-config.test.cjs - loads managed Supabase settings from the hosted Worker
+ok - hosted-config.test.cjs - loads the shared Parsitasks project in Electron builds
+ok - hosted-config.test.cjs - uses the hosted public configuration during local development
+ok - hosted-config.test.cjs - keeps unsupported protocols disconnected
+ok - import-export.test.cjs - export preserves unknown fields from a newer local workspace instead of serializing the older normalized view
+ok - import-export.test.cjs - newer or malformed schemas and oversized imports never reach normalization or confirmation
+ok - import-export.test.cjs - same-account edits made while confirming import or backup restoration are preserved
+ok - import-export.test.cjs - backup restore checks schema compatibility and supplies the active owner to storage
+ok - import-export.test.cjs - creates a safety backup and undo snapshot before restoring
+ok - import-export.test.cjs - rejects unrelated JSON before replacing application data
+ok - import-export.test.cjs - imports note-only JSON through the normal state pipeline
+ok - import-export.test.cjs - aborts import when the safety backup cannot be written
+ok - journal-editor.test.cjs - round-trips journal headings and bold text without storing HTML
+ok - journal-editor.test.cjs - keeps the legacy textarea journal adapter working
+ok - journal-enhancements.test.cjs - keeps journal revisions and restores an older version
+ok - journal-enhancements.test.cjs - builds journal month markers and searches a date range
+ok - journal-enhancements.test.cjs - keeps only twenty useful journal revisions
+ok - journal-model.test.cjs - keeps one newest journal entry per day and preserves paragraphs
+ok - journal-model.test.cjs - creates and updates one journal entry for a date
+ok - journal-model.test.cjs - appends a journal paragraph without replacing existing text
+ok - journal-view.test.cjs - renders calendar and autosaves the selected daily journal entry
+ok - later-tasks.test.cjs - undated tasks round trip without migrating legacy missing dates
+ok - later-tasks.test.cjs - batch date moves deduplicate entries and preserve parked checklist progress
+ok - later-tasks.test.cjs - batch moves reject impossible calendar dates without mutation
+ok - later-tasks.test.cjs - batch moves preserve completion for natural and replacement recurring occurrences
+ok - later-tasks.test.cjs - newer undated state survives a stale device while independent title changes merge
+ok - later-tasks.test.cjs - empty task messages distinguish a day, completed work and filter results
+ok - later-tasks.test.cjs - MCP skips undated tasks in daily totals and can edit, schedule and delete them
+ok - mcp-activity-controller.test.cjs - MCP undo reports storage and conflict failures without changing the workspace
+ok - mcp-activity-controller.test.cjs - MCP undo refuses confirmation from a previous account
+ok - mcp-activity-controller.test.cjs - MCP activity controller renders changes and undoes them without innerHTML
+ok - mcp-files.test.cjs - MCP image uploads use only the authenticated owner's private path and reject MIME spoofing
+ok - mcp-files.test.cjs - MCP Drive reading checks the account folder before contents and enforces a streaming text limit
+ok - mcp-journal-period.test.cjs - MCP returns journal entries for an inclusive period
+ok - mcp-journal-period.test.cjs - MCP journal writes version their revision history for synchronization
+ok - mcp-journal-service.test.cjs - MCP reads and appends journal text idempotently with undo
+ok - mcp-journal-service.test.cjs - MCP appends a new paragraph instead of replacing the journal
+ok - mcp-management-service.test.cjs - MCP calendar range and productivity stats include recurring activity
+ok - mcp-management-service.test.cjs - MCP backlog excludes completed and acknowledged occurrences
+ok - mcp-management-service.test.cjs - MCP habit edits preserve old dated configuration and title
+ok - mcp-management-service.test.cjs - MCP habit creation is idempotent even after the action was undone
+ok - mcp-management-service.test.cjs - MCP duplicates one recurring occurrence without lowering priority
+ok - mcp-management-service.test.cjs - MCP acknowledges an overdue occurrence without completing it
+ok - mcp-management-service.test.cjs - MCP category deletion migrates tasks and undo restores a usable category
+ok - mcp-management-service.test.cjs - MCP goal deletion requires confirmation and remains undoable across sync
+ok - mcp-management-service.test.cjs - MCP previews and atomically applies a task plan with one undo action
+ok - mcp-nutrition-service.test.cjs - nutrition summaries distinguish missing calories from explicit zero across MCP writes
+ok - mcp-nutrition-service.test.cjs - previews and atomically applies an idempotent weekly plan
+ok - mcp-nutrition-service.test.cjs - pauses without deleting meals and protects deletion
+ok - mcp-sdk.test.cjs - patched MCP SDK negotiates the real Parsitasks tools and validates read results in memory
+ok - mcp-server.test.cjs - MCP worker advertises protected read and write tools
+ok - mcp-supabase-state.test.cjs - MCP Supabase store reapplies a mutation after an optimistic concurrency conflict
+ok - mcp-supabase-state.test.cjs - MCP Supabase store writes schema 26 when the document has no version
+ok - mcp-supabase-state.test.cjs - MCP authentication rejects missing tokens and validates bearer tokens with Supabase
+ok - mcp-task-service.test.cjs - MCP task completion and reversal update linked goal status
+ok - mcp-task-service.test.cjs - MCP creates a categorized 15-minute task block without duplicating retries
+ok - mcp-task-service.test.cjs - MCP does not recreate an undone task when the same request is retried
+ok - mcp-task-service.test.cjs - MCP rejects blocks that are not aligned to 15 minutes
+ok - mcp-task-service.test.cjs - MCP creates tasks with custom interval recurrence
+ok - mcp-task-service.test.cjs - MCP and the browser share custom repeat normalization
+ok - mcp-task-service.test.cjs - MCP completes only the selected occurrence of a recurring task
+ok - mcp-task-service.test.cjs - MCP overview respects custom repeats and dated habit history
+ok - mcp-task-service.test.cjs - MCP resolves today using the synchronized profile time zone
+ok - mcp-task-service.test.cjs - MCP search and fetch expose tasks, habits, and goals as structured knowledge
+ok - mcp-workspace-service.test.cjs - MCP workspace pagination discovers all supported entity collections without mutating state
+ok - mcp-workspace-service.test.cjs - MCP note editing rejects stale revisions and foreign references; retries and undo survive browser normalization
+ok - mcp-workspace-service.test.cjs - MCP note deletion requires confirmation, leaves tasks intact and restores a fresh non-tombstoned identity
+ok - mcp-workspace-service.test.cjs - MCP tasks from notes retain backlinks without rewriting note text
+ok - mcp-workspace-service.test.cjs - MCP subtasks separate one recurring occurrence and preserve past and future checklist history
+ok - mcp-workspace-service.test.cjs - MCP deletion of the last subtask cleans logs and remains undoable
+ok - mcp-workspace-service.test.cjs - MCP board cards validate sources and parent boards; deleting a board requires explicit contents consent
+ok - mcp-workspace-service.test.cjs - MCP homework defaults to the next practice time from real today instead of a selected calendar date
+ok - mcp-workspace-service.test.cjs - MCP homework moves preparation independently of submission and retains completed history through due day
+ok - mcp-workspace-service.test.cjs - MCP study archive preserves all relations; linked subjects cannot be deleted
+ok - mcp-workspace-service.test.cjs - MCP study alternating weeks and single cancellations move homework suggestions without changing the series
+ok - mcp-workspace-service.test.cjs - MCP material removal keeps Drive originals, cleans homework links and can be undone
+ok - mcp-workspace-service.test.cjs - MCP account preferences are cloud profile entries, never credentials or permission escalation
+ok - mcp-workspace-service.test.cjs - MCP goal target configuration, habit freezing and task ordering use real existing entities
+ok - mcp-workspace-service.test.cjs - MCP search includes new domains, filters before limiting and never discloses denied journal entries
+ok - mcp-workspace-service.test.cjs - MCP creates deferred tasks and independent submission deadlines without losing checklist identities
+ok - mcp-workspace-service.test.cjs - MCP newly created objects remain immediately undoable after the web client canonicalizes them
+ok - mcp-workspace-service.test.cjs - MCP habit reordering and freezing survive normalization, undo and dated configuration
+ok - mcp-workspace-service.test.cjs - MCP journal replacement versions text and rejects forbidden writes and stale revisions
+ok - mcp-workspace-service.test.cjs - MCP new mutations preserve unknown workspace collections and refuse newer schemas
+ok - mcp-workspace-service.test.cjs - MCP moving an already moved lesson changes its source exception rather than duplicating it
+ok - mcp-write-service.test.cjs - MCP habit values advance a linked goal only on scheduled days
+ok - mcp-write-service.test.cjs - MCP edits only one recurring task occurrence and preserves its priority
+ok - mcp-write-service.test.cjs - MCP recurring task edits are idempotent when a request is retried
+ok - mcp-write-service.test.cjs - MCP requires explicit confirmation and scope before deleting a recurring task
+ok - mcp-write-service.test.cjs - MCP undo restores a deleted occurrence with newer synchronization metadata
+ok - mcp-write-service.test.cjs - MCP deletion retries remain successful after the task is already gone
+ok - mcp-write-service.test.cjs - MCP records a numeric habit value and can undo it
+ok - mcp-write-service.test.cjs - MCP creates goals and completes their checkpoints
+ok - mcp-write-service.test.cjs - MCP checkpoint add retries do not create duplicate checkpoints
+ok - mcp-write-service.test.cjs - MCP day brief detects overlapping timeline blocks
+ok - mcp-write-service.test.cjs - MCP undo of a created task writes a tombstone so sync cannot resurrect it
+ok - monitor-public.test.cjs - independent monitoring confirms outages and reports only state transitions
+ok - monitor-public.test.cjs - transient failures do not raise alerts and failed notification delivery remains retryable
+ok - monitor-public.test.cjs - webhook alerts contain only constant public status and never follow redirects
+ok - navigation-reminder-policy.test.cjs - normalizes navigation without hiding settings or duplicating bottom slots
+ok - navigation-reminder-policy.test.cjs - preserves device-local navigation and quiet hours through settings import
+ok - navigation-reminder-policy.test.cjs - defers night reminders to the following allowed calendar time
+ok - navigation-reminder-policy.test.cjs - handles daytime quiet hours, disabled hours and malformed preferences
+ok - navigation-reminder-policy.test.cjs - snoozes without changing the task date and respects year boundaries
+ok - navigation-state.test.cjs - maps application views to stable URL hashes
+ok - notes.test.cjs - normalizes important notes without changing dated journal entries
+ok - notes.test.cjs - lists pinned notes first and searches text and related subject
+ok - notes.test.cjs - merges independent note edits and does not resurrect deleted notes
+ok - notes.test.cjs - finds linked notes in global search
+ok - notifications.test.cjs - habit reminders link to habits, retain failure retries and use their selected time
+ok - notifications.test.cjs - desktop snapshots exclude completed, frozen and past habit reminders
+ok - notifications.test.cjs - delivers PWA reminders through the service worker and marks them sent
+ok - notifications.test.cjs - uses a time block start for its reminder
+ok - notifications.test.cjs - uses a deadline time for a deadline reminder
+ok - nutrition-library.test.cjs - saves and updates recipes independently from dated meals
+ok - nutrition-library.test.cjs - saves a meal and its recipe atomically with independent ingredients
+ok - nutrition-library.test.cjs - rolls back both meals and recipes when local persistence fails
+ok - nutrition-library.test.cjs - deletes a recipe with a sync tombstone without deleting existing meals
+ok - nutrition-library.test.cjs - all nutrition mutations restore data, deletion markers and sync metadata after failure
+ok - nutrition-library.test.cjs - duplicates eaten meals as planned and rejects invalid dates and statuses
+ok - nutrition-library.test.cjs - rolls back nutrition after a thrown persistence error
+ok - nutrition-library.test.cjs - does not delete data in a replaced workspace after asynchronous confirmation
+ok - nutrition-model.test.cjs - parses natural ingredient quantities and preserves pipe format
+ok - nutrition-model.test.cjs - rejects malformed, zero and out-of-range ingredient quantities with line numbers
+ok - nutrition-model.test.cjs - distinguishes unknown, partial and genuine zero nutrition
+ok - nutrition-model.test.cjs - marks incomplete summaries and ignores skipped meals
+ok - nutrition-model.test.cjs - builds a dated week and combines shopping quantities
+ok - nutrition-model.test.cjs - keeps explicit nutrition authoritative when ingredients are partly known
+ok - operations-readiness.test.cjs - incident webhook delivery retries failures and records success before suppressing later alerts
+ok - operations-readiness.test.cjs - encrypted backups verify and unpack byte-identical synthetic files without restoring a database
+ok - operations-readiness.test.cjs - backup wrong passwords and tampered ciphertext cannot create restore directories
+ok - operations-readiness.test.cjs - backup paths reject traversal, devices and alternate data streams
+ok - operations-readiness.test.cjs - monitoring opens one sanitized incident and suppresses repeated outage notifications
+ok - operations-readiness.test.cjs - monitoring resolves only its own bot issue after recovery
+ok - operations-readiness.test.cjs - rollback selection rejects failed, foreign, PR and expired artifacts
+ok - operations-readiness.test.cjs - rollback downloads verify archive digest and never forward the GitHub token to blob storage
+ok - overdue-controller.test.cjs - hides an acknowledged overdue occurrence without completing it
+ok - overdue-controller.test.cjs - reuses yesterday calculations until state or day changes
+ok - overdue-controller.test.cjs - shows only tasks from the previous calendar day
+ok - persona-regressions.test.cjs - one current action preserves missed history, completions, ordering and future recurrence
+ok - persona-regressions.test.cjs - one action on a non-scheduled day carries identity without erasing source history
+ok - persona-regressions.test.cjs - a completed or excluded target is not revived by consolidated backlog
+ok - persona-regressions.test.cjs - consolidation in Later creates one unscheduled action and retains missed occurrences
+ok - persona-regressions.test.cjs - each-occurrence mode still supports independent obligations
+ok - persona-regressions.test.cjs - repeat choices ignore duplicates, future, done, excluded and acknowledged dates
+ok - persona-regressions.test.cjs - single tasks in mixed selection keep separate due dates
+ok - persona-regressions.test.cjs - a selected target day is not dismissed or duplicated by consolidated movement
+ok - persona-regressions.test.cjs - an invalid target date leaves consolidated source history unchanged
+ok - persona-regressions.test.cjs - goal filters separate achieved, paused, archived and overdue goals
+ok - planning-history.test.cjs - includes old one-off tasks and missed recurring occurrences in backlog
+ok - planning-history.test.cjs - filters archive entries by recent period
+ok - planning-workspace.test.cjs - unified backlog includes yesterday preparation even when surrender is in the future
+ok - planning-workspace.test.cjs - new counted goals ignore completions before the chosen start and deduplicate moved occurrences
+ok - planning-workspace.test.cjs - moving preparation preserves legacy homework surrender date and completed visibility
+ok - planning-workspace.test.cjs - bulk Later defers individual repeat occurrences without losing the series or history
+ok - planning-workspace.test.cjs - lesson layer follows week parity and includes teacher overrides without creating tasks
+ok - planning-workspace.test.cjs - bulk rescheduling does not collapse several missed repeat occurrences into one
+ok - planning-workspace.test.cjs - search finds text and frames on boards and subjects by teacher
+ok - planning-workspace.test.cjs - JSON cancellation and account switches do not replace or back up data
+ok - planning-workspace.test.cjs - deadline reminders remain scheduled after the workday has passed
+ok - production-verification.test.cjs - verifies exact production assets, page routes and anonymous authentication boundaries
+ok - production-verification.test.cjs - rejects stale revisions, mixed assets, missing headers and unsafe public endpoints
+ok - production-verification.test.cjs - rejects release fingerprints that could fetch outside the asset directory
+ok - profile-journal-access.test.cjs - normalizes independent MCP journal permissions
+ok - profile-journal-access.test.cjs - keeps the newest synchronized journal privacy choice
+ok - profile-settings.test.cjs - merges account preferences per field and rejects device credentials
+ok - profile-settings.test.cjs - normalizes valid IANA time zones and rejects invalid values
+ok - project-backup.test.cjs - project backup includes Auth and snapshot data, actual binaries and migration policies but keeps key escrow separate
+ok - project-backup.test.cjs - backup refuses repository destinations, unsafe names, changing inventories and truncated binary downloads
+ok - public-auth.test.cjs - auth page exposes password visibility without nesting buttons in labels
+ok - public-auth.test.cjs - auth page offers one Google action for sign in and registration
+ok - public-auth.test.cjs - auth modes stay refreshable and support keyboard tab navigation
+ok - public-auth.test.cjs - asset tools and legacy backup discovery remain reproducible
+ok - pwa-controller.test.cjs - announces a waiting update and activates it only on request
+ok - pwa-controller.test.cjs - registers the production worker without browser cache
+ok - pwa-controller.test.cjs - clears stale app caches on localhost instead of registering a worker
+ok - quick-input.test.cjs - preserves ordinary nouns instead of interpreting them as a time
+ok - quick-input.test.cjs - still recognizes explicit adverbs of time
+ok - quick-input.test.cjs - parses date, time word, category, and priority
+ok - quick-input.test.cjs - parses relative time without losing the title
+ok - quick-input.test.cjs - parses time range as a scheduled block
+ok - quick-input.test.cjs - keeps quick tasks without a time unscheduled
+ok - quick-input.test.cjs - keeps an unknown priority visible and reports it
+ok - quick-input.test.cjs - rolls an implicit past calendar date into the next year
+ok - recurrence.test.cjs - stops a recurring series after its repeat-until date
+ok - recurrence.test.cjs - custom weekday recurrence matches selected weekdays only
+ok - recurrence.test.cjs - custom month-day and interval recurrences are normalized
+ok - recurring-move-identity.test.cjs - one-off recurring move keeps subject, material, note, deadline and checklist identity
+ok - recurring-move-identity.test.cjs - moving a missed repeat to an already completed day keeps a separate unfinished obligation
+ok - release-pipeline.test.cjs - local release verification runs the same checks as CI and the legacy source-build route fails closed
+ok - release-pipeline.test.cjs - release candidate packages only the built Worker and web assets and seals their exact hashes
+ok - release-pipeline.test.cjs - release verification rejects changed bundles, changed assets, extra files and missing files
+ok - release-pipeline.test.cjs - release verification rejects a different commit and dirty working trees
+ok - release-pipeline.test.cjs - candidate preparation refuses mixed web builds and files not declared in the release
+ok - release-pipeline.test.cjs - candidate verification rejects a traversal path even in a tampered seal
+ok - release-pipeline.test.cjs - an independently retained seal fingerprint rejects changes to both the payload and its checksum list
+ok - release-pipeline.test.cjs - availability checks only public endpoints and never send credentials or write requests
+ok - release-pipeline.test.cjs - availability fails on outages, missing headers, invalid authentication and anonymous access
+ok - release-pipeline.test.cjs - availability times out while receiving a response body, not only while connecting
+ok - release-pipeline.test.cjs - availability detects provider outages without touching account data
+ok - release-pipeline.test.cjs - availability refuses secret keys and credential-bearing provider URLs before contacting them
+ok - release-pipeline.test.cjs - availability rejects credentials in the URL and insecure public addresses before fetching
+ok - release-pipeline.test.cjs - Worker failure logging uses only an opaque identifier and constant route labels
+ok - release-pipeline.test.cjs - Google OAuth callback failures keep the redirect but never log the original provider error
+ok - release-pipeline.test.cjs - production job depends on successful verification and deploys only a sealed artifact
+ok - release-reliability.test.cjs - workspace ownership blocks uploads while another account is still being loaded
+ok - release-reliability.test.cjs - cloud restore reports a local write failure without replacing the previous workspace in memory
+ok - release-reliability.test.cjs - failure to reload snapshot history does not falsely report that restoration failed
+ok - release-reliability.test.cjs - an auth validation response cannot overwrite a later account sign-in
+ok - release-reliability.test.cjs - signing out invalidates an earlier sign-in request even when no session existed yet
+ok - release-reliability.test.cjs - a stalled authentication request times out without deleting an existing session
+ok - release-reliability.test.cjs - discarding an old account response prevents merging or uploading it into the new account
+ok - release-reliability.test.cjs - resetting the queue invalidates a request already in flight
+ok - release-reliability.test.cjs - late write success does not change the new account synchronization flags
+ok - release-reliability.test.cjs - failed local persistence rolls back a merge without advancing its remote revision
+ok - release-reliability.test.cjs - a manually merged workspace is sent back to the cloud instead of silently clearing pending changes
+ok - release-reliability.test.cjs - a local edit made while confirmation is open is not replaced by an old cloud read
+ok - release-reliability.test.cjs - sync requests time out both before headers and while reading the body and remain retryable
+ok - release-reliability.test.cjs - valid JSON with an invalid state shape restores the backup rather than wiping the workspace
+ok - release-reliability.test.cjs - failed local backup restoration rolls back memory and never reports success
+ok - release-reliability.test.cjs - backup confirmation is scoped to the account that opened it
+ok - release-reliability.test.cjs - cloud restoration ignores a response belonging to a previous account
+ok - release-reliability.test.cjs - delete confirmation cannot delete a different account after switching users
+ok - release-reliability.test.cjs - concurrent auth refreshes share one request and a temporary server failure keeps the session
+ok - release-reliability.test.cjs - an auth refresh completing after sign out cannot resurrect the signed-out session
+ok - release-reliability.test.cjs - background device checks contain rejected session requests instead of unhandled promises
+ok - release-reliability.test.cjs - study-only JSON is accepted while malformed study arrays are rejected
+ok - reliability-audit.test.cjs - independent tabs preserve additions and deletion tombstones
+ok - reliability-audit.test.cjs - same-millisecond edits and out-of-order storage events cannot restore stale completion
+ok - reliability-audit.test.cjs - undoing a deletion survives another tab save without reviving later deletions
+ok - reliability-audit.test.cjs - undo only reverts its own changes while retaining later records and dated progress
+ok - reliability-audit.test.cjs - a stale tab cannot write into the other account workspace and explicit replacement remains possible
+ok - reliability-audit.test.cjs - divergent note bodies are retained once while sequential revisions do not become conflicts
+ok - reliability-audit.test.cjs - concurrent daily journal edits retain losing text in revision history even with separate IDs
+ok - reliability-audit.test.cjs - task work and submission reminders are independent even when submission reminders are disabled
+ok - reliability-audit.test.cjs - homework uses today's future practice, skips elapsed pairs, and follows moved occurrence times
+ok - reliability-audit.test.cjs - notification delivery cannot acknowledge a different account after awaiting the service worker
+ok - reliability-audit.test.cjs - MCP limiter uses the authenticated token, delegates globally, and fails closed on missing migration
+ok - reliability-audit.test.cjs - unchanged cloud state does not create another full-state write
+ok - reliability-audit.test.cjs - server migration bounds snapshots and denies direct or anonymous rate-counter access
+ok - reliability-audit.test.cjs - structural equality ignores database JSON key order without ignoring array order
+ok - reliability-audit.test.cjs - oversized cloud state is rejected before any network request
+ok - reminder-snooze.test.cjs - persists snoozes per occurrence and isolates user accounts
+ok - reminder-snooze.test.cjs - rejects snoozes for completed tasks and missing occurrences
+ok - reminder-snooze.test.cjs - quiet hours defer browser delivery and a snooze is delivered only once
+ok - reminder-snooze.test.cjs - desktop snapshots include adjusted snoozes and quiet hours
+ok - reminder-snooze.test.cjs - desktop keeps last night's habit reminder when quiet hours end today
+ok - remote-auth.test.cjs - signup, password login and recovery pass CAPTCHA tokens to Supabase without logging or persisting them
+ok - remote-auth.test.cjs - rejects weak new account passwords before contacting Supabase
+ok - remote-auth.test.cjs - stores an authenticated session separately after sign in
+ok - remote-auth.test.cjs - builds a Google OAuth URL with an explicit safe callback
+ok - remote-auth.test.cjs - detects a disabled Google provider without blocking on settings errors
+ok - remote-auth.test.cjs - restores a Supabase session after the Google OAuth callback
+ok - remote-auth.test.cjs - clears the local session on sign out
+ok - remote-auth.test.cjs - validates a stored session with Supabase before opening the app
+ok - remote-auth.test.cjs - drops an invalid stored session after server validation
+ok - remote-auth.test.cjs - still signs out locally after project settings are removed
+ok - remote-auth.test.cjs - requests a password recovery email without storing credentials
+ok - remote-auth.test.cjs - accepts a recovery session and updates the password
+ok - remote-auth.test.cjs - recovery marker survives reload without leaving tokens in the URL and is removed after success
+ok - remote-auth.test.cjs - expired and malformed callback tokens cannot replace a previously valid session
+ok - remote-auth.test.cjs - recovery email redirects use the dedicated auth route in the provider query
+ok - remote-auth.test.cjs - password update cannot announce success after the account signs out while waiting
+ok - remote-data-controller.test.cjs - a cloud restore cannot discard local edits made while its request was pending
+ok - remote-data-controller.test.cjs - describes cloud snapshots with useful entity counts
+ok - remote-data-controller.test.cjs - previews a selected cloud snapshot before restoration
+ok - remote-data-controller.test.cjs - restoring a cloud snapshot creates a safety backup and exposes undo
+ok - remote-sync-controller.test.cjs - image cleanup is account-scoped, throttled and does not turn a successful push into an error
+ok - remote-sync-controller.test.cjs - reloads and merges once when a remote write revision conflicts
+ok - remote-sync-controller.test.cjs - merges a newer remote snapshot during automatic sync
+ok - remote-sync-controller.test.cjs - merges another device before an automatic push
+ok - remote-sync-controller.test.cjs - resumes a persisted pending upload after restart
+ok - remote-sync-controller.test.cjs - remembers local changes even before an account is connected
+ok - remote-sync-controller.test.cjs - cancels pending uploads before switching accounts
+ok - remote-sync-controller.test.cjs - flushes a queued local change after another sync operation finishes
+ok - remote-sync.test.cjs - image cleanup deletes only server-claimed paths owned by the current account
+ok - remote-sync.test.cjs - server schema downgrade rejection asks the old client to update
+ok - remote-sync.test.cjs - updates only the remote revision that was previously read
+ok - remote-sync.test.cjs - reports a conflict when the expected remote revision no longer exists
+ok - remote-sync.test.cjs - normalizes remote sync configuration
+ok - remote-sync.test.cjs - pushes state through Supabase upsert endpoint
+ok - remote-sync.test.cjs - pulls state from Supabase by authenticated user
+ok - remote-sync.test.cjs - checks Supabase connection without changing state
+ok - remote-sync.test.cjs - uses authenticated identity without a custom key header
+ok - remote-sync.test.cjs - blocks synchronization when the server exposes a large clock difference
+ok - remote-sync.test.cjs - lists cloud snapshots for the authenticated user
+ok - remote-sync.test.cjs - loads one authenticated cloud snapshot for preview
+ok - remote-sync.test.cjs - deletes the authenticated Parsitasks account through the protected RPC
+ok - remote-sync.test.cjs - restores a selected cloud snapshot over the current remote revision
+ok - render-helpers-dom.test.cjs - renders archive item without innerHTML
+ok - render-helpers-dom.test.cjs - renders category item without innerHTML
+ok - render-helpers-dom.test.cjs - renders habit number control without innerHTML
+ok - render-helpers-dom.test.cjs - clears number habit log when value is reset to zero
+ok - render-helpers-dom.test.cjs - updates number habit with stepper controls
+ok - render-helpers-dom.test.cjs - reorders habits with drag and drop
+ok - render-helpers-dom.test.cjs - renders overdue delete action and calls delete task
+ok - render-helpers-dom.test.cjs - overdue delete action excludes one recurring occurrence
+ok - render-helpers-dom.test.cjs - renders month and week calendar task chips without innerHTML
+ok - save-status.test.cjs - offline status confirms local saving even after a cloud failure
+ok - save-status.test.cjs - saving status distinguishes synchronized, queued and local-only data
+ok - save-status.test.cjs - prioritizes local storage failures and pending cloud work
+ok - save-status.test.cjs - explains clock skew without exposing a technical error
+ok - security-static.test.cjs - keeps the web and Electron shells on restrictive security boundaries
+ok - security-static.test.cjs - pins privileged GitHub release actions to immutable commits
+ok - security-static.test.cjs - checks every change in least-privilege Windows CI before a release
+ok - security-static.test.cjs - does not contain backend Supabase or common private key material
+ok - settings-state.test.cjs - normalizes imported settings without copying device credentials into remote ui_state
+ok - settings-transfer.test.cjs - never exports database endpoints or synchronization state
+ok - settings-transfer.test.cjs - partial imports preserve existing settings and stamp only imported keys
+ok - settings-transfer.test.cjs - rejects non-settings, empty, foreign, future and malformed payloads without mutation
+ok - settings-transfer.test.cjs - a stale failed file read cannot replace the latest import status
+ok - settings-transfer.test.cjs - bounds file reads and checks actual UTF-8 payload size
+ok - settings-transfer.test.cjs - does not apply a pending import to a different account
+ok - settings-transfer.test.cjs - newer file wins without an old import clearing its file selection
+ok - settings-transfer.test.cjs - failed persistence never claims a successful import
+ok - settings-transfer.test.cjs - pending reset confirmation cannot reset another account
+ok - settings-transfer.test.cjs - imports settings and clears the selected file
+ok - settings-transfer.test.cjs - resets interface preferences only after confirmation
+ok - state-controller.test.cjs - unchanged storage revisions avoid reparsing and comparing the entire persisted document
+ok - state-controller.test.cjs - a foreign write immediately after saving is not cached as our own revision
+ok - state-controller.test.cjs - normalizes replacements and tracks persisted state changes
+ok - state-controller.test.cjs - keeps the latest state in memory when browser storage is full
+ok - state-merge.test.cjs - numeric habit increment is taken from the latest merged configuration
+ok - state-merge.test.cjs - preserves separate offline preference edits without reverting profile privacy
+ok - state-merge.test.cjs - keeps the newest Google Calendar task link across devices
+ok - state-merge.test.cjs - keeps the newest journal text edited on another device
+ok - state-merge.test.cjs - keeps the newest synchronized user time zone
+ok - state-merge.test.cjs - keeps an explicit task completion and habit value reset from being resurrected
+ok - state-merge.test.cjs - uses the newest explicit task and habit order
+ok - state-merge.test.cjs - merges independently edited goal checkpoints
+ok - state-merge.test.cjs - merges records and dated logs from two devices
+ok - state-merge.test.cjs - keeps the newest entity fields while merging dated activity
+ok - state-merge.test.cjs - merges independent task fields edited on different devices
+ok - state-merge.test.cjs - does not resurrect an entity deleted on another device
+ok - state-merge.test.cjs - keeps a deletion across two devices even when the stale device clock is ahead
+ok - state-merge.test.cjs - keeps MCP activity and its newest undo status across devices
+ok - state-merge.test.cjs - merges board edits and keeps a deleted board item deleted
+ok - state-merge.test.cjs - merges nutrition edits and keeps remote meal deletion
+ok - state-normalizer.test.cjs - numeric habit increment survives round trips and keeps its dated configuration
+ok - state-normalizer.test.cjs - imports and round trips flexible targets, habit reminders and checklist history
+ok - state-normalizer.test.cjs - preserves valid Google Calendar task links and drops malformed entries
+ok - state-normalizer.test.cjs - cleans imported tasks and habits
+ok - state-normalizer.test.cjs - remembers that default categories were already seeded after all categories are deleted
+ok - state-normalizer.test.cjs - deduplicates categories and remaps tasks to the canonical category
+ok - state-normalizer.test.cjs - normalizes scheduled task blocks
+ok - state-normalizer.test.cjs - preserves no-time, deadline, and block schedule modes
+ok - state-normalizer.test.cjs - migrates legacy linked goal tasks into independent checkpoints
+ok - state-normalizer.test.cjs - normalizes nutrition records and drops malformed meals
+ok - storage.test.cjs - newer local workspaces remain intact and cannot be overwritten or backed up through an older normalizer
+ok - storage.test.cjs - automatic recovery refuses a backup from a newer schema without replacing the corrupt source
+ok - storage.test.cjs - backup ownership prevents restoration into another account and survives corrupt-state recovery
+ok - storage.test.cjs - legacy ownerless backups remain recoverable locally but are not silently assigned to an account
+ok - storage.test.cjs - automatic backup records the previous workspace owner when a new account replaces it
+ok - storage.test.cjs - legacy ownership follows UI account changes without rewriting the workspace
+ok - storage.test.cjs - adapter saves state, ui state, backups, and import safety backup
+ok - storage.test.cjs - archives corrupt state and restores the latest valid backup
+ok - storage.test.cjs - keeps the previous valid state as the automatic undo backup
+ok - study-drive.test.cjs - study week cycle alternates from an explicit Monday across year boundaries
+ok - study-drive.test.cjs - study lessons keep old weekly entries and suggest only a real parity occurrence
+ok - study-drive.test.cjs - homework deadline prefers the next practice and falls back to a lecture
+ok - study-drive.test.cjs - completed homework stays visible through its due date only
+ok - study-drive.test.cjs - study model keeps only valid subjects, lessons and Drive file identifiers
+ok - study-drive.test.cjs - study records merge across devices and deleted records stay deleted
+ok - study-drive.test.cjs - study week cycle keeps the newest synced anchor
+ok - study-drive.test.cjs - global search finds homework by subject and material by filename
+ok - study-drive.test.cjs - Drive OAuth requires a Parsitasks user and requests only per-file access
+ok - study-drive.test.cjs - Drive status reports missing local configuration without an internal error
+ok - study-drive.test.cjs - Drive upload session cannot be used by another Parsitasks account
+ok - study-drive.test.cjs - Drive upload stores bytes in Google and reports resumable progress
+ok - study-drive.test.cjs - Drive upload status resumes from Google's acknowledged byte range
+ok - supabase-schema.test.cjs - protects encrypted Google Calendar connections with per-user RLS
+ok - supabase-schema.test.cjs - allows state access only through authenticated RLS policies
+ok - sw-shell.test.cjs - pre-caches every script and stylesheet required by the application shell
+ok - sw-shell.test.cjs - web build replaces the service worker cache placeholder
+ok - sw-shell.test.cjs - web build stamps one cache version onto local scripts and stylesheets
+ok - sw-shell.test.cjs - static shell resources prefer the deployed version over a stale cache
+ok - sw-shell.test.cjs - service worker never caches authenticated API responses
+ok - sync-diagnostics.test.cjs - renders actionable device sync diagnostics without innerHTML
+ok - sync-diagnostics.test.cjs - shows the latest connection check result
+ok - sync-diagnostics.test.cjs - selects the latest valid synchronization timestamp
+ok - sync-history.test.cjs - keeps the newest sync events first and limits stored history
+ok - sync-metadata.test.cjs - preserves nutrition field timestamps when pruning live entities
+ok - sync-metadata.test.cjs - records explicit task flag and habit log removals
+ok - sync-metadata.test.cjs - records task, habit, and goal checkpoint ordering separately
+ok - sync-metadata.test.cjs - records independent entity field edits
+ok - sync-metadata.test.cjs - drops malformed synchronization metadata
+ok - task-checklist.test.cjs - state sync combines checklist progress without clobbering task fields
+ok - task-checklist.test.cjs - checklist normalization keeps identities, removes invalid entries and isolates occurrences
+ok - task-checklist.test.cjs - checklist merges independent items and dates, preserving explicit unchecks
+ok - task-checklist.test.cjs - moving a task carries checklist progress and splits preserve future occurrence logs
+ok - task-moves.test.cjs - creates a hidden replacement when moving a timed recurring occurrence to an already scheduled today
+ok - task-moves.test.cjs - transfer single tasks and clear old order
+ok - task-moves.test.cjs - uses the natural target occurrence when a recurring task already runs there
+ok - task-moves.test.cjs - creates a one-off task when the recurring series does not run on the target date
+ok - task-moves.test.cjs - changes the timeline schedule for only one recurring occurrence
+ok - task-moves.test.cjs - splits a recurring series when changing this and following timeline occurrences
+ok - task-moves.test.cjs - edits only one recurring occurrence without changing the series
+ok - task-moves.test.cjs - edits this and following recurring occurrences as a new series
+ok - task-moves.test.cjs - edits the whole recurring series while preserving its start date and history
+ok - task-moves.test.cjs - moves this and following recurring occurrences to a later start date
+ok - task-schedule.test.cjs - switches between no-time, deadline, and block task modes
+ok - task-state.test.cjs - restores the original day of a moved repeat without changing other skipped dates
+ok - task-state.test.cjs - restores a source occurrence when deleting its moved replacement
+ok - task-state.test.cjs - removes a deleted task from task orders
+ok - task-subtasks.test.cjs - deleting a subtask removes its own marks without completing or deleting the parent
+ok - task-subtasks.test.cjs - deleting from one recurring occurrence keeps the original checklist and history
+ok - task-subtasks.test.cjs - deleting from future recurring occurrences preserves past series and other progress
+ok - task-subtasks.test.cjs - missing subtasks and invalid deletion scope cannot mutate data
+ok - task-subtasks.test.cjs - subtasks reuse checklist data without independent tasks or automatic parent completion
+ok - task-subtasks.test.cjs - a subtask for one recurring occurrence preserves past and future series
+ok - task-subtasks.test.cjs - deferred subtasks keep a stable progress date and carry it when scheduled
+ok - task-subtasks.test.cjs - future recurring subtasks split the series without rewriting past progress
+ok - task-subtasks.test.cjs - empty, oversized, missing and full subtask parents are rejected without data changes
+ok - timeline-controller.test.cjs - cancels pending recurring edits when the workspace is replaced
+ok - timeline-controller.test.cjs - deletes consolidated copies without a misleading restore-repeat prompt
+ok - timeline-controller.test.cjs - rolls back failed timeline toggleTaskDone without reporting success
+ok - timeline-controller.test.cjs - rolls back failed timeline deleteTask without reporting success
+ok - timeline-controller.test.cjs - rolls back failed timeline duplicateTask without reporting success
+ok - timeline-controller.test.cjs - rolls back failed timeline clearTaskTime without reporting success
+ok - timeline-controller.test.cjs - rolls back failed timeline moveTaskTime without reporting success
+ok - timeline-controller.test.cjs - rolls back failed timeline resizeTaskBlockTime without reporting success
+ok - timeline-controller.test.cjs - duplicates only one occurrence when selected for a recurring task
+ok - timeline-controller.test.cjs - duplicates the whole recurring series only after explicit choice
+ok - timeline-controller.test.cjs - turns an unscheduled timeline drop into a resizable one-hour block
+ok - timeline-controller.test.cjs - returns a time block to a no-time task
+ok - timeline-controller.test.cjs - can remove time from only one recurring timeline occurrence
+ok - timeline-controller.test.cjs - toggles a timeline task done with undo toast
+ok - timeline-controller.test.cjs - duplicates a timeline task next to the source
+ok - timeline-controller.test.cjs - deletes a timeline task from tasks and order
+ok - timeline-view.test.cjs - keeps all 24 hours available even on an empty day
+ok - timeline-view.test.cjs - keeps quarter-hour start slots but lets resized blocks reach 23:59
+ok - timeline-view.test.cjs - deadline overdue status uses actual time, not the marker visual height
+ok - timeline-view.test.cjs - groups timed tasks by hour and keeps unscheduled tasks separate
+ok - timeline-view.test.cjs - marks overdue timed tasks and exposes current time line
+ok - timeline-view.test.cjs - uses start and end times for scheduled blocks
+ok - timeline-view.test.cjs - keeps short block duration and splits overlapping tasks into columns
+ok - timeline-view.test.cjs - uses three columns when three tasks overlap at once
+ok - tombstone-retention.test.cjs - keeps recent deletions and removes only tombstones older than two years
+ok - view-renderer.test.cjs - renders only the active view and shared pulse
+ok - weekly-habits-mcp.test.cjs - MCP shows flexible weekly progress without inventing daily obligations
+ok - weekly-habits-mcp.test.cjs - MCP reads the selected checklist occurrence and preserves it when completing a task
+ok - workspace-completion.test.cjs - archives study without deleting lessons or homework and allows historical viewing
+ok - workspace-completion.test.cjs - cancels or moves only one practice and uses the changed date for homework suggestions
+ok - workspace-completion.test.cjs - search ranks useful results before grouped history and supports type filtering
+ok - workspace-completion.test.cjs - goals without deadlines are active and paused goals do not auto-complete
+ok - workspace-completion.test.cjs - named boards and study changes survive sync alongside independent edits
+ok - workspace-guide.test.cjs - live scripts exit before account access unless disposable accounts were explicitly selected
+ok - workspace-guide.test.cjs - live security probes are scoped to disposable users and cannot create proof tasks
+ok - workspace-guide.test.cjs - support report uses an allowlist and excludes workspace content, credentials and free-text errors
+ok - workspace-guide.test.cjs - invalid diagnostic values are omitted rather than copied into the report
+ok - workspace-guide.test.cjs - setup offer is only eligible for an empty workspace, not default categories or existing notes and study
+ok - workspace-guide.test.cjs - basic and study presets only change navigation and keep settings accessible
+ok - workspace-guide.test.cjs - setup completion is stored per account and does not mark another account or local workspace complete
+ok - workspace-local.test.cjs - persists workspace data and isolates accounts
+ok - workspace-local.test.cjs - reports failed writes without claiming persistence
+ok - workspace-local.test.cjs - restores text and individual checkbox selections without files
+
+596 tests passed

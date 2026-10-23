@@ -267,7 +267,7 @@ async function synchronizeCalendar(env, auth, payload, fetchFn) {
 
   for (const taskId of outOfRangeTaskIds) {
     const link = nextLinks[taskId];
-    if (!link) continue;
+    if (!link || taskById.has(taskId)) continue;
     await googleApi(googleAccessToken, calendarId, link.eventId, "DELETE", null, fetchFn).catch((error) => {
       if (![404, 410].includes(error.status)) throw error;
     });
