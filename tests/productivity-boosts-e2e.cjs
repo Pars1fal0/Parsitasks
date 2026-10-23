@@ -43,21 +43,17 @@ function task(id, title, extra = {}) {
       }, { day: DAY, tasks: [task("soon", "Позвонить", { time: "10:03", scheduleMode: "deadline" }), task("later", "Отчёт", { time: "15:00", scheduleMode: "deadline" })] });
       await page.reload();
 
-      // Quick amounts subtract once the habit is switched to the minus mode.
+      // Quick amounts only add, always visible; the goal chip fills what is left.
       const water = page.locator('[data-habit-id="water"]');
       const input = water.locator('input[type="number"]');
-      if (mobile) await water.locator(".habit-number-more > summary").click();
-      await water.getByRole("button", { name: "Вода: убавлять" }).click();
-      assert.equal(await water.getByRole("button", { name: "Вода: убавлять" }).getAttribute("aria-pressed"), "true");
-      await water.getByRole("button", { name: "−500 мл", exact: true }).click();
-      assert.equal(await input.inputValue(), "500");
-      if (mobile) await water.locator(".habit-number-more > summary").click();
-      await water.getByRole("button", { name: "−500 мл", exact: true }).click();
-      assert.equal(await input.inputValue(), "0", "subtracting is clamped at zero");
-      if (mobile) await water.locator(".habit-number-more > summary").click();
-      await water.getByRole("button", { name: "Вода: прибавлять" }).click();
-      await water.getByRole("button", { name: "+250 мл", exact: true }).click();
-      assert.equal(await input.inputValue(), "250");
+      assert.equal(await water.locator(".habit-sign-switch, .habit-number-more").count(), 0, "no mode switch or hidden menu");
+      await water.getByRole("button", { name: "+500 мл", exact: true }).click();
+      assert.equal(await input.inputValue(), "1500");
+      await water.getByRole("button", { name: "Вода: до цели, ещё 1 500 мл", exact: true }).click();
+      assert.equal(await input.inputValue(), "3000");
+      assert.equal(await water.locator(".habit-goal-chip").isVisible(), false);
+      await page.locator("#appToast").getByRole("button", { name: "Отменить", exact: true }).click();
+      assert.equal(await page.locator('[data-habit-id="water"] input[type="number"]').inputValue(), "1500", "a slip is undone from the toast");
       await page.screenshot({ path: path.join(captures, `${width}-habits.png`) });
 
       // The "now" marker follows the clock without a reload and flags tasks that slipped past.
@@ -76,20 +72,44 @@ function task(id, title, extra = {}) {
       await page.clock.runFor(60 * 60000);
       assert.equal(await page.locator('.timeline-hour-slot[data-hour="11"] .timeline-now-line').count(), 1, "the marker moves into the next hour");
 
-      // Focus sessions count down, roll into a break and are counted for the day.
+      // Focus sessions: pick a length and a task, pause, extend, then finish into a break.
       await page.locator("[data-focus-start]:visible").first().click();
+      const setup = page.locator(".focus-setup");
+      await setup.waitFor();
+      assert.equal(await setup.getByRole("radio", { name: "25 мин" }).getAttribute("aria-checked"), "true");
+      await setup.getByRole("radio", { name: "15 мин" }).click();
+      await setup.locator("select").selectOption({ label: "Позвонить" });
+      assert.equal(await setup.locator(".focus-setup-start").innerText(), "Начать · 15 мин");
+      await page.keyboard.press("Escape");
+      assert.equal(await setup.isVisible(), false, "Escape closes the setup");
+      await page.locator("[data-focus-start]:visible").first().click();
+      assert.equal(await setup.getByRole("radio", { name: "15 мин" }).getAttribute("aria-checked"), "true", "the chosen length is remembered");
+      await setup.locator("select").selectOption({ label: "Позвонить" });
+      await setup.locator(".focus-setup-start").click();
       const timer = page.locator(".focus-timer");
       await timer.waitFor();
-      assert.equal(await timer.locator(".focus-timer-clock").innerText(), "25:00");
+      assert.equal(await timer.locator(".focus-timer-clock").innerText(), "15:00");
+      assert.equal(await timer.locator(".focus-timer-task").innerText(), "Позвонить");
       await page.clock.runFor(60000);
-      assert.equal(await timer.locator(".focus-timer-clock").innerText(), "24:00");
-      assert.match(await page.title(), /^24:00 · Фокус/);
-      await page.clock.runFor(24 * 60000);
+      assert.equal(await timer.locator(".focus-timer-clock").innerText(), "14:00");
+      assert.match(await page.title(), /^14:00 · Фокус/);
+      await timer.getByRole("button", { name: "Пауза" }).click();
+      await page.clock.runFor(3 * 60000);
+      assert.equal(await timer.locator(".focus-timer-clock").innerText(), "14:00", "a paused session does not count down");
+      assert.match(await page.title(), /^14:00 · Пауза/);
+      await timer.getByRole("button", { name: "Продолжить" }).click();
+      await timer.getByRole("button", { name: "Добавить 5 минут" }).click();
+      assert.equal(await timer.locator(".focus-timer-clock").innerText(), "19:00");
+      await page.clock.runFor(19 * 60000);
       assert.equal(await timer.locator(".focus-timer-mode").innerText(), "Перерыв");
-      assert.match(await page.locator("#appToast").innerText(), /Фокус-сессия завершена · сегодня 1/);
+      const done = page.locator("#appToast", { hasText: "Сессия завершена · сегодня 1" });
+      await done.waitFor();
+      await done.getByRole("button", { name: "Задача готова" }).click();
+      assert.equal(await page.evaluate(({ day }) => JSON.parse(localStorage.getItem("rhythm-day-state-v1")).tasks.find((item) => item.id === "soon").completed?.[day], { day: DAY }), true, "the linked task is completed from the toast");
       await timer.getByRole("button", { name: "Пропустить перерыв" }).click();
       assert.equal(await timer.isVisible(), false);
       assert.match(await page.locator("[data-focus-start]:visible").first().innerText(), /· 1/);
+      assert.match(await page.locator("[data-focus-start]:visible").first().getAttribute("title"), /1 сессия, 20 мин/);
       assert.doesNotMatch(await page.title(), /Фокус/);
 
       // Finishing the last open item celebrates the closed day once.
@@ -102,6 +122,10 @@ function task(id, title, extra = {}) {
         localStorage.setItem("rhythm-day-state-v1", JSON.stringify(state));
       }, { day: DAY });
       await page.reload();
+      await page.locator('[data-task-id="later"] .task-more > summary').click();
+      await page.locator('[data-task-id="later"] .focus-task').click();
+      assert.equal(await page.locator(".focus-timer-task").innerText(), "Отчёт", "a focus session starts straight from the task menu");
+      await page.locator(".focus-timer").getByRole("button", { name: "Остановить фокус-сессию" }).click();
       await page.locator('[data-task-id="later"] .check-button, [data-task-id="later"] .task-check').first().click();
       const toast = page.locator("#appToast", { hasText: "День закрыт на 100%" });
       await toast.waitFor();

@@ -79,14 +79,13 @@ const { chromium } = require("playwright-core");
     assert.equal(await page.locator("#appToast").isVisible(), false);
 
     await go("habits", "#habitsView");
-    const waterQuickAdd = page.locator('[data-habit-id="water"] .habit-quick-adds > button');
+    const waterQuickAdd = page.locator('[data-habit-id="water"] .habit-quick-adds > button:not(.habit-goal-chip)');
     assert.equal(await waterQuickAdd.count(), 1);
     assert.match(await waterQuickAdd.textContent(), /\+5/);
     await page.locator('[data-habit-id="water"] .habit-stepper').last().click();
     assert.equal((await stored()).habits[0].logs[dates.today], 3);
     await page.locator("#appToast").getByRole("button", { name: "Отменить", exact: true }).click();
     assert.equal((await stored()).habits[0].logs[dates.today], 2);
-    await page.locator('[data-habit-id="water"] .habit-number-more > summary').click();
     await waterQuickAdd.click();
     assert.equal((await stored()).habits[0].logs[dates.today], 7);
     await page.locator("#appToast .toast-close").click();

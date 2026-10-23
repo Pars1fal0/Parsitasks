@@ -5,16 +5,6 @@
 .goal-link-section[open] { gap: 8px; }
 .goal-link-section[open] > summary { margin-bottom: 8px; }
 #tasksView .task-item > .task-checklist { grid-column: 4 / -1; margin-top: 0; width: 100%; }
-.habit-number-more { display: contents; }
-.habit-number-more > summary, .habit-extra-decrement { display: none; }
-.habit-number-more > .habit-quick-adds { display: flex; }
-.habit-sign-switch { display: inline-flex; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; }
-.habit-sign-switch > .habit-sign-option { min-width: 36px; min-height: 42px; padding: 0 10px; border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 15px; font-weight: 700; cursor: pointer; }
-.habit-sign-switch > .habit-sign-option + .habit-sign-option { border-left: 1px solid var(--line); }
-.habit-sign-switch > .habit-sign-option.is-active { background: var(--teal-soft); color: var(--teal-deep); }
-.habit-sign-switch > .habit-sign-option[data-sign-mode="subtract"].is-active { background: var(--coral-soft); color: var(--coral); }
-.habit-sign-switch > .habit-sign-option:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
-.habit-quick-adds.is-subtracting > button { border-color: color-mix(in srgb, var(--coral) 45%, var(--line)); color: var(--coral); }
 .archive-grouping-control { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .archive-grouping-control input { width: 18px; height: 18px; min-height: 18px; margin: 0; }
 .archive-series { border-bottom: 1px solid var(--line); }
@@ -84,20 +74,12 @@
 
   #habitsView .habit-item { gap: 6px 8px; padding-block: 12px; padding-right: 0; }
   #habitsView .habit-number-row { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr) minmax(64px, 96px); gap: 6px; }
-  #habitsView .habit-number-row:has(.habit-number-more) { grid-template-columns: 44px minmax(0, 1fr) minmax(64px, 96px) 44px; }
   #habitsView .habit-number-row input { width: 100%; min-width: 0; min-height: 44px; grid-column: 2; grid-row: 1; padding-inline: 4px; font-size: 16px; font-variant-numeric: tabular-nums; }
   #habitsView .habit-number-row > .habit-stepper { grid-column: 3; grid-row: 1; width: 100%; min-width: 0; height: 44px; padding: 4px; white-space: normal; overflow-wrap: anywhere; font-size: 12px; }
   #habitsView .habit-number-row > .habit-stepper:first-child { display: grid; grid-column: 1; }
   #habitsView .habit-number-row > span { grid-column: 2 / -1; grid-row: 2; margin: 0; font-size: 12px; }
-  .habit-number-more { display: block; grid-column: 1 / -1; grid-row: 3; min-width: 0; }
-  .habit-number-more > summary { position: absolute; top: 0; right: 0; display: grid; width: 44px; height: 44px; list-style: none; cursor: pointer; }
-  .habit-number-more > summary::-webkit-details-marker { display: none; }
-  #habitsView .habit-number-more[open] > summary { color: var(--teal); background: var(--teal-soft); border-color: var(--teal); }
-  #habitsView .habit-number-more > .habit-quick-adds { position: static; grid-column: 1 / -1; grid-row: 3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; width: 100%; margin: 4px 0 0; padding: 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-elevated); box-shadow: none; gap: 6px; }
-  #habitsView .habit-number-more:not([open]) > .habit-quick-adds { display: none; }
-  #habitsView .habit-extra-decrement { display: none; }
-  #habitsView .habit-quick-adds > .habit-sign-switch { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; }
-  #habitsView .habit-quick-adds button { width: 100%; min-width: 0; text-align: center; min-height: 44px; padding: 6px; white-space: normal; overflow-wrap: anywhere; }
+  #habitsView .habit-number-row > .habit-quick-adds { grid-column: 1 / -1; grid-row: 3; display: flex; flex-wrap: nowrap; gap: 6px; min-width: 0; margin: 2px 0 0; }
+  #habitsView .habit-quick-adds > button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 6px; text-align: center; white-space: normal; overflow-wrap: anywhere; }
 
   .global-search-result { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .global-search-type { padding: 0; border: 0; font-size: 11px; font-weight: 450; }

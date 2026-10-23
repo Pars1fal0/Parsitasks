@@ -26,7 +26,7 @@ import { confirmAction, createUndoSnapshot, normalizeState, replaceState, restor
 import { archiveEntries, archiveEntryMatchesSearch, excludedTasksForDate, formatHabitRepeat, formatTaskRepeat, formatTaskWindow, getCategory, getOrderedTasksForDate, habitConfigOnDate, habitStatusOnDate, habitStreak, habitsForDate, isTaskDone, isTaskExcluded, isTimeBlock, isValidTimeBlock, matchesCategoryFilter, overdueTaskEntries, reorderTask, statsForDate, taskDetails, taskMatchesSearch, taskMetaItems, taskOccursOn, taskScheduledOn, taskSortTime } from "./queries.js";
 import { calendarDragController, priorityLabels, remoteAuth, saveSubtaskChange, setTaskScheduleMode, syncTaskScheduleMode, syncTaskTimePresets } from "./services.js";
 import { saveUiState } from "./settings.js";
-import { appShellController } from "./shell.js";
+import { appShellController, focusTimer } from "./shell.js";
 import { addDays, cleanText, cleanTimeValue, createId, escapeHtml, formatLongDate, formatMonthLabel, formatShortDate, formatTime, formatWeekday, getMonthCalendarDates, getWeekDates, heatAlpha, minutesToTime, normalizeDateKey, parseDate, timeToMinutes, toDateKey } from "./state.js";
 import { acknowledgeAllOverdueTasks, acknowledgeOverdueTask, attachTaskChipDrag, attachTaskDropZone, clearTaskDragState, deferSelectedTasks, deleteGoal, deleteHabit, deleteMovedReplacement, deleteTask, dismissSelectedTasks, excludeTaskDate, getStudyEvents, moveSelectedTasks, notesForTask, openDateTasks, openLinkedHabit, openLinkedNote, openNotesForTask, openStudyLesson, postponeTask, renderOverview, reorderHabit, restoreOverdueTask, restoreTaskDate, stopTaskSeries } from "./task-actions.js";
 
@@ -104,6 +104,7 @@ export function wireViews() {
     deleteMovedReplacement,
     duplicateTask: (taskId) => timelineController.duplicateTask(taskId),
     escapeHtml,
+    startFocus: (taskId) => focusTimer?.focusOn(taskId),
     excludeTaskDate,
     excludedTasksForDate,
     fillTaskForm,

@@ -18,7 +18,7 @@ import { els } from "./dom.js";
 import { boardView, nutritionView } from "./editors.js";
 import { closeFloatingTaskForm, closeFormWithConfirmation, confirmDiscardOpenForms, exportData, importData, isFormDirty, markFormPristine, resetHabitForm, resetTaskForm, restoreTaskFormPanel, saveCategoryFromForm, saveHabitFromForm, saveQuickTask, setCustomRepeatMode, setHabitCustomRepeatMode, syncCustomRepeatPanel, syncHabitCustomRepeatPanel, syncHabitTypeFields, updateCustomRepeatSummary, updateHabitCustomRepeatSummary, updateQuickTaskPreview } from "./forms.js";
 import { goToday, handleNavigationChange, render, renderDailyPulse, renderSaveStatus, renderTasks, renderTimeline, scrollWorkspaceTop, shiftDate, shiftMonth, syncNavigationRoute } from "./lifecycle.js";
-import { confirmAction, renderWeekdayLabels, restoreBackup, saveState, showToast } from "./persistence.js";
+import { confirmAction, createUndoSnapshot, renderWeekdayLabels, restoreBackup, restoreFailedSave, saveState, showToast } from "./persistence.js";
 import { openBackupFolder, requestNotifications } from "./platform.js";
 import { cleanSearchQuery, getCategory, getOrderedTasksForDate, habitStatusOnDate, habitsForDate, isHabitComplete, isTaskDone, taskDetails, taskOccursOn, tasksForDate } from "./queries.js";
 import { calendarDragController, remoteAuth, syncTaskScheduleMode, syncTaskTimePresets, taskScheduleController } from "./services.js";
@@ -65,6 +65,11 @@ export function wireShell() {
   });
 
   focusTimer = focusTimerModule.createFocusTimer({
+    completeTask: completeFocusTask,
+    getOpenTasks: () => {
+      const today = todayKey();
+      return getOrderedTasksForDate(today).filter((task) => !isTaskDone(task, today)).map((task) => ({ id: task.id, title: task.title }));
+    },
     notificationsEnabled: () => app.notificationSetting === "on",
     showToast,
     todayKey,
@@ -303,6 +308,22 @@ export function wireShell() {
     updateHabitCustomRepeatSummary,
     updateQuickTaskPreview,
   });
+}
+
+function completeFocusTask(taskId) {
+  const today = todayKey();
+  const task = app.state.tasks.find((item) => item.id === taskId);
+  if (!task || isTaskDone(task, today)) return;
+  const undo = createUndoSnapshot();
+  task.completed = { ...task.completed, [today]: true };
+  task.updatedAt = new Date().toISOString();
+  if (saveState() === false) {
+    restoreFailedSave(undo);
+    render();
+    return;
+  }
+  render();
+  showToast("Задача выполнена", { undo });
 }
 
 function celebrateDay({ streak }) {

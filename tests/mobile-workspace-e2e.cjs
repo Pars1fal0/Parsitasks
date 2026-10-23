@@ -64,21 +64,11 @@ const { chromium } = require("playwright-core");
 
       await go("habits");
       const water = page.locator('[data-habit-id="water"]');
-      if (mobile) {
-        assert.equal(await water.locator(".habit-quick-adds").isVisible(), false);
-        await water.locator(".habit-number-more > summary").click();
-      }
+      assert.equal(await water.locator(".habit-quick-adds").isVisible(), true, "quick amounts are always at hand");
       await water.getByRole("button", { name: "+250 мл", exact: true }).click();
       assert.equal(await water.locator('input[type="number"]').inputValue(), "1450");
-      if (mobile) {
-        assert.equal(await water.locator(".habit-quick-adds").isVisible(), false);
-        await water.locator(".habit-number-more > summary").click();
-        await water.getByRole("button", { name: "Вода: убрать 100 мл", exact: true }).click();
-        assert.equal(await water.locator('input[type="number"]').inputValue(), "1350");
-        await water.locator(".habit-number-more > summary").click();
-        await water.locator(".habit-number-more > summary").press("Escape");
-        assert.equal(await water.locator(".habit-quick-adds").isVisible(), false);
-      }
+      await water.getByRole("button", { name: "Вода: убрать 100 мл", exact: true }).click();
+      assert.equal(await water.locator('input[type="number"]').inputValue(), "1350");
       await capture("habits");
       await page.locator("#openHabitForm").click();
       if (mobile) {

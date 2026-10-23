@@ -368,10 +368,12 @@ body:not([data-view="nutrition"]) .toast button { min-height: 44px; }
 #habitsView .habit-number-row input { flex: 0 0 96px; width: 96px; min-height: 44px; padding: 0 8px; appearance: textfield; font-variant-numeric: tabular-nums; }
 #habitsView .habit-number-row input::-webkit-inner-spin-button,
 #habitsView .habit-number-row input::-webkit-outer-spin-button { appearance: none; margin: 0; }
-#habitsView .habit-stepper { width: auto; height: 44px; min-width: 44px; padding-inline: 10px; font-size: 12px; font-weight: 600; }
+#habitsView .habit-stepper { touch-action: manipulation; user-select: none; -webkit-user-select: none; width: auto; height: 44px; min-width: 44px; padding-inline: 10px; font-size: 12px; font-weight: 600; }
 #habitsView .habit-number-row > span { grid-column: auto; flex: 0 1 auto; min-width: 0; font-size: 12px; font-weight: 450; overflow-wrap: anywhere; }
 #habitsView .habit-quick-adds { margin: 0; gap: 6px; }
 #habitsView .habit-quick-adds > button { min-height: 44px; padding: 6px 8px; font-size: 12px; }
+#habitsView .habit-quick-adds > button[hidden] { display: none; }
+#habitsView .habit-goal-chip { border-color: color-mix(in srgb, var(--teal) 40%, var(--line)); color: var(--teal-deep); }
 #habitsView .habit-control { gap: 6px; }
 #habitsView .progress-track { height: 4px; }
 #goalsView .goal-metrics { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-bottom: 16px; padding: 10px 0; border-block: 1px solid var(--line); }
@@ -499,13 +501,39 @@ body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; back
 .focus-start-button[hidden] { display: none; }
 .focus-start-button > span:empty { display: none; }
 .day-progress > .focus-start-button { flex: 0 0 auto; margin-left: auto; min-height: 40px; }
-.focus-timer { position: fixed; z-index: 29; bottom: 22px; left: 50%; display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; border: 1px solid color-mix(in srgb, var(--coral) 45%, var(--line)); border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-lift, 0 8px 24px rgb(0 0 0 / 12%)); color: var(--text-strong); transform: translateX(-50%); }
+.focus-timer { position: fixed; z-index: 29; bottom: 22px; left: 50%; display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 6px 6px 6px 14px; overflow: hidden; border: 1px solid color-mix(in srgb, var(--coral) 45%, var(--line)); border-radius: 999px; background: var(--surface); box-shadow: var(--shadow-lift, 0 8px 24px rgb(0 0 0 / 12%)); color: var(--text-strong); transform: translateX(-50%); }
 .focus-timer[hidden] { display: none; }
 .focus-timer.is-break { border-color: color-mix(in srgb, var(--teal) 45%, var(--line)); }
+.focus-timer.is-paused { border-style: dashed; }
+.focus-timer-copy { display: grid; flex: 1 1 auto; min-width: 0; line-height: 1.2; }
 .focus-timer-mode { color: var(--muted); font-size: 12px; font-weight: 600; }
+.focus-timer-task { max-width: 22ch; overflow: hidden; color: var(--text); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.focus-timer-task:empty { display: none; }
 .focus-timer-clock { min-width: 5ch; font-size: 18px; font-variant-numeric: tabular-nums; }
-.focus-timer-stop { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--coral-soft); color: var(--coral); font-weight: 600; cursor: pointer; }
+.focus-timer.is-paused .focus-timer-clock { color: var(--muted); }
+.focus-timer button { flex: 0 0 auto; min-width: 36px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--surface-elevated, var(--surface)); color: var(--text-strong); font-weight: 600; cursor: pointer; }
+.focus-timer button[hidden] { display: none; }
+.focus-timer button:focus-visible { outline: 2px solid var(--teal); outline-offset: 1px; }
+.focus-timer .focus-timer-pause { display: grid; place-items: center; padding: 0; }
+.focus-timer .focus-timer-stop { background: var(--coral-soft); color: var(--coral); }
 .focus-timer.is-break .focus-timer-stop { background: var(--teal-soft); color: var(--teal-deep); }
+.focus-timer-progress { position: absolute; bottom: 0; left: 0; width: var(--focus-progress, 0%); height: 3px; background: var(--coral); transition: width 1s linear; pointer-events: none; }
+.focus-timer.is-break .focus-timer-progress { background: var(--teal); }
+.focus-setup { position: fixed; z-index: 30; bottom: 22px; left: 50%; display: grid; gap: 12px; width: min(340px, calc(100vw - 32px)); padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-lift, 0 8px 24px rgb(0 0 0 / 12%)); color: var(--text-strong); transform: translateX(-50%); }
+.focus-setup[hidden] { display: none; }
+.focus-setup-head { display: flex; align-items: center; justify-content: space-between; }
+.focus-setup-close { width: 36px; height: 36px; margin: -6px -8px -6px 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); font-size: 20px; cursor: pointer; }
+.focus-presets { display: grid; grid-template-columns: repeat(3, 1fr); overflow: hidden; border: 1px solid var(--line); border-radius: 8px; }
+.focus-presets > button { min-height: 44px; border: 0; background: transparent; color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; }
+.focus-presets > button + button { border-left: 1px solid var(--line); }
+.focus-presets > button.is-active { background: var(--coral-soft); color: var(--coral); }
+.focus-presets > button:focus-visible { outline: 2px solid var(--teal); outline-offset: -2px; }
+.focus-setup-field { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.focus-setup-field select { width: 100%; min-height: 44px; font-size: 14px; }
+.focus-setup-sound { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 13px; cursor: pointer; }
+.focus-setup-sound input { width: 18px; height: 18px; min-height: 18px; margin: 0; }
+.focus-setup-stats { margin: 0; color: var(--muted); font-size: 12px; }
+.focus-setup-start { min-height: 44px; }
 .sidebar-pulse, .day-progress { position: relative; }
 .day-celebration { position: absolute; z-index: 3; top: 50%; left: 50%; width: 1px; height: 1px; pointer-events: none; }
 .day-celebration i { position: absolute; width: 7px; height: 3px; border-radius: 1px; background: var(--teal); opacity: 0; animation: day-confetti 900ms ease-out var(--day-particle-delay) both; }
@@ -522,12 +550,16 @@ body[data-view="timeline"] .topbar { position: sticky; top: 0; z-index: 35; back
   35% { transform: scale(1.03); }
 }
 @media (max-width: 900px) {
-  .focus-timer { bottom: 92px; }
+  .focus-timer, .focus-setup { bottom: 92px; }
   body:has(.toast.is-visible) .focus-timer { bottom: 152px; }
+  .focus-timer { right: 16px; left: 16px; max-width: none; transform: none; }
+  .focus-timer-task { max-width: none; }
+  .focus-setup-field select { font-size: 16px; }
   .day-progress > .focus-start-button { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .day-celebration { display: none; }
   .sidebar-pulse.is-celebrating, .day-progress.is-celebrating { animation: none; }
   .timeline-now-line { transition: none; }
+  .focus-timer-progress { transition: none; }
 }

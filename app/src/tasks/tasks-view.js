@@ -468,6 +468,15 @@ function createTasksView(ctx) {
       ctx.fillTaskForm(task);
     });
     node.querySelector(".duplicate-task").addEventListener("click", () => ctx.duplicateTask(task.id));
+    const focusTask = node.querySelector(".focus-task");
+    if (focusTask && ctx.startFocus) {
+      // Focus sessions track today's work, so the shortcut only appears on today's open tasks.
+      focusTask.hidden = done || activeDate !== ctx.todayKey();
+      focusTask.addEventListener("click", () => {
+        focusTask.closest("details")?.removeAttribute("open");
+        ctx.startFocus(task.id);
+      });
+    }
     const postponeTomorrow = () => {
       ctx.postponeTask(task, activeDate, ctx.addDays(activeDate, 1));
     };

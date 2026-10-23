@@ -43,42 +43,44 @@ const { chromium } = require("playwright-core");
       const plus = water.locator(".habit-number-row > .habit-stepper").last();
       await plus.click();
       assert.equal(await input.inputValue(), "1200");
+      for (const action of [minus, plus, water.getByRole("button", { name: "+250 мл", exact: true }), water.getByRole("button", { name: "+500 мл", exact: true }), water.locator(".habit-goal-chip")]) {
+        await action.scrollIntoViewIfNeeded();
+        const reachable = await action.evaluate((button) => {
+          const rect = button.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+          return { hit: button === hit || button.contains(hit), height: rect.height, buttonWidth: rect.width, left: rect.left, right: rect.right, width: innerWidth };
+        });
+        assert.ok(reachable.hit && reachable.height >= 44 && reachable.buttonWidth >= 44 && reachable.left >= 0 && reachable.right <= reachable.width, `quick actions are visible and reachable without a menu: ${JSON.stringify(reachable)}`);
+      }
       if (mobile) {
-        const before = await page.locator('[data-habit-id="push"]').boundingBox();
-        await water.locator(".habit-number-more > summary").click();
-        const after = await page.locator('[data-habit-id="push"]').boundingBox();
-        assert.ok(after.y > before.y + 44, "extra actions expand the habit rather than overlapping the next one");
-        for (const action of [minus, plus, water.getByRole("button", { name: "+250 мл", exact: true }), water.getByRole("button", { name: "+500 мл", exact: true })]) {
-          await action.scrollIntoViewIfNeeded();
-          const reachable = await action.evaluate((button) => {
-            const rect = button.getBoundingClientRect();
-            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-            return { hit: button === hit || button.contains(hit), height: rect.height, buttonWidth: rect.width, left: rect.left, right: rect.right, width: innerWidth };
-          });
-          assert.ok(reachable.hit && reachable.height >= 44 && reachable.buttonWidth >= 44 && reachable.left >= 0 && reachable.right <= reachable.width, `mobile actions are reachable: ${JSON.stringify(reachable)}`);
-        }
-        const panel = await water.locator(".habit-quick-adds").boundingBox();
+        const chips = await water.locator(".habit-quick-adds").boundingBox();
         const row = await water.locator(".habit-number-row").boundingBox();
-        assert.ok(panel.width >= row.width - 2, "expanded actions use the whole row, including native details content");
+        assert.ok(chips.width >= row.width - 2, "quick amounts use the whole row on phones");
+        const next = await page.locator('[data-habit-id="push"]').boundingBox();
+        assert.ok(next.y >= chips.y + chips.height, "quick amounts do not overlap the next habit");
       }
       await water.getByRole("button", { name: "+500 мл", exact: true }).click();
       assert.equal(await input.inputValue(), "1700");
-      if (mobile) assert.equal(await water.locator(".habit-quick-adds").isVisible(), false);
+      await water.locator(".habit-goal-chip").click();
+      assert.equal(await input.inputValue(), "3000", "the goal chip fills the remaining amount");
+      assert.equal(await water.locator(".habit-goal-chip").isVisible(), false, "the goal chip hides once the goal is reached");
+
+      // Holding a stepper keeps stepping and stores a single change on release.
+      const box = await minus.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(1000);
+      await page.mouse.up();
+      const held = Number(await input.inputValue());
+      assert.ok(held <= 2800 && held >= 2000, `holding minus repeats the step: ${held}`);
+      assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")).habits.find((habit) => habit.id === "water").logs["2026-10-06"]), held);
+      assert.equal(await water.locator(".habit-goal-chip").isVisible(), true);
       await input.fill("50");
       await input.dispatchEvent("change");
       await minus.click();
       await minus.click();
       assert.equal(await input.inputValue(), "0", "decrement is clamped at zero");
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1")).habits.find((habit) => habit.id === "water").logs["2026-10-06"] || 0), 0);
-      if (mobile) {
-        await water.locator(".habit-number-more > summary").click();
-        await page.locator('[data-habit-id="push"] .habit-number-more > summary').click();
-        assert.equal(await water.locator(".habit-quick-adds").isVisible(), false, "opening another habit closes the previous expansion");
-        const pushMenu = page.locator('[data-habit-id="push"] .habit-number-more > summary');
-        await pushMenu.press("Escape");
-        await water.locator(".habit-number-more > summary").click();
-        await page.evaluate(() => window.scrollTo(0, 0));
-      }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: path.join(captures, `${width}-habits.png`), animations: "disabled" });
       assert.deepEqual(errors, []);

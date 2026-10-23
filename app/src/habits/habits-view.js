@@ -3,20 +3,6 @@ import * as habitSchedule from "./habit-schedule.js";
 
 function createHabitsView(ctx) {
   let draggedHabitId = "";
-  // Quick amounts can add or subtract; the chosen direction survives re-renders within the session.
-  const subtractingHabitIds = new Set();
-  function closeNumberMenus(except = null) {
-    if (!globalThis.matchMedia?.("(max-width: 680px)")?.matches) return;
-    ctx.els.habitList.querySelectorAll(".habit-number-more[open]").forEach((menu) => {
-      if (menu !== except) menu.open = false;
-    });
-  }
-  if (ctx.els.habitList) document.addEventListener("click", (event) => closeNumberMenus(event.target.closest(".habit-number-more")));
-  ctx.els.habitList?.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape") return;
-    const menu = event.target.closest(".habit-number-more[open]");
-    if (menu) { event.stopPropagation(); menu.open = false; menu.querySelector("summary").focus(); }
-  });
 
   function saveChange(undo) {
     if (ctx.saveState() !== false) return true;
@@ -131,16 +117,24 @@ function createHabitsView(ctx) {
       row.append(decrement, input, increment, value);
       control.replaceChildren(row, track);
 
+      let syncGoalChip = () => {};
       const getLoggedValue = () => Number(ctx.getState().habits.find((item) => item.id === habit.id)?.logs?.[activeDate] || 0);
+      const roundValue = (raw) => Math.max(0, Math.round(raw * 1000) / 1000);
+      const showValue = (shown, { preview = false } = {}) => {
+        input.value = String(shown);
+        fill.style.width = `${Math.min(100, Math.round((shown / goal) * 100))}%`;
+        // Toggling the chip mid-hold would shift the row out from under the finger.
+        if (!preview) syncGoalChip(shown);
+      };
       const updateValue = (nextRawValue) => {
         // Saving can replace normalized state objects without rebuilding the numeric row.
         const currentHabit = ctx.getState().habits.find((item) => item.id === habit.id);
         if (!currentHabit) return;
         const parsedValue = Number(nextRawValue || 0);
         if (!Number.isFinite(parsedValue)) return;
-        const nextValue = Math.max(0, Math.round(parsedValue * 1000) / 1000);
+        const nextValue = roundValue(parsedValue);
         if (nextValue === getLoggedValue()) {
-          input.value = String(nextValue);
+          showValue(nextValue);
           return;
         }
         const undo = ctx.createUndoSnapshot();
@@ -155,9 +149,7 @@ function createHabitsView(ctx) {
         ctx.renderOverviewIfActive?.();
         node.querySelector(".habit-streak").textContent = habitSubtitle(ctx.getState().habits.find((item) => item.id === habit.id) || currentHabit);
         const loggedValue = getLoggedValue();
-        const nextPercent = Math.min(100, Math.round((loggedValue / goal) * 100));
-        fill.style.width = `${nextPercent}%`;
-        input.value = String(loggedValue);
+        showValue(loggedValue);
         ctx.showToast(`${habitTitle}: ${loggedValue} ${habitConfig.unit || ""}`.trim(), { undo });
       };
 
@@ -165,8 +157,50 @@ function createHabitsView(ctx) {
         if (input.validity.badInput) return;
         updateValue(event.target.value);
       });
-      decrement.addEventListener("click", () => updateValue(getLoggedValue() - step));
-      increment.addEventListener("click", () => updateValue(getLoggedValue() + step));
+      // A tap moves one step; holding the button keeps stepping and saves once on release.
+      const attachStepper = (button, direction) => {
+        let delay = null;
+        let repeat = null;
+        let pending = null;
+        let held = false;
+        const release = () => {
+          clearTimeout(delay);
+          clearInterval(repeat);
+          delay = repeat = null;
+          if (pending === null) return;
+          const value = pending;
+          pending = null;
+          updateValue(value);
+        };
+        button.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0) return;
+          held = false;
+          try { button.setPointerCapture(event.pointerId); } catch {}
+          delay = setTimeout(() => {
+            held = true;
+            pending = getLoggedValue();
+            const advance = () => {
+              pending = roundValue(pending + direction * step);
+              showValue(pending, { preview: true });
+            };
+            advance();
+            repeat = setInterval(advance, 110);
+          }, 400);
+        });
+        ["pointerup", "pointerleave", "pointercancel"].forEach((type) => button.addEventListener(type, release));
+        button.addEventListener("contextmenu", (event) => event.preventDefault());
+        button.addEventListener("click", () => {
+          if (held) {
+            held = false;
+            return;
+          }
+          updateValue(getLoggedValue() + direction * step);
+        });
+      };
+      attachStepper(decrement, -1);
+      attachStepper(increment, 1);
+
+      // Quick amounts only ever add: a slip is one tap on the toast's undo, or the minus button.
       const quickAdds = document.createElement("div");
       quickAdds.className = "habit-quick-adds";
       quickAdds.setAttribute("role", "group");
@@ -176,68 +210,30 @@ function createHabitsView(ctx) {
         : ["л", "l"].includes(unit) ? [0.25, 0.5]
         : ["мин", "мин.", "минут"].includes(unit) ? [5, 15]
         : [...new Set([step, Math.min(goal, step * 5)])].filter((amount) => amount > 0);
-      const quickButtons = amounts.filter((amount) => amount !== step).map((amount) => {
+      amounts.filter((amount) => amount !== step).forEach((amount) => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "ghost-button compact-button";
-        button.addEventListener("click", () => {
-          const sign = subtractingHabitIds.has(habit.id) ? -1 : 1;
-          updateValue(getLoggedValue() + sign * amount);
-          closeNumberMenus();
-        });
+        button.textContent = stepLabel(amount, habitConfig.unit);
+        button.title = `Добавить ${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+        if (habitConfig.unit && !button.textContent.endsWith(habitConfig.unit)) button.setAttribute("aria-label", `${habitTitle}: ${button.title.toLowerCase()}`);
+        button.addEventListener("click", () => updateValue(getLoggedValue() + amount));
         quickAdds.appendChild(button);
-        return { amount, button };
       });
-      const signSwitch = document.createElement("div");
-      signSwitch.className = "habit-sign-switch";
-      signSwitch.setAttribute("role", "group");
-      signSwitch.setAttribute("aria-label", `Режим быстрых отметок: ${habitTitle}`);
-      const signOptions = [["add", "+", "Прибавлять"], ["subtract", "−", "Убавлять"]].map(([mode, text, label]) => {
-        const option = document.createElement("button");
-        option.type = "button";
-        option.className = "habit-sign-option";
-        option.dataset.signMode = mode;
-        option.textContent = text;
-        option.title = label;
-        option.setAttribute("aria-label", `${habitTitle}: ${label.toLowerCase()}`);
-        option.addEventListener("click", () => {
-          if (mode === "subtract") subtractingHabitIds.add(habit.id);
-          else subtractingHabitIds.delete(habit.id);
-          syncQuickButtons();
-        });
-        signSwitch.appendChild(option);
-        return option;
-      });
-      const syncQuickButtons = () => {
-        const subtracting = subtractingHabitIds.has(habit.id);
-        quickAdds.classList.toggle("is-subtracting", subtracting);
-        signOptions.forEach((option) => {
-          const active = (option.dataset.signMode === "subtract") === subtracting;
-          option.classList.toggle("is-active", active);
-          option.setAttribute("aria-pressed", String(active));
-        });
-        quickButtons.forEach(({ amount, button }) => {
-          const verb = subtracting ? "Убрать" : "Добавить";
-          button.textContent = subtracting ? stepLabel(amount, habitConfig.unit).replace("+", "−") : stepLabel(amount, habitConfig.unit);
-          button.title = `${verb} ${amount.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
-          button.removeAttribute("aria-label");
-          if (habitConfig.unit && !button.textContent.endsWith(habitConfig.unit)) button.setAttribute("aria-label", `${habitTitle}: ${button.title.toLowerCase()}`);
-        });
+      const goalChip = document.createElement("button");
+      goalChip.type = "button";
+      goalChip.className = "ghost-button compact-button habit-goal-chip";
+      goalChip.textContent = "До цели";
+      goalChip.addEventListener("click", () => updateValue(goal));
+      quickAdds.appendChild(goalChip);
+      syncGoalChip = (shown) => {
+        const left = roundValue(goal - shown);
+        goalChip.hidden = left <= 0;
+        goalChip.title = `Добавить ещё ${left.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim();
+        goalChip.setAttribute("aria-label", `${habitTitle}: до цели, ещё ${left.toLocaleString("ru-RU")} ${habitConfig.unit || ""}`.trim());
       };
-      if (quickButtons.length) {
-        quickAdds.appendChild(signSwitch);
-        syncQuickButtons();
-      }
-      if (quickAdds.childElementCount) {
-        const more = document.createElement("details"); more.className = "habit-number-more";
-        const summary = document.createElement("summary"); summary.className = "icon-button";
-        summary.setAttribute("aria-label", `Другие прибавления: ${habitTitle}`); summary.title = "Другие прибавления";
-        const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-        icon.classList.add("ui-icon"); icon.setAttribute("aria-hidden", "true"); use.setAttribute("href", "#icon-more"); icon.append(use); summary.append(icon);
-        more.append(summary, quickAdds); row.append(more);
-        more.open = !globalThis.matchMedia?.("(max-width: 680px)")?.matches;
-      }
+      syncGoalChip(current);
+      row.append(quickAdds);
     } else {
       node.classList.add("is-check-habit");
       const done = habit.logs[activeDate] === true;
