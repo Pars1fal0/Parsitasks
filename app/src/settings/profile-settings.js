@@ -1,4 +1,5 @@
 import * as settingsApi from "./settings-state.js";
+import { normalizePlanning } from "../calendar/free-time.js";
 
 const preferenceKeys = ["themePreference", "accentPreference", "densityPreference", "firstDayOfWeek", "timeFormat", "navigationPreferences", "quietHours"];
 
@@ -42,6 +43,7 @@ function normalizeProfile(value = {}) {
     },
     timeZone: normalizeTimeZone(value.timeZone, detectTimeZone()),
     preferences: normalizePreferences(value.preferences),
+    planning: normalizePlanning(value.planning),
     updatedAt: validTimestamp(value.updatedAt) ? value.updatedAt : "",
   };
 }

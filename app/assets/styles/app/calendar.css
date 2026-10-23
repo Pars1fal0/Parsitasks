@@ -455,3 +455,29 @@
   transform: scale(1.18);
   box-shadow: 0 0 0 3px rgb(var(--accent-strong-rgb) / 12%);
 }
+
+.calendar-planner-dialog { width: min(640px, calc(100% - 24px)); max-height: 88dvh; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); overflow: auto; }
+.calendar-planner-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+.planner-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.planner-heading h2 { margin: 0; font-size: 20px; line-height: 1.3; }
+.planner-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.planner-field { display: grid; gap: 6px; min-width: 0; font-size: 13px; color: var(--muted); }
+.planner-controls > :first-child, .planner-controls > button { grid-column: 1 / -1; }
+.planner-field input, .planner-field select { width: 100%; min-width: 0; height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--bg); }
+.planner-field option { color: var(--text); background: var(--surface); }
+.planner-field select { appearance: auto; }
+.planner-status { font-size: 13px; margin: 14px 0 10px; }
+.planner-results { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 190px; overflow: auto; }
+.planner-slot { display: grid; gap: 4px; min-height: 60px; padding: 10px; text-align: left; border: 1px solid var(--line); border-radius: 6px; color: var(--text); background: var(--bg); }
+.planner-slot strong { font-size: 13px; overflow-wrap: anywhere; }
+.planner-slot span { color: var(--muted); font-size: 12px; }
+.planner-slot[aria-pressed="true"] { border-color: var(--teal); background: rgb(var(--accent-rgb) / 10%); }
+.planner-preview { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: end; gap: 12px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.planner-preview[hidden] { display: none; }
+.planner-preview p { margin: 0; font-size: 13px; }
+.planner-preview > button { grid-column: 1 / -1; }
+@media (max-width: 480px) {
+  .calendar-planner-dialog { padding: 14px; }
+  .planner-results { grid-template-columns: minmax(0, 1fr); max-height: 150px; }
+  .planner-preview { grid-template-columns: minmax(0, 1fr); }
+}

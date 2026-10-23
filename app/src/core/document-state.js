@@ -16,8 +16,9 @@ import * as notesModel from "../notes/notes-model.js";
 import * as profileSettings from "../settings/profile-settings.js";
 import * as tombstoneRetention from "../sync/tombstone-retention.js";
 import * as recurrenceApi from "../tasks/recurrence.js";
+import { normalizeFocusSessions } from "./focus-history.js";
 
-const SCHEMA_VERSION = 26;
+const SCHEMA_VERSION = 27;
 const VALID_HABIT_REPEATS = ["daily", "every2days", "every3days", "weekdays", "weekends", "weekly", "weeklyGoal", "custom"];
 const VALID_REMINDER_OFFSETS = ["none", "0", "5", "15", "30", "60", "1440"];
 const VALID_PRIORITIES = ["high", "medium", "low"];
@@ -60,6 +61,7 @@ function createNormalizer() {
     normalizeHabitTitleHistory: habitTitleHistory.normalizeHabitTitleHistory,
     normalizeReminderOffset,
     normalizeMcpActivity: mcpActivity.normalizeActivity,
+    normalizeFocusSessions,
     normalizeBoardItems: boardModel.normalizeItems,
     normalizeJournalEntries: journalModel.normalizeJournalEntries,
     normalizeNotes: notesModel.normalizeNotes,

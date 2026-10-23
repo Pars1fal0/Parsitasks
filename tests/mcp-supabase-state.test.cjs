@@ -50,11 +50,11 @@ module.exports = [
     },
   },
   {
-    name: "MCP Supabase store writes schema 26 when the document has no version",
+    name: "MCP Supabase store writes schema 27 when the document has no version",
     async fn() {
       const { createSupabaseStateStore } = await import("../mcp/supabase-state.mjs");
       const { SCHEMA_VERSION } = require("../app/src/core/document-state.js");
-      assert.equal(SCHEMA_VERSION, 26);
+      assert.equal(SCHEMA_VERSION, 27);
       let schemaVersion = null;
       const fetch = async (_url, options = {}) => {
         if (!options.method || options.method === "GET") {
@@ -73,7 +73,7 @@ module.exports = [
       const result = await store.mutate((state) => ({ changed: true, state }));
 
       assert.equal(result.saved, true);
-      assert.equal(schemaVersion, 26);
+      assert.equal(schemaVersion, 27);
     },
   },
   {

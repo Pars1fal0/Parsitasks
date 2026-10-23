@@ -13,6 +13,26 @@ function createRemoteAuth(options = {}) {
   let refreshInFlight = null;
   let sessionVersion = 0;
   const requestTimeoutMs = Math.max(100, Math.min(60_000, Number(options.requestTimeoutMs) || 30_000));
+  const eventTarget = options.eventTarget || globalThis;
+  const onStorage = (event) => {
+    if ((event.key !== null && event.key !== SESSION_KEY) || (event.storageArea && event.storageArea !== storage)) return;
+    const next = loadSession(), previous = session;
+    if (JSON.stringify(next) === JSON.stringify(previous)) return;
+    if (previous?.user?.id && previous.user.id !== next?.user?.id) options.onSigningOut?.(previous.user.id);
+    clearRecovery();
+    sessionVersion += 1;
+    session = next;
+    scheduleRefresh();
+    options.onSessionChange?.(session);
+    options.onExternalSessionChange?.(session, previous);
+  };
+  eventTarget.addEventListener?.("storage", onStorage);
+
+  function dispose() {
+    eventTarget.removeEventListener?.("storage", onStorage);
+    clearTimeout(refreshTimer);
+    sessionVersion += 1;
+  }
 
   function loadRecoveryMode() {
     try {
@@ -149,6 +169,7 @@ function createRemoteAuth(options = {}) {
 
   async function signOut() {
     const current = session;
+    options.onSigningOut?.(current?.user?.id || "");
     clearRecovery();
     saveSession(null);
     if (!current?.access_token) return;
@@ -277,6 +298,7 @@ function createRemoteAuth(options = {}) {
     resetPassword,
     signIn,
     signOut,
+    dispose,
     signUp,
     updatePassword,
     validateSession,

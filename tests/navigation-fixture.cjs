@@ -8,6 +8,7 @@ async function enableAllSections(page) {
       ui.navigationPreferences = { hidden: [], mobile: ["tasks", "timeline", "habits", "overview"] };
       localStorage.setItem(key, JSON.stringify(ui));
     }
+    if (force && typeof window.updateSetting === "function") window.updateSetting("navigationPreferences", ui.navigationPreferences);
     const observe = () => {
       if (window.fullWorkspaceSettingsObserver) return;
       const reveal = () => {
@@ -23,6 +24,7 @@ async function enableAllSections(page) {
   await page.addInitScript(configure);
   await page.waitForSelector("#pageTitle");
   await page.waitForSelector(".nav-tabs > button.is-mobile-pin");
+  await page.waitForFunction(() => typeof window.updateSetting === "function");
   await page.evaluate(configure, true);
   await page.reload();
   await page.waitForSelector("#pageTitle");

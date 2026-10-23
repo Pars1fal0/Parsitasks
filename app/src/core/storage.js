@@ -1,3 +1,5 @@
+import { jsonByteLength } from "./workspace-limits.js";
+
 const DEFAULT_KEYS = {
   state: "rhythm-day-state-v1",
   uiState: "rhythm-day-ui-v1",
@@ -84,9 +86,11 @@ function createLocalStorageAdapter(options = {}) {
       ...state,
       schemaVersion: saveOptions.schemaVersion || schemaVersion,
     };
+    delete nextState._localOwner;
     const previous = !saveOptions.skipBackup && Date.now() - lastBackupAt >= 60000 ? readSnapshot() : null;
     const started = globalThis.performance?.now?.() || Date.now();
-    const encoded = JSON.stringify({ ...nextState, _localOwner: Object.hasOwn(saveOptions, "owner") ? saveOptions.owner || "" : getOwner() });
+    const owner = Object.hasOwn(saveOptions, "owner") ? saveOptions.owner || "" : getOwner();
+    const encoded = JSON.stringify({ ...nextState, _localOwner: owner });
     storage.setItem(keys.state, encoded);
     lastWrittenRevision = encoded;
     schemaRevision = encoded;
@@ -94,7 +98,10 @@ function createLocalStorageAdapter(options = {}) {
     ownerRevision = encoded;
     ownerFromState = true;
     cachedOwner = Object.hasOwn(saveOptions, "owner") ? saveOptions.owner || "" : cachedOwner;
-    lastSave = { bytes: new TextEncoder().encode(encoded).byteLength, durationMs: Math.round(((globalThis.performance?.now?.() || Date.now()) - started) * 100) / 100 };
+    const storedBytes = new TextEncoder().encode(encoded).byteLength;
+    // The nonempty document adds one comma before the local-only owner field.
+    lastSave = { bytes: storedBytes - jsonByteLength({ _localOwner: owner }) + 1, storedBytes,
+      durationMs: Math.round(((globalThis.performance?.now?.() || Date.now()) - started) * 100) / 100 };
 
     if (!saveOptions.skipBackup && previous?.state) {
       createBackup({
@@ -231,7 +238,7 @@ function createLocalStorageAdapter(options = {}) {
 
 function isState(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  return ["tasks", "habits", "goals", "categories", "notes", "boardItems", "journalEntries", "studySubjects", "studyLessons", "studyFiles"]
+  return ["tasks", "habits", "goals", "categories", "notes", "boardItems", "journalEntries", "studySubjects", "studyLessons", "studyFiles", "focusSessions"]
     .every((key) => !Object.hasOwn(value, key) || Array.isArray(value[key]));
 }
 

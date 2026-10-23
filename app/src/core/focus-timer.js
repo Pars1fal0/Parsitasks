@@ -1,5 +1,5 @@
-// Pomodoro-style focus sessions. Timer state is a per-device convenience, so it lives in
-// localStorage rather than in the synced workspace state.
+// Active timers stay on the device; completed records are replay-safe workspace data.
+import { focusStats, mergeFocusSessions, normalizeFocusSessions } from "./focus-history.js";
 
 const STORAGE_KEY = "rhythm-focus-timer-v1";
 const FOCUS_PRESETS = [15, 25, 50];
@@ -18,17 +18,29 @@ function breakMinutes(focusMinutes, long) {
 
 function createFocusTimer(ctx) {
   const now = () => (ctx.now?.() || new Date()).getTime();
+  const owner = ctx.getUserId?.() || "";
+  const account = ctx.getAccountKey?.();
+  const current = () => !ctx.getAccountKey || ctx.getAccountKey() === account;
+  const storageKey = owner ? `${STORAGE_KEY}:${encodeURIComponent(owner)}` : STORAGE_KEY;
+  const dayAt = (instant) => ctx.dateKeyAt?.(instant) || ctx.todayKey();
   const baseTitle = document.title;
   let data = load();
   let ticker = null;
   let pill = null;
   let setup = null;
   let audio = null;
+  let historyErrorShown = false;
+  let lastHistoryAttempt = -Infinity;
 
   function load() {
     const blank = { cycle: 0, endsAt: 0, focusMinutes: DEFAULT_FOCUS_MINUTES, minutes: {}, mode: "", pausedLeft: 0, sessions: {}, sound: true, taskId: "", taskTitle: "", total: 0 };
     try {
-      const parsed = JSON.parse(globalThis.localStorage?.getItem(STORAGE_KEY) || "null");
+      let raw = globalThis.localStorage?.getItem(storageKey);
+      if (!raw && owner) {
+        const workspaceOwner = JSON.parse(globalThis.localStorage?.getItem("rhythm-day-state-v1") || "null")?._localOwner;
+        if (workspaceOwner === owner) raw = globalThis.localStorage?.getItem(STORAGE_KEY);
+      }
+      const parsed = JSON.parse(raw || "null");
       if (parsed && typeof parsed === "object") {
         const mode = ["focus", "break"].includes(parsed.mode) ? parsed.mode : "";
         return {
@@ -42,12 +54,17 @@ function createFocusTimer(ctx) {
           sessions: parsed.sessions && typeof parsed.sessions === "object" ? parsed.sessions : {},
           sound: parsed.sound !== false,
           taskId: typeof parsed.taskId === "string" ? parsed.taskId : "",
+          taskDate: typeof parsed.taskDate === "string" ? parsed.taskDate : dayAt(Number(parsed.endsAt) || now()),
           taskTitle: typeof parsed.taskTitle === "string" ? parsed.taskTitle : "",
           total: Number(parsed.total) || 0,
+          actorId: String(parsed.actorId || crypto.randomUUID()),
+          sessionId: String(parsed.sessionId || `legacy-${parsed.endsAt}-${parsed.total}`),
+          historyMigrated: parsed.historyMigrated === true,
+          pendingSessions: normalizeFocusSessions(parsed.pendingSessions),
         };
       }
     } catch {}
-    return blank;
+    return { ...blank, actorId: crypto.randomUUID(), pendingSessions: [], historyMigrated: false, sessionId: "" };
   }
 
   function persist() {
@@ -56,11 +73,52 @@ function createFocusTimer(ctx) {
       data[field] = Object.fromEntries(keys.map((key) => [key, data[field][key]]));
     });
     try {
-      globalThis.localStorage?.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {}
+      globalThis.localStorage?.setItem(storageKey, JSON.stringify(data));
+      return true;
+    } catch { return false; }
+  }
+
+  function flushHistory() {
+    if (!ctx.recordSession || !current()) return;
+    lastHistoryAttempt = now();
+    if (!data.historyMigrated) {
+      const legacy = [...new Set([...Object.keys(data.minutes), ...Object.keys(data.sessions)])].map((date) => ({
+        id: `legacy-${data.actorId}-${date}`, date, minutes: Number(data.minutes[date]) || 0,
+        count: Number(data.sessions[date]) || 0, taskId: "",
+      }));
+      data.pendingSessions = mergeFocusSessions(data.pendingSessions, legacy);
+      data.historyMigrated = true;
+      if (!persist()) {
+        data.historyMigrated = false;
+        if (!historyErrorShown) ctx.showToast?.("Не удалось сохранить историю фокуса. Освободи место, пока не закрывай вкладку");
+        historyErrorShown = true;
+        return;
+      }
+    }
+    const pending = [];
+    for (const record of data.pendingSessions) {
+      try { if (ctx.recordSession(record) === false) pending.push(record); }
+      catch { pending.push(record); }
+    }
+    data.pendingSessions = pending;
+    const cached = persist();
+    if (pending.length && !historyErrorShown) ctx.showToast?.(cached ? "История фокуса пока только на устройстве. Повторим сохранение позже" : "Не удалось сохранить историю фокуса. Освободи место, пока не закрывай вкладку");
+    historyErrorShown = Boolean(pending.length);
+  }
+
+  function recordSession(minutes, count, date) {
+    if (!ctx.recordSession) return;
+    if (!data.historyMigrated) { flushHistory(); return; }
+    const record = { id: data.sessionId || `session-${data.actorId}-${data.endsAt}`, date, minutes, count, taskId: data.taskId };
+    data.pendingSessions = mergeFocusSessions(data.pendingSessions, [record]);
+    persist();
+    flushHistory();
   }
 
   function bindEvents() {
+    flushHistory();
+    globalThis.addEventListener?.("online", flushHistory);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) flushHistory(); });
     document.querySelectorAll("[data-focus-start]").forEach((button) => button.addEventListener("click", (event) => {
       event.stopPropagation();
       if (setup && !setup.hidden) closeSetup();
@@ -92,6 +150,7 @@ function createFocusTimer(ctx) {
     stopTicker();
     const minutes = mode === "focus" ? data.focusMinutes : breakMinutes(data.focusMinutes, options.long);
     data.mode = mode;
+    if (mode === "focus") data.sessionId = crypto.randomUUID();
     data.total = minutes * 60000;
     data.endsAt = now() + data.total;
     data.pausedLeft = 0;
@@ -101,9 +160,11 @@ function createFocusTimer(ctx) {
   }
 
   function startFocus({ minutes = data.focusMinutes, taskId = data.taskId } = {}) {
+    if (!current()) return;
     data.focusMinutes = FOCUS_PRESETS.includes(minutes) ? minutes : DEFAULT_FOCUS_MINUTES;
     const task = taskId ? ctx.getOpenTasks?.().find((item) => item.id === taskId) : null;
     data.taskId = task?.id || "";
+    data.taskDate = task?.date || ctx.todayKey();
     data.taskTitle = task?.title || "";
     unlockAudio();
     start("focus");
@@ -112,10 +173,12 @@ function createFocusTimer(ctx) {
 
   // Picking a task mid-session relinks it instead of throwing away the time already focused.
   function focusOn(taskId) {
+    if (!current()) return;
     if (data.mode !== "focus") return startFocus({ taskId });
     const task = ctx.getOpenTasks?.().find((item) => item.id === taskId);
     if (!task) return;
     data.taskId = task.id;
+    data.taskDate = task.date || ctx.todayKey();
     data.taskTitle = task.title;
     persist();
     render();
@@ -123,7 +186,7 @@ function createFocusTimer(ctx) {
   }
 
   function togglePause() {
-    if (!data.mode) return;
+    if (!current() || !data.mode) return;
     if (data.pausedLeft) {
       data.endsAt = now() + data.pausedLeft;
       data.pausedLeft = 0;
@@ -138,7 +201,7 @@ function createFocusTimer(ctx) {
   }
 
   function extend() {
-    if (data.mode !== "focus") return;
+    if (!current() || data.mode !== "focus") return;
     const extra = EXTEND_MINUTES * 60000;
     if (data.pausedLeft) data.pausedLeft += extra;
     else data.endsAt += extra;
@@ -148,10 +211,12 @@ function createFocusTimer(ctx) {
   }
 
   function stop() {
+    if (!current()) return stopTicker();
     if (data.mode === "focus") {
       const spent = Math.floor((data.total - remaining()) / 60000);
       if (spent >= MIN_COUNTED_MINUTES) {
         addMinutes(spent);
+        recordSession(spent, 0, dayAt(now()));
         ctx.showToast?.(`Сессия остановлена · учтено ${spent} мин`);
       }
     }
@@ -170,10 +235,12 @@ function createFocusTimer(ctx) {
   }
 
   function finish({ silent = false } = {}) {
+    if (!current()) return stopTicker();
     if (data.mode === "focus") {
-      const today = ctx.todayKey();
+      const today = dayAt(data.endsAt);
       data.sessions[today] = (Number(data.sessions[today]) || 0) + 1;
-      addMinutes(Math.round(data.total / 60000));
+      data.minutes[today] = (Number(data.minutes[today]) || 0) + Math.round(data.total / 60000);
+      recordSession(Math.round(data.total / 60000), 1, today);
       data.cycle += 1;
       const long = data.cycle >= SESSIONS_BEFORE_LONG_BREAK;
       if (long) data.cycle = 0;
@@ -185,7 +252,7 @@ function createFocusTimer(ctx) {
       persist();
       if (!silent) {
         const pause = `${long ? "Длинный перерыв" : "Перерыв"} ${Math.round(data.total / 60000)} мин`;
-        const taskStillOpen = data.taskId && ctx.getOpenTasks?.().some((item) => item.id === data.taskId);
+        const taskStillOpen = data.taskId && (ctx.canCompleteTask ? ctx.canCompleteTask(data.taskId, data.taskDate) : ctx.getOpenTasks?.().some((item) => item.id === data.taskId));
         announce(`Сессия завершена · сегодня ${count}. ${pause}`, taskStillOpen ? { label: "Задача готова", onClick: completeLinkedTask } : null);
       }
     } else {
@@ -198,12 +265,13 @@ function createFocusTimer(ctx) {
   }
 
   function completeLinkedTask() {
+    if (!current()) return;
     const taskId = data.taskId;
+    if (ctx.completeTask?.(taskId, data.taskDate) === false) return;
     data.taskId = "";
     data.taskTitle = "";
     persist();
     render();
-    ctx.completeTask?.(taskId);
   }
 
   function announce(message, action) {
@@ -245,6 +313,8 @@ function createFocusTimer(ctx) {
   }
 
   function tick() {
+    if (!current()) { stopTicker(); if (pill) pill.hidden = true; return; }
+    if (data.pendingSessions.length && now() - lastHistoryAttempt >= 30000) flushHistory();
     if (!data.mode || data.pausedLeft) return stopTicker();
     if (data.endsAt <= now()) {
       finish();
@@ -264,6 +334,7 @@ function createFocusTimer(ctx) {
 
   function todayStats() {
     const today = ctx.todayKey();
+    if (ctx.getHistory && data.historyMigrated) return focusStats(mergeFocusSessions(ctx.getHistory(), data.pendingSessions), today);
     return { count: Number(data.sessions[today]) || 0, minutes: Number(data.minutes[today]) || 0 };
   }
 
@@ -473,7 +544,7 @@ function createFocusTimer(ctx) {
     document.title = `${clock} · ${label} — ${baseTitle}`;
   }
 
-  return { bindEvents, extend, focusOn, getState: () => ({ ...data }), startFocus, stop, togglePause };
+  return { bindEvents, extend, focusOn, getState: () => ({ ...data }), startFocus, stop, togglePause, render };
 }
 
 function pauseIcon(paused) {

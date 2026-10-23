@@ -6,6 +6,7 @@ import * as habitTitleHistory from "../habits/habit-title-history.js";
 import * as notifications from "../platform/notifications.js";
 import * as dailyPulse from "../core/daily-pulse.js";
 import * as focusTimerModule from "../core/focus-timer.js";
+import { mergeFocusSessions } from "../core/focus-history.js";
 import * as studyControllerModule from "../study/study-controller.js";
 import * as viewRendererModule from "../core/view-renderer.js";
 import * as appShellControllerModule from "../core/app-shell-controller.js";
@@ -26,7 +27,7 @@ import { applyThemePreference, renderRemoteSyncStatus, renderSettingsBackupStatu
 import { SCHEMA_VERSION, cleanTimeValue, createId, formatLongDate, parseDate, storage, taskState, toDateKey } from "./state.js";
 import { mcpActivityController, remoteSyncWorkflow, settingsController } from "./sync.js";
 import { openLinkedNote, openNotesForSubject, openNotesForTask, renderArchive, renderCategories, renderGoals, renderHabits, renderOverview, resetGoalForm, saveGoalFromForm, saveTaskFromForm } from "./task-actions.js";
-import { archiveView, notesView, timelineView } from "./views.js";
+import { archiveView, calendarSchedule, notesView, timelineView } from "./views.js";
 
 export let notificationsController, dailyPulseController, focusTimer, studyController, viewRenderer, appShellController, navigationController, workspaceGuide, appEvents;
 
@@ -65,10 +66,25 @@ export function wireShell() {
   });
 
   focusTimer = focusTimerModule.createFocusTimer({
+    getUserId: () => remoteAuth.getSession()?.user?.id || "",
+    getAccountKey: () => JSON.stringify([remoteAuth.getSession()?.user?.id || "", app.authenticatedSyncGeneration]),
+    getHistory: () => app.state.focusSessions,
+    dateKeyAt: (instant) => new Intl.DateTimeFormat("en-CA", { timeZone: app.state.profile.timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(instant)),
+    recordSession: (record) => {
+      if (app.state.focusSessions.some((item) => item.id === record.id && item.minutes >= record.minutes && item.count >= record.count)) return true;
+      const before = app.state.focusSessions;
+      app.state.focusSessions = mergeFocusSessions(before, [record]);
+      if (saveState() === false) { app.state.focusSessions = before; return false; }
+      return true;
+    },
     completeTask: completeFocusTask,
+    canCompleteTask: (taskId, date) => {
+      const task = app.state.tasks.find((item) => item.id === taskId);
+      return task && taskOccursOn(task, date) && !isTaskDone(task, date);
+    },
     getOpenTasks: () => {
       const today = todayKey();
-      return getOrderedTasksForDate(today).filter((task) => !isTaskDone(task, today)).map((task) => ({ id: task.id, title: task.title }));
+      return getOrderedTasksForDate(today).filter((task) => !isTaskDone(task, today)).map((task) => ({ id: task.id, title: task.title, date: today }));
     },
     notificationsEnabled: () => app.notificationSetting === "on",
     showToast,
@@ -93,6 +109,15 @@ export function wireShell() {
     openNote: openLinkedNote,
     openNotesForTask,
     openNotesForSubject,
+    planHomework: async (taskId) => {
+      const owner = app.state;
+      if (!(await confirmDiscardOpenForms()) || owner !== app.state) return;
+      app.activeDate = todayKey();
+      app.activeView = "overview";
+      app.overviewMode = "week";
+      saveUiState(); syncNavigationRoute(); render();
+      calendarSchedule.openPlanner({ taskId, anchorDate: todayKey(), mode: "week" });
+    },
     render,
     saveState,
     showToast,
@@ -310,20 +335,21 @@ export function wireShell() {
   });
 }
 
-function completeFocusTask(taskId) {
-  const today = todayKey();
+function completeFocusTask(taskId, date = todayKey()) {
   const task = app.state.tasks.find((item) => item.id === taskId);
-  if (!task || isTaskDone(task, today)) return;
+  if (!task || !taskOccursOn(task, date)) { showToast("Исходная задача больше недоступна"); return false; }
+  if (isTaskDone(task, date)) return true;
   const undo = createUndoSnapshot();
-  task.completed = { ...task.completed, [today]: true };
+  task.completed = { ...task.completed, [date]: true };
   task.updatedAt = new Date().toISOString();
   if (saveState() === false) {
     restoreFailedSave(undo);
     render();
-    return;
+    return false;
   }
   render();
   showToast("Задача выполнена", { undo });
+  return true;
 }
 
 function celebrateDay({ streak }) {

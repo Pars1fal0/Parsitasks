@@ -1,4 +1,5 @@
 import * as documentState from "../core/document-state.js";
+import { assertWorkspaceSize, jsonByteLength, MAX_REMOTE_UI_BYTES } from "../core/workspace-limits.js";
 
 function createRemoteSync(options = {}) {
   const fetchFn = options.fetch || globalThis.fetch?.bind(globalThis);
@@ -47,9 +48,9 @@ function createRemoteSync(options = {}) {
     };
     ensureSupportedSchema(body);
     const conflictColumn = "user_id";
-    const stateBytes = new TextEncoder().encode(JSON.stringify(body.state)).byteLength;
-    const uiBytes = new TextEncoder().encode(JSON.stringify(body.ui_state)).byteLength;
-    if (stateBytes > 4 * 1024 * 1024 || uiBytes > 256 * 1024) {
+    assertWorkspaceSize(body.state);
+    const uiBytes = jsonByteLength(body.ui_state);
+    if (uiBytes > MAX_REMOTE_UI_BYTES) {
       throw Object.assign(new Error("Объём данных превышает лимит синхронизации. Экспортируй JSON и освободи место, локальные записи сохранены."), { code: "workspace-too-large" });
     }
     const expectedUpdatedAt = String(payload.expectedUpdatedAt || "").trim();

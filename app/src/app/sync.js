@@ -28,6 +28,7 @@ export let importExportController, settingsTransfer, settingsController, remoteS
 export function wireSync() {
   importExportController = importExport.createImportExport({
     getUserId: () => remoteAuth.getSession()?.user?.id || "",
+    getAccountKey: () => JSON.stringify([remoteAuth.getSession()?.user?.id || "", app.authenticatedSyncGeneration]),
     els,
     confirmAction,
     createUndoSnapshot,

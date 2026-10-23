@@ -12,6 +12,7 @@ function createStateNormalizer(config) {
       boardItems: [],
       journalEntries: [],
       notes: [],
+      focusSessions: config.normalizeFocusSessions?.(raw?.focusSessions) || [],
       studySubjects: [],
       studyLessons: [],
       studyFiles: [],

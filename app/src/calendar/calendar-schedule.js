@@ -1,4 +1,6 @@
 import * as layout from "../timeline/timeline-layout.js";
+import { freeIntervals, minuteOf } from "./free-time.js";
+import { createFreeTimePlanner } from "./free-time-planner.js";
 
 const HOUR_HEIGHT = 96;
 const DAY_END = 23 * 60 + 59;
@@ -9,21 +11,6 @@ const ZOOM_STORAGE = "parsitasks-calendar-touch-scale";
 function zoomHeight(value) { return Math.max(48, Math.min(192, Number(value) || MOBILE_HOUR_HEIGHT)); }
 function anchoredScroll(scrollTop, oldHeight, newHeight, anchorY, headerHeight = 48) {
   return Math.max(0, (scrollTop + anchorY - headerHeight) / oldHeight * newHeight + headerHeight - anchorY);
-}
-
-function freeIntervals(entries, start = 480, end = 1320) {
-  const occupied = entries.filter((entry) => entry.isTimeBlock)
-    .map((entry) => [Math.max(start, entry.minutes), Math.min(end, entry.endMinutes)])
-    .filter(([from, to]) => Number.isFinite(from) && Number.isFinite(to) && to > from)
-    .sort((a, b) => a[0] - b[0]);
-  const result = [];
-  let cursor = start;
-  for (const [from, to] of occupied) {
-    if (from > cursor) result.push({ start: cursor, end: from });
-    cursor = Math.max(cursor, to);
-  }
-  if (cursor < end) result.push({ start: cursor, end });
-  return result;
 }
 
 function time(minutes) { return layout.formatHourMinute(Math.floor(minutes / 60), minutes % 60); }
@@ -42,6 +29,15 @@ function createCalendarSchedule(ctx) {
   let hourHeight = HOUR_HEIGHT;
   let desktopHourHeight = HOUR_HEIGHT;
   let lastMode = "week";
+  const planner = createFreeTimePlanner({
+    ...ctx, getMode: () => lastMode, formatDate: ctx.formatLongDate,
+    getEntries: (date) => modelFor(date).timedTasks,
+    getCandidates: (date) => {
+      const selected = modelFor(date).unscheduledTasks.filter((entry) => !entry.done).map((entry) => ({ id: entry.task.id, title: entry.task.title, sourceDate: date }));
+      const later = ctx.getState().tasks.filter((task) => task.date === null && !Object.values(task.completed || {}).some(Boolean)).map((task) => ({ id: task.id, title: `${task.title} · Позже`, sourceDate: null }));
+      return [...selected, ...later];
+    },
+  });
   let resizeFrame;
   let renderedWidth = 0;
   let fullMobileWeek = false;
@@ -636,6 +632,9 @@ function createCalendarSchedule(ctx) {
     });
     nowButton.dataset.calendarFocus = "today";
     controls.append(nowButton);
+    const findTime = button("ghost-button compact-button", "Найти время", () => planner.open());
+    findTime.dataset.calendarFocus = "planner";
+    if (!mobile()) controls.append(findTime);
     if (mobile() || expanded) {
       const menu = element("details", "calendar-touch-options");
       const toggle = element("summary", "icon-button");
@@ -644,6 +643,7 @@ function createCalendarSchedule(ctx) {
       const toggleUse = document.createElementNS("http://www.w3.org/2000/svg", "use");
       toggleIcon.classList.add("ui-icon"); toggleIcon.setAttribute("aria-hidden", "true"); toggleUse.setAttribute("href", "#icon-settings"); toggleIcon.append(toggleUse); toggle.append(toggleIcon);
       const options = element("div", "calendar-touch-options-panel");
+      if (mobile()) options.append(findTime);
       options.append(element("span", "", "Масштаб часов"));
       const zoom = element("div", "calendar-touch-zoom");
       const zoomButton = (symbol, label, change) => {
@@ -843,14 +843,6 @@ function createCalendarSchedule(ctx) {
     timedTasks.forEach((entry) => agenda.append(agendaRow(entry, date)));
     if (!selectedModel.timedTasks.length && !selectedModel.unscheduledTasks.length && !due.length) agenda.append(element("p", "muted", "На этот день пока ничего нет"));
     if (timedTasks.length || (!selectedModel.timedTasks.length && !selectedModel.unscheduledTasks.length && !due.length)) root.append(agenda);
-    const gaps = freeIntervals(selectedModel.timedTasks).filter((gap) => gap.end - gap.start >= 45);
-    if (gaps.length) {
-      const available = element("details", "calendar-free-time");
-      available.append(element("summary", "", "Окна в расписании"));
-      const list = element("div", "calendar-free-time-list");
-      gaps.forEach((gap) => list.append(button("ghost-button compact-button", `${time(gap.start)}–${time(gap.end)}`, () => ctx.createTask(date, time(gap.start), time(Math.min(gap.end, gap.start + 60))))));
-      available.append(list); root.append(available);
-    }
     globalThis.requestAnimationFrame(fitMobileViewport);
     if (selectedEvent) {
       const selected = [...eventActions.values()].find((item) => item.node.dataset.eventId === selectedEvent.id && item.date === selectedEvent.date)?.node;
@@ -868,7 +860,9 @@ function createCalendarSchedule(ctx) {
     });
   }
 
-  return { refreshNow, render };
+  return { refreshNow, render, openPlanner: planner.open,
+    slotAvailable: (date, start, end, taskId) => freeIntervals(modelFor(date).timedTasks.filter((entry) => entry.task.id !== taskId), minuteOf(start), minuteOf(end)).some((gap) => gap.start === minuteOf(start) && gap.end === minuteOf(end)),
+  };
 }
 const api = { createCalendarSchedule, freeIntervals, quarterMinute, zoomHeight, anchoredScroll };
 

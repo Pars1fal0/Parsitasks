@@ -1,7 +1,9 @@
+import { MAX_WORKSPACE_BYTES, WORKSPACE_WARNING_BYTES } from "../core/workspace-limits.js";
+
 function createSaveStatus(options = {}) {
   function render(state = {}) {
     if (!options.element) return "";
-    const message = getMessage(state) + (state.stateBytes >= 3 * 1024 * 1024 && !state.localStorageError
+    const message = getMessage(state) + (state.stateBytes >= WORKSPACE_WARNING_BYTES && state.stateBytes <= MAX_WORKSPACE_BYTES && !state.localStorageError
       ? " · большой объём данных, экспортируй резервную копию" : "");
     options.element.textContent = message;
     options.element.dataset.state = getStateCode(state);
@@ -10,6 +12,7 @@ function createSaveStatus(options = {}) {
 
   function getMessage(state = {}) {
     if (state.localStorageError) return state.localStorageError;
+    if (state.remoteEnabled && state.stateBytes > MAX_WORKSPACE_BYTES) return "Сохранено на устройстве · документ больше 4 МиБ, синхронизация недоступна · экспортируй JSON";
     if (state.online === false) return state.remoteEnabled
       ? "Нет связи · сохранено на устройстве, синхронизируем позже"
       : "Нет связи · сохранено на устройстве";
@@ -32,6 +35,7 @@ function createSaveStatus(options = {}) {
 
   function getStateCode(state = {}) {
     if (state.localStorageError) return "error";
+    if (state.remoteEnabled && state.stateBytes > MAX_WORKSPACE_BYTES) return "error";
     if (state.online === false) return "offline";
     if (state.remoteEnabled && state.syncStatus?.lastError) return "error";
     if (state.remoteEnabled && state.syncStatus?.inFlight) return "syncing";

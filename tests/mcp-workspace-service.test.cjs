@@ -214,7 +214,7 @@ module.exports = [
     const service = await load("workspace-service"); const state = fixture(); state.extraFuture = { keep: true };
     const change = service.upsertNoteCommand(state, { requestId: "preserve-001", title: "New", body: "Body" }, options);
     assert.deepEqual(change.state.extraFuture, state.extraFuture);
-    state.schemaVersion = 27;
+    state.schemaVersion = 28;
     assert.throws(() => service.upsertNoteCommand(state, { requestId: "future-schema-001", title: "No write" }, options), /обновите MCP/);
   } },
   { name: "MCP moving an already moved lesson changes its source exception rather than duplicating it", async fn() {

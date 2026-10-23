@@ -17,7 +17,7 @@ import * as taskSubtasks from "../tasks/task-subtasks.js";
 import { app } from "./store.js";
 import { els } from "./dom.js";
 import { render } from "./lifecycle.js";
-import { confirmAction, createUndoSnapshot, formatBackupDate, restoreUndoSnapshot, saveState, showToast } from "./persistence.js";
+import { confirmAction, createUndoSnapshot, formatBackupDate, restoreUndoSnapshot, saveState, showToast, stopAutoBackup } from "./persistence.js";
 import { addDays, cleanTimeValue, createId, formatTime, minutesToTime, normalizeDateKey, taskState, timeToMinutes, toTimeValue } from "./state.js";
 import { moveTaskToDate, openDateTasks } from "./task-actions.js";
 
@@ -88,6 +88,10 @@ export function wireServices() {
 
   remoteAuth = remoteAuthModule.createRemoteAuth({
     getConfig: () => ({ anonKey: app.remoteSyncAnonKey, supabaseUrl: app.remoteSyncUrl }),
+    onSigningOut: () => { stopAutoBackup(); app.authenticatedSyncGeneration++; },
+    onExternalSessionChange: (session, previous) => {
+      if (session && session.user.id !== previous?.user?.id) queueMicrotask(() => globalThis.location.reload());
+    },
     onSessionChange: (session) => {
       if (session || authGate.isAutomationLocation()) return;
       queueMicrotask(() => authGate.redirectAfterSignOut());

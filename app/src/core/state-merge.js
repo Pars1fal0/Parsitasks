@@ -6,6 +6,7 @@ import * as habitFreeze from "../habits/habit-freeze.js";
 import * as taskChecklist from "../tasks/task-checklist.js";
 import * as journalModel from "../journal/journal-model.js";
 import * as profileSettings from "../settings/profile-settings.js";
+import { mergeFocusSessions } from "./focus-history.js";
 
 const TASK_DATE_FIELDS = syncMetadata.TASK_DATE_FIELDS;
 const ENTITY_FIELDS = syncMetadata.ENTITY_FIELDS;
@@ -92,6 +93,7 @@ function mergeStates(localState = {}, remoteState = {}) {
     ...remoteState,
     defaultsSeeded: localState.defaultsSeeded === true || remoteState.defaultsSeeded === true || categories.length > 0,
     profile: mergeProfile(localState.profile, remoteState.profile),
+    focusSessions: mergeFocusSessions(localState.focusSessions, remoteState.focusSessions),
     categories,
     studySubjects,
     studyLessons,
@@ -174,7 +176,7 @@ function mergeProfile(local = {}, remote = {}) {
   const localUpdatedAt = String(local?.updatedAt || "");
   const remoteUpdatedAt = String(remote?.updatedAt || "");
   const newest = !localUpdatedAt ? remote : !remoteUpdatedAt ? local : remoteUpdatedAt >= localUpdatedAt ? remote : local;
-  return { ...clone(newest), preferences: profileSettings.mergePreferences(local?.preferences, remote?.preferences) };
+  return { ...clone(newest), planning: chooseNewest(local.planning || {}, remote.planning || {}), preferences: profileSettings.mergePreferences(local?.preferences, remote?.preferences) };
 }
 
 function mergeEntities(local = [], remote = [], mergeEntity = chooseNewest) {

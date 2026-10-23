@@ -12,6 +12,19 @@ function createStorage() {
 }
 
 module.exports = [
+  { name: "another tab changing or clearing the session invalidates the old owner and detaches cleanly", fn() {
+    const storage = createStorage(), calls = [], listeners = new Map();
+    storage.setItem(SESSION_KEY, JSON.stringify({ access_token: "synthetic-a", user: { id: "a" } }));
+    const auth = createRemoteAuth({ storage, tabStorage: createStorage(),
+      eventTarget: { addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) },
+      onSigningOut: (owner) => calls.push(owner), onExternalSessionChange: (session) => calls.push(session?.user.id || "out") });
+    storage.setItem(SESSION_KEY, JSON.stringify({ access_token: "synthetic-b", user: { id: "b" } }));
+    listeners.get("storage")({ key: SESSION_KEY, storageArea: storage });
+    assert.equal(auth.getSession().user.id, "b");
+    storage.removeItem(SESSION_KEY); listeners.get("storage")({ key: SESSION_KEY, storageArea: storage });
+    assert.equal(auth.getSession(), null); assert.deepEqual(calls, ["a", "b", "b", "out"]);
+    auth.dispose(); assert.equal(listeners.size, 0);
+  } },
   { name: "signup, password login and recovery pass CAPTCHA tokens to Supabase without logging or persisting them", async fn() {
     const bodies = [];
     const storage = createStorage();

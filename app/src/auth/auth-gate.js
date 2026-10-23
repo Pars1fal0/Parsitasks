@@ -10,7 +10,8 @@ function hasStoredSession(storage = globalThis.localStorage) {
 }
 
 function isAutomationLocation(location = globalThis.location) {
-  return new URLSearchParams(String(location?.search || "")).get("automation") === "1";
+  if (new URLSearchParams(String(location?.search || "")).get("automation") !== "1") return false;
+  return location?.protocol === "file:" || (location?.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname));
 }
 
 function authTarget(location = globalThis.location, options = {}) {

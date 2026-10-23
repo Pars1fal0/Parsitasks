@@ -409,6 +409,7 @@ function createStudyController(ctx) {
         body.append(links);
       }
       const actions = element("div", "study-item-actions");
+      if (!done && !homeworkHistory && !subject?.archived && ctx.planHomework) actions.append(actionButton("studyPlan", task.id, "Найти время для подготовки", "icon-calendar"));
       const linkedNotes = (state.notes || []).filter((note) => note.taskId === task.id);
       if (linkedNotes.length) actions.append(actionButton("studyNote", task.id, `Открыть заметки к заданию «${task.title}»`, "icon-journal"));
       actions.append(actionButton("studyEdit", task.id, "Изменить задание", "icon-edit"), actionButton("studyDelete", task.id, "Удалить задание", "icon-trash"));
@@ -773,10 +774,11 @@ function createStudyController(ctx) {
   }
 
   async function handleAction(event) {
-    const button = event.target.closest("button[data-study-note],button[data-study-edit],button[data-study-delete],button[data-study-lesson-edit],button[data-study-lesson-delete],button[data-study-subject-edit],button[data-study-subject-delete],button[data-study-file-delete],button[data-study-subject-archive],button[data-study-occurrence],button[data-study-file-edit]");
+    const button = event.target.closest("button[data-study-plan],button[data-study-note],button[data-study-edit],button[data-study-delete],button[data-study-lesson-edit],button[data-study-lesson-delete],button[data-study-subject-edit],button[data-study-subject-delete],button[data-study-file-delete],button[data-study-subject-archive],button[data-study-occurrence],button[data-study-file-edit]");
     if (!button) return;
     const menu = button.closest(".study-row-menu"); if (menu) menu.open = false;
     const state = ctx.getState();
+    if (button.dataset.studyPlan) return ctx.planHomework?.(button.dataset.studyPlan);
     if (button.dataset.studySubjectArchive) { const subject = state.studySubjects.find((item) => item.id === button.dataset.studySubjectArchive); return subject && setArchived([subject], !subject.archived); }
     if (button.dataset.studyOccurrence) return editOccurrence(button.dataset.studyOccurrence, button.dataset.date);
     if (button.dataset.studyFileEdit) return editMaterial(button.dataset.studyFileEdit);

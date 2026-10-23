@@ -218,6 +218,7 @@ export function render() {
     saveUiState();
   }
   applyAccountPreferences();
+  focusTimer?.render();
   appShellController.render();
   workspaceGuide.render();
 }

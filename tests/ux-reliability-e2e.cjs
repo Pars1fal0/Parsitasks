@@ -6,7 +6,7 @@ const { _electron: electron } = require("playwright-core");
 (async () => {
   const app = await electron.launch({ args: [path.resolve(__dirname, ".."), "--e2e-test"], executablePath: require("electron") });
   const page = await app.firstWindow();
-  await require("./navigation-fixture.cjs").enableAllSections(page);
+  page.setDefaultTimeout(10_000);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   async function navigate(view) {
@@ -16,6 +16,7 @@ const { _electron: electron } = require("playwright-core");
   async function state() { return page.evaluate(() => JSON.parse(localStorage.getItem("rhythm-day-state-v1"))); }
 
   try {
+    await require("./navigation-fixture.cjs").enableAllSections(page);
     await page.waitForSelector("#pageTitle");
     await page.setViewportSize({ width: 1366, height: 900 });
     const today = await page.locator("#activeDate").inputValue();

@@ -3,6 +3,7 @@
 import * as documentState from "../core/document-state.js";
 import * as stateMerge from "../core/state-merge.js";
 import * as goalActivity from "../goals/goal-activity.js";
+import { createAutoBackup } from "../core/auto-backup.js";
 import { app } from "./store.js";
 import { els } from "./dom.js";
 import { resetTaskForm } from "./forms.js";
@@ -14,33 +15,17 @@ import { renderSettingsBackupStatus, saveUiState, scheduleRemotePush } from "./s
 import { createId, initialStateLoad, normalizeDateKey, stateController, todayKey } from "./state.js";
 import { importExportController } from "./sync.js";
 
+let autoBackup;
+export function stopAutoBackup() { autoBackup?.stop(); }
 export function scheduleAutoBackup() {
-  if (app.autoBackupTimerId) {
-    clearInterval(app.autoBackupTimerId);
-    app.autoBackupTimerId = null;
-  }
-
-  const minutes = Number(app.backupSchedule);
-  if (!Number.isFinite(minutes) || minutes <= 0) {
-    app.nextAutoBackupAt = "";
-    renderSettingsBackupStatus();
-    return;
-  }
-
-  const intervalMs = minutes * 60 * 1000;
-  app.nextAutoBackupAt = new Date(Date.now() + intervalMs).toISOString();
-  renderSettingsBackupStatus();
-
-  app.autoBackupTimerId = setInterval(async () => {
-    const localResult = createBackup({ silent: true });
-    const fileResult = await syncDesktopBackup();
-    if (localResult?.ok || fileResult?.ok) {
-      app.lastAutoBackupAt = new Date().toISOString();
-      saveUiState();
-    }
-    app.nextAutoBackupAt = new Date(Date.now() + intervalMs).toISOString();
-    renderSettingsBackupStatus();
-  }, intervalMs);
+  autoBackup ||= createAutoBackup({
+    getOwner: () => JSON.stringify([remoteAuth.getSession()?.user?.id || "", app.authenticatedSyncGeneration]),
+    backupLocal: () => createBackup({ silent: true }), backupFile: syncDesktopBackup,
+    onNext: (date) => { app.nextAutoBackupAt = date; renderSettingsBackupStatus(); },
+    onSaved: (date) => { app.lastAutoBackupAt = date; saveUiState(); },
+    onError: () => showToast("Не удалось создать автоматическую резервную копию"),
+  });
+  autoBackup.schedule(app.backupSchedule);
 }
 
 export function normalizeState(raw) {

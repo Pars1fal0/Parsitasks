@@ -48,12 +48,15 @@ export async function toggleCalendarTaskDone(taskId, date) {
   return true;
 }
 
-export async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime) {
+export async function calendarScheduleTask(taskId, sourceDate, targetDate, startTime, endTime) {
   const owner = app.state;
   if (!(await confirmDiscardOpenForms()) || app.state !== owner) return false;
   const task = app.state.tasks.find((item) => item.id === taskId);
-  if (!task || !taskOccursOn(task, sourceDate)) return false;
-  if (sourceDate === targetDate) {
+  if (!task || (!taskOccursOn(task, sourceDate) && !(task.date === null && sourceDate === null && task.repeat === "none"))) return false;
+  if (endTime && (!isValidTimeBlock(startTime, endTime) || !calendarSchedule.slotAvailable(targetDate, startTime, endTime, taskId) || isTaskDone(task, sourceDate || task.dueDate || targetDate))) {
+    showToast("Задача или расписание изменились. Найди свободное окно заново"); return false;
+  }
+  if (sourceDate === targetDate && !endTime) {
     app.activeDate = sourceDate;
     saveUiState();
     const result = await timelineController.setTaskTime(taskId, startTime);
@@ -66,12 +69,19 @@ export async function calendarScheduleTask(taskId, sourceDate, targetDate, start
       confirmLabel: "Перенести", secondaryLabel: "Отмена" });
     if (choice !== true || app.state !== owner) return false;
   }
+  if (!app.state.tasks.includes(task) || (!taskOccursOn(task, sourceDate) && !(task.date === null && sourceDate === null && task.repeat === "none")) || (endTime && (!calendarSchedule.slotAvailable(targetDate, startTime, endTime, taskId) || isTaskDone(task, sourceDate || task.dueDate || targetDate)))) return false;
+  if (endTime) {
+    const now = nowInTimeZone();
+    if (targetDate < todayKey() || (targetDate === todayKey() && timeToMinutes(startTime) < now.getHours() * 60 + now.getMinutes()) || (task.dueDate && (targetDate > task.dueDate || (targetDate === task.dueDate && task.dueTime && endTime > task.dueTime)))) {
+      showToast("Выбранное время уже прошло или выходит за срок выполнения"); return false;
+    }
+  }
   const undo = createUndoSnapshot();
   let moved = task;
-  taskMoves.postponeTask({ state: app.state, task, sourceDateKey: sourceDate, targetDateKey: targetDate,
+  if (sourceDate !== targetDate || task.repeat !== "none") taskMoves.postponeTask({ state: app.state, task, sourceDateKey: sourceDate, targetDateKey: targetDate,
     options: { separateOccurrence: true }, helpers: { createId, taskScheduledOn } });
   if (task.repeat !== "none") moved = app.state.tasks.at(-1);
-  const duration = isTimeBlock(task) ? timeToMinutes(task.endTime) - timeToMinutes(task.startTime) : 60;
+  const duration = endTime ? timeToMinutes(endTime) - timeToMinutes(startTime) : isTimeBlock(task) ? timeToMinutes(task.endTime) - timeToMinutes(task.startTime) : 60;
   const end = Math.min(23 * 60 + 59, timeToMinutes(startTime) + duration);
   Object.assign(moved, { scheduleMode: "block", startTime: minutesToTime(Math.max(0, end - duration)),
     endTime: minutesToTime(end), time: minutesToTime(end), updatedAt: new Date().toISOString() });
@@ -334,6 +344,13 @@ export function wireViews() {
   });
 
   calendarSchedule = calendarScheduleModule.createCalendarSchedule({
+    getOwner: () => JSON.stringify([remoteAuth.getSession()?.user?.id || "", app.authenticatedSyncGeneration]),
+    savePreferences: (value) => {
+      const previous = app.state.profile.planning;
+      app.state.profile.planning = { ...value, updatedAt: new Date().toISOString() };
+      if (saveState({ skipGoogleCalendar: true }) === false) { app.state.profile.planning = previous; return false; }
+      return true;
+    },
     confirmClose: confirmDiscardOpenForms,
     changeMode: async (mode) => {
       if (!(await confirmDiscardOpenForms())) return false;

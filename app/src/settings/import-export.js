@@ -1,5 +1,6 @@
-const MAX_IMPORT_BYTES = 16 * 1024 * 1024;
+import { assertWorkspaceSize, MAX_IMPORT_FILE_BYTES } from "../core/workspace-limits.js";
 function createImportExport(ctx) {
+  let replacementRequestId = 0;
   function exportData() {
     const exportState = ctx.storage.getUnsupportedState?.() || ctx.getState();
     const payload = {
@@ -25,24 +26,27 @@ function createImportExport(ctx) {
     const file = ctx.els.importFile.files?.[0];
     if (!file) return;
 
-    const owner = ctx.getUserId?.();
+    const requestId = ++replacementRequestId;
+    const owner = accountKey();
     try {
-      if (file.size > MAX_IMPORT_BYTES) throw new Error("import-too-large");
+      if (file.size > MAX_IMPORT_FILE_BYTES) throw new Error("import-too-large");
       const text = await file.text();
-      if (new TextEncoder().encode(text).byteLength > MAX_IMPORT_BYTES) throw new Error("import-too-large");
+      if (requestId !== replacementRequestId || accountKey() !== owner) return;
+      if (new TextEncoder().encode(text).byteLength > MAX_IMPORT_FILE_BYTES) throw new Error("import-too-large");
       const parsed = JSON.parse(text);
       const candidate = extractImportState(parsed);
       const importedState = ctx.normalizeState(candidate);
+      assertWorkspaceSize(importedState);
       const counts = [["tasks", "задач"], ["habits", "привычек"], ["notes", "заметок"], ["goals", "целей"], ["studySubjects", "предметов"], ["studyLessons", "занятий"], ["studyFiles", "ссылок на файлы"], ["boardItems", "объектов доски"], ["journalEntries", "записей дневника"], ["categories", "категорий"]]
         .map(([field, label]) => ({ label, value: importedState[field]?.length || 0 }));
       const exported = Number.isFinite(Date.parse(parsed.exportedAt)) ? new Date(parsed.exportedAt).toLocaleString("ru-RU") : "не указана";
-      if (ctx.getUserId?.() !== owner) return;
+      if (requestId !== replacementRequestId || accountKey() !== owner) return;
       const expectedState = currentRevision();
       const confirmed = await ctx.confirmAction?.({ title: "Заменить данные из файла?",
         message: "Все текущие данные будут заменены. Сначала сохранится резервная копия. Файлы Google Drive и изображения доски не входят в JSON: здесь только ссылки.",
         details: [{ label: "Дата копии", value: exported }, ...counts],
         confirmLabel: "Заменить данные", tone: "danger" });
-      if (confirmed !== true || ctx.getUserId?.() !== owner) return;
+      if (confirmed !== true || requestId !== replacementRequestId || accountKey() !== owner) return;
       if (currentRevision() !== expectedState) throw new Error("workspace-changed");
       const undo = ctx.createUndoSnapshot();
       const safetyBackup = createImportSafetyBackup(undo);
@@ -56,25 +60,28 @@ function createImportExport(ctx) {
       ctx.render();
       ctx.showToast("Данные импортированы. Предыдущие данные сохранены", { undo });
     } catch (error) {
-      ctx.showToast(importError(error));
+      if (requestId === replacementRequestId && accountKey() === owner) ctx.showToast(importError(error));
     } finally {
-      ctx.els.importFile.value = "";
+      if (requestId === replacementRequestId && accountKey() === owner) ctx.els.importFile.value = "";
     }
   }
 
   function syncDesktopBackup() {
     if (!window.rhythmDesktop?.writeFileBackup) return Promise.resolve({ ok: false, reason: "desktop-unavailable" });
+    const account = accountKey();
     return window.rhythmDesktop
       .writeFileBackup({
         schemaVersion: ctx.schemaVersion,
         state: ctx.getState(),
       })
       .then(async (result) => {
+        if (accountKey() !== account) return { ok: false, reason: "account-changed" };
         await updateFileBackupStatus();
+        if (accountKey() !== account) return { ok: false, reason: "account-changed" };
         return result || { ok: true };
       })
       .catch(() => {
-        if (ctx.els.fileBackupStatus) {
+        if (accountKey() === account && ctx.els.fileBackupStatus) {
           ctx.els.fileBackupStatus.hidden = false;
           ctx.els.fileBackupStatus.textContent = "Файловая копия: ошибка записи";
         }
@@ -84,17 +91,19 @@ function createImportExport(ctx) {
 
   async function updateFileBackupStatus() {
     if (!window.rhythmDesktop?.getFileBackupInfo || !ctx.els.fileBackupStatus || !ctx.els.openBackupFolderButton) return;
+    const account = accountKey();
     ctx.els.fileBackupStatus.hidden = false;
     ctx.els.openBackupFolderButton.hidden = false;
     try {
       const info = await window.rhythmDesktop.getFileBackupInfo();
+      if (accountKey() !== account) return;
       if (info?.latest?.mtimeMs) {
         ctx.els.fileBackupStatus.textContent = `Файловая копия: ${formatBackupDate(info.latest.mtimeMs)}`;
       } else {
         ctx.els.fileBackupStatus.textContent = "Файловая копия: папка готова";
       }
     } catch {
-      ctx.els.fileBackupStatus.textContent = "Файловая копия недоступна";
+      if (accountKey() === account) ctx.els.fileBackupStatus.textContent = "Файловая копия недоступна";
     }
   }
 
@@ -136,7 +145,8 @@ function createImportExport(ctx) {
   }
 
   async function restoreBackup() {
-    const owner = ctx.getUserId?.();
+    const requestId = ++replacementRequestId;
+    const owner = accountKey();
     const backup = loadBackup();
     if (!backup) {
       ctx.showToast("Локальная резервная копия пока не найдена");
@@ -144,7 +154,12 @@ function createImportExport(ctx) {
     }
 
     const backupDate = backup.exportedAt ? formatBackupDate(backup.exportedAt) : "без даты";
-    try { checkImportVersion(backup); } catch (error) { ctx.showToast(importError(error)); return; }
+    let restoredState;
+    try {
+      checkImportVersion(backup);
+      restoredState = ctx.normalizeState(backup.state || backup);
+      assertWorkspaceSize(restoredState);
+    } catch (error) { ctx.showToast(importError(error)); return; }
     const expectedState = currentRevision();
     const message = `Восстановить данные из локальной резервной копии (${backupDate})? Текущий план будет заменён.`;
     const confirmed = await ctx.confirmAction({
@@ -153,7 +168,7 @@ function createImportExport(ctx) {
           tone: "danger",
           title: "Восстановить резервную копию?",
         });
-    if (!confirmed || ctx.getUserId?.() !== owner) return;
+    if (!confirmed || requestId !== replacementRequestId || accountKey() !== owner) return;
     if (currentRevision() !== expectedState) { ctx.showToast(importError(new Error("workspace-changed"))); return; }
 
     const undo = ctx.createUndoSnapshot();
@@ -162,7 +177,7 @@ function createImportExport(ctx) {
       ctx.showToast("Не удалось сохранить текущее состояние. Восстановление отменено");
       return;
     }
-    ctx.replaceState(ctx.normalizeState(backup.state || backup));
+    ctx.replaceState(restoredState);
     if (ctx.saveState({ skipBackup: true }) === false) {
       ctx.replaceState(ctx.normalizeState(JSON.parse(undo.state)));
       ctx.render();
@@ -181,6 +196,10 @@ function createImportExport(ctx) {
     return JSON.stringify(ctx.getState?.());
   }
 
+  function accountKey() {
+    return ctx.getAccountKey?.() ?? ctx.getUserId?.();
+  }
+
   function checkImportVersion(parsed) {
     for (const version of [parsed?.schemaVersion, parsed?.state?.schemaVersion]) {
       if (version === undefined) continue;
@@ -190,6 +209,7 @@ function createImportExport(ctx) {
   }
 
   function importError(error) {
+    if (error?.code === "workspace-too-large") return "Документ в копии больше 4 МиБ. Импорт отменён, текущие данные сохранены";
     if (error?.message === "newer-schema") return "Копия создана более новой версией приложения. Обнови приложение перед восстановлением";
     if (error?.message === "workspace-changed") return "Данные изменились во время подтверждения. Повтори импорт или восстановление";
     if (error?.message === "import-too-large") return "JSON больше 16 МБ. Импорт отменён, текущие данные сохранены";
@@ -223,6 +243,7 @@ function createImportExport(ctx) {
       throw new Error("invalid-import");
     }
     const recognizedKeys = [
+      "focusSessions",
       "tasks",
       "habits",
       "goals",
@@ -246,6 +267,7 @@ function createImportExport(ctx) {
     ];
     if (!recognizedKeys.some((key) => Object.hasOwn(candidate, key))) throw new Error("unrecognized-import");
     [
+      "focusSessions",
       "tasks",
       "habits",
       "goals",
