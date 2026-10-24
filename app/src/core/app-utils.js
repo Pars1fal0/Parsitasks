@@ -148,7 +148,7 @@ function createAppUtils(options = {}) {
     formatWeekday: (key) => formatDate(key, { weekday: "short", day: "numeric" }),
     getMonthCalendarDates,
     getWeekDates,
-    heatAlpha: (percent) => (percent <= 0 ? "0.08" : percent < 35 ? "0.24" : percent < 70 ? "0.48" : percent < 100 ? "0.72" : "1"),
+    heatAlpha: (percent) => (percent <= 0 ? "0.08" : percent < 35 ? "0.4" : percent < 70 ? "0.68" : percent < 100 ? "0.9" : "1"),
     minutesToTime,
     normalizeDateKey,
     parseDate,

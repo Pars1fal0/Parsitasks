@@ -1,8 +1,20 @@
 const assert = require("node:assert/strict");
 const { buildHeatmapModel } = require("../app/src/calendar/heatmap-view.js");
+const { createAppUtils } = require("../app/src/core/app-utils.js");
 const { parseDateKey, toDateKey } = require("./test-utils.cjs");
 
 module.exports = [
+  {
+    name: "heatmap makes substantial progress bright while keeping empty days muted",
+    fn() {
+      const { heatAlpha } = createAppUtils();
+      assert.equal(Number(heatAlpha(0)), 0.08);
+      assert.ok(Number(heatAlpha(80)) >= 0.9, "four of five tasks must look almost complete");
+      const values = [0, 20, 50, 80, 100].map((percent) => Number(heatAlpha(percent)));
+      assert.ok(values.every((value, index) => index === 0 || value > values[index - 1]));
+      assert.equal(values.at(-1), 1);
+    },
+  },
   {
     name: "builds a year model with month labels and dated tooltips",
     fn() {

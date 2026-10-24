@@ -157,11 +157,11 @@
 }
 
 .heatmap-cell.all-habits-frozen {
-  background: linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(115, 177, 206, 0.4) 50% 100%), #111816;
+  background: linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, rgba(115, 177, 206, 0.4) 50% 100%), #111816;
 }
 
 :root[data-theme="light"] .heatmap-cell.all-habits-frozen {
-  background: linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(115, 177, 206, 0.4) 50% 100%), #eef3f1;
+  background: linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, rgba(115, 177, 206, 0.4) 50% 100%), #eef3f1;
 }
 
 .heatmap-tooltip {

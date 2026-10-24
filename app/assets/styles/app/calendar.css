@@ -421,15 +421,24 @@
 }
 
 .heatmap-cell {
+  --heatmap-task-ink: rgb(var(--accent-rgb));
+  --heatmap-task-fill: color-mix(in srgb, var(--heatmap-task-ink) calc(var(--task-alpha) * 100%), #111816);
   background:
-    linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
+    linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
     #111816;
 }
 
+@supports (color: oklch(from red l c h)) {
+  .heatmap-cell {
+    --heatmap-task-ink: oklch(from rgb(var(--accent-rgb)) max(l, 0.8) calc(c * 1.15) h);
+  }
+}
+
 :root[data-theme="light"] .heatmap-cell {
+  --heatmap-task-fill: rgb(var(--accent-rgb) / var(--task-alpha));
   border-color: rgba(15, 30, 24, 0.06);
   background:
-    linear-gradient(180deg, rgb(var(--accent-strong-rgb) / var(--task-alpha)) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
+    linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
     #eef3f1;
 }
 
