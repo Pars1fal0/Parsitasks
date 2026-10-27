@@ -191,6 +191,11 @@
   font-weight: 640;
 }
 
+.heatmap-range-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.heatmap-range-toolbar button { min-height: 36px; }
+.heatmap-range-label { color: var(--muted); font-size: 12px; }
+@media (max-width: 680px) { .heatmap-range-toolbar button { min-height: 44px; } }
+
 .week-board-list,
 .month-day-items,
 .day-bars {
@@ -339,6 +344,8 @@
   background: var(--coral);
 }
 
+.heatmap-legend .heatmap-legend-frozen::before { width: 6px; height: 6px; border-radius: 50%; background: #73b1ce; }
+
 .heatmap-legend .heatmap-legend-perfect::before {
   background: #e6b94f;
 }
@@ -347,6 +354,8 @@
   --heatmap-gap: clamp(1px, 0.28vw, 4px);
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr);
+  width: min(100%, calc(36px + var(--heatmap-columns, 53) * 32px + (var(--heatmap-columns, 53) - 1) * var(--heatmap-gap)));
+  margin-inline: auto;
   gap: 6px 8px;
   overflow: visible;
   padding: 8px 0 4px;
@@ -407,7 +416,7 @@
   grid-auto-flow: column;
   gap: var(--heatmap-gap);
   min-width: 0;
-  aspect-ratio: 53 / 7;
+  aspect-ratio: var(--heatmap-columns) / 7;
 }
 
 .heatmap-cell,
@@ -467,12 +476,14 @@
   background: transparent;
 }
 
-.heatmap-cell:hover,
+.heatmap-cell:hover { border-color: var(--text-soft); }
+
 .heatmap-cell:focus-visible,
 .heatmap-cell:focus,
-.heatmap-cell.is-current {
-  transform: scale(1.18);
-  box-shadow: 0 0 0 3px rgb(var(--accent-strong-rgb) / 12%);
+.heatmap-cell.is-current,
+.heatmap-cell.is-today {
+  outline: 1px solid var(--text);
+  outline-offset: -1px;
 }
 
 .calendar-planner-dialog { width: min(640px, calc(100% - 24px)); max-height: 88dvh; padding: 20px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); overflow: auto; }

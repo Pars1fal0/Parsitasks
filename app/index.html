@@ -966,13 +966,21 @@
               <div class="panel-heading compact">
                 <div>
                   <span class="metric-label">Календарь</span>
-                  <h2>Активность за год</h2>
+                  <h2>Активность</h2>
                 </div>
                 <div class="heatmap-legend">
                   <span>Задачи</span>
                   <span class="heatmap-legend-habits">Привычки</span>
                   <span class="heatmap-legend-perfect">100% выполнено</span>
+                  <span class="heatmap-legend-frozen">Заморозка</span>
                 </div>
+              </div>
+              <div class="heatmap-range-toolbar">
+                <div class="segmented-control" aria-label="Период тепловой карты">
+                  <button type="button" class="is-active" data-heatmap-range="tracking" aria-pressed="true">С данными</button>
+                  <button type="button" data-heatmap-range="year" aria-pressed="false">12 месяцев</button>
+                </div>
+                <span class="heatmap-range-label"></span>
               </div>
               <div class="heatmap-grid" id="heatmapGrid"></div>
             </section>

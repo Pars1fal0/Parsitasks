@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { buildHeatmapModel } = require("../app/src/calendar/heatmap-view.js");
+const { buildHeatmapModel, visibleMonthSpans } = require("../app/src/calendar/heatmap-view.js");
 const { createAppUtils } = require("../app/src/core/app-utils.js");
 const { parseDateKey, toDateKey } = require("./test-utils.cjs");
 
@@ -8,7 +8,7 @@ module.exports = [
     name: "heatmap makes substantial progress bright while keeping empty days muted",
     fn() {
       const { heatAlpha } = createAppUtils();
-      assert.equal(Number(heatAlpha(0)), 0.08);
+      assert.equal(Number(heatAlpha(0)), 0);
       assert.ok(Number(heatAlpha(80)) >= 0.9, "four of five tasks must look almost complete");
       const values = [0, 20, 50, 80, 100].map((percent) => Number(heatAlpha(percent)));
       assert.ok(values.every((value, index) => index === 0 || value > values[index - 1]));
@@ -32,11 +32,41 @@ module.exports = [
       assert.equal(model.columns, 53);
       assert.equal(model.monthLabels.some(Boolean), true);
       assert.equal(model.monthSpans.length, 12);
-      assert.equal(model.monthSpans[0].label, "июль");
+      assert.equal(model.monthSpans[0].label, "июл");
       assert.ok(model.monthSpans.every((item) => item.span >= 1));
       assert.equal(model.days[0].tooltip, "date 2025-07-01 (2025-07-01): задачи 4 из 8, привычки 1 из 2");
       assert.equal(model.days[0].taskPercent, 50);
       assert.equal(model.days[0].habitPercent, 50);
+    },
+  },
+  {
+    name: "month labels use three letters and hide fragments shorter than three weeks",
+    fn() {
+      const model = buildHeatmapModel({ activeDate: "2026-10-28", formatLongDate: (date) => date, parseDate: parseDateKey,
+        statsForDate: () => ({}), toDateKey });
+      assert.ok(model.monthSpans.every((item) => item.label.length === 3));
+      assert.deepEqual([...new Set(model.monthSpans.map((item) => item.label))].sort(), ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"].sort());
+      const visible = visibleMonthSpans(model.monthSpans, 0, model.columns);
+      assert.ok(visible.every((item) => item.span >= 3));
+      assert.ok(!visible.some((item) => item.column === 0 && item.label === "окт"), "the partial opening October cannot collide with November");
+      assert.deepEqual(visibleMonthSpans([{ column: 0, span: 5, label: "янв" }], 3, 5), []);
+      assert.deepEqual(visibleMonthSpans([{ column: 0, span: 5, label: "янв" }], 2, 5), [{ column: 2, span: 3, label: "янв" }]);
+    },
+  },
+  {
+    name: "data range trims only the unused beginning and retains gaps and frozen days",
+    fn() {
+      const options = { activeDate: "2026-10-28", formatLongDate: (date) => date, parseDate: parseDateKey, toDateKey,
+        statsForDate: (date) => date === "2026-10-01" ? { habitFrozen: 1 } : date === "2026-10-05" ? { taskTotal: 2, taskDone: 0 } : {} };
+      const trimmed = buildHeatmapModel({ ...options, range: "tracking" });
+      assert.equal(trimmed.days[0].dateKey, "2026-10-01");
+      assert.equal(trimmed.days.at(-1).dateKey, options.activeDate);
+      assert.equal(trimmed.days.length, 28);
+      assert.ok(trimmed.columns <= 5);
+      assert.equal(buildHeatmapModel(options).days.length, 365);
+      const empty = buildHeatmapModel({ ...options, range: "tracking", statsForDate: () => ({}) });
+      assert.equal(empty.days.length, 1);
+      assert.equal(empty.days[0].dateKey, options.activeDate);
     },
   },
   {

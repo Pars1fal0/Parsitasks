@@ -420,12 +420,14 @@ function attachSmokeTest(app, mainWindow) {
 
         document.querySelector('[data-view="overview"]').click();
         document.querySelector('[data-overview-mode="year"]').click();
+        click('[data-heatmap-range="year"]');
         const heatmapGrid = document.querySelector("#heatmapGrid");
         const firstHeatmapCell = document.querySelector(".heatmap-cell");
         firstHeatmapCell.dispatchEvent(new Event("pointerenter"));
         const heatmapTooltip = document.querySelector(".heatmap-tooltip.is-visible");
         const heatmapHasLabels =
-          document.querySelectorAll(".heatmap-months span").length >= 12 &&
+          document.querySelectorAll(".heatmap-months span").length >= 10 &&
+          [...document.querySelectorAll(".heatmap-months span")].every((node) => node.textContent.length === 3) &&
           document.querySelectorAll(".heatmap-weekdays span").length === 7;
         const heatmapFits = heatmapGrid.scrollWidth <= heatmapGrid.clientWidth + 1;
         const heatmapTooltipSingle = document.querySelectorAll(".heatmap-tooltip.is-visible").length === 1;
@@ -698,6 +700,7 @@ function attachSmokeTest(app, mainWindow) {
         await new Promise((resolve) => setTimeout(resolve, 30));
         click('[data-overview-mode="year"]');
         await new Promise((resolve) => setTimeout(resolve, 30));
+        click('[data-heatmap-range="year"]');
         const mobileHeatmapGrid = document.querySelector("#heatmapGrid");
         const mobileHeatmapCell = document.querySelector(".heatmap-cell");
         const mobileHeatmapSplit =
