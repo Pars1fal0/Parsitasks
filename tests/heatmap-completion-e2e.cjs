@@ -37,7 +37,7 @@ const sharp = require("sharp");
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 1000 });
       for (const theme of ["dark", "light"]) {
-        await page.evaluate((value) => { document.documentElement.dataset.theme = value; }, theme);
+        await page.evaluate((value) => window.updateSetting("themePreference", value), theme);
         const labelsFit = await page.locator(".heatmap-months").evaluateAll((rows) => rows.every((row) => {
           const labels = [...row.children];
           return labels.every((node, index) => node.textContent.length === 3 && node.scrollWidth <= node.clientWidth + 1
