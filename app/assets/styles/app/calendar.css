@@ -422,9 +422,11 @@
 
 .heatmap-cell {
   --heatmap-task-ink: rgb(var(--accent-rgb));
-  --heatmap-task-fill: color-mix(in srgb, var(--heatmap-task-ink) calc(var(--task-alpha) * 100%), #111816);
+  --heatmap-task-regular-fill: color-mix(in srgb, var(--heatmap-task-ink) calc(var(--task-alpha) * 100%), #111816);
+  --heatmap-task-fill: var(--heatmap-task-regular-fill);
+  --heatmap-habit-fill: rgba(217, 100, 74, var(--habit-alpha));
   background:
-    linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
+    linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, var(--heatmap-habit-fill) 50% 100%),
     #111816;
 }
 
@@ -435,11 +437,19 @@
 }
 
 :root[data-theme="light"] .heatmap-cell {
-  --heatmap-task-fill: rgb(var(--accent-rgb) / var(--task-alpha));
+  --heatmap-task-regular-fill: rgb(var(--accent-rgb) / var(--task-alpha));
   border-color: rgba(15, 30, 24, 0.06);
   background:
-    linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, rgba(217, 100, 74, var(--habit-alpha)) 50% 100%),
+    linear-gradient(180deg, var(--heatmap-task-fill) 0 50%, var(--heatmap-habit-fill) 50% 100%),
     #eef3f1;
+}
+
+.heatmap-cell.is-tasks-complete {
+  --heatmap-task-fill: #e6b94f;
+}
+
+.heatmap-cell.is-habits-complete {
+  --heatmap-habit-fill: #e6b94f;
 }
 
 .heatmap-cell.is-perfect-day {

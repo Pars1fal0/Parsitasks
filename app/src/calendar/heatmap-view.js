@@ -105,6 +105,8 @@ function createHeatmapCell(model, day, tooltipNode, ctx) {
   cell.dataset.tooltip = day.tooltip;
   cell.style.setProperty("--task-alpha", ctx.heatAlpha(day.taskPercent));
   cell.style.setProperty("--habit-alpha", ctx.heatAlpha(day.habitPercent));
+  if (day.areTasksComplete) cell.classList.add("is-tasks-complete");
+  if (day.areHabitsComplete) cell.classList.add("is-habits-complete");
   if (day.isPerfectDay) cell.classList.add("is-perfect-day");
   if (day.habitFrozen) cell.classList.add("has-frozen-habit");
   if (day.habitFrozen && day.habitTotal === 0) cell.classList.add("all-habits-frozen");
@@ -130,8 +132,9 @@ function buildHeatmapModel({ activeDate, formatLongDate, parseDate, statsForDate
     current.setDate(start.getDate() + i);
     const dateKey = toDateKey(current);
     const stats = statsForDate(dateKey);
-    const isPerfectDay = stats.taskTotal > 0 && stats.habitTotal > 0
-      && stats.taskDone === stats.taskTotal && stats.habitDone === stats.habitTotal;
+    const areTasksComplete = stats.taskTotal > 0 && stats.taskDone === stats.taskTotal;
+    const areHabitsComplete = stats.habitTotal > 0 && stats.habitDone === stats.habitTotal;
+    const isPerfectDay = areTasksComplete && areHabitsComplete;
     const slotIndex = leadingBlanks + i;
     const column = Math.floor(slotIndex / 7);
     const monthKey = `${current.getFullYear()}-${current.getMonth()}`;
@@ -144,6 +147,8 @@ function buildHeatmapModel({ activeDate, formatLongDate, parseDate, statsForDate
 
     days.push({
       dateKey,
+      areTasksComplete,
+      areHabitsComplete,
       isPerfectDay,
       habitPercent: stats.habitPercent,
       habitFrozen: stats.habitFrozen || 0,

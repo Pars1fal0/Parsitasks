@@ -40,6 +40,26 @@ module.exports = [
     },
   },
   {
+    name: "golden heatmap halves use exact completions and never count empty or frozen-only categories",
+    fn() {
+      const cases = [
+        [{ taskDone: 5, taskTotal: 5, habitDone: 1, habitTotal: 2 }, [true, false]],
+        [{ taskDone: 4, taskTotal: 5, habitDone: 2, habitTotal: 2 }, [false, true]],
+        [{ taskDone: 5, taskTotal: 5, habitDone: 2, habitTotal: 2 }, [true, true]],
+        [{ taskDone: 0, taskTotal: 0, habitDone: 0, habitTotal: 0 }, [false, false]],
+        [{ taskDone: 5, taskTotal: 5, habitDone: 0, habitTotal: 0, habitFrozen: 2 }, [true, false]],
+        [{ taskDone: 0, taskTotal: 0, habitDone: 2, habitTotal: 2 }, [false, true]],
+        [{ taskDone: 199, taskTotal: 200, habitDone: 199, habitTotal: 200 }, [false, false]],
+      ];
+      for (const [stats, expected] of cases) {
+        const day = buildHeatmapModel({ activeDate: "2026-10-28", formatLongDate: (date) => date,
+          parseDate: parseDateKey, statsForDate: () => ({ taskPercent: 100, habitPercent: 100, ...stats }), toDateKey }).days.at(-1);
+        assert.deepEqual([day.areTasksComplete, day.areHabitsComplete], expected);
+        assert.equal(day.isPerfectDay, expected.every(Boolean));
+      }
+    },
+  },
+  {
     name: "marks a perfect day only when both tasks and habits are fully completed",
     fn() {
       const cases = [
