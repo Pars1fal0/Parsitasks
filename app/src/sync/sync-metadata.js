@@ -15,7 +15,7 @@ const ENTITY_FIELDS = {
     "assetId", "remotePath", "mime", "name", "sourceType", "sourceId", "backgroundColor",
   ],
   journalEntries: ["date", "text", "revisions"],
-  notes: ["title", "body", "bodyBaseUpdatedAt", "pinned", "subjectId", "taskId", "ongoing", "dueDate"],
+  notes: ["title", "body", "bodyBaseUpdatedAt", "pinned", "subjectId", "taskId", "ongoing", "dueDate", "linkedTaskIds"],
   nutritionFoods: ["name", "unit", "calories", "nutritionKnown", "protein", "fat", "carbs", "source", "approximate"],
   nutritionMeals: ["date", "type", "time", "title", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "status", "notes"],
   nutritionTemplates: ["title", "type", "time", "servings", "ingredients", "nutrition", "manualNutrition", "manualCaloriesKnown", "notes"],

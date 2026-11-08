@@ -218,7 +218,8 @@ function createNotesView(ctx) {
       chip.type = "button";
       chip.className = "ongoing-chip";
       chip.classList.toggle("is-overdue", Boolean(note.dueDate) && note.dueDate < todayKey);
-      chip.textContent = note.dueDate ? `${note.title} · ${note.dueDate.slice(8)}.${note.dueDate.slice(5, 7)}` : note.title;
+      const progress = model.ongoingProgress(note, ctx.getState().tasks);
+      chip.textContent = [note.title, progress.total ? `${progress.done}/${progress.total}` : "", note.dueDate ? `до ${dueLabel(note.dueDate)}` : ""].filter(Boolean).join(" · ");
       chip.title = note.body || note.title;
       chip.addEventListener("click", () => ctx.openOngoing?.());
       return chip;
@@ -231,33 +232,149 @@ function createNotesView(ctx) {
     els.ongoingChips.replaceChildren(...chips, add);
   }
 
+  function dueLabel(dueDate) {
+    return dueDate ? `${dueDate.slice(8)}.${dueDate.slice(5, 7)}` : "";
+  }
+
+  function todayKeyLocal() {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  }
+
+  function refreshOngoing() {
+    renderOngoing();
+    renderOngoingStrip();
+  }
+
+  function addNewTask(note, title) {
+    const clean = title.trim();
+    if (!clean) return false;
+    const undo = ctx.createUndoSnapshot();
+    const task = ctx.createLaterTask?.(clean);
+    if (!task) return false;
+    const next = model.normalizeNote({ ...note, linkedTaskIds: [...(note.linkedTaskIds || []), task.id], updatedAt: new Date(Math.max(Date.now(), (Date.parse(note.updatedAt) || 0) + 1)).toISOString() });
+    Object.assign(note, next);
+    if (ctx.saveState() === false) { ctx.restoreState?.(undo); ctx.showToast("Не удалось сохранить"); return false; }
+    return true;
+  }
+
   function renderOngoing() {
     const items = ongoingItems();
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const todayKey = todayKeyLocal();
+    const state = ctx.getState();
     els.ongoingEmpty.hidden = items.length > 0;
     els.ongoingList.replaceChildren(...items.map((note) => {
+      const progress = model.ongoingProgress(note, state.tasks);
       const card = document.createElement("article");
-      const top = document.createElement("div");
-      const title = document.createElement("input");
-      const due = document.createElement("input");
-      const done = document.createElement("button");
-      const body = document.createElement("textarea");
       card.className = "ongoing-item";
       card.classList.toggle("is-overdue", Boolean(note.dueDate) && note.dueDate < todayKey);
+
+      const top = document.createElement("div");
       top.className = "ongoing-item-top";
+      const title = document.createElement("input");
       title.type = "text"; title.maxLength = model.MAX_TITLE_LENGTH; title.className = "ongoing-item-title"; title.value = note.title;
       title.setAttribute("aria-label", "Название");
-      title.addEventListener("change", () => { const value = model.cleanTitle(title.value); if (value) updateOngoing(note, { title: value }); else title.value = note.title; });
-      due.type = "date"; due.value = note.dueDate; due.setAttribute("aria-label", "Срок");
-      due.addEventListener("change", () => { updateOngoing(note, { dueDate: due.value }); renderOngoing(); });
+      title.addEventListener("change", () => {
+        const value = model.cleanTitle(title.value);
+        if (value) { updateOngoing(note, { title: value }); renderOngoingStrip(); } else title.value = note.title;
+      });
+      const dueWrap = document.createElement("label");
+      dueWrap.className = "ongoing-due-label";
+      dueWrap.append(document.createTextNode("Дедлайн "));
+      const due = document.createElement("input");
+      due.type = "date"; due.value = note.dueDate;
+      due.addEventListener("change", () => { updateOngoing(note, { dueDate: due.value }); refreshOngoing(); });
+      dueWrap.append(due);
+      const done = document.createElement("button");
       done.type = "button"; done.className = "ghost-button compact-button"; done.textContent = "Готово";
+      done.title = "Проект завершён: убрать из текущих";
       done.addEventListener("click", () => finishOngoing(note));
-      body.value = note.body; body.placeholder = "Что осталось сделать, ссылки, заметки"; body.maxLength = model.MAX_BODY_LENGTH;
-      body.setAttribute("aria-label", "Описание");
-      body.addEventListener("change", () => updateOngoing(note, { body: body.value }));
-      top.append(title, due, done);
-      card.append(top, body);
+      top.append(title, dueWrap, done);
+      card.append(top);
+
+      if (progress.total) {
+        const label = document.createElement("span");
+        label.className = "ongoing-progress-label";
+        label.textContent = `Задач выполнено: ${progress.done} из ${progress.total}`;
+        const bar = document.createElement("div");
+        bar.className = "ongoing-progress";
+        const fill = document.createElement("span");
+        fill.style.width = `${Math.round((progress.done / progress.total) * 100)}%`;
+        bar.append(fill);
+        card.append(label, bar);
+      }
+
+      if (progress.tasks.length) {
+        const list = document.createElement("ul");
+        list.className = "ongoing-tasks";
+        progress.tasks.forEach((task) => {
+          const row = document.createElement("li");
+          const isDone = model.taskIsDone(task);
+          row.classList.toggle("is-done", isDone);
+          const mark = document.createElement("span");
+          mark.className = "ongoing-task-mark"; mark.textContent = isDone ? "✓" : "○"; mark.setAttribute("aria-hidden", "true");
+          const open = document.createElement("button");
+          open.type = "button"; open.className = "ongoing-task-title"; open.textContent = task.title;
+          open.title = task.date ? `Открыть задачу · ${task.date}` : "Открыть задачу (в «Позже»)";
+          open.addEventListener("click", () => ctx.openTask(task));
+          const unlink = document.createElement("button");
+          unlink.type = "button"; unlink.className = "icon-button ongoing-task-unlink"; unlink.textContent = "×";
+          unlink.setAttribute("aria-label", `Отвязать задачу «${task.title}» от проекта`); unlink.title = "Отвязать (задача останется)";
+          unlink.addEventListener("click", () => {
+            updateOngoing(note, { linkedTaskIds: note.linkedTaskIds.filter((id) => id !== task.id) });
+            refreshOngoing();
+          });
+          row.append(mark, open, unlink);
+          list.append(row);
+        });
+        card.append(list);
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "ongoing-item-actions";
+      const newTask = document.createElement("input");
+      newTask.type = "text"; newTask.maxLength = 240; newTask.placeholder = "+ Новая задача в проект (Enter)";
+      newTask.setAttribute("aria-label", "Новая задача в проект");
+      newTask.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter") return;
+        event.preventDefault();
+        if (addNewTask(note, newTask.value)) refreshOngoing();
+      });
+      const linked = new Set(note.linkedTaskIds || []);
+      const candidates = (state.tasks || []).filter((task) => !linked.has(task.id) && !model.taskIsDone(task) && !task.sourceTaskId)
+        .sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, 80);
+      const picker = document.createElement("select");
+      picker.setAttribute("aria-label", "Привязать существующую задачу");
+      const placeholder = option("", "Привязать существующую…");
+      picker.append(placeholder, ...candidates.map((task) => option(task.id, `${task.title} · ${task.date || "Позже"}`)));
+      picker.hidden = candidates.length === 0;
+      picker.addEventListener("change", () => {
+        if (!picker.value) return;
+        updateOngoing(note, { linkedTaskIds: [...(note.linkedTaskIds || []), picker.value] });
+        refreshOngoing();
+      });
+      actions.append(newTask, picker);
+      card.append(actions);
+
+      if (note.body) {
+        const body = document.createElement("textarea");
+        body.className = "ongoing-body"; body.value = note.body; body.maxLength = model.MAX_BODY_LENGTH;
+        body.rows = Math.min(8, Math.max(2, note.body.split("\n").length));
+        body.setAttribute("aria-label", "Описание");
+        body.addEventListener("change", () => { updateOngoing(note, { body: body.value }); if (!body.value.trim()) renderOngoing(); });
+        card.append(body);
+      } else {
+        const addBody = document.createElement("button");
+        addBody.type = "button"; addBody.className = "ghost-button compact-button ongoing-add-body"; addBody.textContent = "+ Описание";
+        addBody.addEventListener("click", () => {
+          const body = document.createElement("textarea");
+          body.className = "ongoing-body"; body.rows = 3; body.maxLength = model.MAX_BODY_LENGTH; body.placeholder = "Что важно помнить, ссылки";
+          body.setAttribute("aria-label", "Описание");
+          body.addEventListener("change", () => { updateOngoing(note, { body: body.value }); renderOngoing(); });
+          addBody.replaceWith(body); body.focus();
+        });
+        card.append(addBody);
+      }
       return card;
     }));
   }

@@ -83,4 +83,17 @@ module.exports = [
       assert.equal(ongoing.find((note) => note.id === "hack").dueDate, "2026-11-20");
     },
   },
+  {
+    name: "counts progress only for existing linked tasks and treats any completed day as done",
+    fn() {
+      const note = notesModel.normalizeNote({ id: "p", title: "Хакатон", ongoing: true, linkedTaskIds: ["a", "b", "gone", "a"] });
+      assert.deepEqual(note.linkedTaskIds, ["a", "b", "gone"]);
+      const progress = notesModel.ongoingProgress(note, [
+        { id: "a", title: "A", completed: { "2026-11-09": true } },
+        { id: "b", title: "B", completed: {} },
+      ]);
+      assert.equal(progress.total, 2);
+      assert.equal(progress.done, 1);
+    },
+  },
 ];

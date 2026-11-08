@@ -432,3 +432,20 @@ body[data-view="journal"].notes-mode .date-control > :not(.global-search-button)
     flex: none;
   }
 }
+
+.ongoing-due-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.ongoing-due-label small { font-size: 11px; }
+.ongoing-form { align-items: center; }
+.ongoing-progress { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.ongoing-progress span { display: block; height: 100%; background: var(--teal); }
+.ongoing-progress-label { color: var(--muted); font-size: 12px; }
+.ongoing-tasks { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.ongoing-tasks li { display: flex; align-items: center; gap: 8px; }
+.ongoing-tasks li.is-done .ongoing-task-title { color: var(--muted); text-decoration: line-through; }
+.ongoing-task-title { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--text); cursor: pointer; padding: 4px 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ongoing-task-title:hover { color: var(--teal); }
+.ongoing-task-unlink { width: 24px; height: 24px; font-size: 16px; line-height: 1; }
+.ongoing-item-actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.ongoing-add-body { justify-self: start; }
+.ongoing-body { width: 100%; resize: vertical; }
+@media (max-width: 640px) { .ongoing-item-actions { grid-template-columns: 1fr; } .ongoing-item-top { flex-wrap: wrap; } }

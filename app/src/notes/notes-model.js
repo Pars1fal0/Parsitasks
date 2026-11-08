@@ -14,6 +14,8 @@ function normalizeNote(value, options = {}) {
     body,
     pinned: value.pinned === true,
     ongoing: value.ongoing === true,
+    linkedTaskIds: [...new Set((Array.isArray(value.linkedTaskIds) ? value.linkedTaskIds : [])
+      .map((id) => String(id || "").trim().slice(0, 160)).filter(Boolean))].slice(0, 100),
     dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(value.dueDate || "")) ? value.dueDate : "",
     subjectId: String(value.subjectId || "").trim().slice(0, 160),
     taskId: String(value.taskId || "").trim().slice(0, 160),
@@ -49,6 +51,16 @@ function listNotes(notes, options = {}) {
       || right.updatedAt.localeCompare(left.updatedAt) || left.title.localeCompare(right.title, "ru-RU"));
 }
 
+function taskIsDone(task) {
+  return Object.values(task?.completed || {}).some((value) => value === true);
+}
+
+function ongoingProgress(note, tasks = []) {
+  const byId = new Map((tasks || []).map((task) => [task.id, task]));
+  const linked = (note.linkedTaskIds || []).map((id) => byId.get(id)).filter(Boolean);
+  return { total: linked.length, done: linked.filter(taskIsDone).length, tasks: linked };
+}
+
 function cleanTitle(value) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, MAX_TITLE_LENGTH);
 }
@@ -62,7 +74,7 @@ function validTimestamp(value) {
   return typeof value === "string" && Number.isFinite(Date.parse(value)) ? value : "";
 }
 
-const api = { MAX_BODY_LENGTH, MAX_TITLE_LENGTH, cleanBody, cleanTitle, listNotes, normalizeNote, normalizeNotes };
+const api = { MAX_BODY_LENGTH, MAX_TITLE_LENGTH, cleanBody, cleanTitle, listNotes, normalizeNote, normalizeNotes, ongoingProgress, taskIsDone };
 
-export { MAX_BODY_LENGTH, MAX_TITLE_LENGTH, cleanBody, cleanTitle, listNotes, normalizeNote, normalizeNotes };
+export { MAX_BODY_LENGTH, MAX_TITLE_LENGTH, cleanBody, cleanTitle, listNotes, normalizeNote, normalizeNotes, ongoingProgress, taskIsDone };
 export default api;

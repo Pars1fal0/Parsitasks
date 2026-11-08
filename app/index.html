@@ -1160,7 +1160,7 @@
             <p class="muted ongoing-hint">Долгие дела и проекты, о которых нужно помнить, но которые не входят в задачи на день.</p>
             <form id="ongoingForm" class="ongoing-form" autocomplete="off">
               <input id="ongoingTitle" type="text" maxlength="120" required placeholder="Например: хакатон, документы для военной кафедры" aria-label="Название текущего дела">
-              <input id="ongoingDue" type="date" aria-label="Срок (необязательно)" title="Срок (необязательно)">
+              <label class="ongoing-due-label">Дедлайн <small>(если есть)</small><input id="ongoingDue" type="date"></label>
               <button class="primary-button icon-text-button" type="submit"><svg class="ui-icon" aria-hidden="true"><use href="#icon-plus"></use></svg>Добавить</button>
             </form>
             <div id="ongoingList" class="ongoing-list"></div>

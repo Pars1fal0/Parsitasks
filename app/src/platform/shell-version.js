@@ -1,4 +1,4 @@
-export const shellVersion = "0.38.0";
+export const shellVersion = "0.38.1";
 const versionKey = "rhythm-shell-version";
 const retryKey = "rhythm-shell-refresh";
 

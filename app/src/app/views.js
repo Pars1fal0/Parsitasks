@@ -543,6 +543,12 @@ export function wireViews() {
       if (saveState() === false) { app.state.tasks = app.state.tasks.filter((item) => item.id !== task.id); return; }
       showToast("Задача создана в «Позже»", { undo });
     },
+    createLaterTask: (title) => {
+      const now = new Date().toISOString();
+      const task = normalizeState({ ...app.state, tasks: [{ id: createId(), title: cleanText(title).slice(0, 240), date: null, repeat: "none", priority: "medium", createdAt: now, updatedAt: now }] }).tasks[0];
+      if (task) app.state.tasks.push(task);
+      return task || null;
+    },
     restoreState: (snapshot) => replaceState(normalizeState(JSON.parse(snapshot.state))),
     getUserId: () => remoteAuth.getSession()?.user?.id || "",
     confirmAction,
