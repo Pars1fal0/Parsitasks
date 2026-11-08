@@ -44,8 +44,14 @@ const sharp = require("sharp");
             && (!index || labels[index - 1].getBoundingClientRect().right <= node.getBoundingClientRect().left + 1));
         }));
         assert.ok(labelsFit, `month labels fit without overlap: ${theme}/${width}`);
-        const habitsColor = await page.locator(".heatmap-legend-habits").evaluate((node) => getComputedStyle(node, "::before").backgroundColor.match(/\d+/g).slice(0, 3).map(Number));
-        assert.deepEqual(habitsColor, theme === "dark" ? [255, 128, 104] : [217, 100, 74], "habits retain the original coral legend color");
+        const expectedHabits = theme === "dark" ? [255, 128, 104] : [217, 100, 74];
+        const readHabits = () => page.locator(".heatmap-legend-habits").evaluate((node) => getComputedStyle(node, "::before").backgroundColor.match(/\d+/g).slice(0, 3).map(Number));
+        let habitsColor = await readHabits();
+        for (let attempt = 0; attempt < 40 && habitsColor.join() !== expectedHabits.join(); attempt += 1) {
+          await page.waitForTimeout(50);
+          habitsColor = await readHabits();
+        }
+        assert.deepEqual(habitsColor, expectedHabits, "habits retain the original coral legend color");
         const today = page.locator('.heatmap-cell[data-date="2026-10-28"]');
         const beforeHover = await today.boundingBox(); await today.hover();
         const afterHover = await today.boundingBox();
