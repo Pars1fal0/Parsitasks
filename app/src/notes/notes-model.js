@@ -13,6 +13,8 @@ function normalizeNote(value, options = {}) {
     title: title || "Без названия",
     body,
     pinned: value.pinned === true,
+    ongoing: value.ongoing === true,
+    dueDate: /^\d{4}-\d{2}-\d{2}$/.test(String(value.dueDate || "")) ? value.dueDate : "",
     subjectId: String(value.subjectId || "").trim().slice(0, 160),
     taskId: String(value.taskId || "").trim().slice(0, 160),
     createdAt,
@@ -38,6 +40,7 @@ function listNotes(notes, options = {}) {
   const subjects = new Map((options.subjects || []).map((subject) => [subject.id, subject.name]));
   const tasks = new Map((options.tasks || []).map((task) => [task.id, task.title]));
   return normalizeNotes(notes)
+    .filter((note) => note.ongoing === (options.ongoing === true))
     .filter((note) => subjectId === "all" || (subjectId === "none" ? !note.subjectId : note.subjectId === subjectId))
     .filter((note) => !options.pinnedOnly || note.pinned)
     .filter((note) => !query || [note.title, note.body, subjects.get(note.subjectId), tasks.get(note.taskId)]

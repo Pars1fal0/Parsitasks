@@ -235,6 +235,16 @@ export async function openBoardSource(type, id) {
   });
 }
 
+export async function openOngoing() {
+  if (!(await confirmDiscardOpenForms())) return;
+  if (!(await notesView.setMode("ongoing"))) return;
+  app.activeView = "journal";
+  saveUiState();
+  syncNavigationRoute();
+  render();
+  scrollWorkspaceTop();
+}
+
 export async function openNotesForSubject(subjectId = "all") {
   if (!(await confirmDiscardOpenForms())) return;
   notesView.setSubjectFilter(subjectId);

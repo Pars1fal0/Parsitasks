@@ -99,7 +99,7 @@ function searchWorkspace(state = {}, query = "", options = {}) {
       view: "journal",
     });
   });
-  (state.notes || []).forEach((note) => {
+  (state.notes || []).filter((note) => !note.ongoing).forEach((note) => {
     const subject = subjectById.get(note.subjectId) || "";
     const task = (state.tasks || []).find((item) => item.id === note.taskId)?.title || "";
     if (!matches(`${note.title} ${note.body} ${subject} ${task}`, search)) return;

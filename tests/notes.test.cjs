@@ -68,4 +68,19 @@ module.exports = [
       assert.equal(results.find((result) => result.id === "math").type, "subject");
     },
   },
+  {
+    name: "keeps ongoing items separate from regular notes and validates their deadline",
+    fn() {
+      const notes = [
+        { id: "hack", title: "Хакатон", ongoing: true, dueDate: "2026-11-20" },
+        { id: "bad", title: "Военная кафедра", ongoing: true, dueDate: "завтра" },
+        { id: "plain", title: "Обычная заметка" },
+      ];
+      assert.deepEqual(notesModel.listNotes(notes).map((note) => note.id), ["plain"]);
+      const ongoing = notesModel.listNotes(notes, { ongoing: true });
+      assert.deepEqual(ongoing.map((note) => note.id).sort(), ["bad", "hack"]);
+      assert.equal(ongoing.find((note) => note.id === "bad").dueDate, "");
+      assert.equal(ongoing.find((note) => note.id === "hack").dueDate, "2026-11-20");
+    },
+  },
 ];

@@ -28,7 +28,7 @@ import { calendarDragController, priorityLabels, remoteAuth, saveSubtaskChange, 
 import { saveUiState } from "./settings.js";
 import { appShellController, focusTimer } from "./shell.js";
 import { addDays, cleanText, cleanTimeValue, createId, escapeHtml, formatLongDate, formatMonthLabel, formatShortDate, formatTime, formatWeekday, getMonthCalendarDates, getWeekDates, heatAlpha, minutesToTime, normalizeDateKey, parseDate, timeToMinutes, toDateKey } from "./state.js";
-import { acknowledgeAllOverdueTasks, acknowledgeOverdueTask, attachTaskChipDrag, attachTaskDropZone, clearTaskDragState, deferSelectedTasks, deleteGoal, deleteHabit, deleteMovedReplacement, deleteTask, dismissSelectedTasks, excludeTaskDate, getStudyEvents, moveSelectedTasks, notesForTask, openDateTasks, openLinkedHabit, openLinkedNote, openNotesForTask, openStudyLesson, postponeTask, renderOverview, reorderHabit, restoreOverdueTask, restoreTaskDate, stopTaskSeries } from "./task-actions.js";
+import { acknowledgeAllOverdueTasks, acknowledgeOverdueTask, attachTaskChipDrag, attachTaskDropZone, clearTaskDragState, deferSelectedTasks, deleteGoal, deleteHabit, deleteMovedReplacement, deleteTask, dismissSelectedTasks, excludeTaskDate, getStudyEvents, moveSelectedTasks, notesForTask, openDateTasks, openLinkedHabit, openLinkedNote, openNotesForTask, openOngoing, openStudyLesson, postponeTask, renderOverview, reorderHabit, restoreOverdueTask, restoreTaskDate, stopTaskSeries } from "./task-actions.js";
 
 export let tasksView, habitsView, habitFreezeDialog, goalCheckpointEditor, goalsView, calendarView, timelineController, calendarSchedule, timelineView, archiveView, journalView, notesView;
 
@@ -550,6 +550,7 @@ export function wireViews() {
     createUndoSnapshot,
     els,
     getState: () => app.state,
+    openOngoing,
     openTask: (task) => openDateTasks(task.date, task.id),
     renderJournal: journalView.render,
     saveState,

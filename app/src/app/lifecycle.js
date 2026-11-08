@@ -220,6 +220,7 @@ export function render() {
   applyAccountPreferences();
   focusTimer?.render();
   appShellController.render();
+  notesView.renderOngoingStrip();
   workspaceGuide.render();
 }
 

@@ -55,6 +55,7 @@ function createNotesView(ctx) {
     });
     els.notesTabs.forEach((button) => button.addEventListener("click", () => setMode(button.dataset.notesTab)));
     els.noteNew.addEventListener("click", newNote);
+    els.ongoingForm.addEventListener("submit", addOngoing);
     els.noteSearch.addEventListener("input", renderList);
     els.noteSubjectFilter.addEventListener("change", renderList);
     els.notePinnedOnly.addEventListener("click", () => {
@@ -98,9 +99,14 @@ function createNotesView(ctx) {
     els.notesTabs.forEach((button) => button.setAttribute("aria-selected", String(button.dataset.notesTab === mode)));
     els.notesPane.hidden = mode !== "notes";
     els.journalPane.hidden = mode !== "journal";
+    els.ongoingPane.hidden = mode !== "ongoing";
     els.noteNew.hidden = mode !== "notes";
     if (mode === "journal") {
       ctx.renderJournal();
+      return;
+    }
+    if (mode === "ongoing") {
+      renderOngoing();
       return;
     }
     renderSubjectOptions();
@@ -164,8 +170,100 @@ function createNotesView(ctx) {
     }));
   }
 
+  function ongoingItems() {
+    return (ctx.getState().notes || []).filter((note) => note.ongoing === true)
+      .sort((a, b) => (a.dueDate || "9999").localeCompare(b.dueDate || "9999") || a.createdAt.localeCompare(b.createdAt));
+  }
+
+  function updateOngoing(note, patch) {
+    const next = model.normalizeNote({ ...note, ...patch, updatedAt: new Date(Math.max(Date.now(), (Date.parse(note.updatedAt) || 0) + 1)).toISOString() });
+    if (!next) return;
+    const undo = ctx.createUndoSnapshot();
+    Object.assign(note, next);
+    if (ctx.saveState() === false) { ctx.restoreState?.(undo); ctx.showToast("Не удалось сохранить"); }
+  }
+
+  function addOngoing(event) {
+    event.preventDefault();
+    const title = model.cleanTitle(els.ongoingTitle.value);
+    if (!title) { els.ongoingTitle.focus(); return; }
+    const now = new Date().toISOString();
+    const note = model.normalizeNote({ id: ctx.createId(), title, ongoing: true, dueDate: els.ongoingDue.value, createdAt: now, updatedAt: now });
+    const undo = ctx.createUndoSnapshot();
+    const state = ctx.getState();
+    (state.notes ||= []).push(note);
+    if (ctx.saveState() === false) { ctx.restoreState?.(undo); ctx.showToast("Не удалось сохранить"); return; }
+    els.ongoingForm.reset();
+    renderOngoing();
+    els.ongoingTitle.focus();
+  }
+
+  function finishOngoing(note) {
+    const undo = ctx.createUndoSnapshot();
+    const state = ctx.getState();
+    state.notes = state.notes.filter((item) => item.id !== note.id);
+    state.tombstones.notes ||= {};
+    state.tombstones.notes[note.id] = new Date().toISOString();
+    if (ctx.saveState() === false) { ctx.restoreState?.(undo); ctx.showToast("Не удалось сохранить"); return; }
+    renderOngoing();
+    ctx.showToast("Готово, убрано из текущих", { undo });
+  }
+
+  function renderOngoingStrip() {
+    const items = ongoingItems();
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const chips = items.map((note) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "ongoing-chip";
+      chip.classList.toggle("is-overdue", Boolean(note.dueDate) && note.dueDate < todayKey);
+      chip.textContent = note.dueDate ? `${note.title} · ${note.dueDate.slice(8)}.${note.dueDate.slice(5, 7)}` : note.title;
+      chip.title = note.body || note.title;
+      chip.addEventListener("click", () => ctx.openOngoing?.());
+      return chip;
+    });
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "ongoing-chip ongoing-chip-add";
+    add.textContent = items.length ? "Изменить" : "+ Добавить текущее";
+    add.addEventListener("click", () => ctx.openOngoing?.());
+    els.ongoingChips.replaceChildren(...chips, add);
+  }
+
+  function renderOngoing() {
+    const items = ongoingItems();
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    els.ongoingEmpty.hidden = items.length > 0;
+    els.ongoingList.replaceChildren(...items.map((note) => {
+      const card = document.createElement("article");
+      const top = document.createElement("div");
+      const title = document.createElement("input");
+      const due = document.createElement("input");
+      const done = document.createElement("button");
+      const body = document.createElement("textarea");
+      card.className = "ongoing-item";
+      card.classList.toggle("is-overdue", Boolean(note.dueDate) && note.dueDate < todayKey);
+      top.className = "ongoing-item-top";
+      title.type = "text"; title.maxLength = model.MAX_TITLE_LENGTH; title.className = "ongoing-item-title"; title.value = note.title;
+      title.setAttribute("aria-label", "Название");
+      title.addEventListener("change", () => { const value = model.cleanTitle(title.value); if (value) updateOngoing(note, { title: value }); else title.value = note.title; });
+      due.type = "date"; due.value = note.dueDate; due.setAttribute("aria-label", "Срок");
+      due.addEventListener("change", () => { updateOngoing(note, { dueDate: due.value }); renderOngoing(); });
+      done.type = "button"; done.className = "ghost-button compact-button"; done.textContent = "Готово";
+      done.addEventListener("click", () => finishOngoing(note));
+      body.value = note.body; body.placeholder = "Что осталось сделать, ссылки, заметки"; body.maxLength = model.MAX_BODY_LENGTH;
+      body.setAttribute("aria-label", "Описание");
+      body.addEventListener("change", () => updateOngoing(note, { body: body.value }));
+      top.append(title, due, done);
+      card.append(top, body);
+      return card;
+    }));
+  }
+
   async function setMode(next) {
-    if (!["notes", "journal"].includes(next) || next === mode) return true;
+    if (!["notes", "journal", "ongoing"].includes(next) || next === mode) return true;
     if (!(await confirmDiscard())) return false;
     mode = next;
     render();
@@ -450,7 +548,7 @@ function createNotesView(ctx) {
     }));
   }
 
-  return { bindEvents, confirmDiscard, discardDraft, hasUnpersistedChanges, isDirty, newNote, openNote, render, resetForState, setMode, setSubjectFilter };
+  return { bindEvents, confirmDiscard, discardDraft, hasUnpersistedChanges, isDirty, newNote, openNote, render, renderOngoingStrip, resetForState, setMode, setSubjectFilter };
 }
 
 function option(value, label) {

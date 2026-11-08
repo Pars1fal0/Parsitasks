@@ -338,6 +338,10 @@
               <button class="icon-button" id="workspaceSetupDismiss" type="button" aria-label="Пропустить настройку пространства" title="Пропустить"><svg class="ui-icon"><use href="#icon-close"></use></svg></button>
             </div>
           </section>
+          <section class="ongoing-strip" id="ongoingStrip" aria-label="Текущие проекты и дела">
+            <span class="ongoing-strip-label">Текущее</span>
+            <div class="ongoing-chips" id="ongoingChips"></div>
+          </section>
           <div class="task-pane-tabs segmented-control" role="group" aria-label="Список задач">
             <button type="button" data-task-pane="day" aria-pressed="true">День <span id="taskDayCount"></span></button>
             <button type="button" data-task-pane="later" aria-pressed="false">Позже <span id="taskLaterBadge"></span></button>
@@ -1149,7 +1153,18 @@
           </div>
           <div class="notes-tabs" role="tablist" aria-label="Разделы заметок">
             <button type="button" role="tab" data-notes-tab="notes" aria-selected="true">Заметки</button>
+            <button type="button" role="tab" data-notes-tab="ongoing" aria-selected="false">Текущее</button>
             <button type="button" role="tab" data-notes-tab="journal" aria-selected="false">Дневник</button>
+          </div>
+          <div id="ongoingPane" class="ongoing-pane" role="tabpanel" hidden>
+            <p class="muted ongoing-hint">Долгие дела и проекты, о которых нужно помнить, но которые не входят в задачи на день.</p>
+            <form id="ongoingForm" class="ongoing-form" autocomplete="off">
+              <input id="ongoingTitle" type="text" maxlength="120" required placeholder="Например: хакатон, документы для военной кафедры" aria-label="Название текущего дела">
+              <input id="ongoingDue" type="date" aria-label="Срок (необязательно)" title="Срок (необязательно)">
+              <button class="primary-button icon-text-button" type="submit"><svg class="ui-icon" aria-hidden="true"><use href="#icon-plus"></use></svg>Добавить</button>
+            </form>
+            <div id="ongoingList" class="ongoing-list"></div>
+            <div id="ongoingEmpty" class="notes-empty">Пока ничего нет. Добавь проект или дело, которое тянется дольше одного дня.</div>
           </div>
           <div id="notesPane" role="tabpanel">
             <div class="notes-workspace" id="notesWorkspace">

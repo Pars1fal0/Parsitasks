@@ -99,6 +99,34 @@ body[data-view="journal"].notes-mode .date-control > :not(.global-search-button)
   overflow-y: auto;
 }
 
+.ongoing-strip { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; min-width: 0; }
+.ongoing-strip-label { flex: none; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.ongoing-chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.ongoing-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 1px solid var(--line); border-left: 3px solid var(--teal); border-radius: 999px; background: var(--surface-elevated); color: var(--text); cursor: pointer; font-size: 13px; padding: 4px 12px; }
+.ongoing-chip:hover, .ongoing-chip:focus-visible { background: var(--teal-soft); outline: 0; }
+.ongoing-chip.is-overdue { border-left-color: var(--danger, #e5484d); }
+.ongoing-chip-add { border-left-color: var(--line); color: var(--muted); }
+.ongoing-pane { display: grid; gap: 14px; max-width: 760px; }
+.ongoing-hint { margin: 0; }
+.ongoing-form { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+.ongoing-list { display: grid; gap: 10px; }
+.ongoing-item {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--teal);
+  border-radius: 8px;
+  background: var(--surface-elevated);
+  padding: 12px 14px;
+}
+.ongoing-item-top { display: flex; align-items: center; gap: 8px; }
+.ongoing-item-title { flex: 1; min-width: 0; font-weight: 700; }
+.ongoing-item textarea { min-height: 54px; resize: vertical; }
+.ongoing-item.is-overdue { border-left-color: var(--danger, #e5484d); }
+@media (max-width: 640px) {
+  .ongoing-form { grid-template-columns: 1fr; }
+}
+
 .notes-list-item {
   display: grid;
   gap: 5px;
