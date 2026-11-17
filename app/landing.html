@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0b0e0d">
-    <meta name="description" content="Parsitasks объединяет задачи, календарь, привычки и цели в одном спокойном рабочем пространстве.">
+    <meta name="theme-color" content="#0a1010">
+    <meta name="description" content="Parsitasks — личный планировщик для задач, привычек, календаря и учёбы. От срока сдачи до времени на подготовку и статистики дня.">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'">
-    <title>Parsitasks — личная система для задач и планов</title>
+    <title>Parsitasks — личный планировщик</title>
     <link rel="icon" href="assets/icons/icon-32.png" type="image/png">
     <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
     <link rel="stylesheet" href="assets/styles/landing.css">
@@ -14,113 +14,117 @@
   </head>
   <body>
     <a class="skip-link" href="#main">Перейти к содержимому</a>
-
-    <header class="site-header">
+    <header class="site-header shell">
       <a class="brand" href="/" aria-label="Parsitasks, главная">
-        <img class="brand-mark" src="assets/icons/logo.png" alt="" aria-hidden="true" width="36" height="36">
-        <span class="brand-name">Parsitasks</span>
+        <img class="brand-mark" src="assets/icons/logo.png" alt="" width="32" height="32">
+        <span>Parsitasks</span>
       </a>
-      <nav class="header-nav" aria-label="Навигация">
-        <a href="#workflow">Возможности</a>
-        <a href="#sync">Синхронизация</a>
+      <nav aria-label="Навигация">
+        <a class="nav-link" href="#workflow">План в действии
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h10v10M7 17 17 7"/></svg>
+        </a>
+        <button class="motion-toggle" type="button" aria-label="Приостановить анимацию" title="Приостановить анимацию" hidden>
+          <svg class="motion-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14m6-14v14"/></svg>
+          <svg class="motion-play" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 12 7-12 7Z"/></svg>
+        </button>
       </nav>
-      <div class="header-actions">
-        <a class="text-link" href="/auth?mode=signin" data-auth-link>Войти</a>
-        <a class="button button-small" href="/auth" data-primary-cta>Войти</a>
-      </div>
     </header>
 
-    <main id="main">
+    <main id="main" tabindex="-1">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-visual" aria-hidden="true"></div>
-        <div class="hero-shade" aria-hidden="true"></div>
-        <div class="hero-content">
-          <p class="eyebrow"><span></span> Личное рабочее пространство</p>
+        <picture class="hero-art" aria-hidden="true">
+          <source media="(max-width: 600px)" srcset="assets/images/landing-glass-mobile.webp">
+          <img src="assets/images/landing-glass.webp" width="1672" height="941" alt="" fetchpriority="high">
+        </picture>
+        <div class="hero-content shell">
+          <p class="eyebrow">Личный планировщик</p>
           <h1 id="hero-title">Parsitasks</h1>
-          <p class="hero-lead">Соберите день в понятную систему.</p>
-          <p class="hero-copy">Задачи, календарь, привычки и цели работают вместе, чтобы вы видели главное и не тратили время на переключение между приложениями.</p>
-          <div class="hero-actions">
-            <a class="button" href="/auth" data-primary-cta>Войти</a>
-            <a class="button-secondary" href="#workflow">Посмотреть, как устроено</a>
+          <p class="hero-lead">Твой день. В одном месте.</p>
+          <p class="hero-details">Задачи, привычки, календарь и учёба.</p>
+          <a class="button" href="/auth" data-primary-cta>Открыть Parsitasks
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+          </a>
+        </div>
+        <figure class="hero-media shell">
+          <figcaption>
+            <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 2v4m8-4v4M3 10h18"/><rect x="3" y="4" width="18" height="17" rx="2"/></svg> Календарь</span>
+            <span>Демо</span>
+          </figcaption>
+          <div class="hero-display">
+            <picture class="hero-screen">
+              <source media="(max-width: 600px)" srcset="assets/images/landing-overview-mobile.webp" width="792" height="566">
+              <img src="assets/images/landing-overview.webp" width="2240" height="932" fetchpriority="high" alt="Календарь Parsitasks. На четверг с 16:00 до 17:00 запланирована подготовка доклада.">
+            </picture>
           </div>
-        </div>
-        <div class="hero-proof" aria-label="Преимущества Parsitasks">
-          <div><strong>Один план</strong><span>задачи и время вместе</span></div>
-          <div><strong>1 аккаунт</strong><span>на всех устройствах</span></div>
-          <div><strong>Без шума</strong><span>только нужные действия</span></div>
-        </div>
+        </figure>
       </section>
 
       <section class="workflow" id="workflow" aria-labelledby="workflow-title">
-        <div class="section-intro">
-          <p class="eyebrow">Один рабочий контекст</p>
-          <h2 id="workflow-title">От мысли до выполненного дела — в одном месте</h2>
-          <p>Parsitasks показывает не просто список задач, а реальный ход дня: что нужно сделать, когда на это есть время и куда движется ваш прогресс.</p>
-        </div>
-
-        <div class="workflow-list">
-          <article>
-            <span class="feature-number">01</span>
-            <div>
-              <h3>Зафиксируйте</h3>
-              <p>Добавьте задачу обычной фразой. Дата, время, категория и приоритет распознаются автоматически.</p>
+        <div class="shell workflow-inner">
+          <div class="workflow-heading">
+            <h2 id="workflow-title">От срока<br>до результата.</h2>
+            <p>Доклад сдать в пятницу. В четверг есть час на подготовку. Вечером видно, что успел за день.</p>
+          </div>
+          <div class="workflow-story">
+            <div class="workflow-steps" aria-label="Этапы планирования" hidden>
+              <button type="button" id="step-assignment" aria-controls="example-assignment">
+                <span class="step-index" aria-hidden="true">01</span>
+                <span class="step-copy"><strong>Срок сдачи</strong><small>Пятница, 10:00</small></span>
+              </button>
+              <button type="button" id="step-planning" aria-controls="example-planning">
+                <span class="step-index" aria-hidden="true">02</span>
+                <span class="step-copy"><strong>Подготовка</strong><small>Четверг, 16:00–17:00</small></span>
+              </button>
+              <button type="button" id="step-progress" aria-controls="example-progress">
+                <span class="step-index" aria-hidden="true">03</span>
+                <span class="step-copy"><strong>Прогресс</strong><small>Всё на день выполнено</small></span>
+              </button>
             </div>
-            <span class="feature-tag">Быстрый ввод</span>
-          </article>
-          <article>
-            <span class="feature-number">02</span>
-            <div>
-              <h3>Распределите</h3>
-              <p>Перетащите задачу на календарь или выделите для неё точный временной блок на таймлайне.</p>
+            <div class="workflow-panels">
+              <figure class="workflow-panel" id="example-assignment">
+                <div class="example-media">
+                  <picture>
+                    <source media="(max-width: 900px)" srcset="assets/images/landing-assignment-mobile.webp" width="696" height="370">
+                    <img src="assets/images/landing-assignment.webp" width="1184" height="332" alt="Задание «Подготовить доклад» по литературе со сроком сдачи 20 ноября в 10:00.">
+                  </picture>
+                </div>
+                <figcaption><span class="chapter">Учёба</span><strong>Назначь срок.</strong><p>Добавь доклад как домашнее задание. В пятницу к 10:00 он должен быть готов.</p></figcaption>
+              </figure>
+              <figure class="workflow-panel" id="example-planning">
+                <div class="example-media">
+                  <picture>
+                    <source media="(max-width: 900px)" srcset="assets/images/landing-planning-mobile.webp" width="680" height="600">
+                    <img src="assets/images/landing-planning.webp" width="1280" height="532" alt="Поиск времени нашёл окно с 15:30 до 17:30. Для подготовки выбран час с 16:00 до 17:00.">
+                  </picture>
+                </div>
+                <figcaption><span class="chapter">Календарь</span><strong>Найди час.</strong><p>Календарь нашёл свободное окно в четверг. Подготовка заняла час, срок сдачи не сдвинулся.</p></figcaption>
+              </figure>
+              <figure class="workflow-panel" id="example-progress">
+                <div class="example-media progress-media">
+                  <img src="assets/images/landing-progress.webp" width="784" height="902" alt="На тепловой карте 19 ноября выделено золотым. Все задачи и привычки на день выполнены.">
+                </div>
+                <figcaption><span class="chapter">Статистика</span><strong>Закрой день.</strong><p>Когда все задачи и привычки выполнены, день на тепловой карте становится золотым.</p></figcaption>
+              </figure>
             </div>
-            <span class="feature-tag">Календарь</span>
-          </article>
-          <article>
-            <span class="feature-number">03</span>
-            <div>
-              <h3>Доведите до результата</h3>
-              <p>Следите за привычками, закрывайте этапы целей и сохраняйте контекст дня в дневнике.</p>
-            </div>
-            <span class="feature-tag">Прогресс</span>
-          </article>
+          </div>
         </div>
-      </section>
-
-      <section class="product-band" aria-labelledby="product-band-title">
-        <div class="product-band-heading">
-          <p class="eyebrow">План, который видно</p>
-          <h2 id="product-band-title">Время становится рабочим пространством</h2>
-          <p>Таймлайн показывает плотность дня, конфликты и свободные окна. Блоки двигаются и меняют длительность с шагом 15 минут.</p>
-        </div>
-        <div class="product-canvas" role="img" aria-label="Таймлайн задач в Parsitasks"></div>
-      </section>
-
-      <section class="sync-section" id="sync" aria-labelledby="sync-title">
-        <div class="sync-copy">
-          <p class="eyebrow">Продолжайте с любого устройства</p>
-          <h2 id="sync-title">Один аккаунт. Актуальный план везде.</h2>
-          <p>Изменения синхронизируются между компьютером и браузером. Локальная копия помогает продолжать работу при нестабильной сети, а резервные версии защищают от случайных действий.</p>
-        </div>
-        <dl class="sync-details">
-          <div><dt>Синхронизация</dt><dd>автоматическая</dd></div>
-          <div><dt>Доступ</dt><dd>только к своим данным</dd></div>
-          <div><dt>Восстановление</dt><dd>из облачной версии</dd></div>
-        </dl>
       </section>
 
       <section class="final-cta" aria-labelledby="final-title">
-        <p class="eyebrow">Начните с сегодняшнего дня</p>
-        <h2 id="final-title">Планы становятся проще, когда у них есть одно место.</h2>
-        <a class="button" href="/auth" data-primary-cta>Открыть Parsitasks</a>
+        <div class="final-inner shell">
+          <h2 id="final-title">Собери свой день.</h2>
+          <a class="button" href="/auth" data-primary-cta>Открыть Parsitasks
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+          </a>
+        </div>
       </section>
     </main>
 
-    <footer>
+    <footer class="site-footer shell">
       <a class="brand" href="/">
-        <img class="brand-mark" src="assets/icons/logo.png" alt="" aria-hidden="true" width="36" height="36">
-        <span class="brand-name">Parsitasks</span>
+        <img class="brand-mark" src="assets/icons/logo.png" alt="" width="32" height="32">
+        <span>Parsitasks</span>
       </a>
-      <p>Личное пространство для задач, времени и прогресса.</p>
       <span>© 2026</span>
     </footer>
   </body>
