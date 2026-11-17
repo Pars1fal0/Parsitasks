@@ -11,7 +11,7 @@ function releaseChecks(root = path.resolve(__dirname, "..")) {
     const match = /^npm run ([a-z0-9:-]+)(?: -- --shard .+)?$/.exec(step.run || "");
     return match ? [{ name: step.name, args: ["run", match[1]] }] : [];
   }).filter((check, index, all) => all.findIndex((other) => other.args.join(" ") === check.args.join(" ")) === index);
-  for (const script of ["test:dependencies", "test:sql-isolation", "test:e2e", "desktop:smoke", "build:web", "build:worker"]) {
+  for (const script of ["test:dependencies:web", "test:sql-isolation", "test:e2e", "desktop:smoke", "build:web", "build:worker"]) {
     if (!checks.some((check) => check.args[1] === script)) throw new Error(`Missing release check: ${script}`);
   }
   return checks;

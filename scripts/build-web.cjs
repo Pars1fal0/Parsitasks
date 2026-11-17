@@ -57,11 +57,11 @@ function buildWeb({ directory = root } = {}) {
         : file.endsWith(".html") ? stampAssetUrls(body.toString("utf8"), buildHash) : body;
       fs.writeFileSync(destination, value);
     }
-    esbuild.buildSync({
+    const browserBundle = esbuild.buildSync({
       bundle: true,
       entryPoints: [path.join(workspace, "mcp", "oauth-consent-entry.mjs")],
       format: "iife", minify: true, logLevel: "silent",
-      outfile: path.join(staging, "oauth-consent.js"), platform: "browser", target: ["es2022"],
+      outfile: path.join(staging, "oauth-consent.js"), platform: "browser", target: ["es2022"], metafile: true,
     });
     fs.writeFileSync(path.join(staging, ".nojekyll"), "");
     let sourceRevision = process.env.GITHUB_SHA || null;
@@ -91,6 +91,9 @@ function buildWeb({ directory = root } = {}) {
       try { fs.rmSync(previous, { recursive: true }); }
       catch { console.warn(`New build installed; previous generated build retained at ${previous}`); }
     }
+    const auditDirectory = path.join(workspace, ".wrangler");
+    fs.mkdirSync(auditDirectory, { recursive: true });
+    fs.writeFileSync(path.join(auditDirectory, "web-bundle-meta.json"), JSON.stringify(browserBundle.metafile));
     console.log(`web build ok - ${files.length + 2} files - cache ${buildHash}`);
     return { buildHash, output };
   } finally {

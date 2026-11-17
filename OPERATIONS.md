@@ -108,6 +108,12 @@ integration in Cloudflare before pushing this change. Do not replace it with
 another unverified source-build command. Use `npm run verify:release` locally;
 it runs the same checks declared by the verification workflow.
 
+For the approved landing page release after `51376b8` only, the first CI run
+can proceed past GHSA-fc5q-39xc-vjpf once Wrangler and esbuild metadata prove
+`picomatch` is absent from the Worker and the browser bundle. Later pushes,
+re-runs, manual runs, and desktop packaging still require the full audit.
+Other high and critical advisories still block all releases.
+
 ## Database Changes From 2026-10-07
 
 After the existing recovery and Storage lifecycle migrations, apply in staging:

@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit all desktop and build dependencies
+        run: npm run test:dependencies
+
       - name: Verify release tag
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
